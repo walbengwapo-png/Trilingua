@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class TranslationController extends Controller
@@ -60,25 +61,58 @@ class TranslationController extends Controller
         $pdfColumnMode = $request->input('pdf_column_mode', 'auto');
 
         try {
-            // Document mode — upload to Supabase Storage, return a signed URL
+            // Document mode — upload original to Supabase, translate, upload translated
             if ($request->hasFile('document')) {
+                $uploadedFile = $request->file('document');
+                $originalName = $uploadedFile->getClientOriginalName();
+                $originalExt  = strtolower('.' . $uploadedFile->getClientOriginalExtension());
+                $fileSize     = $uploadedFile->getSize();
+
+                // 1. Upload the ORIGINAL file to Supabase Storage
+                $originalStoragePath = Auth::id() . '/originals/' . Str::uuid() . '_' . $originalName;
+
+                try {
+                    $originalStorageResult = $this->storage->uploadFile(
+                        $uploadedFile->getRealPath(),
+                        $originalStoragePath
+                    );
+                } catch (\Throwable $e) {
+                    Log::error('Supabase Storage upload failed for original file', [
+                        'exception' => $e->getMessage(),
+                        'storage_path' => $originalStoragePath,
+                    ]);
+                    return response()->json([
+                        'error' => 'Failed to store original document. Please try again.',
+                    ], 500);
+                }
+
+                // 2. Translate the document
                 $outputPath = $this->service->translateDocument(
-                    $request->file('document'),
+                    $uploadedFile,
                     $sourceLang,
                     $targetLang,
                     $pdfColumnMode
                 );
 
-                $storagePath = Auth::id() . '/' . basename($outputPath);
+                // 3. Upload the TRANSLATED file to Supabase Storage
+                $translatedStoragePath = Auth::id() . '/' . basename($outputPath);
 
                 try {
-                    $storageResult = $this->storage->uploadFile($outputPath, $storagePath);
+                    $storageResult = $this->storage->uploadFile($outputPath, $translatedStoragePath);
                 } catch (\Throwable $e) {
-                    Log::error('Supabase Storage upload failed', [
+                    Log::error('Supabase Storage upload failed for translated file', [
                         'exception' => $e->getMessage(),
-                        'storage_path' => $storagePath,
+                        'storage_path' => $translatedStoragePath,
                     ]);
                     @unlink($outputPath);
+                    // Clean up the original file from storage since translation failed
+                    try {
+                        $this->storage->deleteFile($originalStoragePath);
+                    } catch (\Throwable $deleteEx) {
+                        Log::error('Failed to clean up original file after translation failure', [
+                            'exception' => $deleteEx->getMessage(),
+                        ]);
+                    }
                     return response()->json([
                         'error' => 'Translation succeeded but file upload failed. Please try again.',
                     ], 500);
@@ -87,26 +121,30 @@ class TranslationController extends Controller
                 @unlink($outputPath);
 
                 $downloadFilename = $this->service->getOriginalOutputName(
-                    $request->file('document')->getClientOriginalName(),
-                    strtolower('.' . $request->file('document')->getClientOriginalExtension())
+                    $originalName,
+                    $originalExt
                 );
 
+                // 4. Create history record with document relationship fields
                 try {
                     $this->history->insertRecord([
                         'user_id'               => Auth::id(),
-                        'original_filename'     => $request->file('document')->getClientOriginalName(),
+                        'original_filename'     => $originalName,
                         'translated_filename'   => $downloadFilename,
                         'source_language'       => $sourceLang,
                         'target_language'       => $targetLang,
                         'created_at'            => now()->toIso8601String(),
-                        'storage_path'          => $storagePath,
+                        'storage_path'          => $translatedStoragePath,
+                        'original_storage_path' => $originalStoragePath,
+                        'file_size'             => $fileSize,
+                        'status'                => 'completed',
                         'signed_url_expires_at' => $storageResult['signed_url_expires_at'],
                     ]);
                 } catch (\Throwable $e) {
                     Log::error('Failed to insert translation history record', [
                         'exception'    => $e->getMessage(),
                         'user_id'      => Auth::id(),
-                        'storage_path' => $storagePath,
+                        'storage_path' => $translatedStoragePath,
                     ]);
                 }
 
@@ -134,6 +172,7 @@ class TranslationController extends Controller
                     'source_language'  => $sourceLang,
                     'target_language'  => $targetLang,
                     'created_at'       => now()->toIso8601String(),
+                    'status'           => 'completed',
                 ]);
             } catch (\Throwable $e) {
                 Log::error('Failed to insert text translation history record', [
@@ -155,22 +194,4 @@ class TranslationController extends Controller
         }
     }
 
-    /**
-     * GET /translate/download/{token} — serve a previously translated document.
-     */
-    public function download(string $token): \Symfony\Component\HttpFoundation\Response
-    {
-        // Sanitise token — only allow UUID-style filenames to prevent path traversal
-        if (!preg_match('/^[a-f0-9\-]+_translated\.[a-z]+$/i', $token)) {
-            abort(404);
-        }
-
-        $outputPath = session()->pull('download_' . $token);
-
-        if (!$outputPath || !file_exists($outputPath)) {
-            abort(404, 'Download link has expired or the file was not found.');
-        }
-
-        return response()->download($outputPath)->deleteFileAfterSend(true);
-    }
 }

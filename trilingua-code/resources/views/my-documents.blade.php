@@ -42,6 +42,17 @@
                 \Carbon\Carbon::parse($d['created_at'])->isCurrentMonth()));
             $sharedCount   = 0;   // not yet tracked in DB — show 0
             $archivedCount = 0;   // not yet tracked in DB — show 0
+
+            // Separate originals (no parent) from translations (have parent)
+            $originals = array_values(array_filter($documents, fn($d) => empty($d['parent_document_id'])));
+            $translations = array_values(array_filter($documents, fn($d) => !empty($d['parent_document_id'])));
+
+            // Group translations by parent_document_id
+            $translationsByParent = [];
+            foreach ($translations as $t) {
+                $pid = $t['parent_document_id'];
+                $translationsByParent[$pid][] = $t;
+            }
         @endphp
 
         {{-- ── Toolbar: search, filters, view toggle ──────────────────── --}}
@@ -61,8 +72,8 @@
 
             <select id="docs-status-filter" class="docs-filter-select" aria-label="Filter by status">
                 <option value="">All Status</option>
-                <option value="translated">Translated</option>
-                <option value="original">Original</option>
+                <option value="original">Originals Only</option>
+                <option value="translated">Translations Only</option>
             </select>
 
             <div class="docs-view-toggle" role="group" aria-label="View mode">
@@ -104,6 +115,12 @@
             @foreach ($documents as $doc)
                 @php
                     $isTranslated = !empty($doc['original_filename']) && !empty($doc['translated_filename']);
+                    $isOriginal   = empty($doc['parent_document_id']);
+                    $hasParent    = !empty($doc['parent_document_id']);
+                    // Get child translations for this record
+                    $childTranslations = $translationsByParent[$doc['id']] ?? [];
+                    $translationCount  = count($childTranslations);
+
                     // Determine the display name and language badge
                     $displayName  = $doc['translated_filename'] ?? $doc['original_filename'] ?? 'Untitled';
                     $langLabel    = $doc['source_language'] ?? '—';
@@ -122,7 +139,7 @@
                 <div class="doc-card"
                      data-title="{{ strtolower($displayName) }}"
                      data-lang="{{ $langLabel }}"
-                     data-status="{{ $isTranslated ? 'translated' : 'original' }}"
+                     data-status="{{ $isOriginal ? 'original' : 'translated' }}"
                      data-recent="{{ $isCurrentMonth ? 'true' : 'false' }}">
                     {{-- Coloured top accent bar (matches language badge colour) --}}
                     <div class="doc-card__accent doc-card__accent--{{ strtolower($langLabel) }}"></div>
@@ -131,6 +148,9 @@
                         {{-- Language badge + word count row --}}
                         <div class="doc-card__meta-row">
                             <span class="lang-badge {{ $langClass }}">{{ $langLabel }}</span>
+                            @if ($isOriginal && $translationCount > 0)
+                                <span class="doc-card__translation-count">{{ $translationCount }} translation{{ $translationCount > 1 ? 's' : '' }}</span>
+                            @endif
                         </div>
 
                         {{-- Document title --}}
@@ -138,13 +158,18 @@
 
                         {{-- Original / Translated badge --}}
                         <div class="doc-card__type-row">
-                            @if ($isTranslated)
+                            @if ($hasParent)
                                 <span class="type-pill type-pill--translated">Translated</span>
                                 <span class="doc-card__from-label">
                                     from: <span class="doc-card__from-name" title="{{ $doc['original_filename'] }}">{{ \Illuminate\Support\Str::limit($doc['original_filename'], 40) }}</span>
                                 </span>
-                            @else
+                            @elseif ($isOriginal)
                                 <span class="type-pill type-pill--original">Original</span>
+                                @if ($translationCount > 0)
+                                    <span class="doc-card__from-label">
+                                        {{ $translationCount }} translation{{ $translationCount > 1 ? 's' : '' }} generated
+                                    </span>
+                                @endif
                             @endif
                         </div>
 
@@ -164,17 +189,59 @@
                                  aria-valuemax="100"></div>
                         </div>
                         <span class="doc-card__progress-label">{{ $isTranslated ? '100%' : '0%' }} Complete</span>
+
+                        {{-- Translations sub-list (for original documents) --}}
+                        @if ($isOriginal && $translationCount > 0)
+                        <div class="doc-card__translations">
+                            <h4 class="doc-card__translations-title">Translations</h4>
+                            @foreach ($childTranslations as $child)
+                                <div class="doc-card__translation-row">
+                                    <span class="doc-card__translation-name" title="{{ $child['translated_filename'] }}">{{ \Illuminate\Support\Str::limit($child['translated_filename'], 35) }}</span>
+                                    <span class="doc-card__translation-lang">{{ $child['target_language'] ?? '—' }}</span>
+                                    <button class="doc-action-link doc-card__translation-download"
+                                            data-id="{{ $child['id'] }}"
+                                            data-filename="{{ $child['translated_filename'] ?? '' }}">
+                                        Download
+                                    </button>
+                                </div>
+                            @endforeach
+                        </div>
+                        @endif
                     </div>
 
                     {{-- Footer: date + action --}}
                     <div class="doc-card__footer">
                         <span class="doc-card__date">{{ $date }}</span>
                         <div class="doc-card__actions">
-                            <button class="doc-action-link redownload-btn"
-                                    data-id="{{ $doc['id'] }}"
-                                    data-filename="{{ $doc['translated_filename'] ?? $doc['original_filename'] }}">
-                                Open
-                            </button>
+                            @if ($hasParent)
+                                {{-- Translation: download translated + view original --}}
+                                <button class="doc-action-link redownload-btn"
+                                        data-id="{{ $doc['id'] }}"
+                                        data-filename="{{ $doc['translated_filename'] ?? $doc['original_filename'] }}">
+                                    Download
+                                </button>
+                                @if (!empty($doc['original_storage_path']))
+                                <button class="doc-action-link redownload-original-btn"
+                                        data-id="{{ $doc['id'] }}"
+                                        title="View original document">
+                                    Original
+                                </button>
+                                @endif
+                            @else
+                                {{-- Original: open translated (if available) + view original --}}
+                                <button class="doc-action-link redownload-btn"
+                                        data-id="{{ $doc['id'] }}"
+                                        data-filename="{{ $doc['translated_filename'] ?? $doc['original_filename'] }}">
+                                    Open
+                                </button>
+                                @if (!empty($doc['original_storage_path']))
+                                <button class="doc-action-link redownload-original-btn"
+                                        data-id="{{ $doc['id'] }}"
+                                        title="Download original document">
+                                    Original
+                                </button>
+                                @endif
+                            @endif
                             <button class="doc-card__more" aria-label="More options">&#8943;</button>
                         </div>
                     </div>
@@ -191,23 +258,70 @@
 (function () {
     'use strict';
 
-    /* ── Re-download / Open button (preserved unchanged) ─────────────────── */
+    var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+    /* ── Helper: fetch JSON ──────────────────────────────────────────────── */
+    function fetchJson(url, options) {
+        return fetch(url, options).then(function (response) {
+            return response.text().then(function (raw) {
+                var data = null;
+                try { data = JSON.parse(raw); } catch (e) {}
+                if (!response.ok) {
+                    throw new Error((data && data.error) || 'Request failed.');
+                }
+                return data;
+            });
+        });
+    }
+
+    /* ── Re-download / Open button ──────────────────────────────────────── */
     var errorEl = document.getElementById('redownload-error');
 
     function showError(msg) { errorEl.textContent = msg; errorEl.style.display = ''; }
     function clearError()   { errorEl.textContent = ''; errorEl.style.display = 'none'; }
 
+    function handleRedownload(btn) {
+        clearError();
+        var id  = btn.getAttribute('data-id');
+        var origText = btn.textContent;
+
+        btn.disabled = true;
+        btn.textContent = '...';
+
+        fetchJson('/history/redownload/' + encodeURIComponent(id), {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(function (data) {
+            if (data && data.download_url) {
+                window.location.href = data.download_url;
+            } else {
+                showError('Unable to generate download link. Please try again later.');
+            }
+        })
+        .catch(function (err) { showError(err.message || 'Network error. Please try again.'); })
+        .finally(function () { btn.disabled = false; btn.textContent = origText; });
+    }
+
     document.querySelectorAll('.redownload-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () { handleRedownload(btn); });
+    });
+
+    /* ── Download original button ──────────────────────────────────────── */
+    document.querySelectorAll('.redownload-original-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
             clearError();
-            var id        = btn.getAttribute('data-id');
-            var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+            var id  = btn.getAttribute('data-id');
+            var origText = btn.textContent;
 
-            btn.disabled    = true;
-            var orig        = btn.textContent;
+            btn.disabled = true;
             btn.textContent = '...';
 
-            fetch('/history/redownload/' + encodeURIComponent(id), {
+            fetchJson('/history/redownload-original/' + encodeURIComponent(id), {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
@@ -215,19 +329,38 @@
                     'Content-Type': 'application/json'
                 }
             })
-            .then(function (response) {
-                return response.text().then(function (raw) {
-                    var data = null;
-                    try { data = JSON.parse(raw); } catch (e) {}
-                    if (response.ok && data && data.download_url) {
-                        window.location.href = data.download_url;
-                    } else {
-                        showError((data && data.error) || 'Unable to generate download link. Please try again later.');
-                    }
-                });
+            .then(function (data) {
+                if (data && data.download_url) {
+                    window.location.href = data.download_url;
+                } else {
+                    showError('Original document is not available.');
+                }
             })
-            .catch(function () { showError('Network error. Please try again.'); })
-            .finally(function () { btn.disabled = false; btn.textContent = orig; });
+            .catch(function (err) { showError(err.message || 'Network error. Please try again.'); })
+            .finally(function () { btn.disabled = false; btn.textContent = origText; });
+        });
+    });
+
+    /* ── Translation row download buttons ─────────────────────────────── */
+    document.querySelectorAll('.doc-card__translation-download').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            clearError();
+            var id  = btn.getAttribute('data-id');
+
+            fetchJson('/history/redownload/' + encodeURIComponent(id), {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(function (data) {
+                if (data && data.download_url) {
+                    window.location.href = data.download_url;
+                }
+            })
+            .catch(function (err) { showError(err.message || 'Network error.'); });
         });
     });
 

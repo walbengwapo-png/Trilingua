@@ -2,93 +2,37 @@
 
 namespace App\Services;
 
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\ConnectException;
-use RuntimeException;
+use App\Models\TranslationHistory;
 
 class HistoryService
 {
-    public function __construct(private Client $guzzle) {}
-
     /**
      * Insert a new translation job record into translation_history.
      *
      * For document translations, pass:
      *   user_id, translation_type='document', original_filename, translated_filename,
-     *   source_language, target_language, created_at, storage_path, signed_url_expires_at
+     *   source_language, target_language, created_at, storage_path, original_storage_path,
+     *   parent_document_id, file_size, status, signed_url_expires_at
      *
      * For text translations, pass:
      *   user_id, translation_type='text', source_text, translated_text,
      *   source_language, target_language, created_at
-     *
-     * @throws RuntimeException on DB error or connection failure.
      */
-    public function insertRecord(array $data): void
+    public function insertRecord(array $data): TranslationHistory
     {
-        $url     = config('services.supabase.url');
-        $anonKey = config('services.supabase.anon_key');
-
-        // If Supabase is not configured, use local database
-        if (!$url || $url === 'https://your-project.supabase.co' || !$anonKey || $anonKey === 'your-anon-key') {
-            $this->insertRecordToLocalDb($data);
-            return;
-        }
-
-        // Build payload — only include keys that are present
-        $payload = array_filter([
+        return TranslationHistory::create([
             'user_id'               => $data['user_id'] ?? null,
             'translation_type'      => $data['translation_type'] ?? 'document',
             'original_filename'     => $data['original_filename'] ?? null,
             'translated_filename'   => $data['translated_filename'] ?? null,
             'source_language'       => $data['source_language'] ?? null,
             'target_language'       => $data['target_language'] ?? null,
-            'created_at'            => $data['created_at'] ?? null,
+            'created_at'            => $data['created_at'] ?? now(),
             'storage_path'          => $data['storage_path'] ?? null,
-            'signed_url_expires_at' => $data['signed_url_expires_at'] ?? null,
-            'source_text'           => $data['source_text'] ?? null,
-            'translated_text'       => $data['translated_text'] ?? null,
-        ], fn($v) => $v !== null);
-
-        try {
-            $response = $this->guzzle->post("{$url}/rest/v1/translation_history", [
-                'headers' => [
-                    'Authorization' => "Bearer {$anonKey}",
-                    'apikey'        => $anonKey,
-                    'Content-Type'  => 'application/json',
-                    'Prefer'        => 'return=minimal',
-                ],
-                'json' => $payload,
-            ]);
-        } catch (ConnectException $e) {
-            // Fallback to local database on connection error
-            $this->insertRecordToLocalDb($data);
-            return;
-        }
-
-        $statusCode = $response->getStatusCode();
-
-        if ($statusCode < 200 || $statusCode >= 300) {
-            // Fallback to local database on error
-            $this->insertRecordToLocalDb($data);
-        }
-    }
-
-    /**
-     * Insert record to local database as fallback.
-     *
-     * @param  array  $data
-     * @return void
-     */
-    private function insertRecordToLocalDb(array $data): void
-    {
-        \App\Models\TranslationHistory::create([
-            'user_id'               => $data['user_id'] ?? null,
-            'translation_type'      => $data['translation_type'] ?? 'document',
-            'original_filename'     => $data['original_filename'] ?? null,
-            'translated_filename'   => $data['translated_filename'] ?? null,
-            'source_language'       => $data['source_language'] ?? null,
-            'target_language'       => $data['target_language'] ?? null,
-            'storage_path'          => $data['storage_path'] ?? null,
+            'original_storage_path' => $data['original_storage_path'] ?? null,
+            'parent_document_id'    => $data['parent_document_id'] ?? null,
+            'file_size'             => $data['file_size'] ?? null,
+            'status'                => $data['status'] ?? 'completed',
             'signed_url_expires_at' => $data['signed_url_expires_at'] ?? null,
             'source_text'           => $data['source_text'] ?? null,
             'translated_text'       => $data['translated_text'] ?? null,
@@ -100,145 +44,145 @@ class HistoryService
      *
      * @param  int  $userId  The authenticated user's ID.
      * @return array<int, array>  Each element is a translation_history row.
-     * @throws RuntimeException on DB error or connection failure.
      */
     public function getHistory(int $userId): array
     {
-        $url     = config('services.supabase.url');
-        $anonKey = config('services.supabase.anon_key');
-
-        // If Supabase is not configured, use local database
-        if (!$url || $url === 'https://your-project.supabase.co' || !$anonKey || $anonKey === 'your-anon-key') {
-            return $this->getHistoryFromLocalDb($userId);
-        }
-
-        try {
-            $response = $this->guzzle->get("{$url}/rest/v1/translation_history", [
-                'headers' => [
-                    'Authorization' => "Bearer {$anonKey}",
-                    'apikey'        => $anonKey,
-                    'Content-Type'  => 'application/json',
-                ],
-                'query' => [
-                    'user_id' => "eq.{$userId}",
-                    'order'   => 'created_at.desc',
-                    'limit'   => '200',
-                    'select'  => 'id,user_id,translation_type,original_filename,translated_filename,source_language,target_language,created_at,storage_path,signed_url_expires_at,source_text,translated_text',
-                ],
-            ]);
-        } catch (ConnectException $e) {
-            // Fallback to local database on connection error
-            return $this->getHistoryFromLocalDb($userId);
-        }
-
-        $statusCode = $response->getStatusCode();
-
-        if ($statusCode < 200 || $statusCode >= 300) {
-            // Fallback to local database on error
-            return $this->getHistoryFromLocalDb($userId);
-        }
-
-        return json_decode((string) $response->getBody(), true) ?? [];
-    }
-
-    /**
-     * Fetch history from local database as fallback.
-     *
-     * @param  int  $userId
-     * @return array<int, array>
-     */
-    private function getHistoryFromLocalDb(int $userId): array
-    {
-        $records = \App\Models\TranslationHistory::where('user_id', $userId)
+        return TranslationHistory::where('user_id', $userId)
             ->orderBy('created_at', 'desc')
             ->limit(200)
             ->get()
             ->toArray();
-
-        return $records;
     }
 
     /**
      * Fetch a single record by ID.
      *
      * @return array|null  Null if not found.
-     * @throws RuntimeException on DB error or connection failure.
      */
     public function getRecord(int $id): ?array
     {
-        $url     = config('services.supabase.url');
-        $anonKey = config('services.supabase.anon_key');
+        $record = TranslationHistory::find($id);
 
-        try {
-            $response = $this->guzzle->get("{$url}/rest/v1/translation_history", [
-                'headers' => [
-                    'Authorization' => "Bearer {$anonKey}",
-                    'apikey'        => $anonKey,
-                    'Content-Type'  => 'application/json',
-                ],
-                'query' => [
-                    'id'    => "eq.{$id}",
-                    'limit' => '1',
-                ],
-            ]);
-        } catch (ConnectException $e) {
-            throw new RuntimeException(
-                'Supabase DB query failed: ' . $e->getMessage(),
-                0,
-                $e
-            );
+        return $record?->toArray();
+    }
+
+    /**
+     * Fetch a single record with its translations (child documents).
+     *
+     * @return array|null  Null if not found. Includes 'translations' key.
+     */
+    public function getRecordWithTranslations(int $id): ?array
+    {
+        $record = TranslationHistory::with('translations')->find($id);
+
+        if (!$record) {
+            return null;
         }
 
-        $statusCode = $response->getStatusCode();
+        $data = $record->toArray();
+        $data['translations'] = $record->translations->toArray();
 
-        if ($statusCode < 200 || $statusCode >= 300) {
-            $body = (string) $response->getBody();
-            throw new RuntimeException("Supabase DB query failed: {$body}");
+        return $data;
+    }
+
+    /**
+     * Fetch all translations generated from a given original document.
+     *
+     * @param  int $parentId  The parent document's ID.
+     * @param  int $userId    The authenticated user's ID (ownership check).
+     * @return array<int, array>
+     */
+    public function getTranslationsForDocument(int $parentId, int $userId): array
+    {
+        return TranslationHistory::where('parent_document_id', $parentId)
+            ->where('user_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->toArray();
+    }
+
+    /**
+     * Fetch all original documents (not translations) for a user, with their translations eager-loaded.
+     *
+     * @param  int $userId  The authenticated user's ID.
+     * @return array<int, array>
+     */
+    public function getOriginalsWithTranslations(int $userId): array
+    {
+        $originals = TranslationHistory::with('translations')
+            ->where('user_id', $userId)
+            ->whereNull('parent_document_id')
+            ->where('translation_type', 'document')
+            ->orderBy('created_at', 'desc')
+            ->limit(200)
+            ->get();
+
+        $result = [];
+        foreach ($originals as $original) {
+            $data = $original->toArray();
+            $data['translations'] = $original->translations->toArray();
+            $data['translation_count'] = $original->translations()->count();
+            $result[] = $data;
         }
 
-        $rows = json_decode((string) $response->getBody(), true) ?? [];
+        return $result;
+    }
 
-        return $rows[0] ?? null;
+    /**
+     * Delete a history record and its child translations.
+     * Also returns storage paths so the caller can delete files from Supabase.
+     *
+     * @param  int $id      The record ID.
+     * @param  int $userId  The authenticated user's ID (ownership check).
+     * @return array{deleted: bool, storage_paths: string[], original_storage_paths: string[]}
+     */
+    public function deleteRecord(int $id, int $userId): array
+    {
+        $record = TranslationHistory::find($id);
+
+        if (!$record || (int) $record->user_id !== $userId) {
+            return ['deleted' => false, 'storage_paths' => [], 'original_storage_paths' => []];
+        }
+
+        $storagePaths = [];
+        $originalStoragePaths = [];
+
+        // Collect child translations' storage paths
+        $children = TranslationHistory::where('parent_document_id', $id)->get();
+        foreach ($children as $child) {
+            if ($child->storage_path) {
+                $storagePaths[] = $child->storage_path;
+            }
+            if ($child->original_storage_path) {
+                $originalStoragePaths[] = $child->original_storage_path;
+            }
+            $child->delete();
+        }
+
+        // Collect this record's own storage paths
+        if ($record->storage_path) {
+            $storagePaths[] = $record->storage_path;
+        }
+        if ($record->original_storage_path) {
+            $originalStoragePaths[] = $record->original_storage_path;
+        }
+
+        $record->delete();
+
+        return [
+            'deleted' => true,
+            'storage_paths' => $storagePaths,
+            'original_storage_paths' => $originalStoragePaths,
+        ];
     }
 
     /**
      * Update the signed_url_expires_at column for a record.
-     *
-     * @throws RuntimeException on DB error or connection failure.
      */
     public function updateExpiry(int $id, string $newExpiry): void
     {
-        $url     = config('services.supabase.url');
-        $anonKey = config('services.supabase.anon_key');
-
-        try {
-            $response = $this->guzzle->patch("{$url}/rest/v1/translation_history", [
-                'headers' => [
-                    'Authorization' => "Bearer {$anonKey}",
-                    'apikey'        => $anonKey,
-                    'Content-Type'  => 'application/json',
-                    'Prefer'        => 'return=minimal',
-                ],
-                'query' => [
-                    'id' => "eq.{$id}",
-                ],
-                'json' => [
-                    'signed_url_expires_at' => $newExpiry,
-                ],
-            ]);
-        } catch (ConnectException $e) {
-            throw new RuntimeException(
-                'Supabase DB update failed: ' . $e->getMessage(),
-                0,
-                $e
-            );
-        }
-
-        $statusCode = $response->getStatusCode();
-
-        if ($statusCode < 200 || $statusCode >= 300) {
-            $body = (string) $response->getBody();
-            throw new RuntimeException("Supabase DB update failed: {$body}");
-        }
+        TranslationHistory::where('id', $id)->update([
+            'signed_url_expires_at' => $newExpiry,
+        ]);
     }
 }

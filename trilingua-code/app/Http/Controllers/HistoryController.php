@@ -21,7 +21,7 @@ class HistoryController extends Controller
     /**
      * GET /history — render the translation history page.
      *
-     * Fetches all history records for the current session and renders the
+     * Fetches all history records for the current user and renders the
      * history view. On database error, logs the exception and renders the
      * error view with an empty records array.
      */
@@ -48,9 +48,35 @@ class HistoryController extends Controller
     }
 
     /**
+     * GET /history/{id} — return full metadata for a translation record (for the details modal).
+     */
+    public function detail(Request $request, int $id): JsonResponse
+    {
+        try {
+            $record = $this->history->getRecordWithTranslations($id);
+        } catch (\Throwable $e) {
+            Log::error('HistoryController::detail failed', [
+                'id' => $id,
+                'exception' => $e->getMessage(),
+            ]);
+            return response()->json(['error' => 'Unable to load translation details.'], 500);
+        }
+
+        if ($record === null) {
+            return response()->json(['error' => 'Record not found.'], 404);
+        }
+
+        if ((int) $record['user_id'] !== Auth::id()) {
+            return response()->json(['error' => 'Forbidden.'], 403);
+        }
+
+        return response()->json($record);
+    }
+
+    /**
      * POST /history/redownload/{id} — generate a new signed URL for a past translation.
      *
-     * Validates session ownership, generates a fresh signed URL via StorageService,
+     * Validates user ownership, generates a fresh signed URL via StorageService,
      * updates the expiry in the database, and returns the new download URL as JSON.
      */
     public function redownload(Request $request, int $id): JsonResponse
@@ -124,5 +150,99 @@ class HistoryController extends Controller
         return response()->json([
             'download_url' => $storageResult['signed_url'],
         ], 200);
+    }
+
+    /**
+     * POST /history/redownload-original/{id} — generate a new signed URL for the ORIGINAL document.
+     */
+    public function redownloadOriginal(Request $request, int $id): JsonResponse
+    {
+        try {
+            $record = $this->history->getRecord($id);
+        } catch (\Throwable $e) {
+            Log::error('HistoryController::redownloadOriginal failed to fetch record', [
+                'id' => $id,
+                'exception' => $e->getMessage(),
+            ]);
+            return response()->json(
+                ['error' => 'Unable to generate download link. Please try again later.'],
+                500
+            );
+        }
+
+        if ($record === null) {
+            return response()->json(['error' => 'This file is no longer available.'], 404);
+        }
+
+        if ((int) $record['user_id'] !== Auth::id()) {
+            return response()->json(['error' => 'Forbidden.'], 403);
+        }
+
+        if (empty($record['original_storage_path'])) {
+            return response()->json(['error' => 'Original document is not available.'], 404);
+        }
+
+        try {
+            $storageResult = $this->storage->generateSignedUrl($record['original_storage_path']);
+        } catch (\Throwable $e) {
+            if (stripos($e->getMessage(), 'not found') !== false) {
+                return response()->json(
+                    ['error' => 'Original document is no longer available.'],
+                    404
+                );
+            }
+
+            Log::error('HistoryController::redownloadOriginal failed to generate signed URL', [
+                'id' => $id,
+                'exception' => $e->getMessage(),
+            ]);
+            return response()->json(
+                ['error' => 'Unable to generate download link. Please try again later.'],
+                500
+            );
+        }
+
+        return response()->json([
+            'download_url' => $storageResult['signed_url'],
+        ], 200);
+    }
+
+    /**
+     * DELETE /history/{id} — delete a translation record and its files from Supabase Storage.
+     */
+    public function destroy(Request $request, int $id): JsonResponse
+    {
+        try {
+            $result = $this->history->deleteRecord($id, Auth::id());
+        } catch (\Throwable $e) {
+            Log::error('HistoryController::destroy failed', [
+                'id' => $id,
+                'exception' => $e->getMessage(),
+            ]);
+            return response()->json(['error' => 'Failed to delete translation. Please try again.'], 500);
+        }
+
+        if (!$result['deleted']) {
+            return response()->json(['error' => 'Record not found or access denied.'], 404);
+        }
+
+        // Delete files from Supabase Storage (best-effort, non-blocking)
+        $allPaths = array_merge(
+            $result['storage_paths'],
+            $result['original_storage_paths']
+        );
+
+        foreach ($allPaths as $path) {
+            try {
+                $this->storage->deleteFile($path);
+            } catch (\Throwable $e) {
+                Log::warning('HistoryController::destroy failed to delete file from storage', [
+                    'storage_path' => $path,
+                    'exception' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return response()->json(['success' => true]);
     }
 }

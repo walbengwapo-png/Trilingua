@@ -27,21 +27,66 @@ import io
 from collections import deque
 from pathlib import Path
 
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from docx import Document
 import fitz  # PyMuPDF for PDF manipulation
 
 # Cell 3: Model Setup
 # ── Model Setup ───────────────────────────────────────────────────────────────
-import torch
-model_name = "facebook/nllb-200-distilled-600M"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+# Try importing torch; on Python 3.14+ the precompiled DLLs may not load.
+# If it fails, we fall back to using CPU-only with a warning.
+TORCH_AVAILABLE = False
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except Exception as e:
+    print(f"[WARNING] PyTorch not fully available: {e}")
+    print("   Falling back to CPU-only mode. Translation will still work but may be slower.")
+    torch = None
 
-# Move to GPU if available for faster translation
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model = model.to(device)
-print(f"✅ Model loaded on: {device}")
+# Import huggingface transformers AFTER the torch availability check.
+# The transformers library internally tries to import torch during module
+# initialization, which can crash with OSError/WinError if the PyTorch
+# DLLs fail to load on the system (e.g. missing VC++ redistributable).
+try:
+    from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+    TRANSFORMERS_AVAILABLE = True
+except Exception as e:
+    print(f"[WARNING] Could not load transformers: {e}")
+    print("   The server will start but model loading will fail.")
+    TRANSFORMERS_AVAILABLE = False
+    AutoTokenizer = None
+    AutoModelForSeq2SeqLM = None
+
+if TRANSFORMERS_AVAILABLE:
+    model_name = "facebook/nllb-200-distilled-600M"
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+    except Exception as e:
+        print(f"[WARNING] Could not load NLLB-200 model: {e}")
+        print("   Translation will not be available until PyTorch is installed properly.")
+        TRANSFORMERS_AVAILABLE = False
+        model = None
+        tokenizer = None
+        device = "cpu"
+
+    # Move to GPU if available for faster translation
+    if TORCH_AVAILABLE and torch is not None:
+        try:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            model = model.to(device)
+            print(f"[OK] Model loaded on: {device}")
+        except Exception:
+            print("[WARNING] Could not move model to GPU/CPU with PyTorch, using default device.")
+            device = "cpu"
+    else:
+        print("[OK] Model loaded (CPU only, PyTorch not available)")
+        device = "cpu"
+else:
+    print("[WARNING] Transformers not available — model not loaded.")
+    model = None
+    tokenizer = None
+    device = "cpu"
 
 # Cell 4: Language Codes
 # ── Language Codes ────────────────────────────────────────────────────────────
@@ -1881,13 +1926,13 @@ def run_pipeline(input_file, source_lang, target_lang,
     else:
         glossary_store = None
 
-    print("📥 Reading document…")
+    print("[INPUT] Reading document...")
     data, ext = analyze_document(input_file, pdf_column_mode=pdf_column_mode)
 
     if ext == ".csv":
         csv_data = data
         print(f"  Found {len(csv_data.get('data', []))} rows in CSV.")
-        print("🌍 Translating…")
+        print("[TRANSLATE] Translating...")
         translated_rows = []
         for row_idx, row in enumerate(csv_data["data"]):
             translated_row = []
@@ -1900,9 +1945,9 @@ def run_pipeline(input_file, source_lang, target_lang,
                 else:
                     translated_row.append(cell)
             translated_rows.append(translated_row)
-        print("\n📄 Rebuilding CSV →", output_file)
+        print("\n[OUTPUT] Rebuilding CSV ->", output_file)
         write_csv(translated_rows, output_file)
-        print("✅ Done!")
+        print("[DONE] Done!")
         return {
             "output_file": output_file,
             "translated_blocks": [{"data": translated_rows}],
@@ -1919,7 +1964,7 @@ def run_pipeline(input_file, source_lang, target_lang,
             "For bilingual PDFs, try pdf_column_mode='left' or 'right'."
         )
 
-    print("🌍 Translating…")
+    print("[TRANSLATE] Translating...")
     # Instantiate a Context_Buffer scoped to this document job (Requirement 2.1)
     ctx_buffer = Context_Buffer()
     ctx_buffer.clear()  # ensure clean state at the start of each job
@@ -1930,7 +1975,7 @@ def run_pipeline(input_file, source_lang, target_lang,
         context_buffer=ctx_buffer,
     )
 
-    print(f"📄 Rebuilding document → {output_file}")
+    print(f"[OUTPUT] Rebuilding document -> {output_file}")
     reconstruct_document(translated_blocks, output_file, input_file, ext)
 
     # ── BLEU scoring (Requirement 9.1 – 9.6) ─────────────────────────────────
@@ -1941,7 +1986,7 @@ def run_pipeline(input_file, source_lang, target_lang,
         if bleu_score is not None:
             print(f"  📊 BLEU score: {bleu_score:.2f}")
 
-    print("✅ Done!")
+    print("[DONE] Done!")
     return {
         "output_file": output_file,
         "translated_blocks": translated_blocks,

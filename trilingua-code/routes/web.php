@@ -52,10 +52,12 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
 
     Route::get('/translate', [TranslationController::class, 'show'])->name('translate');
     Route::post('/translate', [TranslationController::class, 'translate'])->name('translate.submit');
-    Route::get('/translate/download/{token}', [TranslationController::class, 'download'])->name('translate.download');
 
     Route::get('/documents', [DocumentsController::class, 'index'])->name('documents');
 
     Route::get('/history', [HistoryController::class, 'index'])->name('history');
+    Route::get('/history/{id}', [HistoryController::class, 'detail'])->name('history.detail');
     Route::post('/history/redownload/{id}', [HistoryController::class, 'redownload'])->name('history.redownload');
+    Route::post('/history/redownload-original/{id}', [HistoryController::class, 'redownloadOriginal'])->name('history.redownload-original');
+    Route::delete('/history/{id}', [HistoryController::class, 'destroy'])->name('history.destroy');
 });

@@ -412,3 +412,67 @@
     justify-content: center;
     min-width: 120px;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Document Relationships — Translation Count & Sub-list
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Translation count badge (shown on original cards) */
+.doc-card__translation-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 9px;
+    border-radius: 99px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: #e0f2fe;
+    color: #0369a1;
+    white-space: nowrap;
+}
+
+/* Translations sub-list inside a card */
+.doc-card__translations {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border);
+}
+
+.doc-card__translations-title {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    margin: 0 0 6px;
+}
+
+.doc-card__translation-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    transition: background 0.12s ease;
+}
+
+.doc-card__translation-row:hover {
+    background: var(--bg, #f1f5f9);
+}
+
+.doc-card__translation-name {
+    flex: 1;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.doc-card__translation-lang {
+    font-size: 0.72rem;
+    color: var(--muted);
+    white-space: nowrap;
+    padding: 1px 6px;
+    background: var(--bg, #f8

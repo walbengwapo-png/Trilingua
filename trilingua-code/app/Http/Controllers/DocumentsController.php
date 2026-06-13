@@ -15,15 +15,17 @@ class DocumentsController extends Controller
     /**
      * GET /documents — render the My Documents page.
      *
-     * Shows only document-type translation records (originals and their
-     * translated counterparts) for the current session.
+     * Shows original documents with their translations grouped together.
+     * Also includes standalone translations (those without a parent) for backward compatibility.
      */
     public function index(Request $request): View
     {
         try {
-            $all = $this->history->getHistory(Auth::id());
+            // Get originals with their translations
+            $originalsWithTranslations = $this->history->getOriginalsWithTranslations(Auth::id());
 
-            // Keep only document records
+            // Also get all document records for backward compatibility (includes translations without parent)
+            $all = $this->history->getHistory(Auth::id());
             $documents = array_values(array_filter(
                 $all,
                 fn($r) => ($r['translation_type'] ?? 'document') === 'document'
@@ -31,6 +33,7 @@ class DocumentsController extends Controller
 
             return view('my-documents', [
                 'documents' => $documents,
+                'originals' => $originalsWithTranslations,
                 'error'     => false,
             ]);
         } catch (\Throwable $e) {
@@ -41,6 +44,7 @@ class DocumentsController extends Controller
 
             return view('my-documents', [
                 'documents' => [],
+                'originals' => [],
                 'error'     => true,
             ]);
         }

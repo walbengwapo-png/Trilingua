@@ -67,6 +67,43 @@ class StorageService
     }
 
     /**
+     * Delete a file from Supabase Storage.
+     *
+     * @param  string $storagePath Path inside the bucket.
+     * @throws \RuntimeException on failure.
+     */
+    public function deleteFile(string $storagePath): void
+    {
+        $supabaseUrl    = config('services.supabase.url');
+        $serviceRoleKey = config('services.supabase.service_role_key');
+        $bucket         = config('services.supabase.bucket');
+
+        $deleteUrl = rtrim($supabaseUrl, '/') . '/storage/v1/object/' . $bucket . '/' . $storagePath;
+
+        try {
+            $response = $this->guzzle->delete($deleteUrl, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $serviceRoleKey,
+                ],
+            ]);
+        } catch (ConnectException $e) {
+            throw new \RuntimeException(
+                'Supabase Storage delete failed: could not connect. ' . $e->getMessage(),
+                0,
+                $e
+            );
+        }
+
+        $statusCode = $response->getStatusCode();
+
+        // 200 OK or 404 (already gone) are both acceptable
+        if ($statusCode >= 300 && $statusCode !== 404) {
+            $body = (string) $response->getBody();
+            throw new \RuntimeException('Supabase Storage delete failed: ' . $body);
+        }
+    }
+
+    /**
      * Generate a new signed URL for an existing object in Supabase Storage.
      *
      * @param  string $storagePath Path inside the bucket.
