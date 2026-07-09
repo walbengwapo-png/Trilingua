@@ -268,12 +268,18 @@
                 var data = null;
                 try { data = JSON.parse(raw); } catch (e) {}
 
-                if (res.ok && data && data.download_url) {
+                if (res.ok && data && data.status === 'processing' && data.job_id) {
+                    // Document translation queued - poll for status
+                    outputText.textContent = 'Translation in progress... This may take a few minutes depending on document size.';
+                    outputDownload.setAttribute('hidden', '');
+                    copyBtn.setAttribute('aria-disabled', 'true');
+                    saveBtn.setAttribute('aria-disabled', 'true');
+                    pollJobStatus(data.job_id);
+                } else if (res.ok && data && (data.download_url || data.download_data)) {
                     outputText.textContent = '';
                     outputDownload.removeAttribute('hidden');
-                    downloadLink.href = data.download_url;
+                    downloadLink.href = data.download_data || data.download_url;
                     downloadLink.download = data.download_filename || 'translated_document';
-                    downloadLink.querySelector('svg + *') && (downloadLink.lastChild.textContent = 'Download: ' + (data.download_filename || 'translated_document'));
                     downloadLink.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download: ' + (data.download_filename || 'translated_document');
                     copyBtn.setAttribute('aria-disabled', 'true');
                     saveBtn.setAttribute('aria-disabled', 'true');
@@ -285,14 +291,65 @@
                     saveBtn.removeAttribute('aria-disabled');
                 } else if (res.status === 422 && data && data.errors) {
                     showError(sourceError, data.errors[Object.keys(data.errors)[0]][0]);
+                } else if (res.status === 504) {
+                    showError(outputError, (data && data.error) || 'Translation took too long. Please try with a smaller file.');
+                } else if (res.status === 400 && data && data.error) {
+                    showError(sourceError, data.error);
                 } else {
-                    showError(outputError, (data && (data.error || data.detail)) || 'Translation failed. Please try again.');
+                    var errorMsg = (data && (data.error || data.detail)) || 'Translation failed. Please try again.';
+                    showError(outputError, errorMsg);
                 }
             });
         })
         .catch(function () { showError(outputError, 'Network error. Please check your connection and try again.'); })
         .finally(function () { setLoading(false); });
     });
+
+    // Poll for document translation status
+    function pollJobStatus(jobId) {
+        var maxAttempts = 180; // 6 minutes max (180 * 2s)
+        var attempts = 0;
+        var interval = setInterval(function () {
+            attempts++;
+            if (attempts > maxAttempts) {
+                clearInterval(interval);
+                showError(outputError, 'Translation timed out. Please try again or contact support if the issue persists.');
+                return;
+            }
+
+            fetch('/translate/status/' + jobId, {
+                credentials: 'include',
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(function (res) {
+                return res.text().then(function (raw) {
+                    var data = null;
+                    try { data = JSON.parse(raw); } catch (e) {}
+
+                    if (data && data.status === 'completed') {
+                        clearInterval(interval);
+                        outputText.textContent = '';
+                        outputDownload.removeAttribute('hidden');
+                        downloadLink.href = data.download_data || data.download_url;
+                        downloadLink.download = data.download_filename || 'translated_document';
+                        downloadLink.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download: ' + (data.download_filename || 'translated_document');
+                        copyBtn.setAttribute('aria-disabled', 'true');
+                        saveBtn.setAttribute('aria-disabled', 'true');
+                        if (window.showToast) showToast('success', 'Document translated!', 'Your file is ready to download.');
+                    } else if (data && data.status === 'failed') {
+                        clearInterval(interval);
+                        showError(outputError, (data && data.error) || 'Translation failed. Please try again.');
+                    } else if (attempts % 15 === 0) {
+                        // Update message every 30 seconds
+                        outputText.textContent = 'Still translating... (' + Math.round(attempts / 30) + ' minute(s) elapsed)';
+                    }
+                });
+            })
+            .catch(function () {
+                // Don't show error on polling failure, just continue
+            });
+        }, 2000); // Poll every 2 seconds
+    }
 
     // ── Copy ──────────────────────────────────────────────────────────────────
     copyBtn.addEventListener('click', function () {

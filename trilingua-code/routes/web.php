@@ -41,6 +41,9 @@ Route::post('/logout', [LoginController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
 
+// Status endpoint is outside auth middleware so long translations don't hit session expiry
+Route::get('/translate/status/{jobId}', [TranslationController::class, 'status'])->name('translate.status');
+
 // Protected routes
 Route::middleware(['auth', 'throttle:60,1'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');

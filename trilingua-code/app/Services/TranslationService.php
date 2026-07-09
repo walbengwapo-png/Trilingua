@@ -28,9 +28,12 @@ class TranslationService
         '.csv'  => '.csv',
         '.rtf'  => '.docx',
         '.odt'  => '.docx',
+        '.pptx' => '.pptx',
+        '.xlsx' => '.xlsx',
     ];
 
-    private const TIMEOUT_SECONDS = 120;
+    // Increased timeout for large documents (10 minutes)
+    private const TIMEOUT_SECONDS = 600;
 
     // -------------------------------------------------------------------------
     // Text translation
@@ -108,6 +111,8 @@ class TranslationService
      */
     public function translateDocument(UploadedFile $file, string $sourceLang, string $targetLang, string $pdfColumnMode = 'auto'): string
     {
+        @set_time_limit(0);
+
         $ext    = strtolower('.' . $file->getClientOriginalExtension());
         $outExt = self::EXTENSION_MAP[$ext] ?? $ext;
 
@@ -135,11 +140,22 @@ class TranslationService
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlErr  = curl_error($ch);
+        $curlErrNo = curl_errno($ch);
         curl_close($ch);
 
         if ($response === false || $curlErr) {
+            $errorMsg = $curlErr ?: 'Unknown cURL error';
+            
+            // Handle timeout specifically
+            if ($curlErrNo === CURLE_OPERATION_TIMEDOUT || str_contains($errorMsg, 'timed out')) {
+                throw new TranslationException(
+                    'Translation timed out. The file may be too large or the server is overloaded. ' .
+                    'Please try again with a smaller file or try again later.'
+                );
+            }
+            
             throw new TranslationException(
-                'Could not connect to the translation service: ' . $curlErr .
+                'Could not connect to the translation service: ' . $errorMsg .
                 '. Make sure it is running: python Model/server.py'
             );
         }
@@ -147,6 +163,14 @@ class TranslationService
         if ($httpCode !== 200) {
             $data    = json_decode($response, true);
             $message = $data['detail'] ?? $data['error'] ?? 'Document translation failed.';
+            
+            // Log the full response for debugging
+            \Illuminate\Support\Facades\Log::debug('Python server error response', [
+                'httpCode' => $httpCode,
+                'message' => $message,
+                'fullResponse' => $response,
+            ]);
+            
             throw new TranslationException($message, $httpCode >= 500 ? 500 : $httpCode);
         }
 
@@ -155,14 +179,23 @@ class TranslationService
             mkdir(dirname($outputPath), 0755, true);
         }
 
-        file_put_contents($outputPath, $response);
+        if ($response === '' || $response === false) {
+            throw new TranslationException(
+                'The translation service returned an empty file. The document may be too large or the service may have failed while rebuilding the output.'
+            );
+        }
 
-        // Clean up after the response is sent
-        register_shutdown_function(function () use ($outputPath): void {
-            if (file_exists($outputPath)) {
-                @unlink($outputPath);
-            }
-        });
+        $bytesWritten = file_put_contents($outputPath, $response);
+        if ($bytesWritten === false || $bytesWritten === 0) {
+            throw new TranslationException(
+                'The translated file could not be written to disk. Please try again.'
+            );
+        }
+
+        // Note: Do NOT register a shutdown function to delete the file here.
+        // The caller (TranslateDocumentJob) is responsible for cleanup after
+        // it has uploaded the file to Supabase or built the inline download.
+        // If we delete it here, the job will fail to read it.
 
         return $outputPath;
     }

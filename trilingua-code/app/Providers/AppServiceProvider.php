@@ -16,8 +16,8 @@ class AppServiceProvider extends ServiceProvider
         // can have it injected via the container.
         $this->app->singleton(Client::class, function () {
             return new Client([
-                'timeout'         => 30,
-                'connect_timeout' => 10,
+                'timeout'         => 120,
+                'connect_timeout' => 30,
                 // Disable SSL verification on Windows where the system CA
                 // certificate bundle may not be found by OpenSSL. Safe for
                 // local development; production should use proper CA config.

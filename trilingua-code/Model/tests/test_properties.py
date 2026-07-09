@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Feature: translation-pipeline-optimization
 """
 Property-based tests for translation-layout-quality components.
 
@@ -16,7 +17,35 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 
-from document_translator_v3 import Context_Buffer, Chunk_Splitter, Glossary_Store
+from document_translator_v3 import (
+    Chunk_Splitter,
+    Context_Buffer,
+    Glossary_Store,
+    Font_Mapper,
+    Style_Mapper,
+    _resolve_overflow,
+)
+
+
+# ===========================================================================
+# Smoke tests: all six symbols are importable from document_translator_v3
+# Feature: translation-pipeline-optimization
+# ===========================================================================
+
+def test_importable_symbols():
+    """
+    Validates: Requirements 12.1, 12.2
+
+    Six smoke-test assertions confirming that Chunk_Splitter, Context_Buffer,
+    Glossary_Store, Font_Mapper, Style_Mapper, and _resolve_overflow are all
+    importable from document_translator_v3 and are not None.
+    """
+    assert Chunk_Splitter is not None, "Chunk_Splitter must be importable and not None"
+    assert Context_Buffer is not None, "Context_Buffer must be importable and not None"
+    assert Glossary_Store is not None, "Glossary_Store must be importable and not None"
+    assert Font_Mapper is not None, "Font_Mapper must be importable and not None"
+    assert Style_Mapper is not None, "Style_Mapper must be importable and not None"
+    assert _resolve_overflow is not None, "_resolve_overflow must be importable and not None"
 
 
 # ---------------------------------------------------------------------------
@@ -739,9 +768,6 @@ def test_glossary_whole_word_substitution(data):
 
 import copy
 from unittest.mock import MagicMock
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from document_translator_v3 import _resolve_overflow
 
 
 def _make_mock_page_for_property(insert_side_effects):

@@ -1,5 +1,14 @@
 /* Translation page — redesigned */
 
+/* ── CSS Variable Fallbacks ───────────────────────────────────────────── */
+.translation-page {
+    --card-bg: #ffffff;
+    --border: #e5e7eb;
+    --text: #1f2937;
+    --primary: #3b82f6;
+    --muted: #6b7280;
+}
+
 /* ── Page wrapper ───────────────────────────────────────────────────────── */
 .translation-page {
     display: flex;

@@ -1,10 +1,11 @@
 """
-TriLingua Translation Microservice
-===================================
-Loads the NLLB-200 model once on startup and serves translation requests
-over HTTP so Laravel doesn't need to spawn a new Python process per request.
+TriLingua Translation Microservice v4
+======================================
+Uses Mistral AI API for translation (no local model needed).
+Supports: .docx .pdf .txt .md .rtf .odt .csv .pptx .xlsx
 
 Usage:
+    set MISTRAL_API_KEY=your_key_here
     python Model/server.py
 
 The server listens on http://127.0.0.1:5000 by default.
@@ -14,36 +15,90 @@ Keep it running while the Laravel app is running.
 import sys
 import os
 
-# Allow downloading the model on first run if not cached
-# Set TRANSFORMERS_OFFLINE=1 environment variable to force offline mode
-if os.environ.get("TRANSFORMERS_OFFLINE") != "1":
-    print("Note: Model will be downloaded from Hugging Face if not already cached (~2.5GB)")
-    print("To force offline mode, set TRANSFORMERS_OFFLINE=1 environment variable")
-    print()
-
-# Ensure the Model directory is on the path so document_translator_v3 can be imported
+# Ensure the Model directory is on the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import shutil
 import tempfile
+import io
 import uvicorn
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 # ---------------------------------------------------------------------------
-# Import the translation pipeline from the existing script.
-# The model is loaded at module-import time (Cell 3 in document_translator_v3),
-# so it stays in memory for the lifetime of this server process.
+# Load .env file for Python (Laravel's .env is NOT automatically read by Python)
 # ---------------------------------------------------------------------------
-print("Loading NLLB-200 model — this may take a minute on first run...")
-from document_translator_v3 import run_pipeline, _translate_single, LANGUAGES
-print("Model loaded. Server ready.")
+def _load_env_file():
+    """
+    Read the Laravel .env file from the project root and load MISTRAL_API_KEY
+    and MISTRAL_MODEL into os.environ so Python can see them.
+    
+    The .env file is located one directory above Model/ (i.e. trilingua-code/.env).
+    """
+    # Get the directory containing this script (Model/)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # The project root is one level up from Model/
+    project_root = os.path.dirname(script_dir)
+    env_path = os.path.join(project_root, ".env")
+    
+    if not os.path.exists(env_path):
+        print(f"  [INFO] No .env file found at {env_path}")
+        return
+    
+    print(f"  [INFO] Loading environment from: {env_path}")
+    with open(env_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            # Skip empty lines and comments
+            if not line or line.startswith("#"):
+                continue
+            # Parse KEY=VALUE pairs
+            if "=" in line:
+                key, _, value = line.partition("=")
+                key = key.strip()
+                value = value.strip()
+                # Only load Mistral-related variables (don't pollute with all Laravel vars)
+                if key in ("MISTRAL_API_KEY", "MISTRAL_MODEL"):
+                    if value and not os.environ.get(key):
+                        os.environ[key] = value
+                        print(f"  [INFO] Loaded {key} from .env file")
 
-app = FastAPI(title="TriLingua Translation Service")
+# Load .env before anything else
+_load_env_file()
+
+# ---------------------------------------------------------------------------
+# Import the translation pipeline
+# ---------------------------------------------------------------------------
+print("Initializing TriLingua v4 (Mistral AI)...")
+
+# Check for Mistral API key
+MISTRAL_API_KEY = os.environ.get("MISTRAL_API_KEY", "")
+if not MISTRAL_API_KEY:
+    print("  WARNING: MISTRAL_API_KEY environment variable is not set.")
+    print("   Translation will fail until you set it.")
+    print("   Set it in your .env file or with: set MISTRAL_API_KEY=your_key_here")
+else:
+    print(f"  [OK] Mistral AI API key found (model: {os.environ.get('MISTRAL_MODEL', 'mistral-small-latest')})")
+
+from document_translator_v3 import run_pipeline, _translate_single, LANGUAGES
+print("Server ready.")
+
+app = FastAPI(title="TriLingua Translation Service v4")
 
 VALID_PDF_COLUMN_MODES = {"auto", "single", "left", "right"}
+
+# Supported file extensions
+SUPPORTED_EXTENSIONS = {
+    ".docx", ".pdf", ".txt", ".md", ".csv", ".rtf", ".odt", ".pptx", ".xlsx"
+}
+
+EXTENSION_MAP = {
+    ".docx": ".docx", ".pdf": ".pdf", ".txt": ".txt",
+    ".md": ".md",     ".csv": ".csv", ".rtf": ".docx",
+    ".odt": ".docx",  ".pptx": ".pptx", ".xlsx": ".xlsx",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -51,7 +106,13 @@ VALID_PDF_COLUMN_MODES = {"auto", "single", "left", "right"}
 # ---------------------------------------------------------------------------
 @app.get("/health")
 def health():
-    return {"status": "ok", "languages": list(LANGUAGES.keys())}
+    return {
+        "status": "ok",
+        "engine": "mistral-ai",
+        "model": os.environ.get("MISTRAL_MODEL", "mistral-small-latest"),
+        "languages": list(LANGUAGES.keys()),
+        "formats": sorted(SUPPORTED_EXTENSIONS),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -113,23 +174,24 @@ async def translate_document(
         raise HTTPException(400, "Source and target languages must differ.")
 
     ext = os.path.splitext(file.filename)[1].lower()
-    EXTENSION_MAP = {
-        ".docx": ".docx", ".pdf": ".pdf", ".txt": ".txt",
-        ".md": ".md",     ".csv": ".csv", ".rtf": ".docx", ".odt": ".docx",
-    }
     if ext not in EXTENSION_MAP:
-        raise HTTPException(400, f"Unsupported file type: {ext}")
+        raise HTTPException(400, f"Unsupported file type: {ext}. Supported: {sorted(SUPPORTED_EXTENSIONS)}")
 
     out_ext = EXTENSION_MAP[ext]
     tmp_dir = tempfile.mkdtemp()
+    output_path = None
+
     try:
-        input_path  = os.path.join(tmp_dir, f"input{ext}")
+        input_path = os.path.join(tmp_dir, f"input{ext}")
         output_path = os.path.join(tmp_dir, f"translated{out_ext}")
 
         # Save the uploaded file
         contents = await file.read()
         with open(input_path, "wb") as f:
             f.write(contents)
+
+        print(f"[SERVER] Translating document: {file.filename} ({source_lang} → {target_lang})")
+        print(f"[SERVER] Format: {ext}, Size: {len(contents)} bytes")
 
         run_pipeline(input_path, source_lang, target_lang, output_path,
                      pdf_column_mode=pdf_column_mode)
@@ -140,20 +202,28 @@ async def translate_document(
         original_stem = os.path.splitext(file.filename)[0]
         download_name = f"{original_stem}_translated{out_ext}"
 
-        # FileResponse streams the file; we clean up after sending
-        return FileResponse(
-            path=output_path,
-            filename=download_name,
+        print(f"[SERVER] Translation complete. Output file ready at: {output_path}")
+
+        # Read the file into memory and clean up immediately
+        with open(output_path, "rb") as f:
+            file_contents = f.read()
+
+        # Clean up the temporary directory before returning
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+        # Return the file
+        return StreamingResponse(
+            io.BytesIO(file_contents),
             media_type="application/octet-stream",
-            background=None,  # cleanup handled below via finally isn't possible
-                              # with FileResponse — tmp_dir is cleaned by OS on exit
+            headers={"Content-Disposition": f"attachment; filename={download_name}"}
         )
     except HTTPException:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         raise
     except Exception as e:
         shutil.rmtree(tmp_dir, ignore_errors=True)
-        raise HTTPException(500, str(e))
+        print(f"[SERVER] Exception during translation: {str(e)}")
+        raise HTTPException(500, f"Translation error: {str(e)}")
 
 
 # ---------------------------------------------------------------------------
@@ -161,4 +231,14 @@ async def translate_document(
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("TRANSLATION_PORT", 5000))
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
+    # Use hot-reload so code changes to document_translator_v3.py
+    # are picked up WITHOUT needing to restart the server manually.
+    # To disable hot-reload: change reload=True to reload=False
+    uvicorn.run(
+        "server:app",
+        host="127.0.0.1",
+        port=port,
+        log_level="info",
+        reload=True,
+        reload_dirs=[os.path.dirname(os.path.abspath(__file__))],
+    )

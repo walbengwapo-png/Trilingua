@@ -47,6 +47,12 @@ class StorageService
                 0,
                 $e
             );
+        } catch (\Throwable $e) {
+            throw new \RuntimeException(
+                'Supabase Storage upload failed: ' . $e->getMessage(),
+                0,
+                $e
+            );
         }
 
         $statusCode = $response->getStatusCode();

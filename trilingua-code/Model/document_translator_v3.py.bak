@@ -21,7 +21,6 @@ import re
 import csv
 import io
 import json
-import math
 import time
 import requests
 from pathlib import Path
@@ -44,56 +43,6 @@ def _get_mistral_api_key() -> str:
 def _get_mistral_model() -> str:
     """Get Mistral model name from environment or use default."""
     return os.environ.get("MISTRAL_MODEL", "mistral-small-latest")
-
-def _sanitize_translation(translated_text, original_text):
-    """
-    Clean up a translated string by removing leaked context delimiters,
-    stray markers, and detecting hallucinated repetition.
-    
-    This is a safety net for edge cases where Mistral may output
-    fragments of previous context or repeated phrases.
-    """
-    # 1. Strip leaked `|||` delimiters (from old Context_Buffer usage or model leakage)
-    cleaned = re.sub(r'\s*\|\|\|\s*', ' ', translated_text)
-    
-    # 2. Strip stray "[Context:" markers if any leak through
-    cleaned = re.sub(r'\[Context:[^\]]*\]', '', cleaned)
-    
-    # 3. Collapse repeated duplicate sentences (hallucination pattern)
-    #    e.g. "A. A. A. B." → "A. B."
-    sentences = re.split(r'(?<=[.!?])\s+', cleaned)
-    if len(sentences) >= 3:
-        unique_sentences = []
-        for s in sentences:
-            s_norm = s.strip().lower()
-            if not unique_sentences or s_norm != unique_sentences[-1].lower():
-                unique_sentences.append(s.strip())
-        if len(unique_sentences) < len(sentences):
-            cleaned = ' '.join(unique_sentences)
-    
-    # 4. Adaptive hallucination threshold based on source text length
-    #    Short text (headings, labels) naturally expands when translated
-    #    Long text that expands >5x is likely hallucinated repetition
-    orig_words = len(original_text.split())
-    clean_words = len(cleaned.split())
-    if orig_words > 0:
-        if orig_words <= 3:
-            threshold = 25   # 1-3 word headings expand significantly in Cebuano/Filipino
-        elif orig_words <= 15:
-            threshold = 10   # Short phrases
-        else:
-            threshold = 5    # Long text - true hallucination risk
-        
-        if clean_words > orig_words * threshold:
-            print(f"  ⚠️  Hallucinated repetition detected ({clean_words} vs {orig_words} words, ratio={clean_words/orig_words:.1f}x > {threshold}x), retrying...")
-            raise RuntimeError("Hallucinated repetition detected, will retry")
-    
-    # 5. Clean up excessive whitespace
-    cleaned = re.sub(r' {2,}', ' ', cleaned)
-    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
-    
-    return cleaned.strip()
-
 
 # ── Language Codes (kept for compatibility with existing code) ─────────────────
 LANGUAGES = {
@@ -142,18 +91,6 @@ def _translate_with_mistral(text, source_lang, target_lang, block_type="paragrap
         f"{text}"
     )
 
-    # ── Token Budget Enforcement (Req 2) ─────────────────────────────────────
-    # Approximate BPE tokens using floor(char_count / 4).
-    estimated_input_tokens = len(prompt) // 4
-
-    if estimated_input_tokens > 3500:
-        print(f"[TOKEN BUDGET] estimated_input={estimated_input_tokens} source={text[:60]!r}")
-
-    if estimated_input_tokens > 1500:
-        dynamic_max_tokens = max(1, 4096 - estimated_input_tokens)
-    else:
-        dynamic_max_tokens = 2048  # default
-
     for attempt in range(3):
         try:
             resp = requests.post(
@@ -166,7 +103,7 @@ def _translate_with_mistral(text, source_lang, target_lang, block_type="paragrap
                     "model": model,
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.1,
-                    "max_tokens": dynamic_max_tokens,
+                    "max_tokens": 2048,
                 },
                 timeout=30,
             )
@@ -186,24 +123,6 @@ def _translate_with_mistral(text, source_lang, target_lang, block_type="paragrap
                 result = re.sub(r'^```[\w]*\n?', '', result)
                 result = re.sub(r'\n?```$', '', result)
                 result = result.strip()
-            
-            # ── Sanitize output ──────────────────────────────────────────────
-            # If sanitizer detects hallucination, it raises RuntimeError.
-            # We catch it and signal retry by continuing the loop.
-            try:
-                result = _sanitize_translation(result, text)
-            except RuntimeError as sanitize_err:
-                if "Hallucinated repetition" in str(sanitize_err):
-                    if attempt < 2:
-                        print(f"  ⚠️  Hallucination detected, retrying ({attempt + 1}/3)...")
-                        time.sleep(1)
-                        continue  # Retry with a new API call
-                    else:
-                        # Last attempt: use raw Mistral output as fallback
-                        print(f"  ⚠️  Using raw Mistral output after 3 failed sanitization attempts")
-                        return result
-                # For other sanitizer errors, just use the raw result
-                print(f"  ⚠️  Sanitizer warning (non-fatal): {sanitize_err}")
             
             # ── Output validation ────────────────────────────────────────────
             if not result:
@@ -238,17 +157,6 @@ def _translate_with_mistral(text, source_lang, target_lang, block_type="paragrap
             print(f"  Warning: API error: {e}, retrying ({attempt + 1}/3)...")
             time.sleep(1)
 
-    # ── Emergency fallback ──────────────────────────────────────────────────
-    # If we reach here after 3 retries (including sanitizer hallucinations),
-    # return the raw result from the last successful API response.
-    # This ensures a single bad block doesn't crash the entire document translation.
-    try:
-        if result and isinstance(result, str):
-            print(f"  ⚠️  Using raw Mistral output after 3 failed sanitization attempts")
-            return result
-    except UnboundLocalError:
-        pass
-    
     raise RuntimeError("Mistral translation failed after 3 attempts.")
 
 
@@ -481,33 +389,10 @@ def read_pdf(file_path, column_mode="auto"):
         # ── Sort merged blocks by page position (top-to-bottom) ─────────────
         merged.sort(key=lambda b: b["position"][1])
 
-        # ── Apply column_mode to select/order blocks ─────────────────────────
-        match column_mode:
-            case "single":
-                selected = sorted(merged, key=lambda b: b["position"][1])
-            case "left":
-                selected = sorted(
-                    [b for b in merged if (b["position"][0] + b["position"][2]) / 2 < pw / 2],
-                    key=lambda b: b["position"][1],
-                )
-            case "right":
-                selected = sorted(
-                    [b for b in merged if (b["position"][0] + b["position"][2]) / 2 >= pw / 2],
-                    key=lambda b: b["position"][1],
-                )
-            case "auto":
-                result = detect_columns(merged, pw)
-                if len(result) < 0.5 * len(merged):
-                    print(f"[COLUMN FALLBACK] page {page_num}: detect_columns returned "
-                          f"{len(result)}/{len(merged)} blocks — falling back to single column")
-                    selected = sorted(merged, key=lambda b: b["position"][1])
-                else:
-                    selected = result
-            case _:
-                raise ValueError(
-                    f"Invalid column_mode {column_mode!r}. "
-                    "Accepted values: 'auto', 'single', 'left', 'right'."
-                )
+        # ── Skip column detection for merged data to avoid misordering ──────
+        # Column detection can reorder blocks incorrectly; single-column mode
+        # preserves the natural reading order from the extraction.
+        selected = merged
 
         blocks.extend(selected)
 
@@ -774,11 +659,12 @@ def _translate_single(text, src_code, tgt_code, context_hint="", block_type="par
     source_lang = CODE_TO_LANG.get(src_code, src_code)
     target_lang = CODE_TO_LANG.get(tgt_code, tgt_code)
 
-    # NOTE: Context hint is intentionally NOT prepended to the prompt.
-    # Previous attempts to add context caused cascading hallucination where
-    # Mistral would repeat the context text as part of its translation output.
-    # Each block is translated independently for clean, isolated results.
-    return _translate_with_mistral(text, source_lang, target_lang, block_type=block_type)
+    # If context hint is provided, prepend it for better coherence
+    text_to_translate = text
+    if context_hint:
+        text_to_translate = f"[Context: {context_hint}]\n\n{text}"
+
+    return _translate_with_mistral(text_to_translate, source_lang, target_lang, block_type=block_type)
 
 
 def batch_translate_blocks(blocks, source_lang, target_lang, batch_size=4,
@@ -800,21 +686,15 @@ def batch_translate_blocks(blocks, source_lang, target_lang, batch_size=4,
     for i, block in enumerate(blocks):
         print(f"  Translating block {i+1}/{total}...", end="\r", flush=True)
 
-        # Get context hint from buffer (once per block, not per chunk)
+        # Get context hint from buffer
         hint = context_buffer.get_hint() if context_buffer is not None else ""
 
-        # Split the block text into sentence-aligned chunks before API calls
-        chunks = Chunk_Splitter().split(block["text"])
-        translated_chunks = []
-        for chunk in chunks:
-            translated_chunk = _translate_single(
-                chunk, src_code, tgt_code, context_hint=hint,
-                block_type=block.get("type", "paragraph"),
-            )
-            translated_chunks.append(translated_chunk)
-        translated_text = " ".join(translated_chunks)
+        translated_text = _translate_single(
+            block["text"], src_code, tgt_code, context_hint=hint,
+            block_type=block.get("type", "paragraph"),
+        )
 
-        # Push rejoined result to context buffer (once per block, only on success)
+        # Push to context buffer
         if context_buffer is not None:
             context_buffer.push(translated_text)
 
@@ -855,94 +735,6 @@ def batch_translate_blocks(blocks, source_lang, target_lang, batch_size=4,
 
     print(f"\n  [OK] Translation complete! ({total} blocks)")
     return translated_blocks
-
-
-# ── Chunk Splitter ────────────────────────────────────────────────────────────
-
-class Chunk_Splitter:
-    """Splits a long text block into translation-safe chunks at sentence boundaries.
-
-    Uses a word-token model (one token = one whitespace-delimited word).
-    Sentence boundaries are tokens that end with '.', '!', or '?'.
-    """
-
-    def split(
-        self,
-        text: str,
-        max_tokens: int = 400,
-        hard_cap: int = 600,
-        min_tokens: int = 10,
-    ) -> list:
-        """Split *text* into chunks of at most *max_tokens* words, honouring
-        sentence boundaries.
-
-        Parameters
-        ----------
-        text:       The source text to split.
-        max_tokens: Preferred maximum tokens (words) per chunk.
-        hard_cap:   Absolute maximum tokens before giving up on splitting.
-        min_tokens: Minimum tokens in a trailing chunk; smaller tails are merged
-                    back into the previous chunk.
-
-        Returns
-        -------
-        A list of strings whose concatenated words reproduce *text* exactly
-        (round-trip property).
-        """
-        # Edge-case: empty or whitespace-only input.
-        if not text or not text.strip():
-            return [""]
-
-        # Clamp max_tokens to at least 1 to avoid infinite loops.
-        if max_tokens <= 0:
-            max_tokens = 1
-
-        tokens = text.split()
-
-        # Step 1 — short-circuit: text already fits in one chunk.
-        if len(tokens) <= max_tokens:
-            return [text]
-
-        # Steps 2-4 — find the best split boundary.
-        # Collect candidate indices: tokens that end with '.', '!' or '?'
-        # Preferred zone: [0, max_tokens)   → last candidate at or before max_tokens
-        # Extended zone:  [max_tokens, hard_cap) → first candidate found
-        best_boundary = None
-
-        # Scan up to hard_cap (exclusive) to collect all candidates.
-        scan_limit = min(hard_cap, len(tokens))
-
-        # Pass 1: pick the LAST candidate within [0, max_tokens).
-        for i in range(min(max_tokens, scan_limit)):
-            if tokens[i].endswith(('.', '!', '?')):
-                best_boundary = i  # keep updating → last candidate in window
-
-        # Pass 2: if nothing found in preferred zone, take the FIRST candidate
-        # in the extended zone [max_tokens, hard_cap).
-        if best_boundary is None:
-            for i in range(max_tokens, scan_limit):
-                if tokens[i].endswith(('.', '!', '?')):
-                    best_boundary = i
-                    break  # first candidate wins
-
-        # Step 5 — no candidate anywhere within hard_cap → return unsplit.
-        if best_boundary is None:
-            return [text]
-
-        # Step 6 — split at the chosen boundary.
-        first_tokens = tokens[:best_boundary + 1]
-        remainder_tokens = tokens[best_boundary + 1:]
-
-        # Step 7 — merge short tails back.
-        if len(remainder_tokens) < min_tokens:
-            return [text]
-
-        # Step 8 — recurse on the remainder.
-        first_chunk = " ".join(first_tokens)
-        remainder_text = " ".join(remainder_tokens)
-        rest_chunks = self.split(remainder_text, max_tokens, hard_cap, min_tokens)
-
-        return [first_chunk] + rest_chunks
 
 
 # ── Context Buffer ────────────────────────────────────────────────────────────
@@ -1023,125 +815,7 @@ class Glossary_Store:
         return target_term
 
 
-# ── Font Mapper ───────────────────────────────────────────────────────────────
-
-class Font_Mapper:
-    """Centralises PDF font-name resolution for ``write_pdf_preserved()``.
-
-    Resolution priority (highest → lowest):
-
-    1. ``font_name`` is ``None`` or empty → return ``"helv"`` with ⚠️ warning.
-    2. ``font_name.lower()`` matches any entry in *embedded_fonts* lowercased
-       → return ``font_name`` as-is (preserve caller's casing).
-    3. ``font_name.lower()`` contains a monospace keyword → return ``"cour"``.
-    4. ``font_name.lower()`` contains a serif keyword    → return ``"tiro"``.
-    5. ``font_name.lower()`` contains a sans-serif keyword → return ``"helv"``.
-    6. No match at all → return ``"helv"`` with ⚠️ warning.
-    """
-
-    _MONO_KEYWORDS  = ("courier", "consolas", "mono")
-    _SERIF_KEYWORDS = ("times", "georgia", "roman")
-    _SANS_KEYWORDS  = ("arial", "helvetica", "sans")
-
-    def resolve(
-        self,
-        font_name: str | None,
-        embedded_fonts: set[str],
-        *,
-        page: int | None = None,
-        bbox: list | None = None,
-    ) -> str:
-        # Priority 1 — None or empty
-        if not font_name:
-            print(f"⚠️ Font_Mapper: font_name is None or empty; falling back to 'helv'.")
-            return "helv"
-
-        lower = font_name.lower()
-
-        # Priority 2 — embedded font (case-insensitive match)
-        if any(lower == ef.lower() for ef in embedded_fonts):
-            return font_name
-
-        # Priority 3 — monospace keywords
-        if any(kw in lower for kw in self._MONO_KEYWORDS):
-            return "cour"
-
-        # Priority 4 — serif keywords
-        if any(kw in lower for kw in self._SERIF_KEYWORDS):
-            return "tiro"
-
-        # Priority 5 — sans-serif keywords
-        if any(kw in lower for kw in self._SANS_KEYWORDS):
-            return "helv"
-
-        # Priority 6 — unknown font; warn and fall back
-        print(f"⚠️ Font_Mapper: unknown font '{font_name}'; falling back to 'helv'.")
-        return "helv"
-
-
-class Style_Mapper:
-    """Resolves a DOCX paragraph style name to a style available in the target document.
-
-    Returns the style name unchanged when it is a non-empty string present in
-    *available_styles*, and falls back to ``"Normal"`` in all other cases so
-    that ``python-docx`` never raises a ``KeyError`` on a missing style.
-    """
-
-    def resolve(
-        self,
-        style_name: str | None,
-        available_styles: set[str],
-    ) -> str:
-        if not style_name:          # None or empty string
-            return "Normal"
-        if style_name in available_styles:
-            return style_name
-        return "Normal"             # unconditional fallback
-
-
 # ── In-Place Translation: DOCX, PPTX, XLSX ──────────────────────────────────
-
-def _apply_translation_to_paragraph(para, translated_text, glossary_store):
-    """
-    Apply a translated string to a paragraph's runs, preserving per-run formatting.
-
-    - No runs: add a new run with the translated text.
-    - Single run: set run.text directly (all formatting attributes untouched).
-    - Multiple runs: distribute translated characters proportionally by source
-      run length.  The last run receives any remainder so the full translated
-      text is always covered.
-
-    run.bold, run.italic, run.font.size, and run.font.color.rgb are NEVER
-    assigned — only run.text is updated.
-    """
-    # Apply glossary substitutions before distributing
-    if glossary_store is not None:
-        translated_text = glossary_store.apply(translated_text)
-
-    runs = para.runs
-    if not runs:
-        para.add_run(translated_text)
-        return
-
-    if len(runs) == 1:
-        runs[0].text = translated_text   # preserve all formatting attrs
-        return
-
-    # Multi-run: proportional distribution
-    source = "".join(r.text for r in runs)
-    src_len = len(source) if len(source) > 0 else 1
-    tgt_len = len(translated_text)
-
-    pos = 0
-    for i, run in enumerate(runs):
-        if i == len(runs) - 1:
-            run.text = translated_text[pos:]  # last run gets remainder
-        else:
-            budget = math.floor(tgt_len * len(run.text) / src_len)
-            run.text = translated_text[pos: pos + budget]
-            pos += budget
-        # Bold, italic, font size, color are NOT touched
-
 
 def translate_docx_inplace(input_file, output_file, source_lang, target_lang,
                            glossary_store=None, progress_callback=None):
@@ -1168,19 +842,11 @@ def translate_docx_inplace(input_file, output_file, source_lang, target_lang,
     doc = Document(input_file)
     total_paras = sum(1 for p in doc.paragraphs if p.text.strip())
     total_cells = sum(1 for t in doc.tables for r in t.rows for c in r.cells if c.text.strip())
-    # Count text boxes for progress tracking
-    from docx.oxml.ns import qn
-    total_textboxes = 0
-    for txbx in doc.element.body.iter(qn("w:txbxContent")):
-        for p_elem in txbx.iter(qn("w:p")):
-            texts = []
-            for t_elem in p_elem.iter(qn("w:t")):
-                if t_elem.text:
-                    texts.append(t_elem.text)
-            if "".join(texts).strip():
-                total_textboxes += 1
-    total = total_paras + total_cells + total_textboxes
+    total = total_paras + total_cells
     completed = 0
+
+    ctx_buffer = Context_Buffer()
+    ctx_buffer.clear()
 
     # ── Translate paragraphs in-place ────────────────────────────────────────
     for para in doc.paragraphs:
@@ -1188,47 +854,32 @@ def translate_docx_inplace(input_file, output_file, source_lang, target_lang,
         if not text:
             continue
 
-        print(f"  Translating paragraph '{text[:40]}...' ({completed+1}/{total})", end="\r", flush=True)
-        translated_text = _translate_single(text, src_code, tgt_code, block_type="paragraph")
+        # Get context hint from buffer
+        hint = ctx_buffer.get_hint()
 
-        # Apply glossary and distribute translated text across runs (preserves formatting)
-        _apply_translation_to_paragraph(para, translated_text, glossary_store)
+        print(f"  Translating paragraph '{text[:40]}...' ({completed+1}/{total})", end="\r", flush=True)
+        translated_text = _translate_single(text, src_code, tgt_code, context_hint=hint)
+
+        # Push to context buffer
+        ctx_buffer.push(translated_text)
+
+        # Apply glossary if provided
+        if glossary_store is not None:
+            translated_text = glossary_store.apply(translated_text)
+
+        # Replace text in the first run only — preserve first run's formatting (bold, italic, color, size)
+        if para.runs:
+            first_run = para.runs[0]
+            first_run.text = translated_text
+            # Clear subsequent runs so they don't duplicate text, but leave first run's properties intact
+            for run in para.runs[1:]:
+                run.text = ""
+        else:
+            para.add_run(translated_text)
 
         completed += 1
         if progress_callback:
             progress_callback(completed, total)
-
-    # ── Translate text boxes in-place ────────────────────────────────────────
-    for txbx in doc.element.body.iter(qn("w:txbxContent")):
-        for p_elem in txbx.iter(qn("w:p")):
-            texts = []
-            t_elements = []
-            for t_elem in p_elem.iter(qn("w:t")):
-                if t_elem.text:
-                    texts.append(t_elem.text)
-                    t_elements.append(t_elem)
-            combined = "".join(texts).strip()
-            if not combined:
-                continue
-
-            print(f"  Translating text box '{combined[:40]}...' ({completed+1}/{total})", end="\r", flush=True)
-            translated_text = _translate_single(combined, src_code, tgt_code, block_type="text_box")
-
-            if glossary_store is not None:
-                translated_text = glossary_store.apply(translated_text)
-
-            # Replace text in the first text element, clear the rest
-            first = True
-            for t_elem in t_elements:
-                if first:
-                    t_elem.text = translated_text
-                    first = False
-                else:
-                    t_elem.text = ""
-
-            completed += 1
-            if progress_callback:
-                progress_callback(completed, total)
 
     # ── Translate table cells in-place ────────────────────────────────────────
     for table in doc.tables:
@@ -1238,18 +889,27 @@ def translate_docx_inplace(input_file, output_file, source_lang, target_lang,
                 if not text:
                     continue
 
+                # Get context hint from buffer
+                hint = ctx_buffer.get_hint()
+
                 print(f"  Translating cell '{text[:40]}...' ({completed+1}/{total})", end="\r", flush=True)
-                translated_text = _translate_single(text, src_code, tgt_code, block_type="table_cell")
+                translated_text = _translate_single(text, src_code, tgt_code, context_hint=hint)
+
+                # Push to context buffer
+                ctx_buffer.push(translated_text)
 
                 # Apply glossary if provided
                 if glossary_store is not None:
                     translated_text = glossary_store.apply(translated_text)
 
-                # Apply glossary and distribute translated text across runs (preserves formatting)
+                # Replace text in cell's first paragraph, keep first run's formatting intact
                 for p in cell.paragraphs:
-                    if p.text.strip() or p.runs:
-                        _apply_translation_to_paragraph(p, translated_text, None)
-                        break  # Only update first paragraph with text
+                    if p.runs:
+                        first_run = p.runs[0]
+                        first_run.text = translated_text
+                        for run in p.runs[1:]:
+                            run.text = ""
+                        break  # Only update first paragraph
                     else:
                         p.add_run(translated_text)
                         break
@@ -1284,6 +944,9 @@ def translate_pptx_inplace(input_file, output_file, source_lang, target_lang,
     )
     completed = 0
 
+    ctx_buffer = Context_Buffer()
+    ctx_buffer.clear()
+
     for slide in prs.slides:
         for shape in slide.shapes:
             if not shape.has_text_frame:
@@ -1293,8 +956,11 @@ def translate_pptx_inplace(input_file, output_file, source_lang, target_lang,
                 if not text:
                     continue
 
+                hint = ctx_buffer.get_hint()
                 print(f"  Translating PPTX paragraph '{text[:40]}...' ({completed+1}/{total_items})", end="\r", flush=True)
-                translated_text = _translate_single(text, src_code, tgt_code, block_type="paragraph")
+                translated_text = _translate_single(text, src_code, tgt_code, context_hint=hint)
+
+                ctx_buffer.push(translated_text)
 
                 if glossary_store is not None:
                     translated_text = glossary_store.apply(translated_text)
@@ -1335,6 +1001,9 @@ def translate_xlsx_inplace(input_file, output_file, source_lang, target_lang,
     )
     completed = 0
 
+    ctx_buffer = Context_Buffer()
+    ctx_buffer.clear()
+
     for sheet_name in wb.sheetnames:
         ws = wb[sheet_name]
         for row in ws.iter_rows():
@@ -1345,8 +1014,11 @@ def translate_xlsx_inplace(input_file, output_file, source_lang, target_lang,
                 if not text:
                     continue
 
+                hint = ctx_buffer.get_hint()
                 print(f"  Translating XLSX cell '{text[:40]}...' ({completed+1}/{total_cells})", end="\r", flush=True)
-                translated_text = _translate_single(text, src_code, tgt_code, block_type="table_cell")
+                translated_text = _translate_single(text, src_code, tgt_code, context_hint=hint)
+
+                ctx_buffer.push(translated_text)
 
                 if glossary_store is not None:
                     translated_text = glossary_store.apply(translated_text)
@@ -1416,16 +1088,14 @@ def write_docx(blocks, output_file, original_file=None):
         print(f"  [OK] DOCX saved (template-based, legacy fallback)")
     else:
         # ── Fallback: create new document ────────────────────────────────────
-        new_doc = Document()
+        doc = Document()
         para_blocks = [b for b in blocks if b.get("type") == "paragraph"]
         table_blocks = [b for b in blocks if b.get("type") == "table_cell"]
 
-        available_styles = {s.name for s in new_doc.styles}
-
         for block in para_blocks:
             style_info = block.get("style") or {}
-            resolved_style = Style_Mapper().resolve(style_info.get("style_name"), available_styles)
-            para = new_doc.add_paragraph(block["text"], style=resolved_style)
+            style_name = style_info.get("style_name", "Normal")
+            para = doc.add_paragraph(block["text"], style=style_name)
 
             if style_info.get("alignment") is not None:
                 para.alignment = style_info["alignment"]
@@ -1458,7 +1128,7 @@ def write_docx(blocks, output_file, original_file=None):
                 cells = tables_dict[tidx]
                 max_row = max(c["row"] for c in cells)
                 max_col = max(c["col"] for c in cells)
-                table = new_doc.add_table(rows=max_row + 1, cols=max_col + 1)
+                table = doc.add_table(rows=max_row + 1, cols=max_col + 1)
 
                 for cell_block in cells:
                     tbl_cell = table.cell(cell_block["row"], cell_block["col"])
@@ -1472,7 +1142,7 @@ def write_docx(blocks, output_file, original_file=None):
                         if cell_style.get("font_size") is not None:
                             run.font.size = cell_style["font_size"]
 
-        new_doc.save(output_file)
+        doc.save(output_file)
         print(f"  [OK] DOCX saved (new document)")
 
 
