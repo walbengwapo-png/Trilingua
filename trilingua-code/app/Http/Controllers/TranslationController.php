@@ -9,6 +9,7 @@ use App\Services\StorageService;
 use App\Services\Translation\TranslationManager;
 use App\Services\Translation\DTO\TranslationRequest;
 use App\Services\Translation\DTO\TranslationResponse;
+use App\Services\TranslationService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use App\Models\TranslationHistory;
 
 class TranslationController extends Controller
 {
@@ -206,8 +206,7 @@ class TranslationController extends Controller
      */
     public function status(string $jobId): JsonResponse
     {
-        $cacheKey = Auth::id() . '_job_' . $jobId;
-        $result = Cache::get($cacheKey);
+        $result = Cache::get('translation_job_' . $jobId);
 
         if (!$result) {
             return response()->json([

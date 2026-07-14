@@ -27,10 +27,9 @@ import tempfile
 import io
 import uvicorn
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from starlette.middleware.base import BaseHTTPMiddleware
 
 # ---------------------------------------------------------------------------
 # Load .env file for Python
@@ -122,17 +121,6 @@ print(f"  [OK] Supported languages: {list(LANGUAGES.keys())}")
 print(f"  [OK] Available providers: {list(AVAILABLE_PROVIDERS.keys())}")
 
 app = FastAPI(title="TriLingua Translation Service v5")
-
-MAX_REQUEST_BYTES = 100 * 1024 * 1024  # 100 MB
-
-class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        content_length = request.headers.get("content-length")
-        if content_length and int(content_length) > MAX_REQUEST_BYTES:
-            raise HTTPException(413, "Request body too large. Maximum size is 100 MB.")
-        return await call_next(request)
-
-app.add_middleware(RequestSizeLimitMiddleware)
 
 VALID_PDF_COLUMN_MODES = {"auto", "single", "left", "right"}
 
@@ -326,12 +314,11 @@ async def translate_document(
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("TRANSLATION_PORT", 5000))
-    is_production = os.environ.get("APP_ENV") == "production"
     uvicorn.run(
         "server:app",
         host="127.0.0.1",
         port=port,
         log_level="info",
-        reload=not is_production,
-        reload_dirs=[os.path.dirname(os.path.abspath(__file__))] if not is_production else [],
+        reload=True,
+        reload_dirs=[os.path.dirname(os.path.abspath(__file__))],
     )

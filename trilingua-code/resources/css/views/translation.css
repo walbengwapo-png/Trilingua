@@ -384,11 +384,7 @@ button[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-    .translation-page {
-        height: auto;
-        min-height: auto;
-        gap: 0;
-    }
+    .translation-page { height: auto; }
 
     .lang-bar { border-radius: 12px 12px 0 0; }
 
@@ -400,30 +396,13 @@ button[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
     .translation-panel--source { border-right: none; border-bottom: 1px solid var(--border); }
 
     .translation-panel__body textarea,
-    #output-text { min-height: 180px; }
+    #output-text { min-height: 200px; }
 
     #translate-btn { width: 100%; justify-content: center; }
-
-    .translation-panel__footer { padding: 10px 14px; }
-
-    .lang-bar__swap { margin: 0 4px; }
 }
 
 @media (max-width: 480px) {
-    .translation-page { gap: 0; }
-
-    .lang-bar { border-radius: 10px 10px 0 0; }
-
     .lang-bar__select-wrap { padding: 12px 10px; }
-    .lang-bar__select-wrap select { font-size: 0.9rem; }
-
-    .translation-panels { border-radius: 0 0 10px 10px; }
-
-    .translation-panel__footer { flex-wrap: wrap; gap: 6px; padding: 8px 12px; }
-    #char-counter { margin-left: 0; font-size: 0.75rem; }
-
-    .translation-panel__body textarea,
-    #output-text { min-height: 150px; font-size: 0.9rem; }
-
-    .attach-btn span { display: none; }
+    .translation-panel__footer { flex-wrap: wrap; gap: 6px; }
+    #char-counter { margin-left: 0; }
 }

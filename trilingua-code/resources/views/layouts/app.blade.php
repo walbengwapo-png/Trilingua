@@ -130,6 +130,14 @@
                 <p class="header-subtitle">@yield('subtitle', '')</p>
             </div>
             <div class="header-right">
+                {{-- Notification bell --}}
+                <button class="header-icon-btn" aria-label="Notifications" title="Notifications">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                </button>
+
                 {{-- User avatar dropdown --}}
                 <div class="header-user" id="header-user-btn" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
                     <div class="header-user__avatar" aria-hidden="true">
@@ -193,42 +201,10 @@ window.showToast = function (type, title, message, duration) {
     var el = document.createElement('div');
     el.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 16px;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(15,23,42,0.14),0 2px 8px rgba(15,23,42,0.08);border-left:4px solid ' + (colors[t]||colors.info) + ';max-width:360px;pointer-events:all;animation:toast-in 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards';
     el.setAttribute('role', 'alert');
-
-    var svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svgEl.setAttribute('width', '20');
-    svgEl.setAttribute('height', '20');
-    svgEl.setAttribute('viewBox', '0 0 24 24');
-    svgEl.setAttribute('fill', 'none');
-    svgEl.setAttribute('stroke', colors[t] || colors.info);
-    svgEl.setAttribute('stroke-width', '2');
-    svgEl.setAttribute('stroke-linecap', 'round');
-    svgEl.setAttribute('stroke-linejoin', 'round');
-    svgEl.style.flexShrink = '0';
-    svgEl.setAttribute('aria-hidden', 'true');
-    svgEl.innerHTML = icons[t] || icons.info;
-
-    var textWrap = document.createElement('div');
-    textWrap.style.cssText = 'flex:1;min-width:0';
-    var titleP = document.createElement('p');
-    titleP.style.cssText = 'margin:0 0 2px;font-size:0.875rem;font-weight:600;color:#111827';
-    titleP.textContent = title;
-    textWrap.appendChild(titleP);
-    if (message) {
-        var msgP = document.createElement('p');
-        msgP.style.cssText = 'margin:0;font-size:0.8125rem;color:#6b7280';
-        msgP.textContent = message;
-        textWrap.appendChild(msgP);
-    }
-
-    var dismissBtn = document.createElement('button');
-    dismissBtn.style.cssText = 'background:none;border:none;cursor:pointer;color:#9ca3af;padding:2px;border-radius:4px;display:flex;flex-shrink:0';
-    dismissBtn.setAttribute('aria-label', 'Dismiss');
-    dismissBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-    dismissBtn.addEventListener('click', function () { el.remove(); });
-
-    el.appendChild(svgEl);
-    el.appendChild(textWrap);
-    el.appendChild(dismissBtn);
+    el.innerHTML =
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="' + (colors[t]||colors.info) + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0" aria-hidden="true">' + (icons[t]||icons.info) + '</svg>' +
+        '<div style="flex:1;min-width:0"><p style="margin:0 0 2px;font-size:0.875rem;font-weight:600;color:#111827">' + title + '</p>' + (message ? '<p style="margin:0;font-size:0.8125rem;color:#6b7280">' + message + '</p>' : '') + '</div>' +
+        '<button onclick="this.closest(\'[role=alert]\').remove()" style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:2px;border-radius:4px;display:flex;flex-shrink:0" aria-label="Dismiss"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
     var container = document.getElementById('toast-container');
     if (container) container.appendChild(el);
     setTimeout(function () {

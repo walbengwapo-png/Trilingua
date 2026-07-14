@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Services\HistoryService;
 use App\Services\StorageService;
 use App\Services\Translation\TranslationManager;
+use App\Services\TranslationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -22,16 +23,6 @@ class TranslateDocumentJob implements ShouldQueue
      * The UUID for this job, set explicitly so the controller and cache key match.
      */
     private ?string $jobUuid = null;
-
-    /**
-     * Maximum number of attempts before the job is marked as failed.
-     */
-    public int $tries = 3;
-
-    /**
-     * Maximum time in seconds the job can run before timing out.
-     */
-    public int $timeout = 360;
 
     /**
      * Create a new job instance.
@@ -248,7 +239,7 @@ class TranslateDocumentJob implements ShouldQueue
     protected function storeResult(array $result): void
     {
         cache()->put(
-            $this->userId . '_job_' . $this->jobUuid,
+            'translation_job_' . $this->jobUuid,
             $result,
             now()->addHours(1)
         );

@@ -4,4 +4,3 @@
 pytest==9.0.3
 hypothesis==6.152.4
 sacrebleu==2.6.0
-PyMuPDF
