@@ -1,15 +1,19 @@
 """
-TriLingua Translation Microservice v4
+TriLingua Translation Microservice v5
 ======================================
-Uses Mistral AI API for translation (no local model needed).
-Supports: .docx .pdf .txt .md .rtf .odt .csv .pptx .xlsx
+Modular AI Engine using provider pattern.
+Supports: GPT-OSS (Ollama Cloud), Mistral AI
+Document formats: .docx .pdf .txt .md .rtf .odt .csv .pptx .xlsx
+
+Architecture:
+  Laravel → server.py → pipeline/ → providers/ → AI API
 
 Usage:
-    set MISTRAL_API_KEY=your_key_here
+    set MISTRAL_API_KEY=your_key_here    # For Mistral fallback
+    set OLLAMA_CLOUD_URL=http://localhost:11434/api/chat  # For GPT-OSS
     python Model/server.py
 
 The server listens on http://127.0.0.1:5000 by default.
-Keep it running while the Laravel app is running.
 """
 
 import sys
@@ -23,73 +27,115 @@ import tempfile
 import io
 import uvicorn
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # ---------------------------------------------------------------------------
-# Load .env file for Python (Laravel's .env is NOT automatically read by Python)
+# Load .env file for Python
 # ---------------------------------------------------------------------------
 def _load_env_file():
-    """
-    Read the Laravel .env file from the project root and load MISTRAL_API_KEY
-    and MISTRAL_MODEL into os.environ so Python can see them.
-    
-    The .env file is located one directory above Model/ (i.e. trilingua-code/.env).
-    """
-    # Get the directory containing this script (Model/)
+    """Read the Laravel .env file and load relevant variables."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    # The project root is one level up from Model/
     project_root = os.path.dirname(script_dir)
     env_path = os.path.join(project_root, ".env")
-    
+
     if not os.path.exists(env_path):
         print(f"  [INFO] No .env file found at {env_path}")
         return
-    
+
     print(f"  [INFO] Loading environment from: {env_path}")
     with open(env_path, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
-            # Skip empty lines and comments
             if not line or line.startswith("#"):
                 continue
-            # Parse KEY=VALUE pairs
             if "=" in line:
                 key, _, value = line.partition("=")
                 key = key.strip()
                 value = value.strip()
-                # Only load Mistral-related variables (don't pollute with all Laravel vars)
-                if key in ("MISTRAL_API_KEY", "MISTRAL_MODEL"):
+                if key in ("MISTRAL_API_KEY", "MISTRAL_MODEL",
+                           "TRANSLATION_PROVIDER", "OLLAMA_CLOUD_URL",
+                           "OLLAMA_CLOUD_MODEL"):
                     if value and not os.environ.get(key):
                         os.environ[key] = value
                         print(f"  [INFO] Loaded {key} from .env file")
 
-# Load .env before anything else
 _load_env_file()
 
 # ---------------------------------------------------------------------------
-# Import the translation pipeline
+# Import the new modular pipeline
 # ---------------------------------------------------------------------------
-print("Initializing TriLingua v4 (Mistral AI)...")
+print("Initializing TriLingua v5 (Provider-based AI Engine)...")
 
-# Check for Mistral API key
-MISTRAL_API_KEY = os.environ.get("MISTRAL_API_KEY", "")
-if not MISTRAL_API_KEY:
-    print("  WARNING: MISTRAL_API_KEY environment variable is not set.")
-    print("   Translation will fail until you set it.")
-    print("   Set it in your .env file or with: set MISTRAL_API_KEY=your_key_here")
-else:
-    print(f"  [OK] Mistral AI API key found (model: {os.environ.get('MISTRAL_MODEL', 'mistral-small-latest')})")
+from dto.requests import LANGUAGES
+from dto.responses import TranslationResponse, HealthResponse
+from providers.mistral import MistralProvider
+from providers.gptoss import GPTOSSProvider
+from providers.future_openai import OpenAIProvider
+from providers.future_gemini import GeminiProvider
+from providers.future_deepseek import DeepSeekProvider
+from pipeline.translation_pipeline import TranslationPipeline
+from pipeline.document_pipeline import DocumentPipeline
 
-from document_translator_v3 import run_pipeline, _translate_single, LANGUAGES
-print("Server ready.")
+# ---------------------------------------------------------------------------
+# Provider selection
+# ---------------------------------------------------------------------------
+TRANSLATION_PROVIDER = os.environ.get("TRANSLATION_PROVIDER", "gptoss").lower()
 
-app = FastAPI(title="TriLingua Translation Service v4")
+# Initialize all available providers
+_mistral_provider = MistralProvider()
+_gptoss_provider = GPTOSSProvider()
+
+# Future providers (stubs — raise NotImplementedError when instantiated)
+# Uncomment imports above and these lines when ready to implement:
+# _openai_provider = OpenAIProvider()
+# _gemini_provider = GeminiProvider()
+# _deepseek_provider = DeepSeekProvider()
+
+# Map provider names to instances (active + future stubs)
+AVAILABLE_PROVIDERS = {
+    "mistral": _mistral_provider,
+    "gptoss": _gptoss_provider,
+    # Future: uncomment when provider is implemented
+    # "openai": _openai_provider,
+    # "gemini": _gemini_provider,
+    # "deepseek": _deepseek_provider,
+}
+
+def _get_active_provider():
+    """Get the currently active provider based on environment configuration."""
+    provider = AVAILABLE_PROVIDERS.get(TRANSLATION_PROVIDER)
+    if provider is None:
+        print(f"  WARNING: Unknown provider '{TRANSLATION_PROVIDER}', falling back to gptoss")
+        return _gptoss_provider
+    return provider
+
+# Create pipelines with the active provider
+_active_provider = _get_active_provider()
+_translation_pipeline = TranslationPipeline(_active_provider)
+_document_pipeline = DocumentPipeline(_translation_pipeline)
+
+print(f"  [OK] Active provider: {_active_provider.name} ({_active_provider.model_name})")
+print(f"  [OK] Supported languages: {list(LANGUAGES.keys())}")
+print(f"  [OK] Available providers: {list(AVAILABLE_PROVIDERS.keys())}")
+
+app = FastAPI(title="TriLingua Translation Service v5")
+
+MAX_REQUEST_BYTES = 100 * 1024 * 1024  # 100 MB
+
+class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        content_length = request.headers.get("content-length")
+        if content_length and int(content_length) > MAX_REQUEST_BYTES:
+            raise HTTPException(413, "Request body too large. Maximum size is 100 MB.")
+        return await call_next(request)
+
+app.add_middleware(RequestSizeLimitMiddleware)
 
 VALID_PDF_COLUMN_MODES = {"auto", "single", "left", "right"}
 
-# Supported file extensions
 SUPPORTED_EXTENSIONS = {
     ".docx", ".pdf", ".txt", ".md", ".csv", ".rtf", ".odt", ".pptx", ".xlsx"
 }
@@ -106,12 +152,32 @@ EXTENSION_MAP = {
 # ---------------------------------------------------------------------------
 @app.get("/health")
 def health():
+    provider = _get_active_provider()
+    provider_health = provider.health()
     return {
         "status": "ok",
-        "engine": "mistral-ai",
-        "model": os.environ.get("MISTRAL_MODEL", "mistral-small-latest"),
+        "engine": f"provider:{provider.name}",
+        "model": provider.model_name,
+        "active_provider": provider.name,
+        "available_providers": list(AVAILABLE_PROVIDERS.keys()),
         "languages": list(LANGUAGES.keys()),
         "formats": sorted(SUPPORTED_EXTENSIONS),
+        "provider_status": provider_health,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Provider info endpoint
+# ---------------------------------------------------------------------------
+@app.get("/providers")
+def list_providers():
+    """List all available translation providers and their status."""
+    result = {}
+    for name, provider in AVAILABLE_PROVIDERS.items():
+        result[name] = provider.health()
+    return {
+        "active_provider": _get_active_provider().name,
+        "providers": result,
     }
 
 
@@ -119,7 +185,7 @@ def health():
 # Text translation
 # POST /translate/text
 # Body: { "text": "...", "source_lang": "English", "target_lang": "Cebuano" }
-# Returns: { "translated": "..." }
+# Returns: { "translated": "...", "provider": "...", ... }
 # ---------------------------------------------------------------------------
 class TextRequest(BaseModel):
     text: str
@@ -139,10 +205,26 @@ def translate_text(req: TextRequest):
         raise HTTPException(400, "Source and target languages must differ.")
 
     try:
-        src_code = LANGUAGES[req.source_lang]
-        tgt_code = LANGUAGES[req.target_lang]
-        result = _translate_single(req.text.strip(), src_code, tgt_code)
-        return {"translated": result}
+        from dto.requests import TranslationRequest as TR
+        request = TR(
+            text=req.text.strip(),
+            source_lang=req.source_lang,
+            target_lang=req.target_lang,
+        )
+        result = _translation_pipeline.translate(request)
+
+        if not result.success:
+            raise HTTPException(500, result.error_message)
+
+        return {
+            "translated": result.translated_text,
+            "provider": result.provider,
+            "model": result.model,
+            "token_usage": result.token_usage,
+            "execution_time_ms": result.execution_time_ms,
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(500, str(e))
 
@@ -193,22 +275,35 @@ async def translate_document(
         print(f"[SERVER] Translating document: {file.filename} ({source_lang} → {target_lang})")
         print(f"[SERVER] Format: {ext}, Size: {len(contents)} bytes")
 
-        run_pipeline(input_path, source_lang, target_lang, output_path,
-                     pdf_column_mode=pdf_column_mode)
+        # Use the new DocumentPipeline
+        from dto.requests import DocumentTranslationRequest as DTR
+        request = DTR(
+            file_path=input_path,
+            source_lang=source_lang,
+            target_lang=target_lang,
+            pdf_column_mode=pdf_column_mode,
+        )
+        result = _document_pipeline.translate(request)
 
-        if not os.path.exists(output_path):
+        if not result.success:
+            raise HTTPException(500, result.error_message)
+
+        actual_output = result.output_path
+        if not os.path.exists(actual_output):
             raise HTTPException(500, "Translation produced no output file.")
 
         original_stem = os.path.splitext(file.filename)[0]
         download_name = f"{original_stem}_translated{out_ext}"
 
-        print(f"[SERVER] Translation complete. Output file ready at: {output_path}")
+        print(f"[SERVER] Translation complete. Output file ready at: {actual_output}")
+        print(f"[SERVER] Provider: {result.provider}, Model: {result.model}")
+        print(f"[SERVER] Execution time: {result.total_execution_time_ms:.0f}ms")
 
         # Read the file into memory and clean up immediately
-        with open(output_path, "rb") as f:
+        with open(actual_output, "rb") as f:
             file_contents = f.read()
 
-        # Clean up the temporary directory before returning
+        # Clean up the temporary directory
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
         # Return the file
@@ -231,14 +326,12 @@ async def translate_document(
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("TRANSLATION_PORT", 5000))
-    # Use hot-reload so code changes to document_translator_v3.py
-    # are picked up WITHOUT needing to restart the server manually.
-    # To disable hot-reload: change reload=True to reload=False
+    is_production = os.environ.get("APP_ENV") == "production"
     uvicorn.run(
         "server:app",
         host="127.0.0.1",
         port=port,
         log_level="info",
-        reload=True,
-        reload_dirs=[os.path.dirname(os.path.abspath(__file__))],
+        reload=not is_production,
+        reload_dirs=[os.path.dirname(os.path.abspath(__file__))] if not is_production else [],
     )

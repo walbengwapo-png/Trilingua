@@ -18,10 +18,7 @@ class AppServiceProvider extends ServiceProvider
             return new Client([
                 'timeout'         => 120,
                 'connect_timeout' => 30,
-                // Disable SSL verification on Windows where the system CA
-                // certificate bundle may not be found by OpenSSL. Safe for
-                // local development; production should use proper CA config.
-                'verify'          => !str_contains(PHP_OS, 'WIN'),
+                'verify'          => true,
             ]);
         });
     }

@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Services\HistoryService;
 use App\Services\StorageService;
-use App\Services\TranslationService;
+use App\Services\Translation\TranslationManager;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -22,6 +22,16 @@ class TranslateDocumentJob implements ShouldQueue
      * The UUID for this job, set explicitly so the controller and cache key match.
      */
     private ?string $jobUuid = null;
+
+    /**
+     * Maximum number of attempts before the job is marked as failed.
+     */
+    public int $tries = 3;
+
+    /**
+     * Maximum time in seconds the job can run before timing out.
+     */
+    public int $timeout = 360;
 
     /**
      * Create a new job instance.
@@ -53,7 +63,7 @@ class TranslateDocumentJob implements ShouldQueue
      * Execute the job.
      */
     public function handle(
-        TranslationService $translationService,
+        TranslationManager $translationManager,
         StorageService $storageService,
         HistoryService $historyService
     ): void {
@@ -79,13 +89,22 @@ class TranslateDocumentJob implements ShouldQueue
                 true
             );
 
-            // 1. Translate the document
-            $outputPath = $translationService->translateDocument(
+            // 1. Translate the document via TranslationManager
+            $translationResult = $translationManager->translateDocument(
                 $uploadedFile,
                 $this->sourceLang,
                 $this->targetLang,
                 $this->pdfColumnMode
             );
+
+            $downloadFilename = $translationResult['download_filename'];
+
+            // Save the translated file to a temp path for storage/fallback
+            $outputPath = storage_path('app/temp/' . Str::uuid() . '_' . $downloadFilename);
+            if (!is_dir(dirname($outputPath))) {
+                mkdir(dirname($outputPath), 0755, true);
+            }
+            file_put_contents($outputPath, $translationResult['body']);
 
             if (!file_exists($outputPath) || !is_readable($outputPath)) {
                 throw new \RuntimeException('Translation output file not found at: ' . $outputPath);
@@ -95,11 +114,6 @@ class TranslateDocumentJob implements ShouldQueue
             if ($outputSize === false || $outputSize <= 0) {
                 throw new \RuntimeException('Translation output file was empty or unreadable: ' . $outputPath);
             }
-
-            $downloadFilename = $translationService->getOriginalOutputName(
-                $this->originalName,
-                $this->originalExt
-            );
 
             // 2. Try Supabase upload first
             $translatedStoragePath = $this->userId . '/' . basename($outputPath);
@@ -234,7 +248,7 @@ class TranslateDocumentJob implements ShouldQueue
     protected function storeResult(array $result): void
     {
         cache()->put(
-            'translation_job_' . $this->jobUuid,
+            $this->userId . '_job_' . $this->jobUuid,
             $result,
             now()->addHours(1)
         );

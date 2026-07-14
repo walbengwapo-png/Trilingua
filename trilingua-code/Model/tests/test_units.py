@@ -2701,3 +2701,127 @@ class TestIntegrationSmokePDF:
         assert "output_file" in result
         assert "translated_blocks" in result
         assert "bleu_score" in result
+
+
+# ---------------------------------------------------------------------------
+# Anti-hallucination detection tests
+# ---------------------------------------------------------------------------
+
+from document_translator_v3 import _detect_hallucination_in_output
+
+
+class TestHallucinationDetection:
+    """Tests for _detect_hallucination_in_output."""
+
+    # ── Explanatory phrases (should be flagged) ──────────────────────────────
+
+    def test_detect_here_is_the_translation(self):
+        flagged, reason = _detect_hallucination_in_output(
+            "Here is the translation: Moadto ko sa merkado.", "I am going to the market."
+        )
+        assert flagged is True
+        assert "Explanatory" in reason
+
+    def test_detect_translation_colon(self):
+        flagged, reason = _detect_hallucination_in_output(
+            "Translation: Unsa imong pangalan?", "What is your name?"
+        )
+        assert flagged is True
+
+    def test_detect_in_cebuano(self):
+        flagged, reason = _detect_hallucination_in_output(
+            "In Cebuano, the translation is: Daghang salamat.", "Thank you very much."
+        )
+        assert flagged is True
+
+    def test_detect_hope_this_helps(self):
+        flagged, reason = _detect_hallucination_in_output(
+            "Moadto ko sa merkado. I hope this helps!", "I am going to the market."
+        )
+        assert flagged is True
+
+    def test_detect_let_me_know(self):
+        flagged, reason = _detect_hallucination_in_output(
+            "Moadto ko sa merkado. Let me know if you need anything else.",
+            "I am going to the market."
+        )
+        assert flagged is True
+
+    # ── Clean translations (should NOT be flagged) ───────────────────────────
+
+    def test_clean_translation_not_flagged(self):
+        flagged, _ = _detect_hallucination_in_output(
+            "Moadto ko sa merkado.", "I am going to the market."
+        )
+        assert flagged is False
+
+    def test_clean_filipino_not_flagged(self):
+        flagged, _ = _detect_hallucination_in_output(
+            "Pupunta ako sa palengke.", "I am going to the market."
+        )
+        assert flagged is False
+
+    # ── Verbosity detection ───────────────────────────────────────────────────
+
+    def test_verbosity_short_text_high_ratio(self):
+        # 1 word → 10 words = 10x (exceeds 8x for ≤5 word source)
+        flagged, reason = _detect_hallucination_in_output(
+            "One two three four five six seven eight nine ten",
+            "Hello"
+        )
+        assert flagged is True
+        assert "verbosity" in reason.lower()
+
+    def test_verbosity_medium_text_high_ratio(self):
+        # 10 words → 35 words = 3.5x (exceeds 3x for 6-30 word source)
+        src = " ".join([f"word{i}" for i in range(10)])
+        tgt = " ".join([f"word{i}" for i in range(35)])
+        flagged, reason = _detect_hallucination_in_output(tgt, src)
+        assert flagged is True
+
+    def test_verbosity_ok_ratio(self):
+        # 10 words → 12 words = 1.2x (well within 3x)
+        src = " ".join([f"word{i}" for i in range(10)])
+        tgt = " ".join([f"word{i}" for i in range(12)])
+        flagged, _ = _detect_hallucination_in_output(tgt, src)
+        assert flagged is False
+
+    # ── Sentence inflation detection ──────────────────────────────────────────
+
+    def test_sentence_inflation(self):
+        # Source: 1 sentence. Target: 5 sentences.
+        flagged, reason = _detect_hallucination_in_output(
+            "First sentence. Second sentence. Third sentence. Fourth sentence. Fifth sentence.",
+            "Hello world."
+        )
+        assert flagged is True
+        assert "inflation" in reason.lower() or "sentence" in reason.lower()
+
+    def test_no_false_positive_normal_punctuation(self):
+        flagged, _ = _detect_hallucination_in_output(
+            "Moadto ko. Unsa imong pangalan? Daghang salamat.",
+            "I'm going. What is your name? Thank you very much."
+        )
+        assert flagged is False
+
+    def test_added_punctuation_to_plain_text(self):
+        flagged, reason = _detect_hallucination_in_output(
+            "Word one. Word two. Word three.",
+            "Word one word two word three"
+        )
+        assert flagged is True
+
+    # ── Edge cases ────────────────────────────────────────────────────────────
+
+    def test_empty_strings(self):
+        flagged, _ = _detect_hallucination_in_output("", "Hello")
+        assert flagged is False
+
+    def test_both_empty(self):
+        flagged, _ = _detect_hallucination_in_output("", "")
+        assert flagged is False
+
+    def test_none_safe(self):
+        # Ensure no crash on empty/None-like inputs
+        flagged, _ = _detect_hallucination_in_output("test", "")
+        assert flagged is False

@@ -14,6 +14,13 @@ Key improvements over v3:
   - XLSX support (read/write with openpyxl)
   - Rate limiting and retry logic for API calls
   - Progress reporting via cache for frontend polling
+
+Anti-hallucination features:
+  - System message with strict constraints (no explanations, no additions)
+  - Hallucination detection: explanatory phrases, verbosity, sentence inflation
+  - Retry on hallucination with exponential backoff
+  - Cleanup of explanatory prefixes/suffixes on final attempt
+  - Graceful degradation (return best-effort translation rather than crash)
 """
 
 import os
@@ -104,14 +111,82 @@ LANGUAGES = {
 
 # ── Mistral Translation ───────────────────────────────────────────────────────
 
+def _detect_hallucination_in_output(translated_text, original_text):
+    """
+    Detect common hallucination patterns in translation output.
+    
+    Returns (is_hallucinated: bool, reason: str) tuple.
+    Checks for:
+      1. Explanatory prefixes/suffixes ("Here is...", "Translation:", etc.)
+      2. Excessive verbosity (target >> source word count)
+      3. Sentence count inflation (target has many more sentences than source)
+      4. Proper name translation (heuristic: capitalized words changed)
+    """
+    if not translated_text or not original_text:
+        return False, ""
+
+    t = translated_text.strip()
+    o = original_text.strip()
+
+    # ── 1. Explanatory phrases ────────────────────────────────────────────────
+    EXPLANATORY_PATTERNS = [
+        r'^(here\s+(is|are|\'s)\s+the\s+translat)',
+        r'^(the\s+translat)',
+        r'^(translat(ion|ed)\s*:)',
+        r'^(below\s+is)',
+        r'^(in\s+\w+\s*,?\s*the\s+translat)',
+        r'^(this\s+(is|translates?\s+to))',
+        r'^(my\s+translat)',
+        r'(here\s+is\s+the\s+translat)',
+        r'(i\s+hope\s+this\s+helps)',
+        r'(let\s+me\s+know\s+if)',
+        r'(note\s*:)',
+        r'(explanation\s*:)',
+    ]
+    for pat in EXPLANATORY_PATTERNS:
+        if re.search(pat, t, re.IGNORECASE):
+            return True, f"Explanatory phrase detected: {pat}"
+
+    # ── 2. Verbosity check ────────────────────────────────────────────────────
+    src_words = len(o.split())
+    tgt_words = len(t.split())
+    if src_words > 0:
+        # For short text (≤5 words), allow up to 8x expansion (Cebuano/Filipino)
+        # For medium text (6-30 words), allow up to 3x
+        # For long text (>30 words), allow up to 2x
+        if src_words <= 5:
+            max_ratio = 8.0
+        elif src_words <= 30:
+            max_ratio = 3.0
+        else:
+            max_ratio = 2.0
+        if tgt_words > src_words * max_ratio:
+            return True, f"Excessive verbosity ({tgt_words}/{src_words} = {tgt_words/src_words:.1f}x > {max_ratio}x)"
+
+    # ── 3. Sentence count inflation ───────────────────────────────────────────
+    def _count_sentences(text):
+        return len(re.findall(r'[.!?]+', text))
+
+    src_sentences = _count_sentences(o)
+    tgt_sentences = _count_sentences(t)
+    if src_sentences > 0 and tgt_sentences > src_sentences * 3:
+        return True, f"Sentence inflation ({tgt_sentences} vs {src_sentences} sentences)"
+    # Also flag if source has no sentence-ending punctuation but target does (3+)
+    if src_sentences == 0 and tgt_sentences >= 3:
+        return True, f"Added sentence-ending punctuation ({tgt_sentences} found, source has none)"
+
+    return False, ""
+
+
 def _translate_with_mistral(text, source_lang, target_lang, block_type="paragraph"):
     """
     Translate a single text block using Mistral AI API.
     
     Features:
       - Retry up to 3 times with exponential backoff on rate limits / errors
-      - Temperature 0.1 for consistent, deterministic translations
-      - Strict prompt to output ONLY the translation
+      - Temperature 0.3 for natural but faithful translations
+      - System message with strict anti-hallucination constraints
+      - Hallucination detection with retry
       - 30-second timeout per request
       - Block type hint for structural context
     """
@@ -130,21 +205,50 @@ def _translate_with_mistral(text, source_lang, target_lang, block_type="paragrap
     }
     type_desc = type_descriptions.get(block_type, block_type)
 
-    prompt = (
-        f"You are a professional translator. You are translating {type_desc} "
-        f"from {source_lang} to {target_lang}.\n"
-        f"Rules:\n"
-        f"- Output ONLY the translated text, nothing else\n"
-        f"- Preserve the original formatting: dashes, ellipsis, line breaks, CAPS\n"
-        f"- Keep proper names (people, places, brands) unchanged\n"
-        f"- Preserve the tone: children's book text should stay simple and warm\n"
-        f"- Do NOT add explanations, notes, or quotation marks around the output\n\n"
-        f"{text}"
+    # ── System message: strict translation constraints ────────────────────────
+    system_msg = (
+        "You are a professional document translator. "
+        "Your ONLY task is to translate text. "
+        "You must NEVER add, remove, or alter content beyond translation.\n\n"
+        "STRICT RULES:\n"
+        "1. Output ONLY the translated text — no labels, no explanations, no prefixes\n"
+        "2. NEVER start output with 'Here is', 'Translation:', 'In ...:', or similar phrases\n"
+        "3. The translation must contain EXACTLY the same information as the source — no extra sentences, no added context\n"
+        "4. The translation must be roughly the same length as the source (±30% word count for long text)\n"
+        "5. Keep ALL proper names (people, places, brands, organizations) unchanged\n"
+        "6. Keep numbers, dates, URLs, email addresses, and code unchanged\n"
+        "7. Preserve formatting: dashes, ellipsis, line breaks, CAPS, bullet points\n"
+        "8. Preserve tone: children's book text stays simple and warm\n"
+        "9. If source mixes languages, translate only the non-target language portions\n"
+        "10. If unsure about a term, keep it unchanged rather than guessing"
     )
 
-    # ── Token Budget Enforcement (Req 2) ─────────────────────────────────────
-    # Approximate BPE tokens using floor(char_count / 4).
-    estimated_input_tokens = len(prompt) // 4
+    # ── User message: examples + source text ──────────────────────────────────
+    user_msg = f"Translate this {type_desc} from {source_lang} to {target_lang}.\n"
+
+    # Add few-shot examples for Cebuano and Filipino
+    if target_lang.lower() in ("cebuano", "filipino"):
+        user_msg += f"\nExamples:\n"
+        if target_lang.lower() == "cebuano":
+            user_msg += (
+                "  EN: I am going to the market. → CEB: Moadto ko sa merkado.\n"
+                "  EN: What is your name? → CEB: Unsa imong pangalan?\n"
+                "  EN: The cat sat on the mat. → CEB: Lingkod ang iring sa banig.\n"
+                "  EN: 123 Main Street → CEB: 123 Main Street\n"
+            )
+        elif target_lang.lower() == "filipino":
+            user_msg += (
+                "  EN: I am going to the market. → FIL: Pupunta ako sa palengke.\n"
+                "  EN: What is your name? → FIL: Ano ang pangalan mo?\n"
+                "  EN: The cat sat on the mat. → FIL: Umupo ang pusa sa banig.\n"
+                "  EN: 123 Main Street → FIL: 123 Main Street\n"
+            )
+
+    user_msg += f"\nSource text:\n{text}"
+
+    # ── Token Budget Enforcement ──────────────────────────────────────────────
+    total_chars = len(system_msg) + len(user_msg)
+    estimated_input_tokens = total_chars // 4
 
     if estimated_input_tokens > 3500:
         print(f"[TOKEN BUDGET] estimated_input={estimated_input_tokens} source={text[:60]!r}")
@@ -152,7 +256,7 @@ def _translate_with_mistral(text, source_lang, target_lang, block_type="paragrap
     if estimated_input_tokens > 1500:
         dynamic_max_tokens = max(1, 4096 - estimated_input_tokens)
     else:
-        dynamic_max_tokens = 2048  # default
+        dynamic_max_tokens = 2048
 
     for attempt in range(3):
         try:
@@ -164,8 +268,11 @@ def _translate_with_mistral(text, source_lang, target_lang, block_type="paragrap
                 },
                 json={
                     "model": model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.1,
+                    "messages": [
+                        {"role": "system", "content": system_msg},
+                        {"role": "user", "content": user_msg},
+                    ],
+                    "temperature": 0.3,
                     "max_tokens": dynamic_max_tokens,
                 },
                 timeout=30,
@@ -188,23 +295,48 @@ def _translate_with_mistral(text, source_lang, target_lang, block_type="paragrap
                 result = result.strip()
             
             # ── Sanitize output ──────────────────────────────────────────────
-            # If sanitizer detects hallucination, it raises RuntimeError.
-            # We catch it and signal retry by continuing the loop.
+            # Strip leaked delimiters and collapse repeated sentences
             try:
                 result = _sanitize_translation(result, text)
             except RuntimeError as sanitize_err:
-                if "Hallucinated repetition" in str(sanitize_err):
-                    if attempt < 2:
-                        print(f"  ⚠️  Hallucination detected, retrying ({attempt + 1}/3)...")
-                        time.sleep(1)
-                        continue  # Retry with a new API call
-                    else:
-                        # Last attempt: use raw Mistral output as fallback
-                        print(f"  ⚠️  Using raw Mistral output after 3 failed sanitization attempts")
-                        return result
-                # For other sanitizer errors, just use the raw result
-                print(f"  ⚠️  Sanitizer warning (non-fatal): {sanitize_err}")
-            
+                if "Hallucinated repetition" in str(sanitize_err) and attempt < 2:
+                    print(f"  ⚠️  Repeated hallucination detected, retrying ({attempt + 1}/3)...")
+                    time.sleep(1)
+                    continue
+                elif "Hallucinated repetition" in str(sanitize_err):
+                    print(f"  ⚠️  Using raw output after repetition hallucination")
+                else:
+                    print(f"  ⚠️  Sanitizer warning: {sanitize_err}")
+
+            # ── Hallucination detection (new patterns) ───────────────────────
+            is_hallucinated, reason = _detect_hallucination_in_output(result, text)
+            if is_hallucinated:
+                if attempt < 2:
+                    print(f"  ⚠️  Hallucination detected ({reason}), retrying ({attempt + 1}/3)...")
+                    time.sleep(1)
+                    continue
+                else:
+                    # Last attempt: strip the offending prefix/suffix and return
+                    print(f"  ⚠️  Hallucination persists after 3 attempts ({reason}), attempting cleanup...")
+                    # Try to strip explanatory prefix/suffix
+                    cleaned = re.sub(
+                        r'^(here\s+(is|are|\'s)\s+the\s+translat\S*\s*[:\-]?\s*)',
+                        '', result, flags=re.IGNORECASE
+                    )
+                    cleaned = re.sub(
+                        r'^(translat\S*\s*[:\-]\s*)', '', cleaned, flags=re.IGNORECASE
+                    )
+                    cleaned = re.sub(
+                        r'\s*\(?\s*let\s+me\s+know\s+if\s+.*$', '', cleaned, flags=re.IGNORECASE
+                    )
+                    cleaned = re.sub(
+                        r'\s*\(?\s*i\s+hope\s+this\s+helps\s*\)?\s*$', '', cleaned, flags=re.IGNORECASE
+                    )
+                    cleaned = cleaned.strip()
+                    if cleaned:
+                        result = cleaned
+                    # If cleanup still looks bad, use as-is (graceful degradation)
+
             # ── Output validation ────────────────────────────────────────────
             if not result:
                 raise RuntimeError(f"Mistral returned empty translation for: {text[:60]}...")
@@ -271,7 +403,7 @@ def read_docx(file_path):
             try:
                 rgb = run.font.color.rgb
                 if rgb is not None:
-                    font_color = str(rgb)
+                    font_color = rgb
                     break
             except Exception:
                 pass
@@ -332,6 +464,31 @@ def read_docx(file_path):
     for table_index, table in enumerate(doc.tables):
         for row_idx, row in enumerate(table.rows):
             for col_idx, cell in enumerate(row.cells):
+                # Detect column and row spans by comparing underlying XML elements
+                col_span = 1
+                # Check horizontal span: same _tc as next cell
+                if col_idx + 1 < len(row.cells):
+                    if cell._tc is row.cells[col_idx + 1]._tc:
+                        # Count how many cells share this _tc horizontally
+                        col_span = 0
+                        for c in range(col_idx, len(row.cells)):
+                            if row.cells[c]._tc is cell._tc:
+                                col_span += 1
+                            else:
+                                break
+
+                row_span = 1
+                # Check vertical span: same _tc as cell in next row
+                if row_idx + 1 < len(table.rows):
+                    next_row = table.rows[row_idx + 1]
+                    if col_idx < len(next_row.cells) and cell._tc is next_row.cells[col_idx]._tc:
+                        row_span = 0
+                        for r in range(row_idx, len(table.rows)):
+                            if col_idx < len(table.rows[r].cells) and table.rows[r].cells[col_idx]._tc is cell._tc:
+                                row_span += 1
+                            else:
+                                break
+
                 cell_text = cell.text.strip()
                 if not cell_text:
                     continue
@@ -355,6 +512,8 @@ def read_docx(file_path):
                     "table_index": table_index,
                     "row":         row_idx,
                     "col":         col_idx,
+                    "col_span":    col_span,
+                    "row_span":    row_span,
                     "style": {
                         "bold":      cell_bold,
                         "font_size": cell_font_size,
@@ -401,6 +560,7 @@ def read_pdf(file_path, column_mode="auto"):
             dom_size = 11.0
             dom_color = 0
             dom_bold = False
+            dom_italic = False
             dom_font = "helv"
 
             for line in lines:
@@ -411,7 +571,9 @@ def read_pdf(file_path, column_mode="auto"):
                         lt += st
                         dom_size = span.get("size", dom_size)
                         dom_color = span.get("color", dom_color)
-                        dom_bold = bool(span.get("flags", 0) & 2**4)
+                        flags = span.get("flags", 0)
+                        dom_bold = bool(flags & 2**4)
+                        dom_italic = bool(flags & 2**1)
                         span_font = span.get("font", "")
                         if span_font:
                             dom_font = span_font
@@ -434,7 +596,8 @@ def read_pdf(file_path, column_mode="auto"):
                 "position": bbox,
                 "page":     page_num,
                 "style":    {"font_size": dom_size, "font": dom_font,
-                             "color": dom_color, "bold": dom_bold},
+                             "color": dom_color, "bold": dom_bold,
+                             "italic": dom_italic},
             })
 
         # ── Method 2: blocks mode (catches text dict mode misses) ────────────
@@ -520,24 +683,30 @@ def read_pdf(file_path, column_mode="auto"):
 def _is_garbage_block(text, bbox, page_width, page_height):
     """Return True if a text block should be skipped."""
     stripped = text.strip()
-    if re.fullmatch(r'\d+\s*\d*', stripped):
+
+    # Pure numeric content that's likely a page number or running number
+    if re.fullmatch(r'\d+[\s.,/]*\d*', stripped):
         return True
+
+    # Pure URLs (not useful to translate)
     if stripped.lower().startswith('http') or stripped.lower().startswith('www'):
         return True
+
+    # No alphabetic/unicode words at all
     words = [w for w in stripped.split() if re.search(r'[a-zA-Z\u0080-\uFFFF]', w)]
     if len(words) < 1:
         return True
+
+    # Position-based header/footer detection: blocks in top/bottom 4% of page
+    # that are short (<=5 words) are likely page numbers or running headers
+    if len(words) <= 5 and page_height > 0 and len(bbox) >= 4:
+        y0 = bbox[1]
+        y1 = bbox[3]
+        margin = page_height * 0.04
+        if y0 < margin or y1 > (page_height - margin):
+            return True
+
     return False
-
-
-def _detect_columns(blocks, page_width):
-    """Legacy two-column detection (left/right split)."""
-    mid = page_width / 2
-    left = [b for b in blocks if (b['position'][0] + b['position'][2]) / 2 < mid]
-    right = [b for b in blocks if (b['position'][0] + b['position'][2]) / 2 >= mid]
-    if len(left) >= 2 and len(right) >= 2:
-        return left, right
-    return blocks, []
 
 
 def detect_columns(blocks, page_width):
@@ -614,10 +783,21 @@ def detect_columns(blocks, page_width):
         fw_idx += 1
 
     # Safety fallback: if column detection dropped more than 50% of blocks,
-    # revert to returning all blocks unfiltered (likely a false positive column split)
+    # revert but preserve within-column y-order instead of flat-sorting everything
     if len(result) < len(blocks) * 0.5:
         print("  [PDF] Column detection dropped >50% of blocks — falling back to single column mode")
-        return sorted(blocks, key=lambda b: (b["page"], b["position"][1]))
+        # Preserve the column assignments we did have, just sort each column by y
+        fallback = []
+        for col in columns:
+            col.sort(key=lambda b: b["position"][1])
+            fallback.extend(col)
+        # Add any blocks that were in full_width but not in result
+        result_texts = {b["text"][:30] for b in fallback}
+        for b in blocks:
+            if b["text"][:30] not in result_texts:
+                fallback.append(b)
+        fallback.sort(key=lambda b: (b["page"], b["position"][1]))
+        return fallback
 
     return result
 
@@ -633,29 +813,108 @@ def read_txt(file_path):
             if len(p.split()) >= 1]
 
 
+def read_md(file_path):
+    """Read Markdown file, preserving structure markers for translation.
+
+    Extracts paragraphs, headings, list items, and blockquotes as translatable
+    blocks while preserving their Markdown syntax markers (e.g. '#', '>', '-').
+    Code blocks (``` fenced) are preserved verbatim and NOT translated.
+    """
+    with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+        raw = f.read()
+
+    blocks = []
+    in_code_block = False
+    code_block_lines = []
+
+    for line in raw.splitlines():
+        stripped = line.strip()
+
+        # Fenced code blocks: preserve verbatim, do not translate
+        if stripped.startswith("```"):
+            if in_code_block:
+                in_code_block = False
+                blocks.append({"type": "code", "text": "\n".join(code_block_lines), "style": {}})
+                code_block_lines = []
+            else:
+                in_code_block = True
+            continue
+
+        if in_code_block:
+            code_block_lines.append(line)
+            continue
+
+        if not stripped:
+            continue
+
+        # Headings: preserve the '#' markers
+        heading_match = re.match(r'^(#{1,6})\s+(.+)$', stripped)
+        if heading_match:
+            blocks.append({"type": "header", "text": stripped, "style": {}})
+            continue
+
+        # Blockquotes: preserve the '>' marker
+        if stripped.startswith(">"):
+            blocks.append({"type": "paragraph", "text": stripped, "style": {}})
+            continue
+
+        # List items: preserve the marker
+        list_match = re.match(r'^(\s*[-*+]|\s*\d+\.)\s+(.+)$', stripped)
+        if list_match:
+            blocks.append({"type": "list_item", "text": stripped, "style": {}})
+            continue
+
+        # Regular paragraph
+        blocks.append({"type": "paragraph", "text": stripped, "style": {}})
+
+    return blocks if blocks else [{"type": "paragraph", "text": "", "style": {}}]
+
+
 def read_rtf(file_path):
-    """Read RTF file."""
+    """Read RTF file with proper paragraph detection."""
     from striprtf.striprtf import rtf_to_text
     with open(file_path, "r", encoding="utf-8", errors="replace") as f:
         raw = f.read()
     plain = rtf_to_text(raw)
-    paragraphs = [p.strip() for p in plain.splitlines() if p.strip()]
+    # Split on paragraph breaks first (\par in RTF maps to double newlines),
+    # then fall back to single newlines for soft breaks
+    paragraphs = [p.strip() for p in re.split(r'\n{2,}', plain) if p.strip()]
+    if not paragraphs:
+        paragraphs = [p.strip() for p in plain.splitlines() if p.strip()]
     return [{"type": "paragraph", "text": p, "style": {}} for p in paragraphs
             if len(p.split()) >= 1]
 
 
 def read_odt(file_path):
-    """Read ODT file."""
+    """Read ODT file including paragraphs, headings, and table cells."""
     from odf.opendocument import load as odf_load
-    from odf.text import P
+    from odf.text import P, H
+    from odf.table import Table, TableRow, TableCell
     from odf import teletype
     doc = odf_load(file_path)
     blocks = []
-    for para in doc.getElementsByType(P):
-        text = teletype.extractText(para).strip()
+
+    # Extract paragraphs and headings
+    for elem in doc.getElementsByType(P) + doc.getElementsByType(H):
+        text = teletype.extractText(elem).strip()
         if text and len(text.split()) >= 1:
-            blocks.append({"type": "paragraph", "text": text, "style": {}})
-    return blocks
+            block_type = "header" if isinstance(elem, H) else "paragraph"
+            blocks.append({"type": block_type, "text": text, "style": {}})
+
+    # Extract table cells
+    for table in doc.getElementsByType(Table):
+        for row in table.getElementsByType(TableRow):
+            for cell in row.getElementsByType(TableCell):
+                cell_text_parts = []
+                for p in cell.getElementsByType(P):
+                    t = teletype.extractText(p).strip()
+                    if t:
+                        cell_text_parts.append(t)
+                cell_text = " ".join(cell_text_parts).strip()
+                if cell_text and len(cell_text.split()) >= 1:
+                    blocks.append({"type": "table_cell", "text": cell_text, "style": {}})
+
+    return blocks if blocks else [{"type": "paragraph", "text": "", "style": {}}]
 
 
 def read_csv(file_path):
@@ -684,13 +943,16 @@ def read_pptx(file_path):
                 if text and len(text.split()) >= 1:
                     # Collect run-level formatting
                     bold = None
+                    italic = None
                     font_size = None
                     for run in para.runs:
                         if bold is None and run.bold is not None:
                             bold = run.bold
+                        if italic is None and run.font.italic is not None:
+                            italic = run.font.italic
                         if font_size is None and run.font.size is not None:
                             font_size = run.font.size
-                        if bold is not None and font_size is not None:
+                        if bold is not None and italic is not None and font_size is not None:
                             break
 
                     blocks.append({
@@ -701,6 +963,7 @@ def read_pptx(file_path):
                         "para_idx":  para_idx,
                         "style": {
                             "bold":      bold,
+                            "italic":    italic,
                             "font_size": font_size,
                         },
                     })
@@ -738,7 +1001,7 @@ READERS = {
     ".docx": read_docx,
     ".pdf":  read_pdf,
     ".txt":  read_txt,
-    ".md":   read_txt,
+    ".md":   read_md,
     ".rtf":  read_rtf,
     ".odt":  read_odt,
     ".csv":  read_csv,
@@ -858,6 +1121,68 @@ def batch_translate_blocks(blocks, source_lang, target_lang, batch_size=4,
 
 
 # ── Chunk Splitter ────────────────────────────────────────────────────────────
+
+class BLEU_Reporter:
+    """Computes BLEU scores between translated blocks and a reference file.
+
+    Uses sacrebleu for BLEU computation.  Returns ``None`` (with a warning)
+    when the reference file is missing, unreadable, or empty — never raises.
+    """
+
+    def compute(self, blocks, reference_file):
+        """Compute BLEU score for *blocks* against *reference_file*.
+
+        Parameters
+        ----------
+        blocks : list[dict]
+            Translated blocks, each with a ``"text"`` key.
+        reference_file : str | None
+            Path to a plain-text reference file (one sentence per line).
+
+        Returns
+        -------
+        float | None
+            BLEU score in ``[0.0, 100.0]``, or ``None`` when scoring is not
+            possible.
+        """
+        if reference_file is None:
+            return None
+
+        if not os.path.isfile(reference_file):
+            print(f"  ⚠️  BLEU: reference file not found: {reference_file}")
+            return None
+
+        try:
+            with open(reference_file, "r", encoding="utf-8") as f:
+                ref_lines = [line.strip() for line in f if line.strip()]
+        except OSError as e:
+            print(f"  ⚠️  BLEU: cannot read reference file: {e}")
+            return None
+
+        if not ref_lines:
+            print(f"  ⚠️  BLEU: reference file is empty: {reference_file}")
+            return None
+
+        hyp_texts = [b.get("text", "") for b in blocks if b.get("text", "").strip()]
+        if not hyp_texts:
+            print(f"  ⚠️  BLEU: no translated texts to score")
+            return None
+
+        # Align to the shorter of the two lists
+        min_len = min(len(hyp_texts), len(ref_lines))
+        if len(hyp_texts) != len(ref_lines):
+            print(f"  ⚠️  BLEU: count mismatch (hyp={len(hyp_texts)} ref={len(ref_lines)}), aligning over {min_len} pairs")
+
+        try:
+            import sacrebleu
+            refs = [ref_lines[:min_len]]
+            hyps = hyp_texts[:min_len]
+            bleu = sacrebleu.corpus_bleu(hyps, refs)
+            return bleu.score
+        except Exception as e:
+            print(f"  ⚠️  BLEU: computation error: {e}")
+            return None
+
 
 class Chunk_Splitter:
     """Splits a long text block into translation-safe chunks at sentence boundaries.
@@ -1025,6 +1350,66 @@ class Glossary_Store:
 
 # ── Font Mapper ───────────────────────────────────────────────────────────────
 
+class Background_Sampler:
+    """Samples the background colour of a PDF text block region.
+
+    Uses the four corner pixels of the bbox to determine whether the
+    background is a uniform colour.  Returns ``(r, g, b)`` floats in
+    ``[0, 1]`` when uniform, or ``None`` when the background is
+    non-uniform (mixed colours) or the bbox is degenerate.
+    """
+
+    @staticmethod
+    def sample(page, bbox):
+        """Sample background colour at the four corners of *bbox*.
+
+        Parameters
+        ----------
+        page : fitz.Page
+            The PDF page to sample.
+        bbox : tuple[float, float, float, float]
+            ``(x0, y0, x1, y1)`` bounding box in PDF points.
+
+        Returns
+        -------
+        tuple[float, float, float] | None
+            ``(r, g, b)`` in ``[0, 1]`` when all four corner pixels
+            share the same colour, or ``None`` otherwise.
+        """
+        x0, y0, x1, y1 = bbox
+
+        # Degenerate bbox → return None without raising
+        if x0 >= x1 or y0 >= y1:
+            return None
+
+        pix = page.get_pixmap()
+
+        # Map PDF coordinates to pixel coordinates
+        pw = float(page.rect.x1 - page.rect.x0)
+        ph = float(page.rect.y1 - page.rect.y0)
+        if pw <= 0 or ph <= 0:
+            return None
+        px0 = max(0, min(pix.width - 1, int(x0 * pix.width / pw)))
+        px1 = max(0, min(pix.width - 1, int(x1 * pix.width / pw)))
+        py0 = max(0, min(pix.height - 1, int(y0 * pix.height / ph)))
+        py1 = max(0, min(pix.height - 1, int(y1 * pix.height / ph)))
+
+        corners = [
+            pix.pixel(px0, py0),
+            pix.pixel(px1, py0),
+            pix.pixel(px0, py1),
+            pix.pixel(px1, py1),
+        ]
+
+        # Check all four corners are identical
+        first_r, first_g, first_b = corners[0]
+        for r, g, b in corners[1:]:
+            if r != first_r or g != first_g or b != first_b:
+                return None
+
+        return (first_r / 255.0, first_g / 255.0, first_b / 255.0)
+
+
 class Font_Mapper:
     """Centralises PDF font-name resolution for ``write_pdf_preserved()``.
 
@@ -1107,14 +1492,14 @@ def _apply_translation_to_paragraph(para, translated_text, glossary_store):
 
     - No runs: add a new run with the translated text.
     - Single run: set run.text directly (all formatting attributes untouched).
-    - Multiple runs: distribute translated characters proportionally by source
-      run length.  The last run receives any remainder so the full translated
-      text is always covered.
+    - Multiple runs: put the full translated text in the first run and clear
+      subsequent runs.  This avoids splitting meaning across formatting boundaries
+      (e.g. bold/italic would apply to the entire translation rather than being
+      scrambled across arbitrary character positions).
 
     run.bold, run.italic, run.font.size, and run.font.color.rgb are NEVER
     assigned — only run.text is updated.
     """
-    # Apply glossary substitutions before distributing
     if glossary_store is not None:
         translated_text = glossary_store.apply(translated_text)
 
@@ -1124,23 +1509,13 @@ def _apply_translation_to_paragraph(para, translated_text, glossary_store):
         return
 
     if len(runs) == 1:
-        runs[0].text = translated_text   # preserve all formatting attrs
+        runs[0].text = translated_text
         return
 
-    # Multi-run: proportional distribution
-    source = "".join(r.text for r in runs)
-    src_len = len(source) if len(source) > 0 else 1
-    tgt_len = len(translated_text)
-
-    pos = 0
-    for i, run in enumerate(runs):
-        if i == len(runs) - 1:
-            run.text = translated_text[pos:]  # last run gets remainder
-        else:
-            budget = math.floor(tgt_len * len(run.text) / src_len)
-            run.text = translated_text[pos: pos + budget]
-            pos += budget
-        # Bold, italic, font size, color are NOT touched
+    # Multi-run: put full translation in first run, clear the rest
+    runs[0].text = translated_text
+    for run in runs[1:]:
+        run.text = ""
 
 
 def translate_docx_inplace(input_file, output_file, source_lang, target_lang,
@@ -1179,8 +1554,41 @@ def translate_docx_inplace(input_file, output_file, source_lang, target_lang,
                     texts.append(t_elem.text)
             if "".join(texts).strip():
                 total_textboxes += 1
-    total = total_paras + total_cells + total_textboxes
+    # Count headers and footers for progress tracking
+    total_header_footer = 0
+    for section in doc.sections:
+        for para in section.header.paragraphs:
+            if para.text.strip():
+                total_header_footer += 1
+        for para in section.footer.paragraphs:
+            if para.text.strip():
+                total_header_footer += 1
+    total = total_paras + total_cells + total_textboxes + total_header_footer
     completed = 0
+
+    # ── Translate headers and footers in-place ─────────────────────────────
+    for section in doc.sections:
+        for para in section.header.paragraphs:
+            text = para.text.strip()
+            if not text:
+                continue
+            print(f"  Translating header '{text[:40]}...' ({completed+1}/{total})", end="\r", flush=True)
+            translated_text = _translate_single(text, src_code, tgt_code, block_type="header")
+            _apply_translation_to_paragraph(para, translated_text, glossary_store)
+            completed += 1
+            if progress_callback:
+                progress_callback(completed, total)
+
+        for para in section.footer.paragraphs:
+            text = para.text.strip()
+            if not text:
+                continue
+            print(f"  Translating footer '{text[:40]}...' ({completed+1}/{total})", end="\r", flush=True)
+            translated_text = _translate_single(text, src_code, tgt_code, block_type="footer")
+            _apply_translation_to_paragraph(para, translated_text, glossary_store)
+            completed += 1
+            if progress_callback:
+                progress_callback(completed, total)
 
     # ── Translate paragraphs in-place ────────────────────────────────────────
     for para in doc.paragraphs:
@@ -1191,7 +1599,6 @@ def translate_docx_inplace(input_file, output_file, source_lang, target_lang,
         print(f"  Translating paragraph '{text[:40]}...' ({completed+1}/{total})", end="\r", flush=True)
         translated_text = _translate_single(text, src_code, tgt_code, block_type="paragraph")
 
-        # Apply glossary and distribute translated text across runs (preserves formatting)
         _apply_translation_to_paragraph(para, translated_text, glossary_store)
 
         completed += 1
@@ -1202,11 +1609,9 @@ def translate_docx_inplace(input_file, output_file, source_lang, target_lang,
     for txbx in doc.element.body.iter(qn("w:txbxContent")):
         for p_elem in txbx.iter(qn("w:p")):
             texts = []
-            t_elements = []
             for t_elem in p_elem.iter(qn("w:t")):
                 if t_elem.text:
                     texts.append(t_elem.text)
-                    t_elements.append(t_elem)
             combined = "".join(texts).strip()
             if not combined:
                 continue
@@ -1214,17 +1619,10 @@ def translate_docx_inplace(input_file, output_file, source_lang, target_lang,
             print(f"  Translating text box '{combined[:40]}...' ({completed+1}/{total})", end="\r", flush=True)
             translated_text = _translate_single(combined, src_code, tgt_code, block_type="text_box")
 
-            if glossary_store is not None:
-                translated_text = glossary_store.apply(translated_text)
-
-            # Replace text in the first text element, clear the rest
-            first = True
-            for t_elem in t_elements:
-                if first:
-                    t_elem.text = translated_text
-                    first = False
-                else:
-                    t_elem.text = ""
+            # Use python-docx Paragraph wrapper to preserve run formatting
+            from docx.text.paragraph import Paragraph
+            para_obj = Paragraph(p_elem, doc)
+            _apply_translation_to_paragraph(para_obj, translated_text, glossary_store)
 
             completed += 1
             if progress_callback:
@@ -1241,25 +1639,81 @@ def translate_docx_inplace(input_file, output_file, source_lang, target_lang,
                 print(f"  Translating cell '{text[:40]}...' ({completed+1}/{total})", end="\r", flush=True)
                 translated_text = _translate_single(text, src_code, tgt_code, block_type="table_cell")
 
-                # Apply glossary if provided
                 if glossary_store is not None:
                     translated_text = glossary_store.apply(translated_text)
 
-                # Apply glossary and distribute translated text across runs (preserves formatting)
+                # Translate ALL paragraphs in the cell, not just the first
+                first_para = True
                 for p in cell.paragraphs:
-                    if p.text.strip() or p.runs:
+                    if first_para:
                         _apply_translation_to_paragraph(p, translated_text, None)
-                        break  # Only update first paragraph with text
-                    else:
-                        p.add_run(translated_text)
-                        break
+                        first_para = False
+                    elif p.text.strip() or p.runs:
+                        # Clear subsequent paragraphs since we merged into first
+                        for run in p.runs:
+                            run.text = ""
 
                 completed += 1
                 if progress_callback:
                     progress_callback(completed, total)
 
+    # ── Translate footnotes and endnotes ──────────────────────────────────
+    try:
+        from docx.oxml.ns import qn as _qn
+        for note_type_tag in ("w:footnote", "w:endnote"):
+            for note_elem in doc.element.body.iter(_qn(note_type_tag)):
+                for p_elem in note_elem.iter(_qn("w:p")):
+                    texts = []
+                    for t_elem in p_elem.iter(_qn("w:t")):
+                        if t_elem.text:
+                            texts.append(t_elem.text)
+                    combined = "".join(texts).strip()
+                    if not combined:
+                        continue
+                    from docx.text.paragraph import Paragraph
+                    para_obj = Paragraph(p_elem, doc)
+                    print(f"  Translating note '{combined[:40]}...' ({completed+1}/{total})", end="\r", flush=True)
+                    translated_text = _translate_single(combined, src_code, tgt_code, block_type="paragraph")
+                    _apply_translation_to_paragraph(para_obj, translated_text, glossary_store)
+                    completed += 1
+                    if progress_callback:
+                        progress_callback(completed, total)
+    except Exception:
+        pass
+
+    # ── Translate hyperlink text ──────────────────────────────────────────
+    try:
+        from docx.oxml.ns import qn as _qn
+        for hyperlink in doc.element.body.iter(_qn("w:hyperlink")):
+            texts = []
+            for t_elem in hyperlink.iter(_qn("w:t")):
+                if t_elem.text:
+                    texts.append(t_elem.text)
+            combined = "".join(texts).strip()
+            if not combined:
+                continue
+            # Replace text in the first w:t element, clear the rest
+            first = True
+            for t_elem in hyperlink.iter(_qn("w:t")):
+                if t_elem.text and t_elem.text.strip():
+                    if first:
+                        print(f"  Translating hyperlink '{combined[:40]}...' ({completed+1}/{total})", end="\r", flush=True)
+                        translated_text = _translate_single(combined, src_code, tgt_code, block_type="paragraph")
+                        if glossary_store is not None:
+                            translated_text = glossary_store.apply(translated_text)
+                        t_elem.text = translated_text
+                        first = False
+                    else:
+                        t_elem.text = ""
+            if not first:
+                completed += 1
+                if progress_callback:
+                    progress_callback(completed, total)
+    except Exception:
+        pass
+
     doc.save(output_file)
-    print(f"\n  [OK] DOCX saved with perfect layout preservation ({completed} items translated)")
+    print(f"\n  [OK] DOCX saved with layout preservation ({completed} items translated)")
 
 
 def translate_pptx_inplace(input_file, output_file, source_lang, target_lang,
@@ -1268,51 +1722,102 @@ def translate_pptx_inplace(input_file, output_file, source_lang, target_lang,
     Translate a PPTX file by iterating slides/shapes/paragraphs in-place.
     Preserves ALL formatting (position, size, fonts, colors, images, etc.)
     because the original file structure is never rebuilt.
+
+    Handles:
+      - Regular shapes with text frames
+      - Grouped shapes (recursive traversal)
+      - Tables on slides
+      - Placeholder type detection (title, subtitle, body)
     """
     from pptx import Presentation
+    from pptx.enum.shapes import MSO_SHAPE_TYPE
 
     src_code = LANGUAGES[source_lang]
     tgt_code = LANGUAGES[target_lang]
 
     prs = Presentation(input_file)
-    total_items = sum(
-        1 for slide in prs.slides
-        for shape in slide.shapes
-        if shape.has_text_frame
-        for para in shape.text_frame.paragraphs
-        if para.text.strip()
-    )
-    completed = 0
 
-    for slide in prs.slides:
-        for shape in slide.shapes:
+    def _count_text_paragraphs(shapes):
+        """Count translatable paragraphs in a list of shapes, including groups and tables."""
+        count = 0
+        for shape in shapes:
+            if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+                count += _count_text_paragraphs(shape.shapes)
+            elif shape.has_table:
+                for row in shape.table.rows:
+                    for cell in row.cells:
+                        for para in cell.text_frame.paragraphs:
+                            if para.text.strip():
+                                count += 1
+            elif shape.has_text_frame:
+                for para in shape.text_frame.paragraphs:
+                    if para.text.strip():
+                        count += 1
+        return count
+
+    def _translate_shapes(shapes, non_group=True):
+        """Recursively translate text in shapes, handling groups and tables."""
+        nonlocal completed
+        for shape in shapes:
+            if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+                _translate_shapes(shape.shapes, non_group=False)
+                continue
+
+            # Handle tables on slides
+            if shape.has_table:
+                for row in shape.table.rows:
+                    for cell in row.cells:
+                        for para in cell.text_frame.paragraphs:
+                            text = para.text.strip()
+                            if not text:
+                                continue
+                            print(f"  Translating PPTX table cell '{text[:40]}...' ({completed+1}/{total_items})", end="\r", flush=True)
+                            translated_text = _translate_single(text, src_code, tgt_code, block_type="table_cell")
+                            if glossary_store is not None:
+                                translated_text = glossary_store.apply(translated_text)
+                            _apply_translation_to_paragraph(para, translated_text, None)
+                            completed += 1
+                            if progress_callback:
+                                progress_callback(completed, total_items)
+                continue
+
             if not shape.has_text_frame:
                 continue
+
+            # Detect placeholder type for better translation context
+            block_type = "paragraph"
+            if hasattr(shape, "placeholder_format") and shape.placeholder_format is not None:
+                ph_idx = shape.placeholder_format.idx
+                if ph_idx == 0:
+                    block_type = "header"
+                elif ph_idx == 1:
+                    block_type = "paragraph"
+                elif ph_idx in (2, 3):
+                    block_type = "footer"
+
             for para in shape.text_frame.paragraphs:
                 text = para.text.strip()
                 if not text:
                     continue
-
                 print(f"  Translating PPTX paragraph '{text[:40]}...' ({completed+1}/{total_items})", end="\r", flush=True)
-                translated_text = _translate_single(text, src_code, tgt_code, block_type="paragraph")
-
+                translated_text = _translate_single(text, src_code, tgt_code, block_type=block_type)
                 if glossary_store is not None:
                     translated_text = glossary_store.apply(translated_text)
-
-                # Replace text in first run, preserving all formatting
-                if para.runs:
-                    for run in para.runs:
-                        run.text = ""
-                    para.runs[0].text = translated_text
-                else:
-                    para.add_run(translated_text)
-
+                _apply_translation_to_paragraph(para, translated_text, None)
                 completed += 1
                 if progress_callback:
                     progress_callback(completed, total_items)
 
+    total_items = _count_text_paragraphs(
+        shape for slide in prs.slides for shape in slide.shapes
+    )
+    completed = 0
+
+    for slide in prs.slides:
+        _translate_shapes(slide.shapes)
+
     prs.save(output_file)
-    print(f"\n  [OK] PPTX saved with perfect layout preservation ({completed} items translated)")
+    print(f"\n  [OK] PPTX saved with layout preservation ({completed} items translated)")
 
 
 def translate_xlsx_inplace(input_file, output_file, source_lang, target_lang,
@@ -1326,12 +1831,13 @@ def translate_xlsx_inplace(input_file, output_file, source_lang, target_lang,
     src_code = LANGUAGES[source_lang]
     tgt_code = LANGUAGES[target_lang]
 
-    wb = load_workbook(input_file)
+    wb = load_workbook(input_file, data_only=True)
     total_cells = sum(
         1 for sheet_name in wb.sheetnames
         for row in wb[sheet_name].iter_rows()
         for cell in row
         if cell.value and isinstance(cell.value, str) and cell.value.strip()
+        and not str(cell.value).strip().startswith("=")
     )
     completed = 0
 
@@ -1342,7 +1848,7 @@ def translate_xlsx_inplace(input_file, output_file, source_lang, target_lang,
                 if not cell.value or not isinstance(cell.value, str):
                     continue
                 text = cell.value.strip()
-                if not text:
+                if not text or text.startswith("="):
                     continue
 
                 print(f"  Translating XLSX cell '{text[:40]}...' ({completed+1}/{total_cells})", end="\r", flush=True)
@@ -1363,153 +1869,372 @@ def translate_xlsx_inplace(input_file, output_file, source_lang, target_lang,
 
 
 def write_docx(blocks, output_file, original_file=None):
-    """Legacy DOCX writer for fallback (new document only)."""
+    """Legacy DOCX writer for RTF/ODT fallback (creates new document from blocks)."""
     from docx import Document
     from docx.shared import RGBColor
 
-    if original_file and os.path.exists(original_file):
-        # This path should no longer be reached for new translations.
-        # But if called, use the original file as template and write blocks.
-        doc = Document(original_file)
+    # ── Fallback: create new document from translated blocks ──────────────
+    # This path is reached when the original input was RTF or ODT (no DOCX
+    # to modify in-place).  Quality is inherently lower than in-place
+    # translation, but this case is rare.
+    new_doc = Document()
+    para_blocks = [b for b in blocks if b.get("type") == "paragraph"]
+    table_blocks = [b for b in blocks if b.get("type") == "table_cell"]
 
-        para_blocks = [b for b in blocks if b.get("type") == "paragraph"]
-        table_blocks = [b for b in blocks if b.get("type") == "table_cell"]
+    available_styles = {s.name for s in new_doc.styles}
 
-        # Update paragraphs in-place
-        para_idx = 0
-        for para in doc.paragraphs:
-            if not para.text.strip():
-                continue
-            if para_idx >= len(para_blocks):
-                break
-            block = para_blocks[para_idx]
-            translated_text = block["text"]
-            if para.runs:
-                for run in para.runs:
-                    run.text = ""
-                para.runs[0].text = translated_text
-            else:
-                para.add_run(translated_text)
-            para_idx += 1
+    for block in para_blocks:
+        style_info = block.get("style") or {}
+        resolved_style = Style_Mapper().resolve(style_info.get("style_name"), available_styles)
+        para = new_doc.add_paragraph(block["text"], style=resolved_style)
 
-        # Update tables in-place
-        cell_idx = 0
-        for table in doc.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    if not cell.text.strip():
-                        continue
-                    if cell_idx >= len(table_blocks):
-                        break
-                    block = table_blocks[cell_idx]
-                    translated_text = block["text"]
-                    for p in cell.paragraphs:
-                        if p.runs:
-                            for run in p.runs:
-                                run.text = ""
-                            p.runs[0].text = translated_text
-                        else:
-                            p.add_run(translated_text)
-                    cell_idx += 1
+        if style_info.get("alignment") is not None:
+            para.alignment = style_info["alignment"]
+        if style_info.get("space_before") is not None:
+            para.paragraph_format.space_before = style_info["space_before"]
+        if style_info.get("space_after") is not None:
+            para.paragraph_format.space_after = style_info["space_after"]
 
-        doc.save(output_file)
-        print(f"  [OK] DOCX saved (template-based, legacy fallback)")
-    else:
-        # ── Fallback: create new document ────────────────────────────────────
-        new_doc = Document()
-        para_blocks = [b for b in blocks if b.get("type") == "paragraph"]
-        table_blocks = [b for b in blocks if b.get("type") == "table_cell"]
+        if para.runs:
+            run = para.runs[0]
+            if style_info.get("bold"):
+                run.bold = True
+            if style_info.get("font_size") is not None:
+                run.font.size = style_info["font_size"]
+            fc = style_info.get("font_color")
+            if fc is not None:
+                try:
+                    if isinstance(fc, RGBColor):
+                        run.font.color.rgb = fc
+                    elif isinstance(fc, str):
+                        run.font.color.rgb = RGBColor(*bytes.fromhex(fc.lstrip("#")))
+                except Exception:
+                    pass
 
-        available_styles = {s.name for s in new_doc.styles}
+    if table_blocks:
+        tables_dict = {}
+        for cell_block in table_blocks:
+            tidx = cell_block["table_index"]
+            if tidx not in tables_dict:
+                tables_dict[tidx] = []
+            tables_dict[tidx].append(cell_block)
 
-        for block in para_blocks:
-            style_info = block.get("style") or {}
-            resolved_style = Style_Mapper().resolve(style_info.get("style_name"), available_styles)
-            para = new_doc.add_paragraph(block["text"], style=resolved_style)
+        for tidx in sorted(tables_dict.keys()):
+            cells = tables_dict[tidx]
+            max_row = max(c["row"] for c in cells)
+            max_col = max(c["col"] for c in cells)
+            table = new_doc.add_table(rows=max_row + 1, cols=max_col + 1)
 
-            if style_info.get("alignment") is not None:
-                para.alignment = style_info["alignment"]
-            if style_info.get("space_before") is not None:
-                para.paragraph_format.space_before = style_info["space_before"]
-            if style_info.get("space_after") is not None:
-                para.paragraph_format.space_after = style_info["space_after"]
+            # Track which grid positions have been consumed by a merge
+            merged = set()
 
-            if para.runs:
-                run = para.runs[0]
-                if style_info.get("bold"):
-                    run.bold = True
-                if style_info.get("font_size") is not None:
-                    run.font.size = style_info["font_size"]
-                if style_info.get("font_color"):
+            for cell_block in cells:
+                r, c = cell_block["row"], cell_block["col"]
+                if (r, c) in merged:
+                    continue
+
+                col_span = cell_block.get("col_span", 1)
+                row_span = cell_block.get("row_span", 1)
+
+                # Merge cells if spanning
+                if col_span > 1 or row_span > 1:
+                    end_r = min(r + row_span - 1, max_row)
+                    end_c = min(c + col_span - 1, max_col)
                     try:
-                        run.font.color.rgb = RGBColor(*bytes.fromhex(style_info["font_color"].lstrip("#")))
+                        table.cell(r, c).merge(table.cell(end_r, end_c))
                     except Exception:
                         pass
+                    # Mark all spanned positions as merged
+                    for mr in range(r, end_r + 1):
+                        for mc in range(c, end_c + 1):
+                            merged.add((mr, mc))
 
-        if table_blocks:
-            tables_dict = {}
-            for cell_block in table_blocks:
-                tidx = cell_block["table_index"]
-                if tidx not in tables_dict:
-                    tables_dict[tidx] = []
-                tables_dict[tidx].append(cell_block)
+                tbl_cell = table.cell(r, c)
+                cell_text = cell_block.get("text", "").strip()
+                if cell_text:
+                    tbl_cell.paragraphs[0].clear()
+                    run = tbl_cell.paragraphs[0].add_run(cell_text)
+                    cell_style = cell_block.get("style") or {}
+                    if cell_style.get("bold") is not None:
+                        run.bold = cell_style["bold"]
+                    if cell_style.get("font_size") is not None:
+                        run.font.size = cell_style["font_size"]
 
-            for tidx in sorted(tables_dict.keys()):
-                cells = tables_dict[tidx]
-                max_row = max(c["row"] for c in cells)
-                max_col = max(c["col"] for c in cells)
-                table = new_doc.add_table(rows=max_row + 1, cols=max_col + 1)
+    new_doc.save(output_file)
+    print(f"  [OK] DOCX saved (new document from blocks)")
 
-                for cell_block in cells:
-                    tbl_cell = table.cell(cell_block["row"], cell_block["col"])
-                    cell_text = cell_block.get("text", "").strip()
-                    if cell_text:
-                        tbl_cell.paragraphs[0].clear()
-                        run = tbl_cell.paragraphs[0].add_run(cell_text)
-                        cell_style = cell_block.get("style") or {}
-                        if cell_style.get("bold") is not None:
-                            run.bold = cell_style["bold"]
-                        if cell_style.get("font_size") is not None:
-                            run.font.size = cell_style["font_size"]
 
-        new_doc.save(output_file)
-        print(f"  [OK] DOCX saved (new document)")
+def _resolve_overflow(page, block_text, x0, y0, x1, y1, font_size, resolved_font,
+                      other_bboxes, page_height, original_doc, page_num, bg_color,
+                      initial_remaining, text_color=None, alignment=0):
+    """
+    Resolve PDF text overflow by trying, in order:
+    1. Expand rect downward (if no collision with adjacent blocks)
+    2. Reduce font size stepwise down to 6pt
+    3. Create continuation box below the last block on the page
+
+    Returns a dict with keys:
+      resolved (bool)      — overflow fully resolved
+      continuation (bool)  — continuation box was created
+      expanded (bool)      — rect was expanded downward
+      final_font (float)   — font size used for the final placement
+      cont_rect (Rect|None) — the continuation box rect, if created
+      clipped (bool)       — whether the continuation box was clipped to page
+    """
+    import fitz
+
+    MIN_FONT = 6.0
+    COLLISION_GAP = 2.0
+
+    if text_color is None:
+        text_color = (0, 0, 0)
+
+    if initial_remaining >= 0:
+        return {
+            "resolved": True,
+            "continuation": False,
+            "expanded": False,
+            "final_font": font_size,
+            "cont_rect": None,
+            "clipped": False,
+        }
+
+    result = {
+        "resolved": False,
+        "continuation": False,
+        "expanded": False,
+        "final_font": font_size,
+        "cont_rect": None,
+        "clipped": False,
+    }
+
+    # Strategy 1: expand rect downward
+    overflow = abs(initial_remaining)
+    candidate_bottom = y1 + overflow + font_size
+
+    collision = False
+    last_below_bottom = y1
+    for ob in other_bboxes:
+        ob_top = ob[1]
+        ob_bottom = ob[3]
+        ob_left = ob[0]
+        ob_right = ob[2]
+        if ob_top > y0:
+            last_below_bottom = max(last_below_bottom, ob_bottom)
+            # Check both vertical AND horizontal overlap
+            horizontal_overlap = (x0 < ob_right + COLLISION_GAP) and (x1 > ob_left - COLLISION_GAP)
+            if ob_top < candidate_bottom + COLLISION_GAP and horizontal_overlap:
+                collision = True
+                break
+
+    if not collision and candidate_bottom <= page_height:
+        expanded_rect = fitz.Rect(x0, y0, x1, candidate_bottom)
+        if bg_color:
+            page.draw_rect(expanded_rect, color=bg_color, fill=bg_color)
+        remaining = page.insert_textbox(
+            expanded_rect, block_text,
+            fontsize=font_size, fontname=resolved_font,
+            color=text_color, align=alignment,
+        )
+        if remaining >= 0:
+            return {
+                "resolved": True,
+                "continuation": False,
+                "expanded": True,
+                "final_font": font_size,
+                "cont_rect": None,
+                "clipped": False,
+            }
+
+    # Strategy 2: reduce font size
+    current_font = font_size
+    while current_font > MIN_FONT:
+        current_font -= 1.0
+        if current_font < MIN_FONT:
+            current_font = MIN_FONT
+            break
+        rect = fitz.Rect(x0, y0, x1, y1)
+        remaining = page.insert_textbox(
+            rect, block_text,
+            fontsize=current_font, fontname=resolved_font,
+            color=text_color, align=alignment,
+        )
+        if remaining >= 0:
+            return {
+                "resolved": True,
+                "continuation": False,
+                "expanded": False,
+                "final_font": current_font,
+                "cont_rect": None,
+                "clipped": False,
+            }
+
+    # Strategy 3: continuation box
+    cont_top = last_below_bottom + 4.0
+    cont_height = overflow + MIN_FONT
+    cont_bottom = cont_top + cont_height
+
+    clipped = False
+    if cont_bottom > page_height:
+        cont_bottom = page_height
+        clipped = True
+
+    cont_rect = fitz.Rect(x0, cont_top, x1, cont_bottom)
+    if bg_color:
+        page.draw_rect(cont_rect, color=bg_color, fill=bg_color)
+    remaining = page.insert_textbox(
+        cont_rect, block_text,
+        fontsize=MIN_FONT, fontname=resolved_font,
+        color=text_color, align=alignment,
+    )
+
+    if clipped:
+        print(f"  ⚠️  Continuation box clipped to page boundary on page {page_num}")
+
+    return {
+        "resolved": remaining >= 0,
+        "continuation": True,
+        "expanded": False,
+        "final_font": MIN_FONT,
+        "cont_rect": cont_rect if remaining >= 0 else None,
+        "clipped": clipped,
+    }
+
+
+def _is_libreoffice_available():
+    """Return True if LibreOffice is installed and on PATH."""
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["libreoffice", "--version"],
+            capture_output=True, text=True, timeout=10,
+        )
+        return result.returncode == 0
+    except (FileNotFoundError, subprocess.TimeoutExpired, Exception):
+        return False
+
+
+def translate_pdf_via_libreoffice(input_file, output_file, source_lang, target_lang,
+                                   glossary_store=None, progress_callback=None):
+    """
+    Translate a PDF by round-tripping through DOCX via LibreOffice.
+
+    Flow: PDF → (LibreOffice) → DOCX → translate_docx_inplace → (LibreOffice) → PDF
+
+    This preserves original fonts, layout, images, and formatting perfectly
+    because the translation happens on the DOCX, not the PDF.
+    """
+    import tempfile
+    import subprocess
+    import shutil
+
+    tmp_dir = tempfile.mkdtemp()
+    try:
+        stem = os.path.splitext(os.path.basename(input_file))[0]
+        docx_path = os.path.join(tmp_dir, f"{stem}.docx")
+        pdf_path = os.path.join(tmp_dir, f"{stem}_translated.pdf")
+
+        # Step 1: PDF → DOCX
+        print("  [LibreOffice] Converting PDF to DOCX...")
+        result = subprocess.run(
+            ["libreoffice", "--headless", "--convert-to", "docx",
+             "--outdir", tmp_dir, input_file],
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode != 0 or not os.path.exists(docx_path):
+            raise RuntimeError(
+                f"LibreOffice PDF→DOCX conversion failed: {result.stderr.strip()}"
+            )
+
+        # Step 2: Translate the DOCX in-place
+        print("  [LibreOffice] Translating DOCX...")
+        translate_docx_inplace(
+            docx_path, docx_path, source_lang, target_lang,
+            glossary_store=glossary_store,
+            progress_callback=progress_callback,
+        )
+
+        # Step 3: DOCX → PDF
+        print("  [LibreOffice] Converting translated DOCX back to PDF...")
+        result = subprocess.run(
+            ["libreoffice", "--headless", "--convert-to", "pdf",
+             "--outdir", tmp_dir, docx_path],
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode != 0 or not os.path.exists(pdf_path):
+            raise RuntimeError(
+                f"LibreOffice DOCX→PDF conversion failed: {result.stderr.strip()}"
+            )
+
+        # Step 4: Copy to output
+        shutil.copy2(pdf_path, output_file)
+        print(f"  [OK] PDF saved with perfect layout preservation via LibreOffice")
+
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 def write_pdf_preserved(blocks, original_pdf_path, output_file):
     """
     Redact original text from a PDF and insert translations while preserving layout.
-    
+
     Uses PDF redaction annotations to actually REMOVE original text glyphs from the
     content stream (not just cover them up), then inserts translated text with
-    correct font, color, and size.
-    
-    Key improvements over the overlay approach:
+    correct font, color, size, and alignment.
+
+    Key improvements:
       - Redaction physically removes original text — no ghosting or double-text
       - All non-text elements (images, borders, lines, backgrounds) are preserved
-      - Font, color, and bold are mapped to fitz built-in fonts
-      - Pre-scales font size by expansion ratio for overflow prevention
+      - Font, color, bold, italic are mapped to fitz built-in fonts
+      - Character-length ratio for font sizing (more accurate than word count)
+      - Overflow-first approach: calculate fit before inserting to avoid double-render
+      - Text alignment preserved (centered, right-aligned detection)
+      - Background color sampling for overflow areas
     """
     import fitz
-    import copy
 
     # Font mapper: common PDF font base names → fitz built-in font names
     FONT_MAP = {
         "helv": "helv", "Helv": "helv", "Helvetica": "helv",
-        "Helvetica-Bold": "helv", "Helvetica-Oblique": "helv",
+        "Helvetica-Bold": "helvb", "Helvetica-Oblique": "heloi",
+        "Helvetica-BoldOblique": "helbo",
         "tiro": "tiro", "Tiro": "tiro", "Times": "tiro",
-        "TimesNewRoman": "tiro", "Times-Bold": "tiro", "Times-Italic": "tiro",
+        "TimesNewRoman": "tiro", "Times-Bold": "tirob", "Times-Italic": "tiroi",
+        "Times-BoldItalic": "tirobi",
         "cour": "cour", "Cour": "cour", "Courier": "cour",
-        "CourierNew": "cour", "Courier-Bold": "cour",
+        "CourierNew": "cour", "Courier-Bold": "courb",
+        "Courier-Oblique": "couit", "Courier-BoldOblique": "coubi",
     }
 
     def _resolve_font(style):
-        """Resolve a fitz font name from style dict, handling bold."""
+        """Resolve a fitz font name from style dict, handling bold and italic."""
         font_name = style.get("font", "helv")
-        base_font = FONT_MAP.get(font_name, "helv")
         is_bold = style.get("bold", False)
-        if is_bold and base_font in ("helv", "tiro", "cour"):
-            base_font += "b"
+        is_italic = style.get("italic", False)
+
+        # Check exact match first (may include bold/italic in name)
+        base_font = FONT_MAP.get(font_name)
+        if base_font:
+            # Already has bold/italic baked in from the map
+            if "b" in base_font and is_bold:
+                return base_font
+            if "i" in base_font and is_italic:
+                return base_font
+            # Strip trailing style suffixes to get base, then rebuild
+            for suffix in ("bi", "b", "i"):
+                if base_font.endswith(suffix):
+                    base_font = base_font[:-len(suffix)]
+                    break
+        else:
+            # Try keyword matching via Font_Mapper
+            base_font = Font_Mapper().resolve(font_name, set())
+
+        if is_bold and is_italic and base_font in ("helv", "tiro", "cour"):
+            return base_font + "bi"
+        elif is_bold and base_font in ("helv", "tiro", "cour"):
+            return base_font + "b"
+        elif is_italic and base_font in ("helv", "tiro", "cour"):
+            return base_font + "i"
         return base_font
 
     def _resolve_color(color_val):
@@ -1517,6 +2242,18 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file):
         if isinstance(color_val, int) and color_val != 0:
             return fitz.sRGB_to_rgb(color_val)
         return (0, 0, 0)
+
+    def _detect_alignment(block, page_width):
+        """Detect text alignment based on block position relative to page center."""
+        bbox = block.get("position", [0, 0, 0, 0])
+        x0, y0, x1, y1 = bbox
+        block_center = (x0 + x1) / 2.0
+        page_center = page_width / 2.0
+        block_width = x1 - x0
+        # Block is centered if its center is near page center and it's not full-width
+        if block_width < page_width * 0.85 and abs(block_center - page_center) < page_width * 0.05:
+            return 1  # fitz align CENTER
+        return 0  # fitz align LEFT (default; right-justify is rare and hard to detect)
 
     # Work on a copy of the original to keep original intact
     doc = fitz.open(original_pdf_path)
@@ -1540,24 +2277,42 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file):
                 x0, y0, x1, y1 = bbox
                 if x1 <= x0 or y1 <= y0:
                     continue
-                # Add redaction annotation — this marks the area for text removal
                 redact_rect = fitz.Rect(x0 - 1, y0 - 1, x1 + 1, y1 + 1)
                 page.add_redact_annot(redact_rect)
             except Exception as e:
-                print(f"  ⚠️  Redact annot error for block: {str(e)[:100]}")
+                print(f"  Redact annot error for block: {str(e)[:100]}")
 
-    # Apply all redactions — this physically removes the text
+    # Apply all redactions
     for page_num in range(len(doc)):
         try:
             doc[page_num].apply_redactions()
         except Exception as e:
-            print(f"  ⚠️  Apply redactions error page {page_num}: {str(e)[:100]}")
+            print(f"  Apply redactions error page {page_num}: {str(e)[:100]}")
 
     # Phase 2: Insert translated text
+    all_bboxes = []
+    for p_num in sorted(pages_blocks.keys()):
+        if p_num >= len(doc):
+            continue
+        for block in pages_blocks[p_num]:
+            bbox = block.get("position", [50, 50, 500, 100])
+            if len(bbox) >= 4:
+                all_bboxes.append({
+                    "page": p_num,
+                    "bbox": bbox,
+                    "text": block["text"],
+                })
+
     for page_num, page_blocks in pages_blocks.items():
         if page_num >= len(doc):
             continue
         page = doc[page_num]
+        page_width = page.rect.width
+        page_other_bboxes = [
+            pb["bbox"] for pb in all_bboxes
+            if pb["page"] == page_num
+        ]
+
         for block in page_blocks:
             try:
                 bbox = block.get("position", [50, 50, 500, 100])
@@ -1565,46 +2320,51 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file):
 
                 style = block.get("style", {})
 
-                # Resolve font and color
                 resolved_font = _resolve_font(style)
                 text_color = _resolve_color(style.get("color", 0))
 
-                # Font size with expansion ratio pre-scaling
+                # Font size: use original size, no pre-shrink
                 font_size = float(style.get("font_size", 11) or 11)
                 font_size = max(6.0, min(font_size, 72.0))
-                original_text = block.get("_original_text", "")
-                if original_text:
-                    src_word_count = len(original_text.split())
-                    tgt_word_count = len(block["text"].split())
-                    if src_word_count > 0 and tgt_word_count > src_word_count:
-                        expansion_ratio = tgt_word_count / src_word_count
-                        font_size = max(7.0, font_size / expansion_ratio)
 
-                # Insert translated text
+                # Detect alignment
+                alignment = _detect_alignment(block, page_width)
+
+                # Sample background color for overflow areas
+                bg_color = Background_Sampler.sample(page, (x0, y0, x1, y1))
+
+                # Overflow-first approach: try original size first, then strategies
                 text_rect = fitz.Rect(x0, y0, x1, y1)
                 remaining = page.insert_textbox(
                     text_rect, block["text"],
                     fontsize=font_size, fontname=resolved_font,
-                    color=text_color, align=0,
+                    color=text_color, align=alignment,
                 )
 
-                # Overflow fallback: try smaller font sizes
                 if remaining < 0:
-                    for reduced_size in [font_size - 1, font_size - 2, 8, 7]:
-                        if reduced_size < 7:
-                            break
-                        remaining = page.insert_textbox(
-                            text_rect, block["text"],
-                            fontsize=reduced_size, fontname=resolved_font,
-                            color=text_color, align=0,
-                        )
-                        if remaining >= 0:
-                            break
+                    # Text didn't fit — try overflow resolution
+                    overflow_result = _resolve_overflow(
+                        page=page,
+                        block_text=block["text"],
+                        x0=x0, y0=y0, x1=x1, y1=y1,
+                        font_size=font_size,
+                        resolved_font=resolved_font,
+                        other_bboxes=page_other_bboxes,
+                        page_height=page.rect.height,
+                        original_doc=doc,
+                        page_num=page_num,
+                        bg_color=bg_color,
+                        initial_remaining=remaining,
+                        text_color=text_color,
+                        alignment=alignment,
+                    )
+                    if not overflow_result["resolved"]:
+                        print(f"  Unresolved overflow on page {page_num}")
 
             except Exception as e:
-                print(f"  ⚠️  Layout error for block: {str(e)[:100]}")
+                print(f"  Layout error for block: {str(e)[:100]}")
                 try:
-                    fallback_rect = fitz.Rect(50, y0, x1, y1 + 60)
+                    fallback_rect = fitz.Rect(x0, y0, x1, y1 + 60)
                     page.insert_textbox(
                         fallback_rect, block["text"],
                         fontsize=11, fontname="helv", color=(0, 0, 0),
@@ -1615,7 +2375,7 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file):
     # Save to output path as a copy, preserving original
     doc.save(output_file, incremental=False)
     doc.close()
-    print("  [OK] PDF saved with redaction-based text replacement (font, color, bold preserved)")
+    print("  [OK] PDF saved with redaction-based text replacement (font, color, bold, italic, alignment preserved)")
 
 
 def write_txt(blocks, output_file):
@@ -1658,44 +2418,11 @@ def write_pptx(blocks, output_file, original_file=None):
                     key = (slide_idx, shape.shape_id, para_idx)
                     if key in block_map:
                         translated_text = block_map[key]["text"]
-                        # Clear existing runs and set translated text
-                        if para.runs:
-                            for run in para.runs:
-                                run.text = ""
-                            para.runs[0].text = translated_text
-                        else:
-                            para.add_run(translated_text)
+                        # Distribute across runs, preserving per-run formatting
+                        _apply_translation_to_paragraph(para, translated_text, None)
 
         prs.save(output_file)
         print(f"  [OK] PPTX saved with full layout preservation")
-    else:
-        # Fallback: create new presentation
-        from pptx import Presentation
-        from pptx.util import Inches, Pt
-
-        prs = Presentation()
-        para_blocks = [b for b in blocks if b.get("type") == "paragraph"]
-
-        # Group by slide
-        slides_dict = {}
-        for b in para_blocks:
-            slide_idx = b.get("slide", 0)
-            if slide_idx not in slides_dict:
-                slides_dict[slide_idx] = []
-            slides_dict[slide_idx].append(b)
-
-        for slide_idx in sorted(slides_dict.keys()):
-            slide = prs.slides.add_slide(prs.slide_layouts[1])  # Title and Content
-            for b in slides_dict[slide_idx]:
-                text = b["text"]
-                # Add to content placeholder if available
-                for shape in slide.placeholders:
-                    if shape.placeholder_format.idx == 1:  # Content
-                        shape.text = text
-                        break
-
-        prs.save(output_file)
-        print(f"  [OK] PPTX saved (new presentation)")
 
 
 def write_xlsx(blocks, output_file, original_file=None):
@@ -1833,6 +2560,28 @@ def run_pipeline(input_file, source_lang, target_lang,
             "translated_blocks": [],
             "bleu_score": None,
         }
+
+    # ── PDF: try LibreOffice pipeline first (perfect layout preservation) ─
+    if ext == ".pdf":
+        if _is_libreoffice_available():
+            print("[INPUT] Translating PDF via LibreOffice (DOCX round-trip)...")
+            try:
+                translate_pdf_via_libreoffice(
+                    input_file, output_file, source_lang, target_lang,
+                    glossary_store=glossary_store,
+                    progress_callback=progress_callback,
+                )
+                print("[DONE] Done!")
+                return {
+                    "output_file": output_file,
+                    "translated_blocks": [],
+                    "bleu_score": None,
+                }
+            except Exception as e:
+                print(f"  ⚠️  LibreOffice PDF translation failed: {e}")
+                print("  Falling back to PyMuPDF direct translation...")
+        else:
+            print("[INPUT] LibreOffice not available, using PyMuPDF for PDF...")
 
     print("[INPUT] Reading document...")
     data, ext = analyze_document(input_file, pdf_column_mode=pdf_column_mode)

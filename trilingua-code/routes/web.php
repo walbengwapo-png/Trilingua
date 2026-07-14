@@ -12,7 +12,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TranslationController;
 
 Route::get('/', function () {
-    return redirect()->route('login');
+    return view('welcome');
 });
 
 // Clears stale session cookies from previous config (safe to remove after first use)
@@ -41,9 +41,6 @@ Route::post('/logout', [LoginController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
 
-// Status endpoint is outside auth middleware so long translations don't hit session expiry
-Route::get('/translate/status/{jobId}', [TranslationController::class, 'status'])->name('translate.status');
-
 // Protected routes
 Route::middleware(['auth', 'throttle:60,1'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -55,6 +52,7 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
 
     Route::get('/translate', [TranslationController::class, 'show'])->name('translate');
     Route::post('/translate', [TranslationController::class, 'translate'])->name('translate.submit');
+    Route::get('/translate/status/{jobId}', [TranslationController::class, 'status'])->name('translate.status')->middleware('throttle:30,1');
 
     Route::get('/documents', [DocumentsController::class, 'index'])->name('documents');
 

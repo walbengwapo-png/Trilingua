@@ -37,3 +37,8 @@ env/
 *.egg-info/
 dist/
 build/
+
+# Sensitive files
+pass.txt
+passwords.txt
+.env.testing

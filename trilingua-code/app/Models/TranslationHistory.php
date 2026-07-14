@@ -25,6 +25,7 @@ class TranslationHistory extends Model
         'signed_url_expires_at',
         'source_text',
         'translated_text',
+        'job_id',
     ];
 
     protected $casts = [

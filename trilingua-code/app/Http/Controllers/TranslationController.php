@@ -6,7 +6,9 @@ use App\Exceptions\TranslationException;
 use App\Jobs\TranslateDocumentJob;
 use App\Services\HistoryService;
 use App\Services\StorageService;
-use App\Services\TranslationService;
+use App\Services\Translation\TranslationManager;
+use App\Services\Translation\DTO\TranslationRequest;
+use App\Services\Translation\DTO\TranslationResponse;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,11 +17,12 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use App\Models\TranslationHistory;
 
 class TranslationController extends Controller
 {
     public function __construct(
-        private TranslationService $service,
+        private TranslationManager $translationManager,
         private StorageService $storage,
         private HistoryService $history,
     ) {}
@@ -123,11 +126,12 @@ class TranslationController extends Controller
             }
 
             // Text mode — process synchronously (fast enough)
-            $result = $this->service->translateText(
-                $request->input('text'),
-                $sourceLang,
-                $targetLang
+            $translationRequest = new TranslationRequest(
+                text: $request->input('text'),
+                sourceLang: $sourceLang,
+                targetLang: $targetLang,
             );
+            $result = $this->translationManager->translateText($translationRequest);
 
             // Log text translation to history (non-blocking)
             try {
@@ -135,7 +139,7 @@ class TranslationController extends Controller
                     'user_id'          => Auth::id(),
                     'translation_type' => 'text',
                     'source_text'      => $request->input('text'),
-                    'translated_text'  => $result,
+                    'translated_text'  => $result->translatedText,
                     'source_language'  => $sourceLang,
                     'target_language'  => $targetLang,
                     'created_at'       => now()->toIso8601String(),
@@ -148,7 +152,7 @@ class TranslationController extends Controller
                 ]);
             }
 
-            return response()->json(['translated' => $result]);
+            return response()->json(['translated' => $result->translatedText]);
 
         } catch (TranslationException $e) {
             $message = $e->getMessage();
@@ -202,7 +206,8 @@ class TranslationController extends Controller
      */
     public function status(string $jobId): JsonResponse
     {
-        $result = Cache::get('translation_job_' . $jobId);
+        $cacheKey = Auth::id() . '_job_' . $jobId;
+        $result = Cache::get($cacheKey);
 
         if (!$result) {
             return response()->json([

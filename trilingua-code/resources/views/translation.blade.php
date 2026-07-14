@@ -42,7 +42,7 @@
         <div class="translation-panel translation-panel--source">
             <div class="translation-panel__label">Source text</div>
             <div class="translation-panel__body">
-                <textarea id="source-text" maxlength="5000" placeholder="Enter text to translate…" aria-label="Source text"></textarea>
+                <textarea id="source-text" maxlength="8000" placeholder="Enter text to translate…" aria-label="Source text"></textarea>
 
                 {{-- File attached state --}}
                 <div class="translation-panel__file-info" id="file-info" style="display:none">
@@ -161,11 +161,14 @@
     var outputDownload = document.getElementById('output-download');
     var downloadLink   = document.getElementById('download-link');
 
+    var activePollInterval = null;
+    var isTranslating = false;
+
     function showError(el, msg) { if (el) el.textContent = msg; }
     function clearError(el)     { if (el) el.textContent = ''; }
 
     // ── Character counter ────────────────────────────────────────────────────
-    var MAX_CHARS = 5000, WARN = 4500;
+    var MAX_CHARS = 8000, WARN = 7200;
 
     function updateCounter() {
         var len = sourceText.value.length;
@@ -232,6 +235,10 @@
     // ── Translate ─────────────────────────────────────────────────────────────
     function setLoading(on) {
         translateBtn.disabled = on;
+        attachBtn.disabled = on;
+        removeFile.disabled = on;
+        fileInput.disabled = on;
+        isTranslating = on;
         translateBtn.innerHTML = on
             ? '<span class="btn-spinner"></span> Translating…'
             : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg> Translate';
@@ -239,6 +246,7 @@
 
     translateBtn.addEventListener('click', function () {
         clearError(sourceError); clearError(outputError);
+        if (activePollInterval) { clearInterval(activePollInterval); activePollInterval = null; }
         var file = fileInput.files[0];
         var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         setLoading(true);
@@ -309,10 +317,11 @@
     function pollJobStatus(jobId) {
         var maxAttempts = 180; // 6 minutes max (180 * 2s)
         var attempts = 0;
-        var interval = setInterval(function () {
+        activePollInterval = setInterval(function () {
             attempts++;
             if (attempts > maxAttempts) {
-                clearInterval(interval);
+                clearInterval(activePollInterval);
+                activePollInterval = null;
                 showError(outputError, 'Translation timed out. Please try again or contact support if the issue persists.');
                 return;
             }
@@ -327,7 +336,8 @@
                     try { data = JSON.parse(raw); } catch (e) {}
 
                     if (data && data.status === 'completed') {
-                        clearInterval(interval);
+                        clearInterval(activePollInterval);
+                        activePollInterval = null;
                         outputText.textContent = '';
                         outputDownload.removeAttribute('hidden');
                         downloadLink.href = data.download_data || data.download_url;
@@ -337,7 +347,8 @@
                         saveBtn.setAttribute('aria-disabled', 'true');
                         if (window.showToast) showToast('success', 'Document translated!', 'Your file is ready to download.');
                     } else if (data && data.status === 'failed') {
-                        clearInterval(interval);
+                        clearInterval(activePollInterval);
+                        activePollInterval = null;
                         showError(outputError, (data && data.error) || 'Translation failed. Please try again.');
                     } else if (attempts % 15 === 0) {
                         // Update message every 30 seconds
@@ -397,6 +408,22 @@
             window.speechSynthesis.speak(u);
         });
     }
+
+    // ── Keyboard shortcut: Ctrl+Enter / Cmd+Enter ─────────────────────────────
+    sourceText.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            translateBtn.click();
+        }
+    });
+
+    // ── Warn before leaving during active translation ─────────────────────────
+    window.addEventListener('beforeunload', function (e) {
+        if (isTranslating) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
 
 })();
 </script>
