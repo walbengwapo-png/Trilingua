@@ -75,6 +75,7 @@ from providers.gptoss import GPTOSSProvider
 from providers.future_openai import OpenAIProvider
 from providers.future_gemini import GeminiProvider
 from providers.future_deepseek import DeepSeekProvider
+from ai.ollama_provider import OllamaAnalysisProvider
 from pipeline.translation_pipeline import TranslationPipeline
 from pipeline.document_pipeline import DocumentPipeline
 
@@ -86,6 +87,10 @@ TRANSLATION_PROVIDER = os.environ.get("TRANSLATION_PROVIDER", "gptoss").lower()
 # Initialize all available providers
 _mistral_provider = MistralProvider()
 _gptoss_provider = GPTOSSProvider()
+
+# Analysis provider (separate from translation providers)
+# Uses a smaller, faster model for document analysis, quality review, etc.
+_analysis_provider = OllamaAnalysisProvider()
 
 # Future providers (stubs — raise NotImplementedError when instantiated)
 # Uncomment imports above and these lines when ready to implement:
@@ -114,9 +119,13 @@ def _get_active_provider():
 # Create pipelines with the active provider
 _active_provider = _get_active_provider()
 _translation_pipeline = TranslationPipeline(_active_provider)
-_document_pipeline = DocumentPipeline(_translation_pipeline)
+_document_pipeline = DocumentPipeline(
+    _translation_pipeline,
+    ai_analysis_provider=_analysis_provider,
+)
 
-print(f"  [OK] Active provider: {_active_provider.name} ({_active_provider.model_name})")
+print(f"  [OK] Active translation provider: {_active_provider.name} ({_active_provider.model_name})")
+print(f"  [OK] Analysis provider: {_analysis_provider.name} ({_analysis_provider.model_name})")
 print(f"  [OK] Supported languages: {list(LANGUAGES.keys())}")
 print(f"  [OK] Available providers: {list(AVAILABLE_PROVIDERS.keys())}")
 
@@ -229,6 +238,7 @@ async def translate_document(
     source_lang: str = Form(...),
     target_lang: str = Form(...),
     pdf_column_mode: str = Form("auto"),
+    mode: str = Form("balanced"),
 ):
     if pdf_column_mode not in VALID_PDF_COLUMN_MODES:
         raise HTTPException(
@@ -270,6 +280,7 @@ async def translate_document(
             source_lang=source_lang,
             target_lang=target_lang,
             pdf_column_mode=pdf_column_mode,
+            mode=mode,
         )
         result = _document_pipeline.translate(request)
 

@@ -18,7 +18,8 @@ class TranslationProvider(ABC):
 
     @abstractmethod
     def translate(self, text: str, source_lang: str, target_lang: str,
-                  block_type: str = "paragraph", context_hint: str = "") -> TranslationResponse:
+                  block_type: str = "paragraph", context_hint: str = "",
+                  document_type: str = "") -> TranslationResponse:
         """Translate a single text block.
 
         Args:

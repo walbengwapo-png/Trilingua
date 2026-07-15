@@ -30,6 +30,7 @@ class TranslationRequest:
     target_code: str = ""     # NLLB code, auto-filled from target_lang
     context_hint: str = ""    # Optional context from previous chunks
     block_type: str = "paragraph"  # paragraph, header, footer, table_cell, etc.
+    document_type: str = ""   # Document type for specialized prompts (Phase 4)
     document_metadata: dict = field(default_factory=dict)
 
     def __post_init__(self):
@@ -49,6 +50,7 @@ class DocumentTranslationRequest:
     source_lang: str
     target_lang: str
     pdf_column_mode: str = "auto"
+    mode: str = "balanced"               # Processing mode: fast, balanced, thorough, auto
     glossary_pairs: Optional[list] = None  # List of (source, target) tuples
     reference_file: Optional[str] = None   # Optional BLEU reference
 

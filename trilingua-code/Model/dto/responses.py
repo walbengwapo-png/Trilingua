@@ -40,6 +40,10 @@ class DocumentTranslationResponse:
     warnings: list = field(default_factory=list)
     success: bool = True
     error_message: str = ""
+    mode: str = "balanced"
+    document_type: str = ""
+    quality_score: Optional[float] = None
+    cache_hits: int = 0
 
     def to_dict(self) -> dict:
         return asdict(self)

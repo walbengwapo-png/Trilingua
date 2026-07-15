@@ -35,7 +35,8 @@ class MistralProvider(TranslationProvider):
         return self._model
 
     def translate(self, text: str, source_lang: str, target_lang: str,
-                  block_type: str = "paragraph", context_hint: str = "") -> TranslationResponse:
+                  block_type: str = "paragraph", context_hint: str = "",
+                  document_type: str = "") -> TranslationResponse:
         """Translate a single text block using Mistral AI API."""
         import time as _time
         start_time = _time.time()
@@ -50,10 +51,10 @@ class MistralProvider(TranslationProvider):
             )
 
         # Build the system message and user message — use prompts module
-        from prompts.system import build_system_prompt
+        from prompts.specialized import get_system_prompt
         from prompts.translation import build_translation_prompt
 
-        system_msg = build_system_prompt(target_lang)
+        system_msg = get_system_prompt(document_type, target_lang)
         user_msg = build_translation_prompt(text, source_lang, target_lang, block_type)
 
         # Token budget
