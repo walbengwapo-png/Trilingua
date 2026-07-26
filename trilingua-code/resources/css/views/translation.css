@@ -1,5 +1,9 @@
 /* Translation page — redesigned */
 
+/* ── Language-specific font loading ──────────────────────────────────── */
+/* Noto Sans covers Latin, Filipino (with diacritics), and Cebuano */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
 /* ── CSS Variable Fallbacks ───────────────────────────────────────────── */
 .translation-page {
     --card-bg: #ffffff;
@@ -174,6 +178,43 @@
     content: 'Translation will appear here…';
     color: #c4c9d4;
     font-style: italic;
+}
+
+/* Skeleton loading state for translation output */
+#output-text.skeleton-loading {
+    position: relative;
+    overflow: hidden;
+}
+
+#output-text.skeleton-loading::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 18px;
+    right: 18px;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        #f0f0f0 25%,
+        #e0e0e0 50%,
+        #f0f0f0 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+#output-text.skeleton-loading::after {
+    content: '';
+    display: block;
+    height: 100%;
+    min-height: 200px;
+}
+
+@keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
 }
 
 /* File info */
@@ -396,7 +437,7 @@ button[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
     .translation-panel--source { border-right: none; border-bottom: 1px solid var(--border); }
 
     .translation-panel__body textarea,
-    #output-text { min-height: 200px; }
+    #output-text { min-height: 40vh; }
 
     #translate-btn { width: 100%; justify-content: center; }
 }

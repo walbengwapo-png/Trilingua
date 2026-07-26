@@ -85,6 +85,9 @@ class DocumentMemory:
         # All translations (for full-document lookup)
         self.all_translations: list[TranslationRecord] = []
 
+        # Static per-document template (built once after profile is stored)
+        self._static_header: str = ""
+
         # Tracking
         self.term_occurrences: dict[str, int] = {}  # term -> count
         self.translated_chunks: int = 0
@@ -94,7 +97,8 @@ class DocumentMemory:
     def store_profile(self, profile: DocumentProfile) -> None:
         """Store the document analysis profile.
 
-        Also populates initial terminology and abbreviations from the profile.
+        Also populates initial terminology and abbreviations from the profile
+        and pre-builds the static per-document context header.
         """
         self.profile = profile
 
@@ -111,6 +115,9 @@ class DocumentMemory:
         for entity in profile.entities:
             normalized = self._normalize(entity)
             self.term_occurrences[normalized] = self.term_occurrences.get(normalized, 0) + 1
+
+        # Pre-build the static header so we don't recompute it per block
+        self._rebuild_static_header()
 
     def initialize_from_blocks(self, blocks: list[dict]) -> None:
         """Pre-populate memory from blocks if no profile is available.
@@ -213,15 +220,38 @@ class DocumentMemory:
 
     # ── Context Building ──────────────────────────────────────────────────
 
+    def _rebuild_static_header(self) -> None:
+        """Pre-compute the static parts of the context string.
+
+        Called once after the profile is stored so that per-block
+        ``get_context_for_block()`` only appends dynamic content.
+        """
+        header_parts: list[str] = []
+
+        if self.profile:
+            header_parts.append(
+                f"Document: {self.profile.document_type} "
+                f"[{self.profile.writing_style}, {self.profile.language}]"
+            )
+
+        if self.abbreviations:
+            abbr_strs = [f"{a} = {f}" for a, f in self.abbreviations.items() if f]
+            if abbr_strs:
+                header_parts.append(f"Abbreviations: {'; '.join(abbr_strs)}")
+
+        if self.terminology:
+            term_items = list(self.terminology.items())[:10]
+            term_strs = [f"{k} = {v}" for k, v in term_items]
+            header_parts.append(f"Terms: {'; '.join(term_strs)}")
+
+        self._static_header = "\n".join(header_parts)
+
     def get_context_for_block(self, block: dict,
                               block_index: int) -> str:
         """Build a context string for a specific block.
 
-        The context includes:
-        - Document type and writing style (once)
-        - Abbreviations relevant to this block's text
-        - Recent translations (last 3 chunks)
-        - Terminology hints for terms appearing in this block
+        Uses the pre-built static header for the per-document portion
+        and appends per-block dynamic content (recent translations).
 
         Args:
             block: The block dict (with 'text' and 'type' keys).
@@ -230,46 +260,18 @@ class DocumentMemory:
         Returns:
             A context string suitable for TranslationRequest.context_hint.
         """
-        parts = []
+        parts = [self._static_header] if self._static_header else []
 
-        # 1. Document type (if available)
-        if self.profile:
-            parts.append(
-                f"Document: {self.profile.document_type} "
-                f"[{self.profile.writing_style}, {self.profile.language}]"
-            )
-
-        block_text = block.get("text", "")
-
-        # 2. Abbreviations found in this block's text
-        if self.abbreviations:
-            relevant_abbrs = self._find_abbreviations_in_text(block_text)
-            if relevant_abbrs:
-                abbr_strs = [f"{a} = {f}" for a, f in relevant_abbrs]
-                parts.append(f"Abbreviations: {'; '.join(abbr_strs)}")
-
-        # 3. Terminology relevant to this block
-        if self.terminology:
-            relevant_terms = self._find_terms_in_text(block_text)
-            if relevant_terms:
-                term_strs = []
-                for term in relevant_terms[:5]:  # Limit to 5
-                    norm = self._normalize(term)
-                    translation = self.terminology.get(norm)
-                    if translation:
-                        term_strs.append(f"{term} → {translation}")
-                if term_strs:
-                    parts.append(f"Terms: {'; '.join(term_strs)}")
-
-        # 4. Recent context (last 3 chunks, but not from same block)
+        # Dynamic: recent context (last 3 chunks, not from same block)
         if self.recent_context:
             recent = list(self.recent_context)[-3:]
-            # Filter out entries from the same block
             recent = [r for r in recent if r.block_index != block_index]
             if recent:
                 parts.append("Recent context:")
                 for r in recent:
-                    parts.append(f"  [{r.block_index}] {r.source[:80]}... → {r.target[:80]}...")
+                    src = r.source[:80]
+                    tgt = r.target[:80]
+                    parts.append(f"  [{r.block_index}] {src}... -> {tgt}...")
 
         return "\n".join(parts)
 
@@ -351,6 +353,7 @@ class DocumentMemory:
         self.all_translations.clear()
         self.term_occurrences.clear()
         self.translated_chunks = 0
+        self._static_header = ""
 
     # ── Internal Helpers ──────────────────────────────────────────────────
 

@@ -8,6 +8,7 @@ Contains NO prompt engineering — prompts come from prompts/ modules.
 """
 
 import os
+import random
 import re
 import time
 import requests
@@ -18,13 +19,31 @@ from .base import TranslationProvider
 
 MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
 
+# Mistral Small 4 (mistral-small-latest) — from official model card at
+# https://docs.mistral.ai/models/model-cards/mistral-small-4-0-26-03/
+#   Context window: 256K tokens
+#   Max output:     Not separately documented; default to 8192
+#   API rate limits (Scale plan, Tier 1): ~20 RPM, 2M TPM
+_ACTUAL_CONTEXT_WINDOW = 256_000
+_MAX_OUTPUT_TOKENS = 8192
+
 
 class MistralProvider(TranslationProvider):
     """Translation provider using Mistral AI API."""
 
+    _POOL_SIZE = 16  # matches ThreadPoolExecutor worker count
+
     def __init__(self, api_key: str = "", model: str = ""):
         self._api_key = api_key or os.environ.get("MISTRAL_API_KEY", "")
         self._model = model or os.environ.get("MISTRAL_MODEL", "mistral-small-latest")
+        self._session = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(
+            pool_maxsize=self._POOL_SIZE,
+            pool_connections=self._POOL_SIZE,
+            max_retries=0,
+        )
+        self._session.mount("https://", adapter)
+        self._session.mount("http://", adapter)
 
     @property
     def name(self) -> str:
@@ -57,19 +76,16 @@ class MistralProvider(TranslationProvider):
         system_msg = get_system_prompt(document_type, target_lang)
         user_msg = build_translation_prompt(text, source_lang, target_lang, block_type)
 
-        # Token budget
+        # Token budget — Mistral Small 4 has a 256K context window
         total_chars = len(system_msg) + len(user_msg)
         estimated_input_tokens = total_chars // 4
-
-        if estimated_input_tokens > 1500:
-            dynamic_max_tokens = max(1, 4096 - estimated_input_tokens)
-        else:
-            dynamic_max_tokens = 2048
+        available_for_output = _ACTUAL_CONTEXT_WINDOW - estimated_input_tokens
+        dynamic_max_tokens = max(1, min(available_for_output, _MAX_OUTPUT_TOKENS))
 
         last_result = ""
         for attempt in range(3):
             try:
-                resp = requests.post(
+                resp = self._session.post(
                     MISTRAL_API_URL,
                     headers={
                         "Authorization": f"Bearer {self._api_key}",
@@ -88,8 +104,8 @@ class MistralProvider(TranslationProvider):
                 )
 
                 if resp.status_code == 429:
-                    wait = 2 ** attempt
-                    print(f"  Warning: Rate limited, retrying in {wait}s...")
+                    wait = (2 ** attempt) + random.uniform(0, 1)
+                    print(f"  Warning: Rate limited, retrying in {wait:.1f}s...")
                     time.sleep(wait)
                     continue
 
@@ -104,45 +120,50 @@ class MistralProvider(TranslationProvider):
 
                 last_result = result
 
-                # Run validation
-                from validators.hallucination_detector import sanitize_translation, detect_hallucination
+                # OPTIMIZATION: Skip hallucination detection for very short blocks (<5 words)
+                # Short blocks (headings, labels, single words) cannot meaningfully hallucinate
+                # and the detection overhead is disproportionate to the translation work.
+                src_word_count = len(text.split())
+                if src_word_count >= 5:
+                    # Run validation only for blocks with meaningful content
+                    from validators.hallucination_detector import sanitize_translation, detect_hallucination
 
-                try:
-                    result = sanitize_translation(result, text)
-                except RuntimeError as sanitize_err:
-                    if "Hallucinated repetition" in str(sanitize_err) and attempt < 2:
-                        print(f"  ⚠️  Repeated hallucination detected, retrying ({attempt + 1}/3)...")
-                        time.sleep(1)
-                        continue
-                    elif "Hallucinated repetition" in str(sanitize_err):
-                        print(f"  ⚠️  Using raw output after repetition hallucination")
-                    else:
-                        print(f"  ⚠️  Sanitizer warning: {sanitize_err}")
+                    try:
+                        result = sanitize_translation(result, text)
+                    except RuntimeError as sanitize_err:
+                        if "Hallucinated repetition" in str(sanitize_err) and attempt < 2:
+                            print(f"  ⚠️  Repeated hallucination detected, retrying ({attempt + 1}/3)...")
+                            time.sleep(1)
+                            continue
+                        elif "Hallucinated repetition" in str(sanitize_err):
+                            print(f"  ⚠️  Using raw output after repetition hallucination")
+                        else:
+                            print(f"  ⚠️  Sanitizer warning: {sanitize_err}")
 
-                is_hallucinated, reason = detect_hallucination(result, text)
-                if is_hallucinated:
-                    if attempt < 2:
-                        print(f"  ⚠️  Hallucination detected ({reason}), retrying ({attempt + 1}/3)...")
-                        time.sleep(1)
-                        continue
-                    else:
-                        print(f"  ⚠️  Hallucination persists after 3 attempts ({reason}), attempting cleanup...")
-                        cleaned = re.sub(
-                            r'^(here\s+(is|are|\'s)\s+the\s+translat\S*\s*[:\-]?\s*)',
-                            '', result, flags=re.IGNORECASE
-                        )
-                        cleaned = re.sub(
-                            r'^(translat\S*\s*[:\-]\s*)', '', cleaned, flags=re.IGNORECASE
-                        )
-                        cleaned = re.sub(
-                            r'\s*\(?\s*let\s+me\s+know\s+if\s+.*$', '', cleaned, flags=re.IGNORECASE
-                        )
-                        cleaned = re.sub(
-                            r'\s*\(?\s*i\s+hope\s+this\s+helps\s*\)?\s*$', '', cleaned, flags=re.IGNORECASE
-                        )
-                        cleaned = cleaned.strip()
-                        if cleaned:
-                            result = cleaned
+                    is_hallucinated, reason = detect_hallucination(result, text)
+                    if is_hallucinated:
+                        if attempt < 2:
+                            print(f"  ⚠️  Hallucination detected ({reason}), retrying ({attempt + 1}/3)...")
+                            time.sleep(1)
+                            continue
+                        else:
+                            print(f"  ⚠️  Hallucination persists after 3 attempts ({reason}), attempting cleanup...")
+                            cleaned = re.sub(
+                                r'^(here\s+(is|are|\'s)\s+the\s+translat\S*\s*[:\-]?\s*)',
+                                '', result, flags=re.IGNORECASE
+                            )
+                            cleaned = re.sub(
+                                r'^(translat\S*\s*[:\-]\s*)', '', cleaned, flags=re.IGNORECASE
+                            )
+                            cleaned = re.sub(
+                                r'\s*\(?\s*let\s+me\s+know\s+if\s+.*$', '', cleaned, flags=re.IGNORECASE
+                            )
+                            cleaned = re.sub(
+                                r'\s*\(?\s*i\s+hope\s+this\s+helps\s*\)?\s*$', '', cleaned, flags=re.IGNORECASE
+                            )
+                            cleaned = cleaned.strip()
+                            if cleaned:
+                                result = cleaned
 
                 if not result:
                     raise RuntimeError(f"Mistral returned empty translation for: {text[:60]}...")

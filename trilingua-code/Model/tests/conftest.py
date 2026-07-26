@@ -6,23 +6,121 @@ This module provides:
 - A minimal fitz.Page mock for PDF testing
 - A sample DOCX Document factory for DOCX testing
 - A small block-list factory for general translation testing
+- Fixture discovery for golden test documents
+- Mock provider fixtures for regression testing
 """
 
+import os
 import pytest
-
-
-def pytest_configure(config):
-    """Register custom marks to avoid PytestUnknownMarkWarning."""
-    config.addinivalue_line(
-        "markers",
-        "slow: marks tests as slow (e.g. end-to-end pipeline tests that load the NLLB model)",
-    )
 from unittest.mock import MagicMock, Mock
 from docx import Document
 from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import io
 
+
+FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
+
+
+def pytest_configure(config):
+    """Register custom marks and clean stale bytecode caches.
+
+    Stale ``__pycache__/`` directories on Windows cause Python to load old
+    bytecode even after ``.py`` source files are edited.  We remove every
+    ``__pycache__/`` under ``Model/`` once before collection to guarantee
+    a fresh compile from source.
+    """
+    import shutil
+
+    model_root = os.path.normpath(os.path.join(os.path.dirname(__file__), ".."))
+    for root, dirs, _ in os.walk(model_root):
+        if "__pycache__" in dirs:
+            shutil.rmtree(os.path.join(root, "__pycache__"), ignore_errors=True)
+
+    config.addinivalue_line(
+        "markers",
+        "slow: marks tests as slow (e.g. end-to-end pipeline tests that load the NLLB model)",
+    )
+    config.addinivalue_line(
+        "markers",
+        "golden: marks tests that run against the golden test set for regression detection",
+    )
+
+
+def pytest_collect_file(parent, file_path):
+    """Collect golden test fixture paths."""
+    if parent.config.getoption("-k") and "golden" not in parent.config.getoption("-k"):
+        return None
+    return None
+
+
+# ── Fixture Discovery ─────────────────────────────────────────────────────────
+
+def _list_fixtures(suffix: str) -> list[str]:
+    """List fixture files with the given suffix."""
+    if not os.path.isdir(FIXTURES_DIR):
+        return []
+    return sorted(
+        os.path.join(FIXTURES_DIR, f)
+        for f in os.listdir(FIXTURES_DIR)
+        if f.endswith(suffix) and f.startswith("golden_")
+    )
+
+
+@pytest.fixture(scope="session")
+def fixtures_txt():
+    """Return paths to all .txt golden fixtures."""
+    return _list_fixtures(".txt")
+
+
+@pytest.fixture(scope="session")
+def fixtures_md():
+    """Return paths to all .md golden fixtures."""
+    return _list_fixtures(".md")
+
+
+@pytest.fixture(scope="session")
+def fixtures_all():
+    """Return paths to ALL golden fixtures (txt, md)."""
+    return _list_fixtures(".txt") + _list_fixtures(".md")
+
+
+# ── Mock Providers ────────────────────────────────────────────────────────────
+
+@pytest.fixture
+def mock_translation_provider():
+    """Return a MockTranslationProvider with zero delay."""
+    from .mock_providers import MockTranslationProvider
+    return MockTranslationProvider(delay_ms=0.0)
+
+
+@pytest.fixture
+def mock_analysis_provider():
+    """Return a MockAnalysisProvider with zero delay."""
+    from .mock_providers import MockAnalysisProvider
+    return MockAnalysisProvider(delay_ms=0.0)
+
+
+# ── Pipeline Fixtures ─────────────────────────────────────────────────────────
+
+@pytest.fixture
+def translation_pipeline(mock_translation_provider):
+    """Build a TranslationPipeline wired to the mock provider."""
+    from pipeline.translation_pipeline import TranslationPipeline
+    return TranslationPipeline(mock_translation_provider)
+
+
+@pytest.fixture
+def document_pipeline(translation_pipeline, mock_analysis_provider):
+    """Build a DocumentPipeline wired to mock providers."""
+    from pipeline.document_pipeline import DocumentPipeline
+    return DocumentPipeline(
+        translation_pipeline,
+        ai_analysis_provider=mock_analysis_provider,
+    )
+
+
+# ── Original Fixtures (Preserved) ─────────────────────────────────────────────
 
 @pytest.fixture
 def mock_fitz_page():

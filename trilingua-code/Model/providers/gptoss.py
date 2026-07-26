@@ -19,9 +19,15 @@ from .base import TranslationProvider
 class GPTOSSProvider(TranslationProvider):
     """Translation provider using GPT-OSS via Ollama Cloud."""
 
+    _POOL_SIZE = 8  # matches ThreadPoolExecutor worker count
+
     def __init__(self, api_url: str = "", model: str = ""):
         self._api_url = api_url or os.environ.get("OLLAMA_CLOUD_URL", "http://localhost:11434/api/chat")
         self._model = model or os.environ.get("OLLAMA_CLOUD_MODEL", "gpt-oss:20b-cloud")
+        self._session = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(pool_maxsize=self._POOL_SIZE)
+        self._session.mount("https://", adapter)
+        self._session.mount("http://", adapter)
 
     @property
     def name(self) -> str:
@@ -50,7 +56,7 @@ class GPTOSSProvider(TranslationProvider):
 
         for attempt in range(3):
             try:
-                resp = requests.post(
+                resp = self._session.post(
                     self._api_url,
                     headers={"Content-Type": "application/json"},
                     json={
@@ -82,24 +88,26 @@ class GPTOSSProvider(TranslationProvider):
                 if not result:
                     raise RuntimeError(f"GPT-OSS returned empty response for: {text[:60]}...")
 
-                # Run hallucination detection
-                from validators.hallucination_detector import sanitize_translation, detect_hallucination
+                # OPTIMIZATION: Skip hallucination detection for very short blocks (<5 words)
+                src_word_count = len(text.split())
+                if src_word_count >= 5:
+                    from validators.hallucination_detector import sanitize_translation, detect_hallucination
 
-                try:
-                    result = sanitize_translation(result, text)
-                except RuntimeError as sanitize_err:
-                    if "Hallucinated repetition" in str(sanitize_err) and attempt < 2:
-                        print(f"  ⚠️  Repeated hallucination detected, retrying ({attempt + 1}/3)...")
+                    try:
+                        result = sanitize_translation(result, text)
+                    except RuntimeError as sanitize_err:
+                        if "Hallucinated repetition" in str(sanitize_err) and attempt < 2:
+                            print(f"  ⚠️  Repeated hallucination detected, retrying ({attempt + 1}/3)...")
+                            _time.sleep(1)
+                            continue
+                        elif "Hallucinated repetition" in str(sanitize_err):
+                            print(f"  ⚠️  Using raw output after repetition hallucination")
+
+                    is_hallucinated, reason = detect_hallucination(result, text)
+                    if is_hallucinated and attempt < 2:
+                        print(f"  ⚠️  Hallucination detected ({reason}), retrying ({attempt + 1}/3)...")
                         _time.sleep(1)
                         continue
-                    elif "Hallucinated repetition" in str(sanitize_err):
-                        print(f"  ⚠️  Using raw output after repetition hallucination")
-
-                is_hallucinated, reason = detect_hallucination(result, text)
-                if is_hallucinated and attempt < 2:
-                    print(f"  ⚠️  Hallucination detected ({reason}), retrying ({attempt + 1}/3)...")
-                    _time.sleep(1)
-                    continue
 
                 # Estimate token usage from response
                 token_usage = {}
@@ -132,7 +140,7 @@ class GPTOSSProvider(TranslationProvider):
                         execution_time_ms=elapsed_ms,
                     )
                 print(f"  Warning: Connection error, retrying ({attempt + 1}/3)...")
-                _time.sleep(2)
+                _time.sleep(1)
 
             except requests.exceptions.Timeout:
                 if attempt == 2:
@@ -146,7 +154,7 @@ class GPTOSSProvider(TranslationProvider):
                         execution_time_ms=elapsed_ms,
                     )
                 print(f"  Warning: Timeout, retrying ({attempt + 1}/3)...")
-                _time.sleep(2)
+                _time.sleep(1)
 
             except Exception as e:
                 if attempt == 2:
@@ -177,7 +185,7 @@ class GPTOSSProvider(TranslationProvider):
         try:
             # Use the list models endpoint or just check connectivity
             base_url = self._api_url.replace("/api/chat", "")
-            resp = requests.get(f"{base_url}/api/tags", timeout=5)
+            resp = self._session.get(f"{base_url}/api/tags", timeout=5)
             if resp.status_code == 200:
                 models = resp.json().get("models", [])
                 model_names = [m.get("name", "") for m in models]

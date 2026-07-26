@@ -253,10 +253,11 @@ def _translate_with_mistral(text, source_lang, target_lang, block_type="paragrap
     if estimated_input_tokens > 3500:
         print(f"[TOKEN BUDGET] estimated_input={estimated_input_tokens} source={text[:60]!r}")
 
-    if estimated_input_tokens > 1500:
-        dynamic_max_tokens = max(1, 4096 - estimated_input_tokens)
-    else:
-        dynamic_max_tokens = 2048
+    # Mistral Small 4 (mistral-small-latest) has 256K context window
+    _CONTEXT_WINDOW = 256_000
+    _MAX_OUTPUT = 8192
+    available_for_output = _CONTEXT_WINDOW - estimated_input_tokens
+    dynamic_max_tokens = max(1, min(available_for_output, _MAX_OUTPUT))
 
     for attempt in range(3):
         try:

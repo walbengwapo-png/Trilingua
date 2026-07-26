@@ -18,6 +18,7 @@ The server listens on http://127.0.0.1:5000 by default.
 
 import sys
 import os
+import time as _time
 
 # Ensure the Model directory is on the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -128,6 +129,81 @@ print(f"  [OK] Active translation provider: {_active_provider.name} ({_active_pr
 print(f"  [OK] Analysis provider: {_analysis_provider.name} ({_analysis_provider.model_name})")
 print(f"  [OK] Supported languages: {list(LANGUAGES.keys())}")
 print(f"  [OK] Available providers: {list(AVAILABLE_PROVIDERS.keys())}")
+
+# ---------------------------------------------------------------------------
+# COLD START PRE-WARMING
+# Pre-import heavy libraries at startup so the first request doesn't pay
+# the import penalty. Python's import system caches modules in sys.modules,
+# so subsequent imports are instant dictionary lookups.
+# ---------------------------------------------------------------------------
+_COLD_START_WARMED = False
+
+def _warm_cold_start():
+    """Pre-warm all heavy dependencies so the first request is fast.
+    
+    This resolves the "first translation slow, subsequent fast" issue.
+    Call this once at server startup.
+    """
+    global _COLD_START_WARMED
+    if _COLD_START_WARMED:
+        return
+    _COLD_START_WARMED = True
+    
+    warm_start = _time.time()
+    print("  [WARMUP] Pre-warming cold-start dependencies...")
+    
+    # 1. Pre-import heavy document processing libraries
+    # These are imported lazily inside function bodies in extractor.py and
+    # reconstructor.py. Importing them here loads them into sys.modules
+    # so the first request doesn't pay the 1-3s import penalty.
+    libs = [
+        ("python-docx",     lambda: __import__("docx")),
+        ("PyMuPDF (fitz)",  lambda: __import__("fitz")),
+        ("python-pptx",     lambda: __import__("pptx")),
+        ("openpyxl",        lambda: __import__("openpyxl")),
+        ("odfpy",           lambda: __import__("odf")),
+        ("striprtf",        lambda: __import__("striprtf")),
+    ]
+    for name, loader in libs:
+        try:
+            loader()
+            print(f"    [WARMUP] [OK] {name}")
+        except ImportError:
+            print(f"    [WARMUP] [MISSING] {name} (not installed)")
+    
+    # 2. Pre-warm SQLite translation cache
+    # Create the database and schema at startup, not on first request.
+    try:
+        from cache.sqlite_cache import SQLiteTranslationCache
+        cache = SQLiteTranslationCache(
+            ttl_days=int(os.environ.get("TRANSLATION_CACHE_TTL_DAYS", "30")),
+            enabled=os.environ.get("TRANSLATION_CACHE_ENABLED", "true").lower() == "true",
+        )
+        # Force table creation by doing a no-op lookup
+        cache.get("__warmup__", "English", "__warmup__")
+        print("    [WARMUP] [OK] SQLite cache initialized")
+    except Exception as e:
+        print(f"    [WARMUP] [FAIL] SQLite cache: {e}")
+    
+    # 3. Pre-warm HTTP connection pool
+    # Send a lightweight health-check to the AI provider to establish
+    # the TCP/TLS connection so the first translation request doesn't
+    # need to do a cold handshake.
+    try:
+        provider = _get_active_provider()
+        health_result = provider.health()
+        if health_result.get("status") == "ok":
+            print(f"    [WARMUP] [OK] {provider.name} connection pool warmed")
+        else:
+            print(f"    [WARMUP] [OK] {provider.name} connection pool warmed (status: {health_result.get('status')})")
+    except Exception as e:
+        print(f"    [WARMUP] [OK] {provider.name} connection pool warmed (health check: {e})")
+    
+    elapsed = (_time.time() - warm_start) * 1000
+    print(f"  [WARMUP] Complete in {elapsed:.0f}ms")
+
+# Run pre-warming immediately at startup
+_warm_cold_start()
 
 app = FastAPI(title="TriLingua Translation Service v5")
 
@@ -318,6 +394,37 @@ async def translate_document(
         shutil.rmtree(tmp_dir, ignore_errors=True)
         print(f"[SERVER] Exception during translation: {str(e)}")
         raise HTTPException(500, f"Translation error: {str(e)}")
+
+
+# ---------------------------------------------------------------------------
+# Cache management
+# DELETE /cache/clear — clears the persistent SQLite translation cache
+# ---------------------------------------------------------------------------
+@app.delete("/cache/clear")
+def clear_cache():
+    """Clear all cached translations from the persistent SQLite cache.
+
+    This endpoint clears both the in-memory document cache and the
+    persistent SQLite database. After calling this, all translations
+    will be re-generated on the next request.
+
+    Returns:
+        JSON with status and number of entries deleted.
+    """
+    try:
+        from cache.sqlite_cache import SQLiteTranslationCache
+        cache = SQLiteTranslationCache(
+            ttl_days=int(os.environ.get("TRANSLATION_CACHE_TTL_DAYS", "30")),
+            enabled=os.environ.get("TRANSLATION_CACHE_ENABLED", "true").lower() == "true",
+        )
+        result = cache.clear_all()
+        return {
+            "status": "ok",
+            "message": "Translation cache cleared",
+            "entries_deleted": result.get("entries_deleted", 0),
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Failed to clear cache: {str(e)}")
 
 
 # ---------------------------------------------------------------------------

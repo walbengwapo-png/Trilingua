@@ -157,6 +157,90 @@ class DocumentAnalyzer:
 
         return profile
 
+    def analyze_with_prepass(self, blocks: list[dict],
+                              source_lang: str = "",
+                              target_lang: str = "") -> tuple:
+        """Analyze document + extract prepass data in a single AI call.
+
+        Merges the document analyzer (Phase 1) and prepass (Phase 7) into
+        one LLM call. Returns both a DocumentProfile and a prepass data dict.
+
+        Args:
+            blocks: List of block dicts from the document extractor.
+            source_lang: Source language name (for prepass context).
+            target_lang: Target language name (for prepass context).
+
+        Returns:
+            tuple: (DocumentProfile, prepass_data_dict)
+            prepass_data_dict has keys:
+                summary (str): One-sentence document summary.
+                domain (str): Detected domain.
+                terms (list[tuple]): Up to 10 (source, target) term pairs.
+        """
+        import time as _time
+        start_time = _time.time()
+
+        if not blocks:
+            raise ValueError("Cannot analyze empty block list")
+
+        total_blocks = len(blocks)
+        total_words = sum(len(b.get("text", "").split()) for b in blocks)
+
+        doc_text = self._build_condensed_text(blocks)
+        system_prompt = self._build_system_prompt(with_prepass=True)
+        user_prompt = self._build_user_prompt(
+            doc_text, total_blocks, total_words,
+            source_lang=source_lang, target_lang=target_lang,
+        )
+
+        try:
+            result = self._ai.analyze(system_prompt, user_prompt)
+        except (RuntimeError, ConnectionError) as e:
+            print(f"  [Analyzer] Merged analysis failed: {e}")
+            print(f"  [Analyzer] Returning default low-confidence profile")
+            elapsed = (_time.time() - start_time) * 1000
+            profile = self._default_profile(
+                total_blocks, total_words, elapsed, error=str(e)
+            )
+            return profile, {"summary": "", "domain": "", "terms": []}
+
+        elapsed = (_time.time() - start_time) * 1000
+        profile = self._parse_response(result, total_blocks, total_words, elapsed)
+
+        # Parse prepass fields from the same response
+        summary = str(result.get("summary", ""))
+        domain = str(result.get("domain", ""))
+        terms_raw = result.get("translation_terms", [])
+        terms = []
+        if isinstance(terms_raw, list):
+            for t in terms_raw:
+                if isinstance(t, dict):
+                    src = t.get("source", "")
+                    tgt = t.get("target", "")
+                    if src and tgt:
+                        terms.append((src, tgt))
+
+        prepass_data = {
+            "summary": summary,
+            "domain": domain,
+            "terms": terms,
+        }
+
+        print(f"  [Analyzer] Document type: {profile.document_type}")
+        print(f"  [Analyzer] Writing style: {profile.writing_style}")
+        print(f"  [Analyzer] Language: {profile.language}")
+        print(f"  [Analyzer] Confidence: {profile.confidence:.2f}")
+        print(f"  [Analyzer] Sections: {len(profile.sections)}")
+        print(f"  [Analyzer] Terms: {len(profile.terminology)}")
+        print(f"  [Analyzer] Abbreviations: {len(profile.abbreviations)}")
+        print(f"  [Analyzer] Analysis time: {elapsed:.0f}ms")
+        if summary:
+            print(f"  [Analyzer] Prepass summary: {summary[:80]}...")
+            print(f"  [Analyzer] Prepass domain: {domain}")
+            print(f"  [Analyzer] Prepass terms: {len(terms)}")
+
+        return profile, prepass_data
+
     def _build_condensed_text(self, blocks: list[dict]) -> str:
         """Build a condensed text representation of the document.
 
@@ -201,13 +285,17 @@ class DocumentAnalyzer:
 
         return "\n".join(parts)
 
-    def _build_system_prompt(self) -> str:
+    def _build_system_prompt(self, with_prepass: bool = False) -> str:
         """Build the system prompt for document analysis.
 
-        This prompt instructs the AI to analyze the document and return
-        a structured JSON response. The prompt is model-agnostic.
+        Args:
+            with_prepass: If True, also request prepass fields (summary,
+                domain, target-language terms) in the same response.
+
+        Returns:
+            A system prompt string.
         """
-        return (
+        base = (
             "You are a document analyst. Your task is to analyze a document "
             "and return a structured JSON profile.\n\n"
             "Analyze the following aspects:\n"
@@ -231,11 +319,38 @@ class DocumentAnalyzer:
             "[table_cell] Data\n\n"
             "IMPORTANT: Return ONLY valid JSON. No explanations, no markdown."
         )
+        if with_prepass:
+            base += (
+                "\n\nAdditionally, provide a translation prepass analysis "
+                "with these extra fields:\n"
+                '11. "summary": One-sentence summary of the document\n'
+                '12. "domain": Detected domain -- one word: medical, legal, '
+                "technical, academic, business, marketing, conversational, "
+                "or general\n"
+                '13. "translation_terms": Up to 10 key terms with their '
+                "likely equivalents in the target language. Format as:\n"
+                '    [{"source": "term in source language", '
+                '"target": "likely translation"}]\n\n'
+                "Include these fields in the same JSON response."
+            )
+        return base
 
     def _build_user_prompt(self, doc_text: str, total_blocks: int,
-                           total_words: int) -> str:
-        """Build the user prompt with the document text."""
-        return (
+                           total_words: int, source_lang: str = "",
+                           target_lang: str = "") -> str:
+        """Build the user prompt with the document text.
+
+        Args:
+            doc_text: Condensed text representation of the document.
+            total_blocks: Number of blocks in the document.
+            total_words: Total word count.
+            source_lang: Source language (for merged prepass mode).
+            target_lang: Target language (for merged prepass mode).
+
+        Returns:
+            A user prompt string.
+        """
+        base = (
             f"Analyze this document ({total_blocks} blocks, "
             f"{total_words} words):\n\n"
             f"{doc_text}\n\n"
@@ -257,6 +372,16 @@ class DocumentAnalyzer:
             f"}}\n"
             f"Return ONLY the JSON object, nothing else."
         )
+        if source_lang and target_lang:
+            base += (
+                f"\n\nThe document will be translated from {source_lang} "
+                f"to {target_lang}. Also include these prepass fields "
+                f"in the same JSON:\n"
+                f'{{"summary": "str", "domain": "str", '
+                f'"translation_terms": [{{"source": "str", '
+                f'"target": "str"}}]}}'
+            )
+        return base
 
     def _parse_response(self, result: dict, total_blocks: int,
                         total_words: int, elapsed_ms: float) -> DocumentProfile:

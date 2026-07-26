@@ -42,6 +42,9 @@ class ProcessingMode:
     # Phase 6 — Translation Cache (hash-based dedup within document)
     translation_cache: bool = False
 
+    # Phase 7 — Prepass (Task 5: two-pass context injection)
+    prepass: bool = False
+
     # Phase 8 — AI Layout Planner (PDF only)
     layout_planner: bool = False
 
@@ -67,6 +70,7 @@ BALANCED = ProcessingMode(
     specialized_prompts=True,
     ai_quality_review=True,
     translation_cache=True,
+    prepass=True,
     layout_planner=False,
 )
 
@@ -78,6 +82,7 @@ THOROUGH = ProcessingMode(
     specialized_prompts=True,
     ai_quality_review=True,
     translation_cache=True,
+    prepass=True,
     layout_planner=True,
 )
 

@@ -7,6 +7,9 @@ Contains few-shot examples and language-specific instructions.
 
 Contains NO provider-specific code.
 Changing prompts here affects all providers.
+
+OPTIMIZATION: Expanded Cebuano/Filipino few-shot examples with verb-focus
+preservation and proper noun handling (Task 6).
 """
 
 
@@ -37,6 +40,7 @@ def build_translation_prompt(text: str, source_lang: str, target_lang: str,
 
     user_msg = f"Translate this {type_desc} from {source_lang} to {target_lang}.\n"
 
+    # OPTIMIZATION: Expanded few-shot examples (Task 6)
     # Add few-shot examples for Cebuano and Filipino
     if target_lang.lower() in ("cebuano", "filipino"):
         user_msg += f"\nExamples:\n"
@@ -46,6 +50,12 @@ def build_translation_prompt(text: str, source_lang: str, target_lang: str,
                 "  EN: What is your name? → CEB: Unsa imong pangalan?\n"
                 "  EN: The cat sat on the mat. → CEB: Lingkod ang iring sa banig.\n"
                 "  EN: 123 Main Street → CEB: 123 Main Street\n"
+                "  EN: She will cook food for the party. → CEB: Magluto siyag pagkaon alang sa party.\n"
+                "       (natural Cebuano with mag- actor focus; 'party' kept as borrowed term)\n"
+                "  EN: The book was written by Dr. Santos. → CEB: Gisulat ni Dr. Santos ang libro.\n"
+                "       (active voice in Cebuano; 'Dr. Santos' preserved)\n"
+                "  EN: Please call me tomorrow. → CEB: Palihug tawagi ko ugma.\n"
+                "       ('please' → 'palihug'; '-an' directional focus; 'ugma' natural time word)\n"
             )
         elif target_lang.lower() == "filipino":
             user_msg += (
@@ -53,6 +63,12 @@ def build_translation_prompt(text: str, source_lang: str, target_lang: str,
                 "  EN: What is your name? → FIL: Ano ang pangalan mo?\n"
                 "  EN: The cat sat on the mat. → FIL: Umupo ang pusa sa banig.\n"
                 "  EN: 123 Main Street → FIL: 123 Main Street\n"
+                "  EN: She will cook food for the party. → FIL: Magluluto siya ng pagkain para sa party.\n"
+                "       (natural Filipino with mag- actor focus; 'party' kept as borrowed term)\n"
+                "  EN: The book was written by Dr. Santos. → FIL: Isinulat ni Dr. Santos ang libro.\n"
+                "       (active voice in Filipino; 'Dr. Santos' preserved)\n"
+                "  EN: Please call me tomorrow. → FIL: Paki-tawagan mo ako bukas.\n"
+                "       ('please' → 'paki-'; '-an' directional focus; 'bukas' natural time word)\n"
             )
 
     user_msg += f"\nSource text:\n{text}"

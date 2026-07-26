@@ -1,0 +1,10 @@
+This is a short document for testing the translation pipeline.
+
+It contains only a few paragraphs. The purpose is to verify that the pipeline handles small documents correctly.
+
+Key requirements:
+- All blocks must be preserved.
+- No empty translations should be produced.
+- The block order must match the source.
+
+This is the final paragraph of the short test document.
