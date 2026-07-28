@@ -70,7 +70,7 @@ class GPTOSSProvider(TranslationProvider):
                             "temperature": 0.3,
                         },
                     },
-                    timeout=60,
+                    timeout=300,  # Ollama Cloud GPU spin-up can exceed 60s on first request
                 )
 
                 if resp.status_code == 429:
@@ -179,6 +179,32 @@ class GPTOSSProvider(TranslationProvider):
             error_message="GPT-OSS translation failed after 3 attempts.",
             execution_time_ms=elapsed_ms,
         )
+
+    def warmup(self) -> bool:
+        """Force model loading into GPU memory by sending a tiny prompt.
+
+        Ollama Cloud unloads models from GPU after periods of inactivity.
+        This sends a minimal "hello" request so the first real translation
+        doesn't pay the GPU spin-up penalty.
+        """
+        try:
+            resp = self._session.post(
+                self._api_url,
+                headers={"Content-Type": "application/json"},
+                json={
+                    "model": self._model,
+                    "messages": [
+                        {"role": "user", "content": "hello"},
+                    ],
+                    "stream": False,
+                    "options": {"temperature": 0.1},
+                },
+                timeout=300,
+            )
+            resp.raise_for_status()
+            return True
+        except Exception:
+            return False
 
     def health(self) -> dict:
         """Check if Ollama Cloud is accessible."""

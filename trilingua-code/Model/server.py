@@ -198,7 +198,21 @@ def _warm_cold_start():
             print(f"    [WARMUP] [OK] {provider.name} connection pool warmed (status: {health_result.get('status')})")
     except Exception as e:
         print(f"    [WARMUP] [OK] {provider.name} connection pool warmed (health check: {e})")
-    
+
+    # 4. Pre-warm GPT-OSS model into GPU memory
+    # The health check above only does a GET /api/tags — it does NOT
+    # load the model. This sends a real chat request to force Ollama
+    # to spin up a GPU instance so the first translation is fast.
+    if _gptoss_provider.name == provider.name:
+        try:
+            print(f"    [WARMUP] Loading {_gptoss_provider.model_name} (may take 1-2 min)...")
+            if _gptoss_provider.warmup():
+                print(f"    [WARMUP] [OK] {_gptoss_provider.model_name} loaded into memory")
+            else:
+                print(f"    [WARMUP] [INFO] Model will load on first request")
+        except Exception as e:
+            print(f"    [WARMUP] [INFO] Model warmup: {e}")
+
     elapsed = (_time.time() - warm_start) * 1000
     print(f"  [WARMUP] Complete in {elapsed:.0f}ms")
 
