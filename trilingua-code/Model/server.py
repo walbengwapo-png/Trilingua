@@ -76,6 +76,7 @@ from providers.gptoss import GPTOSSProvider
 from providers.future_openai import OpenAIProvider
 from providers.future_gemini import GeminiProvider
 from providers.future_deepseek import DeepSeekProvider
+from ai.mistral_provider import MistralAnalysisProvider
 from ai.ollama_provider import OllamaAnalysisProvider
 from pipeline.translation_pipeline import TranslationPipeline
 from pipeline.document_pipeline import DocumentPipeline
@@ -90,8 +91,13 @@ _mistral_provider = MistralProvider()
 _gptoss_provider = GPTOSSProvider()
 
 # Analysis provider (separate from translation providers)
-# Uses a smaller, faster model for document analysis, quality review, etc.
-_analysis_provider = OllamaAnalysisProvider()
+# Uses Mistral AI for independent, unbiased analysis.
+# Falls back to Ollama if Mistral API key is not set.
+_analysis_provider = (
+    MistralAnalysisProvider()
+    if os.environ.get("MISTRAL_API_KEY")
+    else OllamaAnalysisProvider()
+)
 
 # Future providers (stubs — raise NotImplementedError when instantiated)
 # Uncomment imports above and these lines when ready to implement:

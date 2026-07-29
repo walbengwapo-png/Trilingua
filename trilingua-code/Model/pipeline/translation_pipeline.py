@@ -87,6 +87,15 @@ _DEFAULT_BATCH_LIMITS = {"max_batch_chars": 1500, "max_batch_items": 5}
 
 
 # OPTIMIZATION: Passthrough filter for untranslatable blocks (Task 4)
+# Short words that should always be translated (includes common Cebuano/Filipino particles)
+_SHORT_WORD_ALLOWLIST = frozenset({
+    "ug", "ang", "sa", "ka", "na", "pa", "ba", "ni", "si", "ng",
+    "ma", "da", "ja", "ne", "se", "to", "in", "on", "at", "or",
+    "an", "is", "it", "as", "be", "by", "he", "my", "no", "of",
+    "ok", "so", "up", "us", "we", "do", "go",
+})
+
+
 def _is_passthrough_block(text: str) -> tuple[bool, str]:
     """Check if a block should skip translation entirely.
 
@@ -95,8 +104,12 @@ def _is_passthrough_block(text: str) -> tuple[bool, str]:
     """
     stripped = text.strip()
 
-    # Under 3 characters
-    if len(stripped) < 3:
+    # Under 2 characters — always skip (single char can't be meaningful alone)
+    if len(stripped) < 2:
+        return True, "too_short"
+
+    # Exactly 2 characters — allowlist check
+    if len(stripped) < 3 and stripped.lower() not in _SHORT_WORD_ALLOWLIST:
         return True, "too_short"
 
     # Entirely punctuation or whitespace
@@ -596,6 +609,8 @@ class TranslationPipeline:
 
         if work_items:
             concurrency = max(1, _TRANSLATION_CONCURRENCY)
+            if self.provider.name == "mistral":
+                concurrency = min(concurrency, 4)
             with ThreadPoolExecutor(max_workers=concurrency) as executor:
                 # Submit all batch work items to the thread pool
                 future_to_batch = {}
@@ -690,8 +705,8 @@ class TranslationPipeline:
         translated_blocks = []
         for i, block in enumerate(blocks):
             if i in passthrough_indices:
-                # Passthrough — copy source text directly
-                translated_blocks.append(dict(block, text=block.get("text", "")))
+                # Passthrough — copy source text directly, flag for reconstructor
+                translated_blocks.append(dict(block, text=block.get("text", ""), passthrough=True))
             elif i in cached_results:
                 # From cache
                 translated_blocks.append(dict(block, text=cached_results[i]))
@@ -730,7 +745,7 @@ class TranslationPipeline:
                 translated_blocks.append(new_block)
             else:
                 # Fallback — should not happen, but just in case
-                translated_blocks.append(dict(block, text=block.get("text", "")))
+                translated_blocks.append(dict(block, text=block.get("text", ""), passthrough=True))
 
             if progress_callback:
                 progress_callback(i + 1, total)

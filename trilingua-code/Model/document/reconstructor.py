@@ -10,6 +10,7 @@ Reused from document_translator_v3.py.
 """
 
 import os
+import platform
 import re
 import csv
 import shutil
@@ -543,8 +544,21 @@ def _resolve_overflow(page, block_text, x0, y0, x1, y1, font_size, resolved_font
                 "final_font": current_font, "cont_rect": None, "clipped": False,
             }
 
-    # Strategy 3: continuation box
-    cont_top = last_below_bottom + 4.0
+    # Strategy 3: continuation box with collision detection
+    cont_top = max(y1, last_below_bottom) + 4.0
+    for _ in range(10):
+        collides = False
+        for ob in other_bboxes:
+            ob_top, ob_bottom, ob_left, ob_right = ob[1], ob[3], ob[0], ob[2]
+            if ob_bottom <= cont_top:
+                continue
+            horizontal_overlap = (x0 < ob_right + COLLISION_GAP) and (x1 > ob_left - COLLISION_GAP)
+            if horizontal_overlap and ob_top < cont_top + COLLISION_GAP:
+                cont_top = ob_bottom + 4.0
+                collides = True
+                break
+        if not collides:
+            break
     cont_height = overflow + MIN_FONT
     cont_bottom = cont_top + cont_height
 
@@ -572,16 +586,46 @@ def _resolve_overflow(page, block_text, x0, y0, x1, y1, font_size, resolved_font
     }
 
 
+def _get_libreoffice_cmd():
+    """Return the path to the LibreOffice executable for this OS.
+
+    On Windows, soffice.exe is often not on PATH — search common locations.
+    On Linux/macOS, "libreoffice" is typically on PATH after install.
+    """
+    if platform.system() == "Windows":
+        candidates = [
+            r"C:\Program Files\LibreOffice\program\soffice.exe",
+            r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+            os.path.expanduser(r"~\AppData\Local\Programs\LibreOffice\program\soffice.exe"),
+        ]
+        for path in candidates:
+            if os.path.exists(path):
+                return path
+    return "libreoffice"
+
+
 def _is_libreoffice_available():
-    """Return True if LibreOffice is installed and on PATH."""
+    """Return True if LibreOffice is installed and accessible."""
+    cmd = _get_libreoffice_cmd()
     try:
         result = subprocess.run(
-            ["libreoffice", "--version"],
-            capture_output=True, text=True, timeout=10,
+            [cmd, "--version"],
+            capture_output=True, text=True, timeout=30,
         )
         return result.returncode == 0
     except (FileNotFoundError, subprocess.TimeoutExpired, Exception):
         return False
+
+
+def _wait_for_file(file_path, timeout=120, interval=2):
+    """Wait for a file to appear (LibreOffice spawns a background process on Windows)."""
+    import time as _time
+    deadline = _time.time() + timeout
+    while _time.time() < deadline:
+        if os.path.exists(file_path):
+            return True
+        _time.sleep(interval)
+    return False
 
 
 def translate_pdf_via_libreoffice(input_file, output_file, translate_fn,
@@ -598,11 +642,11 @@ def translate_pdf_via_libreoffice(input_file, output_file, translate_fn,
         # Step 1: PDF → DOCX
         print("  [LibreOffice] Converting PDF to DOCX...")
         result = subprocess.run(
-            ["libreoffice", "--headless", "--convert-to", "docx",
+            [_get_libreoffice_cmd(), "--headless", "--convert-to", "docx",
              "--outdir", tmp_dir, input_file],
             capture_output=True, text=True, timeout=120,
         )
-        if result.returncode != 0 or not os.path.exists(docx_path):
+        if result.returncode != 0 or not _wait_for_file(docx_path):
             raise RuntimeError(
                 f"LibreOffice PDF→DOCX conversion failed: {result.stderr.strip()}"
             )
@@ -618,11 +662,11 @@ def translate_pdf_via_libreoffice(input_file, output_file, translate_fn,
         # Step 3: DOCX → PDF
         print("  [LibreOffice] Converting translated DOCX back to PDF...")
         result = subprocess.run(
-            ["libreoffice", "--headless", "--convert-to", "pdf",
+            [_get_libreoffice_cmd(), "--headless", "--convert-to", "pdf",
              "--outdir", tmp_dir, docx_path],
             capture_output=True, text=True, timeout=120,
         )
-        if result.returncode != 0 or not os.path.exists(pdf_path):
+        if result.returncode != 0 or not _wait_for_file(pdf_path):
             raise RuntimeError(
                 f"LibreOffice DOCX→PDF conversion failed: {result.stderr.strip()}"
             )
@@ -682,6 +726,7 @@ def _truncate_to_fit(text: str, max_chars: int) -> tuple[str, str]:
 
 
 def write_pdf_preserved(blocks, original_pdf_path, output_file,
+                        layout_plan=None,
                         source_lang="", target_lang=""):
     """
     Replace original text in a PDF with translations while preserving layout.
@@ -718,32 +763,6 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
         "tiro": 0.95,   # Times is slightly wider than Times New Roman
         "cour": 1.0,    # Courier is close to Courier New
     }
-
-    def _resolve_font(style):
-        font_name = style.get("font", "helv")
-        is_bold = style.get("bold", False)
-        is_italic = style.get("italic", False)
-        base_font = FONT_MAP.get(font_name)
-        if base_font:
-            if "b" in base_font and is_bold:
-                return base_font
-            if "i" in base_font and is_italic:
-                return base_font
-            for suffix in ("bi", "b", "i"):
-                if base_font.endswith(suffix):
-                    base_font = base_font[:-len(suffix)]
-                    break
-        else:
-            from .layout import FontMapper
-            base_font = FontMapper().resolve(font_name, set())
-
-        if is_bold and is_italic and base_font in ("helv", "tiro", "cour"):
-            return base_font + "bi"
-        elif is_bold and base_font in ("helv", "tiro", "cour"):
-            return base_font + "b"
-        elif is_italic and base_font in ("helv", "tiro", "cour"):
-            return base_font + "i"
-        return base_font
 
     def _resolve_color(color_val):
         if isinstance(color_val, int) and color_val != 0:
@@ -794,9 +813,77 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
         blended_ratio *= 0.95
         
         scaled_font = base_font_size * blended_ratio
-        return max(6.0, min(base_font_size, scaled_font))
+        return max(6.0, scaled_font)
 
     doc = fitz.open(original_pdf_path)
+
+    # ── Collect all embedded font programs from the document ───────────────
+    # Used by glyph-aware font resolution so we can re-embed fonts that
+    # cover the codepoints needed by translated text.
+    _embedded_font_programs: dict[str, bytes] = {}
+    for pnum in range(len(doc)):
+        for f in doc.get_page_fonts(pnum):
+            xref = f[0]
+            fname = f[3]
+            if fname in _embedded_font_programs:
+                continue
+            try:
+                info = doc.extract_font(xref)
+                buf = info[3]
+                if buf:
+                    _embedded_font_programs[fname] = buf
+            except Exception:
+                pass
+
+    def _resolve_font_glyph_aware(style, block_text, page_obj, font_cache):
+        """Resolve font with glyph coverage for *block_text*."""
+        from .layout import FontMapper
+        mapper = FontMapper()
+        font_name = style.get("font", "helv")
+        is_bold = style.get("bold", False)
+        is_italic = style.get("italic", False)
+
+        # Collect required codepoints from translated text
+        req_cps = set()
+        for ch in block_text:
+            cp = ord(ch)
+            if cp > 127:
+                req_cps.add(cp)
+
+        pdf_name, fb = mapper.resolve_to_pdf_name(
+            font_name, _embedded_font_programs,
+            required_codepoints=req_cps if req_cps else None,
+        )
+
+        # Apply bold/italic variants for Base-14 built-ins
+        base_font = pdf_name
+        if base_font in _FONT_WIDTH_SCALE:
+            if is_bold and is_italic and base_font in ("helv", "tiro", "cour"):
+                pdf_name = base_font + "bi"
+            elif is_bold and base_font in ("helv", "tiro", "cour"):
+                pdf_name = base_font + "b"
+            elif is_italic and base_font in ("helv", "tiro", "cour"):
+                pdf_name = base_font + "i"
+
+        # Insert the font buffer if needed (non-built-in)
+        _insert_font_if_needed(page_obj, pdf_name, fb, font_cache)
+
+        return pdf_name
+
+    def _insert_font_if_needed(page_obj, resolved_name, font_buffer, font_cache):
+        """Insert a font program into *page_obj* if not already cached for that page."""
+        if not font_buffer:
+            return
+        page_key = id(page_obj)
+        inserted = font_cache.get(page_key, set())
+        if resolved_name in inserted:
+            return
+        try:
+            page_obj.insert_font(fontname=resolved_name, fontbuffer=font_buffer)
+            inserted.add(resolved_name)
+            font_cache[page_key] = inserted
+        except Exception:
+            pass
 
     # Group blocks by page
     pages_blocks = {}
@@ -813,6 +900,9 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
             continue
         page = doc[page_num]
         for block in page_blocks:
+            # Skip overlay for passthrough blocks — preserve original rendering
+            if block.get("passthrough"):
+                continue
             try:
                 bbox = block.get("position", [50, 50, 500, 100])
                 x0, y0, x1, y1 = bbox
@@ -825,8 +915,9 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
                 print(f"  Overlay error: {str(e)[:100]}")
 
     # Phase 2: Insert translated text with overflow management
-    # Track overflow text that needs to be prepended to the next block
-    pending_overflow = ""  # Text that didn't fit in the previous block
+    # Track overflow text across pages (declared outside page loop for cross-page chaining)
+    pending_overflow = ""
+    font_cache: dict[int, set[str]] = {}  # per-page set of already-inserted font names
 
     for page_num, page_blocks in pages_blocks.items():
         if page_num >= len(doc):
@@ -835,10 +926,30 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
         page_width = page.rect.width
         page_height = page.rect.height
 
+        # Collect all block rects on this page for overflow collision detection
+        page_other_bboxes = []
+        for b in page_blocks:
+            bb = b.get("position", [50, 50, 500, 100])
+            page_other_bboxes.append(bb)
+
+        _block_index = 0
+
         for block in page_blocks:
+            # Skip insertion for passthrough blocks — original rendering preserved
+            if block.get("passthrough"):
+                _block_index += 1
+                continue
             try:
                 bbox = block.get("position", [50, 50, 500, 100])
                 x0, y0, x1, y1 = bbox
+
+                # Look up layout plan adjustments for this block
+                _plan_adj = None
+                if layout_plan is not None:
+                    for _adj in layout_plan.adjustments:
+                        if _adj.block_index == _block_index:
+                            _plan_adj = _adj
+                            break
 
                 # Prepend any pending overflow from the previous block
                 block_text = block["text"]
@@ -847,11 +958,21 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
                     pending_overflow = ""
 
                 style = block.get("style", {})
-                resolved_font = _resolve_font(style)
+                resolved_font = _resolve_font_glyph_aware(style, block_text, page, font_cache)
                 text_color = _resolve_color(style.get("color", 0))
                 base_font_size = float(style.get("font_size", 11) or 11)
                 base_font_size = max(6.0, min(base_font_size, 72.0))
                 alignment = _detect_alignment(block, page_width)
+
+                # Apply layout plan overrides
+                if _plan_adj is not None:
+                    if _plan_adj.alignment_override is not None:
+                        _align_map = {"left": 0, "center": 1, "right": 2, "justify": 3}
+                        alignment = _align_map.get(_plan_adj.alignment_override, alignment)
+                    if _plan_adj.paragraph_spacing is not None:
+                        y1 = y1 + _plan_adj.paragraph_spacing
+                    if _plan_adj.indent_override is not None:
+                        x0 = x0 + _plan_adj.indent_override
 
                 # Sample background color
                 bg_color = None
@@ -866,12 +987,14 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
                 font_size = _compute_proactive_font_size(original_text, block_text, base_font_size)
 
                 # Calculate available character capacity of the bounding box
-                # Use the original text's character density as a guide
+                # Use fitz.get_text_length for accurate width measurement
                 bbox_width = x1 - x0
                 bbox_height = y1 - y0
                 estimated_line_height = font_size * 1.4
                 estimated_lines = max(1, int(bbox_height / estimated_line_height))
-                estimated_chars_per_line = max(1, int(bbox_width / (font_size * 0.5)))
+                sample_width = fitz.get_text_length("A", fontname=resolved_font, fontsize=font_size)
+                avg_char_width = max(sample_width, font_size * 0.3)
+                estimated_chars_per_line = max(1, int(bbox_width / avg_char_width))
                 estimated_capacity = estimated_lines * estimated_chars_per_line
 
                 # Truncate text if it exceeds estimated capacity
@@ -897,7 +1020,7 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
                         page=page, block_text=block_text,
                         x0=x0, y0=y0, x1=x1, y1=y1,
                         font_size=font_size, resolved_font=resolved_font,
-                        other_bboxes=[],  # Skip collision check — we already overlaid
+                        other_bboxes=page_other_bboxes,
                         page_height=page_height,
                         original_doc=doc, page_num=page_num,
                         bg_color=bg_color, initial_remaining=remaining,
@@ -925,6 +1048,8 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
                     )
                 except Exception:
                     pass
+
+            _block_index += 1
 
     # Warn if there's still pending overflow at the end
     if pending_overflow:
@@ -1030,7 +1155,8 @@ def choose_output_path(input_file, output_dir=""):
 
 
 def reconstruct_document(blocks, output_file, original_file=None, original_ext=None,
-                         source_lang="", target_lang=""):
+                         source_lang="", target_lang="",
+                         layout_plan=None):
     """Write translated blocks to the appropriate output format."""
     ext = os.path.splitext(output_file)[1].lower()
 
@@ -1038,6 +1164,7 @@ def reconstruct_document(blocks, output_file, original_file=None, original_ext=N
         write_docx(blocks, output_file, original_file)
     elif ext == ".pdf" and original_file:
         write_pdf_preserved(blocks, original_file, output_file,
+                            layout_plan=layout_plan,
                             source_lang=source_lang, target_lang=target_lang)
     elif ext == ".pptx":
         write_pptx(blocks, output_file, original_file)

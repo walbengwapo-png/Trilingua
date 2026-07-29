@@ -173,13 +173,36 @@ def _is_garbage_block(text, bbox, page_width, page_height):
     words = [w for w in stripped.split() if re.search(r'[a-zA-Z\u0080-\uFFFF]', w)]
     if len(words) < 1:
         return True
-    if len(words) <= 5 and page_height > 0 and len(bbox) >= 4:
+    # Only drop very short blocks (≤3 words) very near page edges (top/bottom 2%)
+    if len(words) <= 3 and page_height > 0 and len(bbox) >= 4:
         y0 = bbox[1]
         y1 = bbox[3]
-        margin = page_height * 0.04
+        margin = page_height * 0.02
         if y0 < margin or y1 > (page_height - margin):
             return True
     return False
+
+
+def _detect_block_alignment(bbox, page_width, page_height):
+    """Detect text alignment from bounding box position.
+
+    Returns 'left', 'center', 'right', or 'justify'.
+    """
+    x0, y0, x1, y1 = bbox
+    block_width = x1 - x0
+    left_margin = x0
+    right_margin = page_width - x1
+
+    if block_width > page_width * 0.05 and right_margin < page_width * 0.05 and left_margin > page_width * 0.10:
+        return "right"
+
+    if block_width < page_width * 0.85 and abs(left_margin - right_margin) < page_width * 0.05:
+        return "center"
+
+    if block_width > page_width * 0.90:
+        return "justify"
+
+    return "left"
 
 
 def detect_columns(blocks, page_width):
@@ -338,6 +361,7 @@ def read_pdf(file_path, column_mode="auto"):
                 "text":     block_text,
                 "position": bbox,
                 "page":     page_num,
+                "alignment": _detect_block_alignment(bbox, pw, ph),
                 "style":    {"font_size": dom_size, "font": dom_font,
                              "color": dom_color, "bold": dom_bold,
                              "italic": dom_italic},

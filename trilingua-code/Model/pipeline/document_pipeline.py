@@ -38,8 +38,6 @@ from document.reconstructor import (
     choose_output_path,
     reconstruct_document,
     write_csv,
-    _is_libreoffice_available,
-    translate_pdf_via_libreoffice,
 )
 from document.document_analyzer import DocumentAnalyzer
 from document.semantic_chunker import SemanticChunker
@@ -165,20 +163,9 @@ class DocumentPipeline:
         if ext in (".docx", ".pptx", ".xlsx"):
             return self._translate_inplace(request, ext, output_file, glossary_store, ctx)
 
-        # ── PDF: try LibreOffice pipeline first ──
+        # ── PDF: direct PyMuPDF extraction ──
         if ext == ".pdf":
-            if _is_libreoffice_available():
-                print("[INPUT] Translating PDF via LibreOffice (DOCX round-trip)...")
-                try:
-                    return self._translate_inplace(
-                        request, ".docx", output_file, glossary_store, ctx,
-                        pdf_roundtrip=True
-                    )
-                except Exception as e:
-                    print(f"  ⚠️  LibreOffice PDF translation failed: {e}")
-                    print("  Falling back to PyMuPDF direct translation...")
-            else:
-                print("[INPUT] LibreOffice not available, using PyMuPDF for PDF...")
+            print("[INPUT] Using PyMuPDF for PDF...")
 
         # ── Extract → Analyze → Translate → Reconstruct pipeline ──
         print("[INPUT] Reading document...")
@@ -398,7 +385,8 @@ class DocumentPipeline:
         print(f"[OUTPUT] Rebuilding document -> {output_file}")
         with phase_profile("reconstruction", ctx):
             reconstruct_document(translated_blocks, output_file, request.file_path, detected_ext,
-                                 source_lang=request.source_lang, target_lang=request.target_lang)
+                                 source_lang=request.source_lang, target_lang=request.target_lang,
+                                 layout_plan=ctx.layout_plan)
         ctx.reconstruction_time_ms = ctx.phase_times.get("reconstruction", 0)
 
         # BLEU scoring
@@ -433,9 +421,8 @@ class DocumentPipeline:
 
     # ── In-place Translation ────────────────────────────────────────────────
 
-    def _translate_inplace(self, request, ext, output_file, glossary_store, ctx,
-                           pdf_roundtrip=False):
-        """Translate a document in-place (DOCX/PPTX/XLSX or LibreOffice PDF)."""
+    def _translate_inplace(self, request, ext, output_file, glossary_store, ctx):
+        """Translate a document in-place (DOCX/PPTX/XLSX)."""
         # Initialize document memory if enabled
         if ctx.mode.document_memory:
             memory = DocumentMemory()
@@ -506,19 +493,11 @@ class DocumentPipeline:
             return translated
 
         # Choose the right in-place translator
-        if ext == ".docx" or pdf_roundtrip:
-            actual_input = request.file_path
-            if pdf_roundtrip:
-                from document.reconstructor import translate_pdf_via_libreoffice
-                translate_pdf_via_libreoffice(
-                    request.file_path, output_file, _translate_fn,
-                    glossary_store=glossary_store,
-                )
-            else:
-                _translate_docx_inplace_with_translator(
-                    request.file_path, output_file, _translate_fn,
-                    glossary_store=glossary_store,
-                )
+        if ext == ".docx":
+            _translate_docx_inplace_with_translator(
+                request.file_path, output_file, _translate_fn,
+                glossary_store=glossary_store,
+            )
         elif ext == ".pptx":
             translate_pptx_inplace(
                 request.file_path, output_file, _translate_fn,

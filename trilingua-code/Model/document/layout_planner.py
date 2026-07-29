@@ -30,11 +30,15 @@ from typing import Any
 class BlockAdjustment:
     """A layout adjustment recommendation for a single block."""
     block_index: int
-    estimated_expansion_ratio: float   # e.g., 1.2 = 20% longer text
-    recommended_font_scale: float      # e.g., 0.95 = shrink 5%
-    overflow_risk: str                 # "none", "low", "medium", "high"
+    estimated_expansion_ratio: float     # e.g., 1.2 = 20% longer text
+    recommended_font_scale: float        # e.g., 0.95 = shrink 5%
+    overflow_risk: str                   # "none", "low", "medium", "high"
     suggested_height_extra: float = 0.0  # Extra height needed (points)
     continuation_needed: bool = False    # Whether overflow continuation is likely
+    alignment_override: str | None = None   # "left", "center", "right", "justify", or None
+    indent_override: float | None = None    # Left indent in points, or None
+    font_override: str | None = None        # Suggested font name, or None
+    paragraph_spacing: float | None = None  # Extra spacing after block (points), or None
 
 
 @dataclass
@@ -157,6 +161,9 @@ class LayoutPlanner:
             extra_chars = int(original_len * (block_ratio - 1))
             height_extra = max(0, extra_chars * 0.5)  # Rough estimate: 0.5pt per character
 
+            # Extract alignment from block metadata (set by extractor B1)
+            block_alignment = block.get("alignment", "left")
+
             adjustment = BlockAdjustment(
                 block_index=i,
                 estimated_expansion_ratio=round(block_ratio, 2),
@@ -165,6 +172,7 @@ class LayoutPlanner:
                 overflow_risk=risk,
                 suggested_height_extra=round(height_extra, 1),
                 continuation_needed=risk in ("high", "medium"),
+                alignment_override=block_alignment,
             )
 
             plan.adjustments.append(adjustment)
@@ -182,7 +190,7 @@ class LayoutPlanner:
 
         # Try AI-powered analysis if available and there are high-risk blocks
         if self._ai and (high_risk > 0 or medium_risk > 2):
-            ai_plan = self._ai_layout_plan(blocks, source_lang, target_lang, document_type)
+            ai_plan = self._ai_layout_plan(blocks, translated_blocks, source_lang, target_lang, document_type)
             if ai_plan is not None:
                 plan = ai_plan
 
@@ -244,9 +252,10 @@ class LayoutPlanner:
         return "none"
 
     def _ai_layout_plan(self, blocks: list[dict],
+                         translated_blocks: list[dict] | None,
                          source_lang: str, target_lang: str,
                          document_type: str) -> LayoutPlan | None:
-        """Generate a layout plan using AI analysis.
+        """Generate a layout plan using AI analysis with per-block layout rules.
 
         Falls back to heuristic plan if AI is unavailable or fails.
         """
@@ -254,40 +263,55 @@ class LayoutPlanner:
             return None
 
         try:
-            # Build a condensed representation of block sizes
-            block_summary = []
+            # Build block pairs with source text, translated text, and metadata
+            block_pairs = []
             for i, block in enumerate(blocks):
-                text = block.get("text", "")
-                block_summary.append({
+                src_text = block.get("text", "")
+                tgt_text = src_text
+                if translated_blocks and i < len(translated_blocks):
+                    tgt_text = translated_blocks[i].get("text", src_text)
+                block_pairs.append({
                     "index": i,
                     "type": block.get("type", "paragraph"),
-                    "word_count": len(text.split()),
-                    "char_count": len(text),
+                    "alignment": block.get("alignment", "left"),
+                    "source": src_text[:200],
+                    "translated": tgt_text[:200],
                 })
 
             system_prompt = (
-                "You are a document layout analyst. Given a document's block "
-                "structure and target language, predict layout challenges.\n\n"
+                "You are a document layout analyst. Given document blocks with "
+                "source and translated text, recommend layout adjustments.\n\n"
                 "Return JSON:\n"
                 "{\n"
                 '  "blocks": [\n'
                 '    {\n'
                 '      "index": 0,\n'
                 '      "estimated_expansion_ratio": 1.15,\n'
-                '      "overflow_risk": "medium"\n'
+                '      "overflow_risk": "medium",\n'
+                '      "alignment_override": "left",\n'
+                '      "indent_override": 0.0,\n'
+                '      "font_override": null,\n'
+                '      "paragraph_spacing": null\n'
                 '    }\n'
                 '  ],\n'
                 '  "overall_expansion_ratio": 1.1,\n'
-                '  "warnings": ["warning text"]\n'
+                '  "warnings": []\n'
                 "}\n\n"
+                "Rules:\n"
+                '- alignment_override: "left", "center", "right", "justify", or null (no change)\n'
+                "- indent_override: left indent in points, or null (no change)\n"
+                '- font_override: font name suggestion or null (keep existing)\n'
+                "- paragraph_spacing: extra spacing after block in points, or null (keep existing)\n"
+                "- estimated_expansion_ratio: >1.0 if translated is longer, <1.0 if shorter\n"
+                '- overflow_risk: "none", "low", "medium", "high"\n'
                 "Return ONLY valid JSON."
             )
 
             user_prompt = (
                 f"Document type: {document_type}\n"
                 f"Source: {source_lang} → Target: {target_lang}\n\n"
-                f"Blocks:\n{block_summary}\n\n"
-                f"Predict layout adjustments."
+                f"Blocks:\n{block_pairs}\n\n"
+                f"Recommend per-block layout adjustments."
             )
 
             result = self._ai.analyze(system_prompt, user_prompt)
@@ -307,6 +331,18 @@ class LayoutPlanner:
                             ),
                             recommended_font_scale=1.0,
                             overflow_risk=str(b.get("overflow_risk", "none")),
+                            alignment_override=b.get("alignment_override"),
+                            indent_override=(
+                                float(b["indent_override"])
+                                if b.get("indent_override") is not None
+                                else None
+                            ),
+                            font_override=b.get("font_override"),
+                            paragraph_spacing=(
+                                float(b["paragraph_spacing"])
+                                if b.get("paragraph_spacing") is not None
+                                else None
+                            ),
                         ))
 
             plan.estimated_total_expansion = float(

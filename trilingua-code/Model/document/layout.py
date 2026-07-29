@@ -24,9 +24,14 @@ class FontMapper:
     6. No match at all → return ``"helv"`` with warning.
     """
 
-    _MONO_KEYWORDS = ("courier", "consolas", "mono")
-    _SERIF_KEYWORDS = ("times", "georgia", "roman")
-    _SANS_KEYWORDS = ("arial", "helvetica", "sans")
+    _MONO_KEYWORDS = ("courier", "consolas", "mono", "monospace", "andale mono",
+                      "source code", "cascadia", "fira code", "jetbrains")
+    _SERIF_KEYWORDS = ("times", "georgia", "roman", "garamond", "palatino",
+                       "bookman", "caslon", "baskerville", "hoefler", "goudy")
+    _SANS_KEYWORDS = ("arial", "helvetica", "sans", "calibri", "segoe", "tahoma",
+                      "verdana", "futura", "gill", "century gothic", "trebuchet",
+                      "candara", "corbel", "open sans", "lucida", "franklin gothic",
+                      "myriad", "noto sans", "roboto", "ubuntu", "dejavu sans")
 
     def resolve(
         self,
@@ -61,6 +66,98 @@ class FontMapper:
         # Priority 6 — unknown font; warn and fall back
         print(f"⚠️ FontMapper: unknown font '{font_name}'; falling back to 'helv'.")
         return "helv"
+
+    def resolve_to_pdf_name(
+        self,
+        font_name: str | None,
+        embedded_font_programs: dict[str, bytes],
+        *,
+        page: int | None = None,
+        bbox: list | None = None,
+        required_codepoints: set[int] | None = None,
+    ) -> tuple[str, bytes | None]:
+        """Resolve to a PDF font name that covers *required_codepoints*.
+
+        Returns ``(pdf_fontname, fontbuffer_or_None)``.
+
+        Resolution strategy
+        -------------------
+        1. If *font_name* is ``None``/empty → ``('helv', None)``.
+        2. Try each embedded font program in *embedded_font_programs* that
+           belongs to the same category (sans / serif / mono) as *font_name*.
+           If one covers all *required_codepoints*, return its name and buffer.
+        3. If no embedded font covers the codepoints, try the matching
+           Base-14 built-in (helv / tiro / cour) — these are guaranteed
+           to support Latin-1 accented characters.
+        4. Fall back to the original *font_name* from *embedded_font_programs*
+           (no glyph guarantee, matches old behaviour).
+        """
+        import fitz
+
+        if not font_name:
+            return ("helv", None)
+
+        if not required_codepoints:
+            pdf_name = self.resolve(font_name, set(embedded_font_programs))
+            fb = embedded_font_programs.get(font_name)
+            return (pdf_name, fb)
+
+        lower = font_name.lower()
+        category = self._classify(lower)
+
+        # Try each embedded font of the same category
+        for ef_name, ef_buffer in embedded_font_programs.items():
+            if not ef_buffer:
+                continue
+            ef_lower = ef_name.lower()
+            ef_cat = self._classify(ef_lower)
+            if ef_cat != category:
+                continue
+            if self._covers_codepoints(ef_buffer, required_codepoints):
+                return (ef_name, ef_buffer)
+
+        # Fall back to Base-14 built-in
+        base14_map = {"sans": "helv", "serif": "tiro", "mono": "cour", "other": "helv"}
+        fallback = base14_map.get(category, "helv")
+        try:
+            f = fitz.Font(fallback)
+            fnt = fitz.Font(fontbuffer=f.buffer)
+            if self._covers_codepoints_check(fnt, required_codepoints):
+                return (fallback, None)
+        except Exception:
+            pass
+
+        # Last resort — return original embedded font unchanged
+        fb = embedded_font_programs.get(font_name)
+        return (font_name, fb)
+
+    def _classify(self, font_name_lower: str) -> str:
+        if any(kw in font_name_lower for kw in self._MONO_KEYWORDS):
+            return "mono"
+        if any(kw in font_name_lower for kw in self._SERIF_KEYWORDS):
+            return "serif"
+        if any(kw in font_name_lower for kw in self._SANS_KEYWORDS):
+            return "sans"
+        return "other"
+
+    @staticmethod
+    def _covers_codepoints(fontbuffer: bytes, codepoints: set[int]) -> bool:
+        import fitz
+        try:
+            fnt = fitz.Font(fontbuffer=fontbuffer)
+            return FontMapper._covers_codepoints_check(fnt, codepoints)
+        except Exception:
+            return False
+
+    @staticmethod
+    def _covers_codepoints_check(fnt, codepoints: set[int]) -> bool:
+        for cp in codepoints:
+            try:
+                if not fnt.has_glyph(cp):
+                    return False
+            except Exception:
+                return False
+        return True
 
 
 class StyleMapper:

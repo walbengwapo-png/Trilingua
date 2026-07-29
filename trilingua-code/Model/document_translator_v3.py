@@ -1464,6 +1464,23 @@ class Font_Mapper:
         print(f"⚠️ Font_Mapper: unknown font '{font_name}'; falling back to 'helv'.")
         return "helv"
 
+    def resolve_to_pdf_name(
+        self,
+        font_name: str | None,
+        embedded_font_programs: dict[str, bytes],
+        *,
+        page: int | None = None,
+        bbox: list | None = None,
+        required_codepoints: set[int] | None = None,
+    ) -> tuple[str, bytes | None]:
+        """Delegates to refactored ``FontMapper.resolve_to_pdf_name``."""
+        from document.layout import FontMapper
+        return FontMapper().resolve_to_pdf_name(
+            font_name, embedded_font_programs,
+            page=page, bbox=bbox,
+            required_codepoints=required_codepoints,
+        )
+
 
 class Style_Mapper:
     """Resolves a DOCX paragraph style name to a style available in the target document.
@@ -2259,6 +2276,67 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file):
     # Work on a copy of the original to keep original intact
     doc = fitz.open(original_pdf_path)
 
+    # ── Collect all embedded font programs from the document ───────────────
+    _embedded_font_programs: dict[str, bytes] = {}
+    for pnum in range(len(doc)):
+        for f in doc.get_page_fonts(pnum):
+            xref = f[0]
+            fname = f[3]
+            if fname in _embedded_font_programs:
+                continue
+            try:
+                info = doc.extract_font(xref)
+                buf = info[3]
+                if buf:
+                    _embedded_font_programs[fname] = buf
+            except Exception:
+                pass
+
+    def _resolve_font_glyph_aware(style, block_text, page_obj, font_cache):
+        """Resolve font with glyph coverage for *block_text*."""
+        from document.layout import FontMapper
+        mapper = FontMapper()
+        font_name = style.get("font", "helv")
+        is_bold = style.get("bold", False)
+        is_italic = style.get("italic", False)
+
+        req_cps = set()
+        for ch in block_text:
+            cp = ord(ch)
+            if cp > 127:
+                req_cps.add(cp)
+
+        pdf_name, fb = mapper.resolve_to_pdf_name(
+            font_name, _embedded_font_programs,
+            required_codepoints=req_cps if req_cps else None,
+        )
+
+        base_font = pdf_name
+        if base_font in ("helv", "tiro", "cour"):
+            if is_bold and is_italic:
+                pdf_name = base_font + "bi"
+            elif is_bold:
+                pdf_name = base_font + "b"
+            elif is_italic:
+                pdf_name = base_font + "i"
+
+        _insert_font_if_needed(page_obj, pdf_name, fb, font_cache)
+        return pdf_name
+
+    def _insert_font_if_needed(page_obj, resolved_name, font_buffer, font_cache):
+        if not font_buffer:
+            return
+        page_key = id(page_obj)
+        inserted = font_cache.get(page_key, set())
+        if resolved_name in inserted:
+            return
+        try:
+            page_obj.insert_font(fontname=resolved_name, fontbuffer=font_buffer)
+            inserted.add(resolved_name)
+            font_cache[page_key] = inserted
+        except Exception:
+            pass
+
     # Group blocks by page
     pages_blocks = {}
     for block in blocks:
@@ -2291,6 +2369,7 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file):
             print(f"  Apply redactions error page {page_num}: {str(e)[:100]}")
 
     # Phase 2: Insert translated text
+    font_cache: dict[int, set[str]] = {}
     all_bboxes = []
     for p_num in sorted(pages_blocks.keys()):
         if p_num >= len(doc):
@@ -2320,8 +2399,9 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file):
                 x0, y0, x1, y1 = bbox
 
                 style = block.get("style", {})
+                block_text = block["text"]
 
-                resolved_font = _resolve_font(style)
+                resolved_font = _resolve_font_glyph_aware(style, block_text, page, font_cache)
                 text_color = _resolve_color(style.get("color", 0))
 
                 # Font size: use original size, no pre-shrink
