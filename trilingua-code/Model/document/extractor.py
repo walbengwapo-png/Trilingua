@@ -433,6 +433,7 @@ def read_pdf(file_path, column_mode="auto"):
                 baseline = None
                 line_x0 = 0.0
                 line_text_x1 = 0.0
+                line_runs = []
                 for span in line.get("spans", []):
                     st = span.get("text", "")
                     lt += st
@@ -465,6 +466,15 @@ def read_pdf(file_path, column_mode="auto"):
                     dom_bold = dom_bold or sp_bold
                     dom_italic = dom_italic or sp_italic
                     dom_font = fam
+                    line_runs.append({
+                        "text": st,
+                        "font": fam,
+                        "font_original": _clean_font_name(span_font) or fam,
+                        "size": max(6.0, min(float(span_size or 11.0), 72.0)),
+                        "color": span_color,
+                        "bold": sp_bold,
+                        "italic": sp_italic,
+                    })
                 if lt.strip():
                     parts.append(lt.strip())
                     line_bbox = [float(v) for v in line.get("bbox", [0, 0, 0, 0])]
@@ -472,6 +482,16 @@ def read_pdf(file_path, column_mode="auto"):
                         baseline = line_bbox[3]
                         line_x0 = line_bbox[0]
                         line_text_x1 = line_bbox[2]
+                    if not line_runs:
+                        line_runs = [{
+                            "text": lt.strip(),
+                            "font": line_font,
+                            "font_original": line_font_orig or line_font,
+                            "size": max(6.0, min(float(line_size or 11.0), 72.0)),
+                            "color": line_color,
+                            "bold": line_bold,
+                            "italic": line_italic,
+                        }]
                     line_records.append({
                         "text": lt.strip(),
                         "bbox": line_bbox,
@@ -484,6 +504,7 @@ def read_pdf(file_path, column_mode="auto"):
                         "color": line_color,
                         "bold": line_bold,
                         "italic": line_italic,
+                        "runs": line_runs,
                         "links": [l for l in page_links if _links_hit(l, line_bbox)],
                     })
 
@@ -577,6 +598,15 @@ def read_pdf(file_path, column_mode="auto"):
                         "color":    0,
                         "bold":     False,
                         "italic":   False,
+                        "runs":     [{
+                            "text":     b["text"],
+                            "font":     "helv",
+                            "font_original": "helv",
+                            "size":     11.0,
+                            "color":    0,
+                            "bold":     False,
+                            "italic":   False,
+                        }],
                         "links":    block_links,
                     }],
                     "links":    block_links,

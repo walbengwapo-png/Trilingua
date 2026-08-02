@@ -788,6 +788,15 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
             "color": style.get("color", 0),
             "bold": style.get("bold", False),
             "italic": style.get("italic", False),
+            "runs": [{
+                "text": block.get("text", ""),
+                "font": style.get("font", "helv"),
+                "font_original": style.get("font_original", ""),
+                "size": style.get("font_size", 11),
+                "color": style.get("color", 0),
+                "bold": style.get("bold", False),
+                "italic": style.get("italic", False),
+            }],
             "links": [],
         }]
 
@@ -1106,6 +1115,52 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
             idx = i + 1
         return " ".join(chunk), idx, True
 
+    def _fit_chunk_runs(words, start, runs, size, width, page):
+        """Greedily take words that fit within *width*, measuring each word at
+        the width of the source run that verbatim-contains it (exact word match)
+        or at the first run's font otherwise.
+
+        A mixed-run line can be narrower than its bold-or-regular single-font
+        estimate (bold headline + regular body), so the single-font ``_fit_chunk``
+        would truncate words that the run-level path could actually place.
+
+        Returns (chunk_text, next_index, fits).
+        """
+        import re as _re
+        run_fonts = []
+        for r in runs:
+            rstyle = {
+                "font": r.get("font", "helv"),
+                "font_original": r.get("font_original", ""),
+                "bold": r.get("bold", False),
+                "italic": r.get("italic", False),
+            }
+            fn, fo = _resolve_line_font(rstyle, page, "")
+            run_fonts.append((fo, max(1.0, len(r.get("text", "")))))
+        run_word_lists = [list(_re.finditer(r"\S+", r.get("text", ""))) for r in runs]
+
+        def _word_font(w):
+            for i, wl in enumerate(run_word_lists):
+                if any(m.group() == w for m in wl):
+                    return run_fonts[i][0]
+            return run_fonts[0][0]
+
+        chunk = []
+        idx = start
+        total = 0.0
+        for i in range(start, len(words)):
+            w = words[i]
+            ww = _text_width(w, _word_font(w), size)
+            trial = total + (ww if not chunk else _text_width(" ", run_fonts[0][0], size) + ww)
+            if chunk and trial > width:
+                break
+            if not chunk and ww > width:
+                return "", i, False
+            chunk.append(w)
+            total = trial
+            idx = i + 1
+        return " ".join(chunk), idx, True
+
     def _expand_into_whitespace(x0, x1, baseline, size, occupied, page_width, block_x0, block_x1):
         y0b = baseline - size * 0.8
         y1b = baseline + size * 0.4
@@ -1138,6 +1193,151 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
             print(f"  [InsertWarn] page {page.number}: insert_text failed "
                   f"fontname={fontname} text={text[:40]!r}: {type(e).__name__}: {e}")
             return None
+
+    def _insert_line_runs(page, text, x0, x1, y, runs, alignment):
+        """Place *text* across the source line's per-span runs, each run in its
+        own resolved font/size/color.
+
+        Whole whitespace-delimited tokens are assigned to a source run so a run
+        boundary never falls inside a translated word (a mid-word style split is
+        only reproduced when the source itself had one). A token whose text is
+        unchanged by translation (numbers, proper nouns, symbols, loanwords) is
+        matched verbatim to the single source run that contains that exact word,
+        preserving its style bit-for-bit. All other tokens use the anchored
+        proportional span overlap (anchored to the source line's own word
+        sequence so leading overflow words spliced in by block-text flow do not
+        skew positions). Inter-word spaces are attached to the preceding segment
+        so genuine word boundaries remain distinguishable from splits.
+
+        Returns the placed rect, or None if the run-based layout doesn't fit the
+        line box (caller then falls back to the single-font path) or the runs
+        collapse to a single style (no mixed formatting to preserve).
+        """
+        import re as _re
+        if not text:
+            return None
+        if not runs or len(runs) < 2:
+            return None
+        tokens = list(_re.finditer(r"\S+", text))
+        if not tokens:
+            return None
+        total_src = sum(max(1, len(r.get("text", ""))) for r in runs)
+        # Anchor the proportional mapping to the source line's own word
+        # sequence. The chunk may include leading overflow words (e.g. a sense
+        # label spliced in by block-text flow) that are not part of this source
+        # line; those must map to the first run without shifting every later
+        # token's position. We find how many leading chunk tokens precede the
+        # source line's first word and subtract that offset from each token's
+        # mapped span. Fall back to unanchored proportional mapping when no
+        # word alignment is found (genuine translations rarely match verbatim).
+        src_words = list(_re.finditer(r"\S+", "".join(r.get("text", "") for r in runs)))
+        lead = 0
+        if src_words:
+            first = src_words[0].group()
+            for i, t in enumerate(tokens):
+                if t.group() == first:
+                    lead = i
+                    break
+        lead_chars = tokens[lead].start() if lead else 0
+        tlen = max(1, len(text) - lead_chars)
+        if tlen <= 0:
+            tlen = max(1, len(text))
+        # Per-run word lists for exact verbatim token matching: a word that is
+        # unchanged by translation (numbers, proper nouns, symbols, loanwords)
+        # is assigned to the single source run that contains that exact word, so
+        # its style is preserved bit-for-bit. Ambiguous / unmatched tokens fall
+        # back to the anchored proportional mapping below.
+        run_word_lists = [list(_re.finditer(r"\S+", r.get("text", ""))) for r in runs]
+        run_words_by_token = {}
+        for t in tokens:
+            matches = [i for i, wl in enumerate(run_word_lists)
+                       if any(w.group() == t.group() for w in wl)]
+            run_words_by_token[t.start()] = matches[0] if len(matches) == 1 else None
+
+        def _run_for_token(tok):
+            """Assign *tok* to the source run: exact word match first, else the
+            run with majority overlap of its anchored proportional span."""
+            exact = run_words_by_token.get(tok.start())
+            if exact is not None:
+                return exact
+            s_start = max(0.0, tok.start() - lead_chars) * total_src / tlen
+            s_end = max(0.0, tok.end() - lead_chars) * total_src / tlen
+            best = 0
+            best_ov = -1.0
+            acc = 0
+            for i, r in enumerate(runs):
+                rlen = max(1, len(r.get("text", "")))
+                b0, b1 = acc, acc + rlen
+                ov = max(0.0, min(s_end, b1) - max(s_start, b0))
+                if ov > best_ov:
+                    best_ov = ov
+                    best = i
+                acc += rlen
+            return best
+
+        assignments = [_run_for_token(t) for t in tokens]
+        # group consecutive tokens by run
+        groups = []
+        cur = assignments[0]
+        cur_toks = [tokens[0]]
+        for i in range(1, len(tokens)):
+            if assignments[i] == cur:
+                cur_toks.append(tokens[i])
+            else:
+                groups.append((cur, cur_toks))
+                cur = assignments[i]
+                cur_toks = [tokens[i]]
+        groups.append((cur, cur_toks))
+
+        if len(groups) < 2:
+            return None
+
+        # Build segment strings, attaching the inter-word space (if any) to the
+        # preceding segment so word boundaries carry their space.
+        segments = []
+        for gi, (ridx, toks) in enumerate(groups):
+            seg = text[toks[0].start():toks[-1].end()]
+            if gi < len(groups) - 1:
+                nxt_start = groups[gi + 1][1][0].start()
+                if nxt_start > toks[-1].end():
+                    seg += text[toks[-1].end():nxt_start]
+            if seg:
+                segments.append((seg, runs[ridx]))
+        if len(segments) < 2:
+            return None
+        placed = []
+        for seg, r in segments:
+            rstyle = {
+                "font": r.get("font", "helv"),
+                "font_original": r.get("font_original", ""),
+                "bold": r.get("bold", False),
+                "italic": r.get("italic", False),
+            }
+            fn, fo = _resolve_line_font(rstyle, page, seg)
+            sz = max(4.0, min(float(r.get("size", 11) or 11), 72.0))
+            col = _resolve_color(r.get("color", 0))
+            tw = _text_width(seg, fo, sz)
+            placed.append((seg, fn, fo, sz, col, tw))
+        total_w = sum(tw for _s, _f, _o, _z, _c, tw in placed)
+        available = x1 - x0
+        if total_w > available * 1.02:
+            return None
+        if alignment == 1:
+            px = x0 + (available - total_w) / 2.0
+        elif alignment == 2:
+            px = x1 - total_w
+        else:
+            px = x0
+        max_size = 0.0
+        for seg, fn, fo, sz, col, tw in placed:
+            try:
+                page.insert_text((px, y), seg, fontsize=sz, fontname=fn, color=col)
+            except Exception as e:
+                print(f"  [InsertWarn] page {page.number}: run insert_text failed "
+                      f"fontname={fn} text={seg[:40]!r}: {type(e).__name__}: {e}")
+            px += tw
+            max_size = max(max_size, sz)
+        return fitz.Rect(x0, y - max_size * 1.1, x0 + total_w, y + max_size * 0.2)
 
     def _recreate_links(page, line, placed_rect, recreated=None):
         if placed_rect is None:
@@ -1238,10 +1438,22 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
             lalign = _line_alignment(ln, lx0, lx1)
 
             rect_placed = None
-            chunk, nxt, fits = _fit_chunk(words, wi, font_obj, base_size, available)
+            line_runs = ln.get("runs")
+            if line_runs and len(line_runs) > 1:
+                chunk, nxt, fits = _fit_chunk_runs(words, wi, line_runs, base_size,
+                                                   available, page)
+            else:
+                chunk, nxt, fits = _fit_chunk(words, wi, font_obj, base_size, available)
             if fits:
-                rect_placed = _insert_line(page, chunk, lx0, lx1, baseline,
-                                           fontname, font_obj, base_size, color, lalign)
+                if line_runs and len(line_runs) > 1:
+                    rect_placed = _insert_line_runs(page, chunk, lx0, lx1, baseline,
+                                                    line_runs, lalign)
+                    if rect_placed is None:
+                        rect_placed = _insert_line(page, chunk, lx0, lx1, baseline,
+                                                   fontname, font_obj, base_size, color, lalign)
+                else:
+                    rect_placed = _insert_line(page, chunk, lx0, lx1, baseline,
+                                               fontname, font_obj, base_size, color, lalign)
                 wi = nxt
             else:
                 ex0, ex1 = _expand_into_whitespace(lx0, lx1, baseline, base_size,

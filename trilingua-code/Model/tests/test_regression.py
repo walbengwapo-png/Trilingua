@@ -21,6 +21,7 @@ before and after. Run:
 import os
 import sys
 import tempfile
+import shutil
 from collections import Counter
 
 # Ensure the Model package is importable
@@ -651,6 +652,215 @@ def test_overflow_continuation_stops_at_occupied_row():
             f"{len(overflow_words)} missing of {len(text.split())} block words"
         )
         assert all(w != "OCCUPIER-BLOCK-CONTENT" for w in overflow_words)
+    finally:
+        for p in (src_path, out_path):
+            if os.path.exists(p):
+                os.remove(p)
+
+
+# ===========================================================================
+# Run-level formatting — mixed bold/italic preservation
+# ===========================================================================
+
+def _mixed_format_pdf(path):
+    """Write a letter PDF whose first line mixes a bold span, an italic span,
+    and a regular span in one line — the exact case the old line-level
+    OR-aggregation/last-span-wins collapsed to a single style."""
+    import fitz
+    doc = fitz.open()
+    page = doc.new_page(width=612, height=792)
+    html = ('<p style="font-size:16pt; font-family:helvetica">'
+            '<b>ALPHA </b><i>BETA</i> GAMMA</p>')
+    page.insert_htmlbox(fitz.Rect(50, 50, 550, 120), html)
+    doc.save(path)
+    doc.close()
+
+
+def _span_styles(path):
+    """Return [(x0, text, bold, italic)] for every non-empty span on page 0."""
+    import fitz
+    doc = fitz.open(path)
+    spans = []
+    d = doc[0].get_text("dict")
+    for b in d.get("blocks", []):
+        if b.get("type") != 0:
+            continue
+        for ln in b.get("lines", []):
+            for sp in ln.get("spans", []):
+                t = sp.get("text", "")
+                if not t.strip():
+                    continue
+                fl = sp.get("flags", 0)
+                spans.append((sp.get("origin", (0, 0))[0], t,
+                              bool(fl & 2 ** 4), bool(fl & 2 ** 1)))
+    doc.close()
+    return spans
+
+
+@pytest.mark.golden
+@pytest.mark.font_regression
+def test_mixed_run_bold_italic_preserved():
+    """A source line with mixed bold/italic/regular spans must reproduce each
+    run with its own style at the correct x position — not collapse to a single
+    font via OR-aggregation or last-span-wins."""
+    from document.extractor import read_pdf
+    from document.reconstructor import write_pdf_preserved
+    import io
+    import contextlib
+
+    src_fd, src_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(src_fd)
+    out_fd, out_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(out_fd)
+    try:
+        _mixed_format_pdf(src_path)
+
+        blocks = read_pdf(src_path, column_mode="single")
+        line = blocks[0]["lines"][0]
+        runs = line.get("runs", [])
+        assert len(runs) >= 3, (
+            f"extractor should produce >=3 runs, got {len(runs)}: {runs}"
+        )
+        styles = [(r.get("bold"), r.get("italic")) for r in runs]
+        assert (True, False) in styles and (False, True) in styles, (
+            f"expected both a bold and an italic run, got {styles}"
+        )
+
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            write_pdf_preserved(blocks, src_path, out_path,
+                                source_lang="English", target_lang="Cebuano")
+        log = buf.getvalue()
+
+        out_styles = _span_styles(out_path)
+        assert len(out_styles) >= 3, (
+            f"output should reproduce >=3 spans, got {out_styles}"
+        )
+        out_bold = [s for s in out_styles if s[2] and not s[3]]
+        out_italic = [s for s in out_styles if s[3] and not s[2]]
+        assert out_bold, f"no bold span reproduced: {out_styles}"
+        assert out_italic, f"no italic span reproduced: {out_styles}"
+
+        # Correct order: the bold span (ALPHA) must sit left of the italic span
+        # (BETA), which sits left of the regular span (GAMMA).
+        x_bold = min(s[0] for s in out_bold)
+        x_italic = min(s[0] for s in out_italic)
+        regular = [s for s in out_styles if not s[2] and not s[3]]
+        x_reg = min(s[0] for s in regular)
+        assert x_bold < x_italic < x_reg, (
+            f"run order not preserved: bold@{x_bold:.1f} italic@{x_italic:.1f} "
+            f"regular@{x_reg:.1f} spans={out_styles}"
+        )
+
+        # No silent insert failures and no overflow of this line.
+        assert "InsertWarn" not in log, log
+    finally:
+        for p in (src_path, out_path):
+            if os.path.exists(p):
+                os.remove(p)
+
+
+# ===========================================================================
+# Word-boundary preservation in run-level formatting
+# ===========================================================================
+
+def _norm_word(w):
+    return w.strip(".,;:!?()[]\"'-")
+
+
+def _page_words(page_text):
+    return set(w for w in page_text.replace("\xa0", " ").split()
+               if any(c.isalnum() for c in w))
+
+
+def _midword_splits(path):
+    """Count NEW mid-word style splits in *path*: an alnum-to-alnum span
+    boundary on a single output line whose joined word does NOT exist as a
+    single word in the same page's extracted text. Legitimate mid-word style
+    changes reproduced from the source (joined word present) are excluded.
+
+    Returns (page_number, joined_word, left_font, right_font) rows.
+    """
+    import fitz
+    doc = fitz.open(path)
+    page_words = {pn: _page_words(doc[pn].get_text()) for pn in range(len(doc))}
+    rows = []
+    for pn, page in enumerate(doc):
+        d = page.get_text("dict")
+        for b in d.get("blocks", []):
+            if b.get("type") != 0:
+                continue
+            for ln in b.get("lines", []):
+                spans = [sp for sp in ln.get("spans", [])
+                         if sp.get("text", "").strip()]
+                for i in range(1, len(spans)):
+                    prev = spans[i - 1].get("text", "")
+                    cur = spans[i].get("text", "")
+                    if not (prev and cur and prev[-1].isalnum()
+                            and cur[0].isalnum()
+                            and prev[-1].strip() and cur[0].strip()):
+                        continue
+                    joined = prev.split()[-1] + cur.split()[0]
+                    if _norm_word(joined) not in page_words[pn]:
+                        rows.append((pn, joined,
+                                     spans[i - 1].get("font", ""),
+                                     spans[i].get("font", "")))
+    doc.close()
+    return rows
+
+
+@pytest.mark.golden
+@pytest.mark.font_regression
+def test_run_level_emission_no_midword_splits(pdf_fixture_exam_path):
+    """Run-level emission must never place a run boundary inside a translated
+    word on real content. Every alnum-to-alnum span boundary in the output must
+    correspond to a genuine word boundary of the source document (the joined
+    word appears as a single word elsewhere in the page); otherwise the word
+    was split mid-word by the proportional/run assignment."""
+    from document.extractor import read_pdf
+    from document.reconstructor import write_pdf_preserved
+    import io
+    import contextlib
+
+    src_fd, src_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(src_fd)
+    out_fd, out_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(out_fd)
+    try:
+        shutil.copy(pdf_fixture_exam_path, src_path)
+        blocks = read_pdf(src_path, column_mode="single")
+
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            write_pdf_preserved(blocks, src_path, out_path,
+                                source_lang="English", target_lang="Cebuano")
+        log = buf.getvalue()
+
+        assert "InsertWarn" not in log, log
+
+        splits = _midword_splits(out_path)
+        assert not splits, (
+            f"{len(splits)} mid-word style splits introduced on real content: "
+            + "; ".join(f"p{p}: {w!r} ({f1}/{f2})" for p, w, f1, f2 in splits[:8])
+        )
+
+        # Sanity: the run-level path actually fired on this content, so the
+        # assertion above is not vacuously passing.
+        import fitz
+        doc = fitz.open(out_path)
+        mixed = sum(
+            1 for pn in range(len(doc))
+            for b in doc[pn].get_text("dict").get("blocks", [])
+            if b.get("type") == 0
+            for ln in b.get("lines", [])
+            if len([sp for sp in ln.get("spans", [])
+                    if sp.get("text", "").strip()]) > 1
+        )
+        doc.close()
+        assert mixed > 0, (
+            f"no mixed-run lines reproduced from exam fixture; "
+            f"mid-word-split test is vacuous"
+        )
     finally:
         for p in (src_path, out_path):
             if os.path.exists(p):

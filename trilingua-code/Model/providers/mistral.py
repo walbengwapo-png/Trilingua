@@ -76,6 +76,10 @@ class MistralProvider(TranslationProvider):
         system_msg = get_system_prompt(document_type, target_lang)
         user_msg = build_translation_prompt(text, source_lang, target_lang, block_type)
 
+        # Add context hint if provided (matches gptoss.py handling)
+        if context_hint:
+            user_msg = f"Previous context: {context_hint}\n\n{user_msg}"
+
         # Token budget — Mistral Small 4 has a 256K context window
         total_chars = len(system_msg) + len(user_msg)
         estimated_input_tokens = total_chars // 4

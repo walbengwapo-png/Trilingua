@@ -106,6 +106,22 @@ def pdf_fixture_multifont_path(tmp_path_factory):
     return path
 
 
+@pytest.fixture(scope="session")
+def pdf_fixture_exam_path():
+    """Return the path to the real translated exam PDF fixture.
+
+    ``M1_Q1_ENGLISH 8.pdf`` is a genuine mixed-run document (bold, italic, and
+    mixed-style source lines) used as real-content ground truth for run-level
+    emission regression tests. Lives in the top-level ``tests/testPDFs``.
+    """
+    path = os.path.normpath(os.path.join(
+        os.path.dirname(__file__), "..", "..", "tests", "testPDFs",
+        "M1_Q1_ENGLISH 8.pdf"))
+    if not os.path.exists(path):
+        pytest.skip(f"exam PDF fixture not found: {path}")
+    return path
+
+
 def pytest_configure(config):
     """Register custom marks and clean stale bytecode caches.
 
