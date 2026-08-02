@@ -181,7 +181,32 @@ class DocumentPipeline:
         blocks = data
         print(f"  Found {len(blocks)} text block(s) after filtering.")
 
-        if not blocks:
+        if not blocks and ext == ".pdf":
+            # Attempt OCR fallback for image-based/scanned PDFs
+            print("[OCR] No text blocks found via PyMuPDF extraction.")
+            print("[OCR] Attempting OCR fallback...")
+            try:
+                from document.ocr_extractor import ocr_extract_pdf
+                ocr_blocks = ocr_extract_pdf(request.file_path)
+                if ocr_blocks:
+                    blocks = ocr_blocks
+                    print(f"  [OCR] Successfully extracted {len(blocks)} block(s) via OCR")
+                else:
+                    raise ValueError(
+                        "No translatable text extracted. OCR yielded no text. "
+                        "For bilingual PDFs, try pdf_column_mode='left' or 'right'."
+                    )
+            except ImportError:
+                raise ValueError(
+                    "No translatable text extracted from PDF. "
+                    "OCR fallback is not available (pytesseract not installed). "
+                    "Install: pip install pytesseract, and install Tesseract OCR."
+                )
+            except Exception as ocr_err:
+                raise ValueError(
+                    f"No translatable text extracted. OCR fallback also failed: {ocr_err}"
+                )
+        elif not blocks:
             raise ValueError(
                 "No translatable text extracted. "
                 "If this is a scanned PDF, OCR is required. "

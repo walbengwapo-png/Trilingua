@@ -189,14 +189,18 @@ class BackgroundSampler:
     """
 
     @staticmethod
-    def sample(page, bbox):
-        """Sample background colour at the four corners of *bbox*."""
+    def sample(page, bbox, pixmap=None):
+        """Sample background colour at the four corners of *bbox*.
+
+        *pixmap* may be a pre-rendered ``fitz.Pixmap`` of *page* to avoid
+        re-rendering the page for every sample call.
+        """
         x0, y0, x1, y1 = bbox
 
         if x0 >= x1 or y0 >= y1:
             return None
 
-        pix = page.get_pixmap()
+        pix = pixmap if pixmap is not None else page.get_pixmap()
 
         pw = float(page.rect.x1 - page.rect.x0)
         ph = float(page.rect.y1 - page.rect.y0)

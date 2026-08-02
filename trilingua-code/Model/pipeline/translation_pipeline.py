@@ -108,8 +108,14 @@ def _is_passthrough_block(text: str) -> tuple[bool, str]:
     if len(stripped) < 2:
         return True, "too_short"
 
-    # Exactly 2 characters — allowlist check
-    if len(stripped) < 3 and stripped.lower() not in _SHORT_WORD_ALLOWLIST:
+    # Exactly 2 characters — allowlist check OR contains at least one letter
+    # (Relaxed: allow 2-char text with letters like "Oh", "Hi", "No" for story books)
+    if len(stripped) < 3:
+        if stripped.lower() in _SHORT_WORD_ALLOWLIST:
+            return False, ""
+        # Allow if it contains at least one letter (catches "Oh!", "Hi", "No", etc.)
+        if re.search(r'[a-zA-Z]', stripped):
+            return False, ""
         return True, "too_short"
 
     # Entirely punctuation or whitespace
@@ -734,7 +740,8 @@ class TranslationPipeline:
 
                 # Preserve position metadata for PDF
                 for key in ("position", "page", "slide", "shape_id", "para_idx",
-                            "sheet", "row", "col", "table_index"):
+                            "sheet", "row", "col", "table_index",
+                            "alignment"):
                     if key in block:
                         new_block[key] = block[key]
 

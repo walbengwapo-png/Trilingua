@@ -21,6 +21,7 @@ before and after. Run:
 import os
 import sys
 import tempfile
+from collections import Counter
 
 # Ensure the Model package is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -480,3 +481,177 @@ def test_pdf_no_accent_uses_original_font():
         f"Expected original font when no accented chars needed, got {pdf_name}"
     )
     assert fb is buf, "Expected original font buffer returned"
+
+
+# ===========================================================================
+# PDF overflow continuation — free-row rescue
+# ===========================================================================
+
+def _make_blank_pdf(path):
+    """Write a blank single-page letter PDF to *path*."""
+    import fitz
+    doc = fitz.open()
+    doc.new_page(width=612, height=792)
+    doc.save(path)
+    doc.close()
+
+
+def _overflow_block(text, line_box):
+    """Build one translatable block whose single line box is narrower than its
+    text, forcing words to overflow after the main per-line loop."""
+    return {
+        "type": "paragraph",
+        "text": text,
+        "position": list(line_box),
+        "page": 0,
+        "alignment": "left",
+        "style": {"font": "Helvetica", "font_size": 12, "color": 0,
+                  "bold": False, "italic": False},
+        "lines": [{
+            "text": text.split()[0],
+            "bbox": list(line_box),
+            "baseline": line_box[3] - 5,
+            "x0": line_box[0], "text_x1": line_box[2],
+            "font": "helv", "font_original": "Helvetica",
+            "size": 12, "color": 0, "bold": False, "italic": False,
+            "links": [],
+        }],
+    }
+
+
+def _page_text_lines(path):
+    """Return ([(origin_y, text)], normalized word list) for page 0."""
+    import fitz
+    doc = fitz.open(path)
+    d = doc[0].get_text("dict")
+    lines = []
+    words = []
+    for b in d.get("blocks", []):
+        if b.get("type") != 0:
+            continue
+        for ln in b.get("lines", []):
+            txt = "".join(sp.get("text", "") for sp in ln.get("spans", []))
+            if not txt.strip():
+                continue
+            sp = ln.get("spans", [{}])[0]
+            o = sp.get("origin")
+            lines.append((o[1] if o else ln["bbox"][1], txt))
+            words.extend(txt.split())
+    doc.close()
+    return lines, Counter(words)
+
+
+@pytest.mark.golden
+@pytest.mark.font_regression
+def test_overflow_continuation_rescues_free_row():
+    """The continuation loop places overflow words into a genuine free row
+    below the block instead of truncating them.
+
+    This path is never exercised by the 4 standard fixtures (all their
+    overflow instances are geometrically blocked by real content below), so it
+    needs its own synthetic target: a narrow line box + long text on an
+    otherwise blank page. The loop must fire, move the overflow words into the
+    free rows, and preserve the exact word multiset.
+    """
+    from document.reconstructor import write_pdf_preserved
+    import io
+    import contextlib
+
+    text = ("alpha beta gamma delta epsilon zeta eta theta iota kappa "
+            "lambda mu nu xi omicron pi rho sigma tau upsilon phi chi psi omega")
+    blocks = [_overflow_block(text, [50, 50, 150, 70])]
+
+    src_fd, src_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(src_fd)
+    out_fd, out_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(out_fd)
+    try:
+        _make_blank_pdf(src_path)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            write_pdf_preserved(blocks, src_path, out_path,
+                                source_lang="English", target_lang="Cebuano")
+        log = buf.getvalue()
+
+        assert "Overflow" not in log, (
+            f"continuation failed to rescue overflow words: "
+            f"{[l.strip() for l in log.splitlines() if 'Overflow' in l]}"
+        )
+
+        lines, words = _page_text_lines(out_path)
+        assert len(lines) > 1, (
+            f"expected multiple continuation rows, got {len(lines)}: {lines}"
+        )
+        src_count = Counter(text.split())
+        assert words == src_count, (
+            f"word multiset mismatch: missing={src_count - words} "
+            f"added={words - src_count}"
+        )
+
+        # Continuation rows must step downward by ~one line height each.
+        ys = sorted(round(y, 1) for y, _ in lines)
+        steps = [round(b - a, 1) for a, b in zip(ys, ys[1:])]
+        assert all(abs(s - 15.6) < 0.5 for s in steps), (
+            f"continuation rows not evenly spaced: {steps}"
+        )
+    finally:
+        for p in (src_path, out_path):
+            if os.path.exists(p):
+                os.remove(p)
+
+
+@pytest.mark.golden
+@pytest.mark.font_regression
+def test_overflow_continuation_stops_at_occupied_row():
+    """The continuation loop must stop (and emit the overflow log) when the
+    candidate row collides with another block's content — it must not overwrite
+    or duplicate the colliding block."""
+    from document.reconstructor import write_pdf_preserved
+    import io
+    import contextlib
+
+    text = ("alpha beta gamma delta epsilon zeta eta theta iota kappa "
+            "lambda mu nu xi omicron pi rho sigma tau upsilon phi chi psi omega")
+    blocks = [
+        _overflow_block(text, [50, 50, 150, 70]),
+        _overflow_block("OCCUPIER-BLOCK-CONTENT", [50, 80, 300, 96]),
+    ]
+
+    src_fd, src_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(src_fd)
+    out_fd, out_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(out_fd)
+    try:
+        _make_blank_pdf(src_path)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            write_pdf_preserved(blocks, src_path, out_path,
+                                source_lang="English", target_lang="Cebuano")
+        log = buf.getvalue()
+
+        assert "Overflow" in log, "expected overflow log when free row is blocked"
+        assert "occupied@" in log, f"expected occupied stop reason: {log}"
+
+        lines, words = _page_text_lines(out_path)
+        # Block 2 content fully present and NOT duplicated/corrupted.
+        assert "OCCUPIER-BLOCK-CONTENT" in " ".join(t for _, t in lines)
+        assert words["OCCUPIER-BLOCK-CONTENT"] == 1, (
+            f"occupier block duplicated or lost: {dict(words)}"
+        )
+        # No words may be invented by the continuation attempt.
+        allowed = Counter(text.split()) + Counter(["OCCUPIER-BLOCK-CONTENT"])
+        assert words - allowed == Counter(), (
+            f"unexpected added words: {dict(words - allowed)}"
+        )
+        # Exactly the overflow words are missing (block 0 truncated), proving
+        # continuation stopped at the occupied row instead of overwriting it.
+        overflow_words = Counter(text.split()) - words
+        assert len(overflow_words) == len(text.split()) - 3, (
+            f"expected only block-0 overflow to be truncated, got "
+            f"{len(overflow_words)} missing of {len(text.split())} block words"
+        )
+        assert all(w != "OCCUPIER-BLOCK-CONTENT" for w in overflow_words)
+    finally:
+        for p in (src_path, out_path):
+            if os.path.exists(p):
+                os.remove(p)

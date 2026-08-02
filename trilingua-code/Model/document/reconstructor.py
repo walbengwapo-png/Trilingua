@@ -17,6 +17,8 @@ import shutil
 import subprocess
 import tempfile
 
+from .layout import BackgroundSampler
+
 
 def _apply_translation_to_paragraph(para, translated_text, glossary_store):
     """
@@ -725,339 +727,839 @@ def _truncate_to_fit(text: str, max_chars: int) -> tuple[str, str]:
     return fits.strip(), overflow.strip()
 
 
+# Codepoints that PyMuPDF ``insert_text`` renders faithfully with a bare
+# Base-14 fontname (helv/tiro/cour). Measured empirically: ASCII printable +
+# Latin-1 (0xA1-0xFF), excluding nbsp (0xA0) and soft-hyphen (0xAD) which are
+# rewritten to U+00B7. Any codepoint outside this set must NOT be routed to the
+# bare Base-14 path, even though ``fitz.Font(...).has_glyph()`` reports
+# coverage — insert_text silently mangles them to the middle-dot glyph.
+_BASE14_RENDERABLE = frozenset(
+    set(range(0x20, 0x7F))
+    | set(range(0xA1, 0x100))
+) - {0xAD}
+
+
 def write_pdf_preserved(blocks, original_pdf_path, output_file,
                         layout_plan=None,
                         source_lang="", target_lang=""):
     """
     Replace original text in a PDF with translations while preserving layout.
-    
-    Uses white-rectangle overlay instead of redaction annotations for:
-      - 3x faster processing (no redaction apply pass)
-      - No ghosting artifacts from misaligned redaction boundaries
-      - Better handling of overlapping text blocks
-    
-    Key improvements over redaction approach:
-      - Overlay: draw white rects over original text, then insert translations
-      - Language-aware proactive font sizing using expansion coefficients
-      - Multi-page text flow: overflow text is truncated and prepended to next block
-      - Font width scaling for better fit with built-in fonts
+
+    Strategy: per-line redact-and-reinsert.
+
+      - Original text is removed per LINE via ``apply_redactions(images=0,
+        graphics=0, text=0)`` so images and vector graphics survive untouched.
+      - Translated block text is re-flowed into the original line boxes at their
+        exact baseline/x0 with per-line font/size/colour and block alignment.
+      - Overflow rules: expand into collision-checked whitespace first, then
+        shrink the font down to a 70% floor. Text is never merged into the next
+        block; excess words wrap to continuation lines inside the block's own box.
+      - Hyperlink annotations are re-created at the translated line positions.
+      - Garbage/passthrough blocks are skip-listed: original text and links stay.
+
+    A per-page page-copy fallback re-runs the same core on a pristine copy of the
+    page when a post-redaction invariant fails (I1 image bytes, I2 leftover glyphs,
+    I3 bbox collision, I4 exception).
     """
     import fitz
 
-    FONT_MAP = {
-        "helv": "helv", "Helv": "helv", "Helvetica": "helv",
-        "Helvetica-Bold": "helvb", "Helvetica-Oblique": "heloi",
-        "Helvetica-BoldOblique": "helbo",
-        "tiro": "tiro", "Tiro": "tiro", "Times": "tiro",
-        "TimesNewRoman": "tiro", "Times-Bold": "tirob", "Times-Italic": "tiroi",
-        "Times-BoldItalic": "tirobi",
-        "cour": "cour", "Cour": "cour", "Courier": "cour",
-        "CourierNew": "cour", "Courier-Bold": "courb",
-        "Courier-Oblique": "couit", "Courier-BoldOblique": "coubi",
+    _BASE14_VARIANTS = {
+        ("helv", False, False): "helv", ("helv", True, False): "hebo",
+        ("helv", False, True): "heit", ("helv", True, True): "hebi",
+        ("tiro", False, False): "tiro", ("tiro", True, False): "tibo",
+        ("tiro", False, True): "titi", ("tiro", True, True): "tibi",
+        ("cour", False, False): "cour", ("cour", True, False): "cobo",
+        ("cour", False, True): "coit", ("cour", True, True): "cobi",
     }
 
-    # Font width scaling factors — built-in fonts have different metrics
-    # than common document fonts. These multipliers help compensate.
-    _FONT_WIDTH_SCALE = {
-        "helv": 0.92,   # Helvetica is wider than Arial
-        "tiro": 0.95,   # Times is slightly wider than Times New Roman
-        "cour": 1.0,    # Courier is close to Courier New
-    }
+    def _ensure_lines(block):
+        """Backfill a single synthesized line for blocks without line records."""
+        if block.get("lines"):
+            return
+        bbox = block.get("position", [50, 50, 500, 100])
+        style = block.get("style", {})
+        block["lines"] = [{
+            "text": block.get("text", ""),
+            "bbox": list(bbox),
+            "baseline": round(float(bbox[3]), 2),
+            "font": style.get("font", "helv"),
+            "font_original": style.get("font_original", ""),
+            "size": style.get("font_size", 11),
+            "color": style.get("color", 0),
+            "bold": style.get("bold", False),
+            "italic": style.get("italic", False),
+            "links": [],
+        }]
+
+    for _b in blocks:
+        _ensure_lines(_b)
+
+    def _clean_subset(name):
+        return name.split("+", 1)[1] if "+" in name else name
+
+    def _family_of(name):
+        lower = (name or "").lower()
+        if lower in ("helv", "hebo", "heit", "hebi"):
+            return "helv"
+        if lower in ("tiro", "tibo", "titi", "tibi"):
+            return "tiro"
+        if lower in ("cour", "cobo", "coit", "cobi"):
+            return "cour"
+        if any(k in lower for k in ("courier", "consolas", "mono", "monospace")):
+            return "cour"
+        if any(k in lower for k in ("liberation", "nimbus")) and any(
+                k in lower for k in ("serif", "roman")):
+            return "tiro"
+        if any(k in lower for k in ("times", "georgia", "roman", "garamond",
+                                    "palatino", "bookman", "baskerville", "serif",
+                                    "caslon", "bembo", "bodoni", "hoefler",
+                                    "cambria", "book", "charter", "jenson")):
+            return "tiro"
+        return "helv"
+
+    def _safe_fontname(name):
+        cleaned = re.sub(r"[^A-Za-z0-9]", "", name or "")[:30]
+        if not cleaned:
+            return "helv"
+        if cleaned.lower() in ("helv", "heit", "hebo", "hebi", "tiro", "titi",
+                               "tibo", "tibi", "cour", "coit", "cobo", "cobi"):
+            return "f" + cleaned
+        return cleaned
 
     def _resolve_color(color_val):
         if isinstance(color_val, int) and color_val != 0:
-            return fitz.sRGB_to_rgb(color_val)
+            c = fitz.sRGB_to_rgb(color_val)
+            if isinstance(c, (tuple, list)) and len(c) >= 3:
+                if max(c[:3]) > 1.0:
+                    return tuple(round(v / 255.0, 6) for v in c[:3])
+                return tuple(c[:3])
         return (0, 0, 0)
 
-    def _detect_alignment(block, page_width):
+    def _block_alignment(block, page_width):
+        alignment_str = block.get("alignment", "")
+        if alignment_str:
+            _align_map = {"left": 0, "center": 1, "right": 2, "justify": 3}
+            if alignment_str in _align_map:
+                return _align_map[alignment_str]
         bbox = block.get("position", [0, 0, 0, 0])
         x0, y0, x1, y1 = bbox
         block_center = (x0 + x1) / 2.0
-        page_center = page_width / 2.0
         block_width = x1 - x0
-        if block_width < page_width * 0.85 and abs(block_center - page_center) < page_width * 0.05:
+        right_margin = page_width - x1
+        left_margin = x0
+        if block_width > page_width * 0.05 and right_margin < page_width * 0.05 and left_margin > page_width * 0.10:
+            return 2
+        if block_width < page_width * 0.85 and abs(block_center - page_width / 2.0) < page_width * 0.05:
             return 1
+        if block_width > page_width * 0.90:
+            return 3
         return 0
 
-    def _compute_proactive_font_size(original_text, translated_text, base_font_size):
-        """Compute a proactive font size using language-aware expansion coefficients.
-        
-        Uses the language-pair expansion factor as a prior, then refines with
-        the actual character-length ratio. This is more accurate than using
-        the raw ratio alone, especially for short texts where the ratio is noisy.
-        """
-        src_chars = len(original_text)
-        tgt_chars = len(translated_text)
-        if src_chars == 0:
-            return base_font_size
-        
-        # Get language-pair expansion coefficient as a prior
-        expansion = _get_lang_expansion(source_lang, target_lang)
-        
-        # Actual ratio
-        actual_ratio = src_chars / tgt_chars if tgt_chars > 0 else 1.0
-        
-        # Blend: for short text (<20 chars), trust the language prior more
-        # For long text, trust the actual ratio
-        if src_chars < 20:
-            blended_ratio = 0.6 * (1.0 / expansion) + 0.4 * actual_ratio
-        else:
-            blended_ratio = actual_ratio
-        
-        # Apply font width scaling factor
-        font_key = resolved_font.rstrip("bi") if resolved_font else "helv"
-        width_scale = _FONT_WIDTH_SCALE.get(font_key, 1.0)
-        blended_ratio *= width_scale
-        
-        # Add 5% safety buffer
-        blended_ratio *= 0.95
-        
-        scaled_font = base_font_size * blended_ratio
-        return max(6.0, scaled_font)
-
+    # ---- open docs ----
     doc = fitz.open(original_pdf_path)
+    src_doc = fitz.open(original_pdf_path)
 
-    # ── Collect all embedded font programs from the document ───────────────
-    # Used by glyph-aware font resolution so we can re-embed fonts that
-    # cover the codepoints needed by translated text.
+    # ---- collect embedded font programs (raw + subset-stripped keys) ----
     _embedded_font_programs: dict[str, bytes] = {}
-    for pnum in range(len(doc)):
-        for f in doc.get_page_fonts(pnum):
-            xref = f[0]
-            fname = f[3]
-            if fname in _embedded_font_programs:
+    for _pnum in range(len(src_doc)):
+        for _f in src_doc.get_page_fonts(_pnum):
+            _xref, _fname = _f[0], _f[3]
+            if _fname in _embedded_font_programs:
                 continue
             try:
-                info = doc.extract_font(xref)
-                buf = info[3]
-                if buf:
-                    _embedded_font_programs[fname] = buf
+                _info = src_doc.extract_font(_xref)
+                _buf = _info[3]
+                if _buf:
+                    _embedded_font_programs[_fname] = _buf
+                    _clean = _clean_subset(_fname)
+                    if _clean and _clean != _fname and _clean not in _embedded_font_programs:
+                        _embedded_font_programs[_clean] = _buf
             except Exception:
                 pass
 
-    def _resolve_font_glyph_aware(style, block_text, page_obj, font_cache):
-        """Resolve font with glyph coverage for *block_text*."""
-        from .layout import FontMapper
-        mapper = FontMapper()
-        font_name = style.get("font", "helv")
-        is_bold = style.get("bold", False)
-        is_italic = style.get("italic", False)
+    _font_cache: dict[tuple[int, int], set[str]] = {}
+    _fallback_used: set[str] = set()
 
-        # Collect required codepoints from translated text
-        req_cps = set()
-        for ch in block_text:
-            cp = ord(ch)
-            if cp > 127:
-                req_cps.add(cp)
+    _SYSTEM_FONT_FILES = {
+        ("helv", False, False): r"C:\Windows\Fonts\arial.ttf",
+        ("helv", True, False): r"C:\Windows\Fonts\arialbd.ttf",
+        ("helv", False, True): r"C:\Windows\Fonts\ariali.ttf",
+        ("tiro", False, False): r"C:\Windows\Fonts\times.ttf",
+        ("tiro", True, False): r"C:\Windows\Fonts\timesbd.ttf",
+        ("tiro", False, True): r"C:\Windows\Fonts\timesi.ttf",
+        ("cour", False, False): r"C:\Windows\Fonts\cour.ttf",
+        ("cour", True, False): r"C:\Windows\Fonts\courbd.ttf",
+        ("cour", False, True): r"C:\Windows\Fonts\couri.ttf",
+    }
+    _SYSTEM_FALLBACK_LIST = [r"C:\Windows\Fonts\arial.ttf", r"C:\Windows\Fonts\segoeui.ttf",
+                             r"C:\Windows\Fonts\times.ttf"]
 
-        pdf_name, fb = mapper.resolve_to_pdf_name(
-            font_name, _embedded_font_programs,
-            required_codepoints=req_cps if req_cps else None,
-        )
+    _BASE14_COMPAT_ORIGINALS = ("arial", "helvetica", "helvetica neue", "times",
+                                "times new roman", "liberationserif", "liberationsans",
+                                "liberationmono", "courier", "courier new", "nimbusroman")
 
-        # Apply bold/italic variants for Base-14 built-ins
-        base_font = pdf_name
-        if base_font in _FONT_WIDTH_SCALE:
-            if is_bold and is_italic and base_font in ("helv", "tiro", "cour"):
-                pdf_name = base_font + "bi"
-            elif is_bold and base_font in ("helv", "tiro", "cour"):
-                pdf_name = base_font + "b"
-            elif is_italic and base_font in ("helv", "tiro", "cour"):
-                pdf_name = base_font + "i"
+    def _original_system_font(name, bold, italic):
+        lower = (name or "").lower()
+        if any(c in lower for c in _BASE14_COMPAT_ORIGINALS):
+            return None
+        if "tahoma" in lower:
+            return r"C:\Windows\Fonts\tahomabd.ttf" if bold else r"C:\Windows\Fonts\tahoma.ttf"
+        if "verdana" in lower:
+            if bold and italic:
+                return r"C:\Windows\Fonts\verdanaz.ttf"
+            if bold:
+                return r"C:\Windows\Fonts\verdanab.ttf"
+            if italic:
+                return r"C:\Windows\Fonts\verdanai.ttf"
+            return r"C:\Windows\Fonts\verdana.ttf"
+        if "calibri" in lower:
+            if bold:
+                return r"C:\Windows\Fonts\calibrib.ttf"
+            if italic:
+                return r"C:\Windows\Fonts\calibrii.ttf"
+            return r"C:\Windows\Fonts\calibri.ttf"
+        if "segoe" in lower:
+            if bold:
+                return r"C:\Windows\Fonts\segoeuib.ttf"
+            if italic:
+                return r"C:\Windows\Fonts\segoeuii.ttf"
+            return r"C:\Windows\Fonts\segoeui.ttf"
+        if "georgia" in lower:
+            if bold:
+                return r"C:\Windows\Fonts\georgiab.ttf"
+            if italic:
+                return r"C:\Windows\Fonts\georgiai.ttf"
+            return r"C:\Windows\Fonts\georgia.ttf"
+        if "cambria" in lower:
+            if bold:
+                return r"C:\Windows\Fonts\cambriab.ttf"
+            if italic:
+                return r"C:\Windows\Fonts\cambriai.ttf"
+            return None
+        if "garamond" in lower:
+            if os.path.exists(r"C:\Windows\Fonts\garamond.ttf"):
+                return r"C:\Windows\Fonts\garamond.ttf"
+            return None
+        return None
 
-        # Insert the font buffer if needed (non-built-in)
-        _insert_font_if_needed(page_obj, pdf_name, fb, font_cache)
-
-        return pdf_name
-
-    def _insert_font_if_needed(page_obj, resolved_name, font_buffer, font_cache):
-        """Insert a font program into *page_obj* if not already cached for that page."""
-        if not font_buffer:
-            return
-        page_key = id(page_obj)
-        inserted = font_cache.get(page_key, set())
-        if resolved_name in inserted:
+    def _insert_font(page_obj, name, buffer):
+        key = (id(page_obj.parent), page_obj.xref)
+        inserted = _font_cache.setdefault(key, set())
+        if name in inserted:
             return
         try:
-            page_obj.insert_font(fontname=resolved_name, fontbuffer=font_buffer)
-            inserted.add(resolved_name)
-            font_cache[page_key] = inserted
+            page_obj.insert_font(fontname=name, fontbuffer=buffer)
+            inserted.add(name)
+        except Exception as _e:
+            print(f"  [InsertWarn] page {page_obj.number}: insert_font failed "
+                  f"fontname={name}: {type(_e).__name__}: {_e}")
+
+    def _font_has_all(font_obj, cps):
+        try:
+            return all(font_obj.has_glyph(cp) for cp in cps)
         except Exception:
-            pass
+            return False
 
-    # Group blocks by page
-    pages_blocks = {}
-    for block in blocks:
-        p = block.get("page", 0)
-        if p not in pages_blocks:
-            pages_blocks[p] = []
-        pages_blocks[p].append(block)
+    def _base14_has_all(variant, cps):
+        # NOTE: has_glyph() lies for the bare Base-14 insertion path — it reports
+        # coverage for curly quotes/dashes/ellipsis that insert_text then mangles
+        # to U+00B7. Use the empirically-safe renderable set instead.
+        try:
+            return all(cp in _BASE14_RENDERABLE for cp in cps)
+        except Exception:
+            return False
 
-    # Phase 1: Overlay original text with white rectangles
-    # This is faster than redaction and avoids ghosting
-    for page_num, page_blocks in pages_blocks.items():
-        if page_num >= len(doc):
-            continue
-        page = doc[page_num]
-        for block in page_blocks:
-            # Skip overlay for passthrough blocks — preserve original rendering
-            if block.get("passthrough"):
+    def _resolve_line_font(style, page_obj, text):
+        """Return (fontname, font_obj) with guaranteed glyph coverage for *text*.
+
+        Preference: Base-14 variant (clean extraction, full Latin-1) → system
+        TrueType font (covers exotic punctuation; the nbsp extraction artifact
+        is visual-only). CID/Type0 subset fonts are never re-embedded because
+        PyMuPDF ``insert_text`` corrupts spaces/letters with them on this version.
+        """
+        family_name = style.get("font_original") or style.get("font", "helv")
+        family = _family_of(family_name)
+        bold = bool(style.get("bold", False))
+        italic = bool(style.get("italic", False))
+
+        req_cps = {ord(ch) for ch in text if ord(ch) > 127}
+
+        orig_path = _original_system_font(family_name, bold, italic)
+        if orig_path and os.path.exists(orig_path):
+            try:
+                fnt = fitz.Font(fontfile=orig_path)
+            except Exception:
+                fnt = None
+            if fnt is not None and _font_has_all(fnt, req_cps):
+                _name = _safe_fontname("sys" + os.path.splitext(os.path.basename(orig_path))[0])
+                _insert_font(page_obj, _name, fnt.buffer)
+                _fallback_used.add(orig_path)
+                return _name, fnt
+
+        variant = _BASE14_VARIANTS.get((family, bold, italic), "helv")
+
+        req_cps = {ord(ch) for ch in text if ord(ch) > 127}
+        if not req_cps or _base14_has_all(variant, req_cps):
+            try:
+                return variant, fitz.Font(variant)
+            except Exception:
+                return "helv", fitz.Font("helv")
+
+        preferred = _SYSTEM_FONT_FILES.get((family, bold, italic))
+        candidates = [preferred] if preferred else []
+        for _p in _SYSTEM_FALLBACK_LIST:
+            if _p not in candidates:
+                candidates.append(_p)
+        for _path in candidates:
+            if not os.path.exists(_path):
                 continue
             try:
-                bbox = block.get("position", [50, 50, 500, 100])
-                x0, y0, x1, y1 = bbox
-                if x1 <= x0 or y1 <= y0:
+                fnt = fitz.Font(fontfile=_path)
+            except Exception:
+                continue
+            if not _font_has_all(fnt, req_cps):
+                continue
+            _name = _safe_fontname("sys" + os.path.splitext(os.path.basename(_path))[0])
+            _insert_font(page_obj, _name, fnt.buffer)
+            _fallback_used.add(_path)
+            return _name, fnt
+        try:
+            return variant, fitz.Font(variant)
+        except Exception:
+            return "helv", fitz.Font("helv")
+
+    def _text_width(text, font_obj, fontsize):
+        try:
+            return font_obj.text_length(text, fontsize=fontsize)
+        except Exception:
+            return fontsize * 0.5 * len(text)
+
+    def _image_snapshot(page):
+        snap = []
+        for img in page.get_images(full=True):
+            xref = img[0]
+            try:
+                pix = page.parent.extract_image(xref)
+                snap.append((xref, pix.get("ext"), pix.get("image")))
+            except Exception:
+                snap.append((xref, None, None))
+        snap.sort(key=lambda t: t[0])
+        return snap
+
+    def _spans_in_rects(page, rects):
+        count = 0
+        d = page.get_text("dict")
+        for b in d.get("blocks", []):
+            if b.get("type") != 0:
+                continue
+            for ln in b.get("lines", []):
+                for sp in ln.get("spans", []):
+                    txt = sp.get("text", "")
+                    if not txt.strip():
+                        continue
+                    sb = sp.get("bbox")
+                    if not sb:
+                        continue
+                    sr = fitz.Rect(sb)
+                    for rr in rects:
+                        inter = sr & rr
+                        if not inter.is_empty and inter.get_area() > 1.0:
+                            count += 1
+                            break
+        return count
+
+    def _count_spans(page):
+        n = 0
+        d = page.get_text("dict")
+        for b in d.get("blocks", []):
+            if b.get("type") != 0:
+                continue
+            for ln in b.get("lines", []):
+                for sp in ln.get("spans", []):
+                    if sp.get("text", "").strip():
+                        n += 1
+        return n
+
+    def _shrink_floor(base_size):
+        # env override for measuring the contribution of the shrink-to-fit floor
+        try:
+            _f = float(os.environ.get("TRI_SHRINK_FLOOR", "0.70"))
+        except ValueError:
+            _f = 0.70
+        return max(_f * base_size, 4.0)
+
+    def _fit_chunk(words, start, font_obj, size, width):
+        """Greedily take words that fit within *width* at *size*.
+
+        Returns (chunk_text, next_index, fits). ``fits`` is False when even the
+        first word does not fit at this size.
+        """
+        chunk = []
+        idx = start
+        for i in range(start, len(words)):
+            trial = " ".join(chunk + [words[i]])
+            if chunk and _text_width(trial, font_obj, size) > width:
+                break
+            if not chunk and _text_width(trial, font_obj, size) > width:
+                return "", i, False
+            chunk.append(words[i])
+            idx = i + 1
+        return " ".join(chunk), idx, True
+
+    def _expand_into_whitespace(x0, x1, baseline, size, occupied, page_width, block_x0, block_x1):
+        y0b = baseline - size * 0.8
+        y1b = baseline + size * 0.4
+        right_block = min(block_x1, page_width)
+        left_block = max(block_x0, 0.0)
+        for r, _tag in occupied:
+            if r.y1 < y0b or r.y0 > y1b:
+                continue
+            if r.x0 >= x1 and r.x0 < right_block:
+                right_block = r.x0
+            if r.x1 <= x0 and r.x1 > left_block:
+                left_block = r.x1
+        return left_block, right_block
+
+    def _insert_line(page, text, x0, x1, y, fontname, font_obj, size, color, alignment):
+        if not text:
+            return None
+        try:
+            tw = _text_width(text, font_obj, size)
+            if alignment == 1:
+                px = x0 + (x1 - x0 - tw) / 2.0
+            elif alignment == 2:
+                px = x1 - tw
+            else:
+                px = x0
+            page.insert_text((px, y), text, fontsize=size, fontname=fontname,
+                             color=color)
+            return fitz.Rect(px, y - size * 1.1, px + tw, y + size * 0.2)
+        except Exception as e:
+            print(f"  [InsertWarn] page {page.number}: insert_text failed "
+                  f"fontname={fontname} text={text[:40]!r}: {type(e).__name__}: {e}")
+            return None
+
+    def _recreate_links(page, line, placed_rect, recreated=None):
+        if placed_rect is None:
+            return
+        seen = set()
+        for l in line.get("links", []):
+            try:
+                kind = l.get("kind", 2)
+                uri = l.get("uri", "") or ""
+                key = (kind, uri)
+                if key in seen:
                     continue
-                # Draw white rectangle to cover original text
-                overlay_rect = fitz.Rect(x0 - 0.5, y0 - 0.5, x1 + 0.5, y1 + 0.5)
-                page.draw_rect(overlay_rect, color=(1, 1, 1), fill=(1, 1, 1))
-            except Exception as e:
-                print(f"  Overlay error: {str(e)[:100]}")
+                if kind == 2 and uri:
+                    page.insert_link({"kind": fitz.LINK_URI, "from": placed_rect, "uri": uri})
+                    seen.add(key)
+                    if recreated is not None:
+                        recreated[key] += 1
+                elif kind == 1:
+                    page.insert_link({"kind": fitz.LINK_GOTO, "from": placed_rect,
+                                      "page": int(l.get("page", -1)),
+                                      "to": fitz.Point(0, 0)})
+                    seen.add(key)
+                    if recreated is not None:
+                        recreated[key] += 1
+                elif kind == 3 and uri:
+                    page.insert_link({"kind": fitz.LINK_NAMED, "from": placed_rect,
+                                      "name": uri})
+                    seen.add(key)
+                    if recreated is not None:
+                        recreated[key] += 1
+            except Exception:
+                pass
 
-    # Phase 2: Insert translated text with overflow management
-    # Track overflow text across pages (declared outside page loop for cross-page chaining)
-    pending_overflow = ""
-    font_cache: dict[int, set[str]] = {}  # per-page set of already-inserted font names
+    def _line_alignment(ln, lx0, lx1):
+        sx = float(ln.get("x0", lx0))
+        tx1 = float(ln.get("text_x1", lx1))
+        if (sx - lx0) < 2.0:
+            return 0
+        if (lx1 - tx1) < 2.0:
+            return 2
+        return 1
 
-    for page_num, page_blocks in pages_blocks.items():
-        if page_num >= len(doc):
-            continue
+    def _insert_block(page, block, page_width, page_height, occupied, block_index, layout_plan, recreated=None):
+        style = block.get("style", {})
+        alignment = _block_alignment(block, page_width)
+        if layout_plan is not None:
+            for _adj in layout_plan.adjustments:
+                if _adj.block_index == block_index and _adj.alignment_override is not None:
+                    _am = {"left": 0, "center": 1, "right": 2, "justify": 3}
+                    alignment = _am.get(_adj.alignment_override, alignment)
+                    break
+        lines = block.get("lines", []) or []
+        if not lines:
+            return
+        translated = (block.get("text") or "").strip()
+        words = translated.split()
+        if not words:
+            return
+        if os.environ.get("TRI_DEBUG"):
+            print(f"    [_insert_block] page {block.get('page')} block {block_index} "
+                  f"words={len(words)} lines={len(lines)} pos={[round(v,1) for v in block.get('position',[0,0,0,0])]}")
+        bbox = block.get("position", [0, 0, 0, 0])
+        block_x0 = max(0.0, float(bbox[0]))
+        block_x1 = min(page_width, float(bbox[2]))
+        block_y1 = min(page_height, float(bbox[3]))
+
+        bfontname, bfont_obj = _resolve_line_font(style, page, translated)
+        bsize = max(4.0, min(float(style.get("font_size", 11) or 11), 72.0))
+        bcolor = _resolve_color(style.get("color", 0))
+
+        wi = 0
+        last_baseline = None
+        for ln in lines:
+            if wi >= len(words):
+                break
+            lstyle = dict(style)
+            if ln.get("font"):
+                lstyle["font"] = ln["font"]
+            if ln.get("font_original"):
+                lstyle["font_original"] = ln["font_original"]
+            if ln.get("bold") is not None:
+                lstyle["bold"] = ln["bold"]
+            if ln.get("italic") is not None:
+                lstyle["italic"] = ln["italic"]
+            if ln.get("size"):
+                lstyle["font_size"] = ln["size"]
+            if ln.get("color") is not None:
+                lstyle["color"] = ln["color"]
+            fontname, font_obj = _resolve_line_font(lstyle, page, " ".join(words[wi:]))
+            base_size = max(4.0, min(float(lstyle.get("font_size", 11) or 11), 72.0))
+            color = _resolve_color(lstyle.get("color", 0))
+            lbbox = ln.get("bbox", [0, 0, 0, 0])
+            lx0, ly0, lx1, ly1 = (float(v) for v in lbbox)
+            baseline = float(ln.get("baseline", ly1))
+            if lx1 <= lx0:
+                continue
+            available = lx1 - lx0
+            lalign = _line_alignment(ln, lx0, lx1)
+
+            rect_placed = None
+            chunk, nxt, fits = _fit_chunk(words, wi, font_obj, base_size, available)
+            if fits:
+                rect_placed = _insert_line(page, chunk, lx0, lx1, baseline,
+                                           fontname, font_obj, base_size, color, lalign)
+                wi = nxt
+            else:
+                ex0, ex1 = _expand_into_whitespace(lx0, lx1, baseline, base_size,
+                                                   occupied, page_width, block_x0, block_x1)
+                if ex1 - ex0 > available:
+                    chunk2, nxt2, fits2 = _fit_chunk(words, wi, font_obj, base_size, ex1 - ex0)
+                    if fits2:
+                        rect_placed = _insert_line(page, chunk2, ex0, ex1, baseline,
+                                                   fontname, font_obj, base_size, color, lalign)
+                        wi = nxt2
+                if rect_placed is None:
+                    shrink_size = _shrink_floor(base_size)
+                    chunk3, nxt3, fits3 = _fit_chunk(words, wi, font_obj, shrink_size, available)
+                    if fits3:
+                        rect_placed = _insert_line(page, chunk3, lx0, lx1, baseline,
+                                                   fontname, font_obj, shrink_size, color, lalign)
+                        wi = nxt3
+                    else:
+                        rect_placed = _insert_line(page, words[wi], lx0, lx1, baseline,
+                                                   fontname, font_obj, shrink_size, color, lalign)
+                        wi += 1
+            if rect_placed is not None:
+                last_baseline = baseline
+                _recreate_links(page, ln, rect_placed, recreated)
+
+        if wi < len(words) and last_baseline is not None:
+            line_h = bsize * 1.3
+            y = last_baseline + line_h
+            stop_reason = "unknown"
+            while wi < len(words):
+                cand = fitz.Rect(block_x0, y - bsize * 1.1, block_x1, y + line_h)
+                if cand.y1 > page_height:
+                    stop_reason = "page-bottom"
+                    break
+                blocked = False
+                for r, tag in occupied:
+                    if tag == block_index:
+                        continue
+                    inter = cand & r
+                    if not inter.is_empty and inter.get_area() > 1.0:
+                        blocked = True
+                        stop_reason = f"occupied@{round(r.y0,1)}-{round(r.y1,1)}"
+                        break
+                if blocked:
+                    break
+                size = bsize
+                chunk, nxt, fits = _fit_chunk(words, wi, bfont_obj, size, block_x1 - block_x0)
+                if not fits:
+                    size = _shrink_floor(bsize)
+                    chunk, nxt, fits = _fit_chunk(words, wi, bfont_obj, size, block_x1 - block_x0)
+                    if not fits:
+                        chunk, nxt = words[wi], wi + 1
+                rect_placed = _insert_line(page, chunk, block_x0, block_x1, y,
+                                           bfontname, bfont_obj, size, bcolor, alignment)
+                if rect_placed is not None:
+                    wi = nxt
+                else:
+                    wi += 1
+                y += line_h
+            if wi < len(words):
+                print(f"  [Layout] Overflow: {len(words) - wi} words exceed block box "
+                      f"on page {block.get('page')} (block {block_index}) — truncated "
+                      f"(no cross-block merge) stop={stop_reason} blockbox="
+                      f"[{round(block_y1,1)}<{round(page_height,1)}] "
+                      f"words={words[wi:wi+8]}")
+
+    def _norm_line(t):
+        return " ".join(t.split())
+
+    def _span_overlaps(page):
+        """Return list of (normA, normB) overlapping line pairs."""
+        d = page.get_text("dict")
+        line_texts = []
+        for b in d.get("blocks", []):
+            if b.get("type") != 0:
+                continue
+            for ln in b.get("lines", []):
+                rects = []
+                for sp in ln.get("spans", []):
+                    if not sp.get("text", "").strip():
+                        continue
+                    sb = sp.get("bbox")
+                    if not sb:
+                        continue
+                    rects.append((fitz.Rect(sb), float(sp.get("size", 11) or 11)))
+                if rects:
+                    line_texts.append((_norm_line(" ".join(sp.get("text", "") for sp in ln.get("spans", []))), rects))
+        pairs = []
+        for i in range(len(line_texts)):
+            for j in range(i + 1, len(line_texts)):
+                for sa, sza in line_texts[i][1]:
+                    for sb, szb in line_texts[j][1]:
+                        inter = sa & sb
+                        if inter.is_empty:
+                            continue
+                        min_sz = min(sza, szb)
+                        if inter.get_area() > 4.0 and inter.height > min_sz * 0.35:
+                            pairs.append((line_texts[i][0], line_texts[j][0]))
+                            break
+        return pairs
+
+    def _pre_existing_overlap(a, b, src_pairs):
+        """True if the two (normalized) line texts already overlapped in source."""
+        if not a or not b:
+            return False
+        for pa, pb in src_pairs:
+            if not pa or not pb:
+                continue
+            hit_a = a in pa or pa in a or a.split()[0] in pa or pa.split()[0] in a
+            hit_b = b in pb or pb in b or b.split()[0] in pb or pb.split()[0] in b
+            if hit_a and hit_b:
+                return True
+            hit_a2 = a in pb or pb in a or a.split()[0] in pb or pb.split()[0] in a
+            hit_b2 = b in pa or pa in b or b.split()[0] in pa or pa.split()[0] in b
+            if hit_a2 and hit_b2:
+                return True
+        return False
+
+    def _collision_check(page, translatable, occupied, src_page=None):
+        count = 0
+        src_pairs = _span_overlaps(src_page) if src_page is not None else []
+        d = page.get_text("dict")
+        line_rects = []
+        for b in d.get("blocks", []):
+            if b.get("type") != 0:
+                continue
+            for ln in b.get("lines", []):
+                rects = []
+                for sp in ln.get("spans", []):
+                    if not sp.get("text", "").strip():
+                        continue
+                    sb = sp.get("bbox")
+                    if not sb:
+                        continue
+                    rects.append((fitz.Rect(sb), float(sp.get("size", 11) or 11)))
+                if rects:
+                    line_rects.append((_norm_line(" ".join(sp.get("text", "") for sp in ln.get("spans", []))), rects))
+        for i in range(len(line_rects)):
+            for j in range(i + 1, len(line_rects)):
+                for sa, sza in line_rects[i][1]:
+                    for sb, szb in line_rects[j][1]:
+                        inter = sa & sb
+                        if inter.is_empty:
+                            continue
+                        min_sz = min(sza, szb)
+                        if inter.get_area() > 4.0 and inter.height > min_sz * 0.35:
+                            if _pre_existing_overlap(line_rects[i][0], line_rects[j][0], src_pairs):
+                                continue
+                            count += 1
+                            if os.environ.get("TRI_DEBUG") and count <= 8:
+                                print(f"    [_collision] A={line_rects[i][0][:26]!r} "
+                                      f"B={line_rects[j][0][:26]!r} "
+                                      f"area={inter.get_area():.1f} h={inter.height:.1f} "
+                                      f"bboxA={[round(v,1) for v in sa]} "
+                                      f"bboxB={[round(v,1) for v in sb]}")
+                            break
+        return count
+
+    def _process_page(doc, page_num, translatable, occupied, src_page, layout_plan):
         page = doc[page_num]
         page_width = page.rect.width
         page_height = page.rect.height
+        issues = []
+        from collections import Counter as _Counter
+        recreated = _Counter()
+        try:
+            imgs_before = _image_snapshot(page)
+            redact_rects = []
+            src_pix = src_page.get_pixmap() if src_page is not None else None
+            for b in translatable:
+                for ln in b.get("lines", []):
+                    lbbox = ln.get("bbox", [0, 0, 0, 0])
+                    lx0, ly0, lx1, ly1 = (float(v) for v in lbbox)
+                    if lx1 <= lx0 or ly1 <= ly0:
+                        continue
+                    pad = 2.5
+                    rr = fitz.Rect(max(0.0, lx0 - pad), max(0.0, ly0 - pad),
+                                   min(page_width, lx1 + pad), min(page_height, ly1 + pad))
+                    redact_rects.append(rr)
+                    bg = BackgroundSampler.sample(src_page, (rr.x0, rr.y0, rr.x1, rr.y1), src_pix)
+                    page.add_redact_annot(rr, fill=bg if bg is not None else None)
+                    for l in ln.get("links", []):
+                        fr = l.get("from")
+                        if not fr:
+                            continue
+                        lr = fitz.Rect(fr)
+                        if not lr.is_empty:
+                            redact_rects.append(lr)
+                            bg = BackgroundSampler.sample(src_page, (lr.x0, lr.y0, lr.x1, lr.y1), src_pix)
+                            page.add_redact_annot(lr, fill=bg if bg is not None else None)
+            if not redact_rects:
+                return True, issues
+            page.apply_redactions(images=0, graphics=0, text=0)
 
-        # Collect all block rects on this page for overflow collision detection
-        page_other_bboxes = []
-        for b in page_blocks:
-            bb = b.get("position", [50, 50, 500, 100])
-            page_other_bboxes.append(bb)
+            if os.environ.get("TRI_DEBUG"):
+                print(f"    [_process_page] page {page_num} redacted "
+                      f"{len(redact_rects)} rects; spans-after={_count_spans(page)}")
 
-        _block_index = 0
+            if _image_snapshot(page) != imgs_before:
+                issues.append("I1:image-bytes-changed")
 
-        for block in page_blocks:
-            # Skip insertion for passthrough blocks — original rendering preserved
-            if block.get("passthrough"):
-                _block_index += 1
+            leftover = _spans_in_rects(page, redact_rects)
+            if leftover:
+                issues.append(f"I2:orig-spans-remain({leftover})")
+
+            for bi, b in enumerate(translatable):
+                _insert_block(page, b, page_width, page_height, occupied, bi, layout_plan, recreated)
+        except Exception as e:
+            issues.append(f"I4:exception:{str(e)[:90]}")
+
+        if not issues:
+            collide = _collision_check(page, translatable, occupied, src_page)
+            if collide:
+                issues.append(f"I3:collision({collide})")
+
+        _reconcile_links(page, src_page, recreated)
+        return len(issues) == 0, issues
+
+    def _reconcile_links(page, src_page, recreated):
+        """Restore link annotations that redaction removed.
+
+        Redaction deletes link annotations whose rects intersect any redaction
+        rect. Kept (translatable) links are normally re-created per line (and
+        tracked in `recreated`); this pass restores any source link still
+        missing afterwards (e.g. passthrough links on preserved garbage text
+        whose rects happened to overlap a redaction rect, or duplicate-URI
+        links that share a single re-created anchor). Note that links inserted
+        via insert_link() are not visible to page.get_links() until the
+        document is saved, so recreated keys are passed in explicitly.
+        """
+        from collections import Counter
+        have = Counter(recreated)
+        for l in page.get_links():
+            uri = l.get("uri", "") or ""
+            if uri:
+                have[(l.get("kind", 2), uri)] += 1
+        need = Counter()
+        for l in src_page.get_links():
+            uri = l.get("uri", "") or ""
+            if uri:
+                need[(l.get("kind", 2), uri)] += 1
+        for key, cnt in need.items():
+            missing = cnt - have.get(key, 0)
+            if missing <= 0:
                 continue
-            try:
-                bbox = block.get("position", [50, 50, 500, 100])
-                x0, y0, x1, y1 = bbox
-
-                # Look up layout plan adjustments for this block
-                _plan_adj = None
-                if layout_plan is not None:
-                    for _adj in layout_plan.adjustments:
-                        if _adj.block_index == _block_index:
-                            _plan_adj = _adj
-                            break
-
-                # Prepend any pending overflow from the previous block
-                block_text = block["text"]
-                if pending_overflow:
-                    block_text = pending_overflow + " " + block_text
-                    pending_overflow = ""
-
-                style = block.get("style", {})
-                resolved_font = _resolve_font_glyph_aware(style, block_text, page, font_cache)
-                text_color = _resolve_color(style.get("color", 0))
-                base_font_size = float(style.get("font_size", 11) or 11)
-                base_font_size = max(6.0, min(base_font_size, 72.0))
-                alignment = _detect_alignment(block, page_width)
-
-                # Apply layout plan overrides
-                if _plan_adj is not None:
-                    if _plan_adj.alignment_override is not None:
-                        _align_map = {"left": 0, "center": 1, "right": 2, "justify": 3}
-                        alignment = _align_map.get(_plan_adj.alignment_override, alignment)
-                    if _plan_adj.paragraph_spacing is not None:
-                        y1 = y1 + _plan_adj.paragraph_spacing
-                    if _plan_adj.indent_override is not None:
-                        x0 = x0 + _plan_adj.indent_override
-
-                # Sample background color
-                bg_color = None
+            kind, uri = key
+            for l in src_page.get_links():
+                if missing <= 0:
+                    break
+                if l.get("uri", "") != uri:
+                    continue
+                if l.get("kind", 2) != kind:
+                    continue
+                fr = l.get("from")
+                if not fr:
+                    continue
                 try:
-                    from .layout import BackgroundSampler
-                    bg_color = BackgroundSampler.sample(page, (x0, y0, x1, y1))
+                    page.insert_link({"kind": kind, "from": fitz.Rect(fr), "uri": uri})
+                    missing -= 1
                 except Exception:
                     pass
 
-                # Proactive font sizing with language-aware coefficients
-                original_text = block.get("_original_text", block_text)
-                font_size = _compute_proactive_font_size(original_text, block_text, base_font_size)
+    def _fallback_page(doc, src_doc, page_num):
+        doc.insert_pdf(src_doc, from_page=page_num, to_page=page_num)
+        doc.delete_page(page_num)
+        last = doc.page_count - 1
+        doc.move_page(last, page_num)
 
-                # Calculate available character capacity of the bounding box
-                # Use fitz.get_text_length for accurate width measurement
-                bbox_width = x1 - x0
-                bbox_height = y1 - y0
-                estimated_line_height = font_size * 1.4
-                estimated_lines = max(1, int(bbox_height / estimated_line_height))
-                sample_width = fitz.get_text_length("A", fontname=resolved_font, fontsize=font_size)
-                avg_char_width = max(sample_width, font_size * 0.3)
-                estimated_chars_per_line = max(1, int(bbox_width / avg_char_width))
-                estimated_capacity = estimated_lines * estimated_chars_per_line
+    # ---- group blocks by page ----
+    pages_blocks = {}
+    for block in blocks:
+        p = block.get("page", 0)
+        pages_blocks.setdefault(p, []).append(block)
 
-                # Truncate text if it exceeds estimated capacity
-                if len(block_text) > estimated_capacity * 1.2:
-                    fits_text, overflow_text = _truncate_to_fit(block_text, estimated_capacity)
-                    if overflow_text:
-                        pending_overflow = overflow_text
-                        block_text = fits_text
-                        print(f"  [Layout] Text truncated on page {page_num}, "
-                              f"{len(overflow_text)} chars overflow to next block")
+    fallback_log = {}
+    still_failing = {}
 
-                # Insert the translated text
-                text_rect = fitz.Rect(x0, y0, x1, y1)
-                remaining = page.insert_textbox(
-                    text_rect, block_text,
-                    fontsize=font_size, fontname=resolved_font,
-                    color=text_color, align=alignment,
-                )
+    for page_num in sorted(pages_blocks):
+        page_blocks = pages_blocks[page_num]
+        if page_num >= len(doc):
+            continue
+        translatable = [b for b in page_blocks if not b.get("passthrough")]
+        if not translatable:
+            continue
+        src_page = src_doc[page_num]
+        occupied = []
+        for bi, b in enumerate(translatable):
+            for ln in b.get("lines", []):
+                lb = ln.get("bbox", [0, 0, 0, 0])
+                occupied.append((fitz.Rect([float(v) for v in lb]), bi))
+        transl_rects = [r for r, _ in occupied]
+        for tb in src_page.get_text("blocks"):
+            if len(tb) < 6:
+                continue
+            txt = (tb[4] or "").strip()
+            if not txt:
+                continue
+            tr = fitz.Rect(tb[0], tb[1], tb[2], tb[3])
+            if any(tr.intersects(x) for x in transl_rects):
+                continue
+            occupied.append((tr, None))
 
-                if remaining < 0:
-                    # Overflow still occurred — use overflow resolution
-                    overflow_result = _resolve_overflow(
-                        page=page, block_text=block_text,
-                        x0=x0, y0=y0, x1=x1, y1=y1,
-                        font_size=font_size, resolved_font=resolved_font,
-                        other_bboxes=page_other_bboxes,
-                        page_height=page_height,
-                        original_doc=doc, page_num=page_num,
-                        bg_color=bg_color, initial_remaining=remaining,
-                        text_color=text_color, alignment=alignment,
-                    )
-                    if not overflow_result["resolved"]:
-                        # Last resort: truncate and save overflow
-                        truncated, overflow = _truncate_to_fit(block_text, estimated_capacity // 2)
-                        if overflow:
-                            pending_overflow = overflow + " " + pending_overflow if pending_overflow else overflow
-                            # Re-insert truncated text
-                            page.insert_textbox(
-                                fitz.Rect(x0, y0, x1, y1), truncated,
-                                fontsize=font_size, fontname=resolved_font,
-                                color=text_color, align=alignment,
-                            )
+        ok, issues = _process_page(doc, page_num, translatable, occupied, src_page, layout_plan)
+        if not ok:
+            _fallback_page(doc, src_doc, page_num)
+            fallback_log[page_num] = issues
+            ok2, issues2 = _process_page(doc, page_num, translatable, occupied, src_page, layout_plan)
+            if not ok2:
+                still_failing[page_num] = issues2
 
-            except Exception as e:
-                print(f"  Layout error for block: {str(e)[:100]}")
-                try:
-                    fallback_rect = fitz.Rect(x0, y0, x1, y1 + 60)
-                    page.insert_textbox(
-                        fallback_rect, block.get("text", ""),
-                        fontsize=11, fontname="helv", color=(0, 0, 0),
-                    )
-                except Exception:
-                    pass
-
-            _block_index += 1
-
-    # Warn if there's still pending overflow at the end
-    if pending_overflow:
-        print(f"  ⚠️  {len(pending_overflow)} characters of overflow text could not be placed")
+    for pn, iss in fallback_log.items():
+        print(f"  [Fallback] page {pn}: triggered by {iss}")
+    for pn, iss in still_failing.items():
+        print(f"  [Fallback] page {pn}: still failing after rebuild: {iss}")
 
     doc.save(output_file, incremental=False)
     doc.close()
-
+    src_doc.close()
 
 def write_txt(blocks, output_file):
     """Write blocks to plain text."""

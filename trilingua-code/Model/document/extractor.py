@@ -163,6 +163,94 @@ def read_docx(file_path):
 
 # ── PDF Reader ────────────────────────────────────────────────────────────────
 
+# Base-14 built-in abbreviations → (family, bold, italic)
+_FONT_BASE14 = {
+    "helv": ("helv", False, False), "helvb": ("helv", True, False),
+    "helvi": ("helv", False, True), "helbo": ("helv", True, True),
+    "helvbo": ("helv", True, True),
+    "tiro": ("tiro", False, False), "tirob": ("tiro", True, False),
+    "tiroi": ("tiro", False, True), "tirobi": ("tiro", True, True),
+    "cour": ("cour", False, False), "courb": ("cour", True, False),
+    "couri": ("cour", False, True), "coubi": ("cour", True, True),
+}
+
+_FONT_MONO_KEYWORDS = ("courier", "consolas", "mono", "monospace", "andale mono",
+                       "source code", "cascadia", "fira code", "jetbrains")
+_FONT_SERIF_KEYWORDS = ("times", "georgia", "roman", "garamond", "palatino",
+                        "bookman", "caslon", "baskerville", "hoefler", "goudy")
+_FONT_SANS_KEYWORDS = ("arial", "helvetica", "sans", "calibri", "segoe", "tahoma",
+                       "verdana", "futura", "gill", "century gothic", "trebuchet",
+                       "candara", "corbel", "open sans", "lucida", "franklin gothic",
+                       "myriad", "noto sans", "roboto", "ubuntu", "dejavu sans")
+
+
+def _clean_font_name(font_name):
+    """Return the subset-stripped font name (``baaaaa+Tahoma`` → ``Tahoma``)."""
+    if not font_name:
+        return ""
+    if "+" in font_name:
+        return font_name.split("+", 1)[1]
+    return font_name
+
+
+def _normalize_font_name(font_name, flags=0):
+    """Normalise a PDF font name to ``(family, bold, italic)``.
+
+    Strips subset prefixes (``baaaaa+Tahoma`` → ``Tahoma``), resolves Base-14
+    abbreviations (``helvb`` → ``("helv", True, False)``), and derives bold/italic
+    from either the name itself or the span flags. This prevents downstream font
+    resolution from hitting unsupported names like ``baaaaa+tahoma`` or ``helvb``.
+    """
+    if not font_name:
+        return "helv", False, False
+    name = font_name
+    if "+" in name:
+        name = name.split("+", 1)[1]
+    lower = name.lower()
+
+    if lower in _FONT_BASE14:
+        return _FONT_BASE14[lower]
+
+    bold = bool(flags & (2 ** 4))
+    italic = bool(flags & (2 ** 1))
+    if any(k in lower for k in ("bold", "heavy", "black", "semibold", "demi")):
+        bold = True
+    if any(k in lower for k in ("italic", "oblique")):
+        italic = True
+
+    if any(k in lower for k in _FONT_MONO_KEYWORDS):
+        family = "cour"
+    elif any(k in lower for k in _FONT_SERIF_KEYWORDS):
+        family = "tiro"
+    else:
+        family = "helv"
+    return family, bold, italic
+
+
+def _collect_page_links(page):
+    """Return the page's link annotations as plain dicts with rect arrays."""
+    links = []
+    for lnk in page.get_links():
+        rect = lnk.get("from")
+        if rect is None:
+            continue
+        links.append({
+            "kind": lnk.get("kind", -1),
+            "rect": [float(rect.x0), float(rect.y0), float(rect.x1), float(rect.y1)],
+            "uri": lnk.get("uri", "") or "",
+            "page": lnk.get("page"),
+            "to": lnk.get("to"),
+        })
+    return links
+
+
+def _links_hit(link, bbox):
+    """True if a link rect overlaps *bbox*."""
+    lx0, ly0, lx1, ly1 = link["rect"]
+    x0, y0, x1, y1 = bbox
+    return not (lx1 <= x0 or lx0 >= x1 or ly1 <= y0 or ly0 >= y1)
+
+
 def _is_garbage_block(text, bbox, page_width, page_height):
     """Return True if a text block should be skipped."""
     stripped = text.strip()
@@ -173,11 +261,12 @@ def _is_garbage_block(text, bbox, page_width, page_height):
     words = [w for w in stripped.split() if re.search(r'[a-zA-Z\u0080-\uFFFF]', w)]
     if len(words) < 1:
         return True
-    # Only drop very short blocks (≤3 words) very near page edges (top/bottom 2%)
+    # Only drop very short blocks (≤3 words) very near page edges (top/bottom 1%)
+    # Reduced from 2% to 1% to preserve more content (page numbers, labels, etc.)
     if len(words) <= 3 and page_height > 0 and len(bbox) >= 4:
         y0 = bbox[1]
         y1 = bbox[3]
-        margin = page_height * 0.02
+        margin = page_height * 0.01
         if y0 < margin or y1 > (page_height - margin):
             return True
     return False
@@ -314,6 +403,8 @@ def read_pdf(file_path, column_mode="auto"):
             flags=fitz.TEXT_PRESERVE_WHITESPACE | fitz.TEXT_PRESERVE_LIGATURES
         )
 
+        page_links = _collect_page_links(page)
+
         raw_blocks_dict = []
         for rb in page_dict.get("blocks", []):
             if rb.get("type") != 0:
@@ -323,28 +414,78 @@ def read_pdf(file_path, column_mode="auto"):
                 continue
 
             parts = []
+            line_records = []
             dom_size = 11.0
             dom_color = 0
             dom_bold = False
             dom_italic = False
             dom_font = "helv"
+            dom_font_orig = ""
 
             for line in lines:
                 lt = ""
+                line_font = "helv"
+                line_font_orig = ""
+                line_size = 11.0
+                line_color = 0
+                line_bold = False
+                line_italic = False
+                baseline = None
+                line_x0 = 0.0
+                line_text_x1 = 0.0
                 for span in line.get("spans", []):
                     st = span.get("text", "")
-                    if st.strip():
-                        lt += st
-                        dom_size = span.get("size", dom_size)
-                        dom_color = span.get("color", dom_color)
-                        flags = span.get("flags", 0)
-                        dom_bold = bool(flags & 2**4)
-                        dom_italic = bool(flags & 2**1)
-                        span_font = span.get("font", "")
-                        if span_font:
-                            dom_font = span_font
+                    lt += st
+                    if not st.strip():
+                        continue
+                    span_size = span.get("size", 11.0)
+                    span_color = span.get("color", 0)
+                    flags = span.get("flags", 0)
+                    span_font = span.get("font", "")
+                    if not line_font_orig and span_font:
+                        line_font_orig = _clean_font_name(span_font)
+                    if not dom_font_orig and span_font:
+                        dom_font_orig = _clean_font_name(span_font)
+                    fam, sp_bold, sp_italic = _normalize_font_name(span_font, flags)
+                    line_font = fam
+                    line_size = span_size
+                    line_color = span_color
+                    line_bold = line_bold or sp_bold
+                    line_italic = line_italic or sp_italic
+                    if baseline is None:
+                        origin = span.get("origin")
+                        if origin is not None:
+                            baseline = float(origin[1])
+                            line_x0 = float(origin[0])
+                    span_bbox = span.get("bbox")
+                    if span_bbox:
+                        line_text_x1 = float(span_bbox[2])
+                    dom_size = span_size
+                    dom_color = span_color
+                    dom_bold = dom_bold or sp_bold
+                    dom_italic = dom_italic or sp_italic
+                    dom_font = fam
                 if lt.strip():
                     parts.append(lt.strip())
+                    line_bbox = [float(v) for v in line.get("bbox", [0, 0, 0, 0])]
+                    if baseline is None:
+                        baseline = line_bbox[3]
+                        line_x0 = line_bbox[0]
+                        line_text_x1 = line_bbox[2]
+                    line_records.append({
+                        "text": lt.strip(),
+                        "bbox": line_bbox,
+                        "baseline": round(baseline, 2),
+                        "x0": round(line_x0, 2),
+                        "text_x1": round(line_text_x1, 2),
+                        "font": line_font,
+                        "font_original": line_font_orig or line_font,
+                        "size": max(6.0, min(float(line_size or 11.0), 72.0)),
+                        "color": line_color,
+                        "bold": line_bold,
+                        "italic": line_italic,
+                        "links": [l for l in page_links if _links_hit(l, line_bbox)],
+                    })
 
             block_text = " ".join(parts).strip()
             if not block_text:
@@ -363,8 +504,11 @@ def read_pdf(file_path, column_mode="auto"):
                 "page":     page_num,
                 "alignment": _detect_block_alignment(bbox, pw, ph),
                 "style":    {"font_size": dom_size, "font": dom_font,
+                             "font_original": dom_font_orig or dom_font,
                              "color": dom_color, "bold": dom_bold,
                              "italic": dom_italic},
+                "lines":    line_records,
+                "links":    [l for l in page_links if _links_hit(l, bbox)],
             })
 
         # ── Method 2: blocks mode (catches text dict mode misses) ────────────
@@ -388,21 +532,54 @@ def read_pdf(file_path, column_mode="auto"):
             })
 
         # ── Merge: keep dict blocks (with style), add blocks-mode-only text ──
-        dict_text_keys = set()
-        for b in raw_blocks_dict:
-            text_key = (b["text"][:40].strip().lower(), round(b["position"][1], 0))
-            dict_text_keys.add(text_key)
+        def _rect(vals):
+            return [float(v) for v in vals]
+
+        def _area(bb):
+            return max(0.0, bb[2] - bb[0]) * max(0.0, bb[3] - bb[1])
+
+        def _intersects_much(a, b):
+            ax0, ay0, ax1, ay1 = a
+            bx0, by0, bx1, by1 = b
+            ix = max(0.0, min(ax1, bx1) - max(ax0, bx0))
+            iy = max(0.0, min(ay1, by1) - max(ay0, by0))
+            inter = ix * iy
+            if inter <= 0.0:
+                return False
+            smaller = min(_area(a), _area(b))
+            return smaller > 0.0 and inter > 0.30 * smaller
+
+        dict_rects = [_rect(b["position"]) for b in raw_blocks_dict]
 
         merged = list(raw_blocks_dict)
         for b in raw_blocks_blocks:
+            bb = _rect(b["position"])
+            if any(_intersects_much(bb, dr) for dr in dict_rects):
+                continue
             text_key = (b["text"][:40].strip().lower(), round(b["position"][1], 0))
             if text_key not in dict_text_keys:
+                block_links = [l for l in page_links if _links_hit(l, b["position"])]
                 merged.append({
                     "type":     "paragraph",
                     "text":     b["text"],
                     "position": b["position"],
                     "page":     page_num,
                     "style":    {"font_size": 11, "font": "helv", "color": 0, "bold": False},
+                    "lines":    [{
+                        "text":     b["text"],
+                        "bbox":     b["position"],
+                        "baseline": round(b["position"][3], 2),
+                        "x0":       round(b["position"][0], 2),
+                        "text_x1":  round(b["position"][2], 2),
+                        "font":     "helv",
+                        "font_original": "helv",
+                        "size":     11.0,
+                        "color":    0,
+                        "bold":     False,
+                        "italic":   False,
+                        "links":    block_links,
+                    }],
+                    "links":    block_links,
                 })
 
         merged.sort(key=lambda b: b["position"][1])
