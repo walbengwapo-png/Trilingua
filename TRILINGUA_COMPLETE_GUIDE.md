@@ -36,7 +36,8 @@ PYTHON AI ENGINE ─── Model/
   |  server.py — FastAPI entry point
   |  pipeline/ — translation_pipeline.py, document_pipeline.py
   |  providers/ — gptoss.py, mistral.py (talk to AI APIs)
-  |  document/ — extractor.py, reconstructor.py, chunker.py
+  |  ai/ — mistral_provider.py, ollama_provider.py (analysis, non-translation AI)
+  |  document/ — extractor.py, reconstructor.py, ocr_extractor.py, chunker.py
   |  memory/ — context buffer, glossary, document memory
   |  cache/ — sqlite_cache.py (persistent translation cache)
   |  validators/ — hallucination_detector, quality reviewer
@@ -47,6 +48,7 @@ PYTHON AI ENGINE ─── Model/
 AI PROVIDER
   - GPT-OSS (Ollama Cloud) = default, runs locally on port 11434
   - Mistral AI = fallback, cloud API
+  - Analysis (separate): Mistral cloud when key set, else local Ollama
 ```
 
 ---
@@ -74,12 +76,13 @@ AI PROVIDER
 4. **Job** (`TranslateDocumentJob.php:56`) stores initial "processing" status in Laravel cache and calls `$translationManager->translateDocument()` → POST to Python at `/translate/document`
 5. **`server.py`** (`server.py:311`) receives file, creates `DocumentTranslationRequest`, calls `_document_pipeline.translate(request)`
 6. **`DocumentPipeline::translate()`** (`document_pipeline.py:124`) orchestrates the whole pipeline:
-   - **Extraction** — `document/extractor.py` reads the file format, extracts text blocks with metadata (style, position, font)
+   - **Extraction** — `document/extractor.py` reads the file format, extracts text blocks with metadata (style, position, font). For PDFs, per-line records with per-span runs and links are captured
+   - **OCR Fallback** — for scanned/image-based PDFs where PyMuPDF extracts nothing, `document/ocr_extractor.py` runs Tesseract OCR at 300 DPI and feeds the blocks back into the pipeline
    - **AI Analysis** (Phase 1) — `document_analyzer.py` sends blocks to analysis AI to detect document type, structure, terminology
    - **Prepass** (Phase 7) — sends first 500 tokens to AI for summary + key terms as context injection
    - **Document Memory** (Phase 2) — builds a cross-document context store
    - **Translation** (Phase 3-6) — splits into chunks, translates each via `TranslationPipeline::batch_translate_blocks()`
-   - **Reconstruction** — `document/reconstructor.py` writes translated text back into the original format
+   - **Reconstruction** — `document/reconstructor.py` writes translated text back into the original format (PDFs use a per-line redact-and-reinsert strategy)
    - **Result** — returns the translated file path
 7. **Job** receives the translated file, uploads it to Supabase Storage (or falls back to inline base64), stores the download URL in cache, creates history record in SQLite
 8. **JS polls** `GET /translate/status/{jobId}` every 2 seconds until status is "completed", then shows download link
@@ -218,13 +221,14 @@ Starts up by:
 #### `document/` — File Processing
 | File | What It Does |
 |---|---|
-| `extractor.py` | Reads files: DOCX (paragraphs, tables, headers, footers, text boxes with style metadata), PDF (via PyMuPDF with column mode), TXT, MD, RTF, ODT, CSV, PPTX, XLSX |
-| `reconstructor.py` | Writes translated text back into original format. Key function: `_apply_translation_to_paragraph()` distributes translated text proportionally across runs to preserve per-run formatting |
+| `extractor.py` | Reads files: DOCX (paragraphs, tables, headers, footers, text boxes with style metadata), PDF (via PyMuPDF — captures per-line records with bbox, baseline, alignment, per-span runs, font/color/bold/italic, and hyperlinks; normalizes subsetted font names), TXT, MD, RTF, ODT, CSV, PPTX, XLSX |
+| `ocr_extractor.py` | OCR fallback for scanned/image-based PDFs. Renders each page at 300 DPI and runs Tesseract OCR (`pytesseract`), producing blocks compatible with the normal pipeline |
+| `reconstructor.py` | Writes translated text back into original format. Key function: `_apply_translation_to_paragraph()` distributes translated text proportionally across runs to preserve per-run formatting. PDF path uses `write_pdf_preserved()` — per-line redact-and-reinsert with run-level formatting, system-font embedding, overflow handling, and hyperlink recreation |
 | `chunker.py` | `ChunkSplitter` — splits text at sentence boundaries, respects max token limits |
 | `semantic_chunker.py` | `SemanticChunker` — replaces naive chunking with structure-aware chunks (keeps headings with content, tables together, lists together). Uses DocumentProfile (NO extra AI calls). |
 | `document_analyzer.py` | `DocumentAnalyzer` — sends document preview to AI, returns `DocumentProfile` with document_type, writing_style, sections, structure, terminology, abbreviations, entities |
 | `layout_planner.py` | `LayoutPlanner` — predicts text expansion ratios, overflow risk, font scaling (PDF only, Phase 8) |
-| `layout.py` | `FontMapper` — resolves PDF font names, maps to built-in PDF fonts |
+| `layout.py` | `FontMapper` — resolves PDF font names, maps to built-in PDF fonts. `BackgroundSampler` — samples page background for redaction fills |
 | `metadata.py` | Metadata extraction utilities |
 
 #### `memory/` — Context & Consistency
@@ -263,7 +267,8 @@ Starts up by:
 | File | What It Does |
 |---|---|
 | `base.py` | `AIAnalysisProvider` abstract base — defines `analyze(system_prompt, user_prompt) → dict` interface |
-| `ollama_provider.py` | `OllamaAnalysisProvider` — uses a SEPARATE smaller model (`llama3.1:8b`) for non-translation AI tasks (document analysis, quality review, layout planning). Returns parsed JSON. |
+| `mistral_provider.py` | `MistralAnalysisProvider` — **default analysis provider when `MISTRAL_API_KEY` is set**. Uses the same key as the translation provider (`mistral-small-latest` by default, overridable via `MISTRAL_ANALYSIS_MODEL`). Handles document analysis, quality review, layout planning. Returns parsed JSON. |
+| `ollama_provider.py` | `OllamaAnalysisProvider` — local fallback used when no Mistral key is set. Uses a separate smaller model (`OLLAMA_ANALYSIS_MODEL`, default `llama3.1:8b`) for non-translation AI tasks (document analysis, quality review, layout planning). Returns parsed JSON. |
 
 #### `config/`
 | File | What It Does |
@@ -274,7 +279,7 @@ Starts up by:
 
 ### `adapters/`, `intelligence/`, `pipeline/`, `translation/`, `workers/`, `reconstruction/`, `exceptions/`, `validation/`
 
-These directories exist at the root level but are **all empty** — they're placeholders for future expansion. The real code lives in `trilingua-code/`.
+`intelligence/` and `storage/` (with an empty `checkpoints/`) exist under `Model/` as placeholders for future expansion. The real code lives in `trilingua-code/`.
 
 ---
 
@@ -300,11 +305,13 @@ In "auto" mode, the pipeline picks based on file size and complexity.
 1. **Concurrent translation** — `ThreadPoolExecutor` with 16 workers for parallel API calls
 2. **SQLite cache** — persistent, SHA-256 keyed, TTL-based, two-layer (in-memory + disk)
 3. **Short block batching** — groups blocks under ~80 tokens into batches of 5-8 for a single API call
-4. **Passthrough filter** — skips translation for numbers, dates, URLs, emails, file paths, punctuation-only text
+4. **Passthrough filter** — skips translation for numbers, dates, URLs, emails, file paths, punctuation-only text (2-char text with letters like "Oh"/"Hi" is now translated)
 5. **Batched quality review** — single AI call reviews all blocks instead of one per block (~58% faster)
 6. **Cold start pre-warming** — imports heavy libs, initializes cache, warms HTTP pool at startup
 7. **Hallucination detection** — regex + AI two-layer validation with automatic retranslation
 8. **Automatic language-specific prompts** — few-shot examples for Cebuano/Filipino with verb-focus preservation
+9. **PDF per-line redact-and-reinsert** — original text replaced line-by-line, preserving images, vector graphics, links, and run-level (bold/italic/size) formatting
+10. **PDF OCR fallback** — scanned/image-based PDFs auto-retry via Tesseract OCR when text extraction yields nothing
 
 ---
 
