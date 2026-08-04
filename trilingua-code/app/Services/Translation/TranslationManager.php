@@ -92,10 +92,27 @@ class TranslationManager
     /**
      * Translate a document via the Python AI Engine.
      *
+     * The Python service returns a JSON envelope:
+     *   {
+     *     "file_base64": "<base64-encoded output file>",
+     *     "blocks": [{ "block_index", "block_type", "source_text",
+     *                  "ai_translated_text", "current_text", "quality_score",
+     *                  "quality_issues", ... }],
+     *     "sidecar": { ... },
+     *     "download_filename": "...",
+     *     "mime_type": "..."
+     *   }
+     *
+     * @return array{body: string, blocks: array, sidecar: ?array, download_filename: string, mime_type: string}
      * @throws TranslationException
      */
-    public function translateDocument(UploadedFile $file, string $sourceLang, string $targetLang, string $pdfColumnMode = 'auto'): array
-    {
+    public function translateDocument(
+        UploadedFile $file,
+        string $sourceLang,
+        string $targetLang,
+        string $pdfColumnMode = 'auto',
+        string $mode = 'balanced',
+    ): array {
         $ext = strtolower('.' . $file->getClientOriginalExtension());
         $outExt = config('translation.extension_map.' . ltrim($ext, '.'), $ext);
 
@@ -112,6 +129,7 @@ class TranslationManager
                     'source_lang' => $sourceLang,
                     'target_lang' => $targetLang,
                     'pdf_column_mode' => $pdfColumnMode,
+                    'mode' => $mode,
                 ]);
 
             if ($response->failed()) {
@@ -129,19 +147,144 @@ class TranslationManager
                 throw new TranslationException($errorMessage, $response->status());
             }
 
-            // The response is the translated file binary
-            $body = $response->body();
+            $data = $response->json();
             $elapsedMs = (microtime(true) - $startTime) * 1000;
+
+            // The response is a JSON envelope — decode the base64 file bytes.
+            $fileBase64 = $data['file_base64'] ?? '';
+            if ($fileBase64 === '') {
+                throw new TranslationException(
+                    'Python service returned an empty file. The document may be too large or the service may have failed while rebuilding the output.'
+                );
+            }
+
+            $body = base64_decode($fileBase64, true);
+            if ($body === false) {
+                throw new TranslationException(
+                    'Python service returned an invalid file payload.'
+                );
+            }
 
             Log::info('TranslationManager: Document translation completed', [
                 'file' => $file->getClientOriginalName(),
                 'size' => strlen($body),
+                'blocks' => count($data['blocks'] ?? []),
                 'execution_time_ms' => $elapsedMs,
             ]);
 
             // Build output filename
             $stem = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-            $downloadFilename = $stem . '_translated' . $outExt;
+            $downloadFilename = $data['download_filename'] ?? ($stem . '_translated' . $outExt);
+
+            return [
+                'body' => $body,
+                'blocks' => $data['blocks'] ?? [],
+                'sidecar' => $data['sidecar'] ?? null,
+                'download_filename' => $downloadFilename,
+                'mime_type' => $data['mime_type'] ?? 'application/octet-stream',
+            ];
+
+        } catch (TranslationException $e) {
+            throw $e;
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('TranslationManager: Cannot connect to Python service for document', [
+                'url' => $this->pythonUrl,
+                'error' => $e->getMessage(),
+            ]);
+            throw new TranslationException(
+                'Could not connect to the translation service. Make sure it is running: python Model/server.py'
+            );
+        }
+    }
+
+    /**
+     * Regenerate an edited document via the Python AI Engine.
+     *
+     * Reconstruction-only — no extraction, analysis, or translation is
+     * re-run. Admin edits (overrides) are replayed onto the original file.
+     *
+     * @param  string|null $originalBytes  Raw bytes of the ORIGINAL source file
+     *                                     (required for PDF and in-place formats).
+     * @param  string      $originalName   Original source filename (for extension).
+     * @param  array       $sidecar        The sidecar captured at translate time.
+     * @param  array       $overrides      {block_index: edited_text}
+     * @return array{body: string, download_filename: string, mime_type: string}
+     * @throws TranslationException
+     */
+    public function regenerateDocument(
+        ?string $originalBytes,
+        string $originalName,
+        array $sidecar,
+        array $overrides = [],
+        string $sourceLang = '',
+        string $targetLang = '',
+        string $pdfColumnMode = 'auto',
+    ): array {
+        $startTime = microtime(true);
+
+        try {
+            $http = Http::timeout($this->timeout);
+
+            if ($originalBytes !== null && $originalBytes !== '') {
+                $http->attach(
+                    'file',
+                    $originalBytes,
+                    $originalName
+                );
+            } else {
+                // Some text formats don't need the original file; the Python
+                // endpoint still requires the 'file' field, so send an empty one.
+                $http->attach(
+                    'file',
+                    '',
+                    'original.txt'
+                );
+            }
+
+            $response = $http->post("{$this->pythonUrl}/translate/document/regenerate", [
+                'sidecar' => json_encode($sidecar),
+                'overrides' => json_encode($overrides),
+                'source_lang' => $sourceLang,
+                'target_lang' => $targetLang,
+                'pdf_column_mode' => $pdfColumnMode,
+            ]);
+
+            if ($response->failed()) {
+                $errorMessage = $response->json('detail') 
+                    ?? $response->json('error') 
+                    ?? "Python service returned status {$response->status()}";
+
+                Log::error('TranslationManager: Python document regeneration failed', [
+                    'status' => $response->status(),
+                    'error' => $errorMessage,
+                    'source_lang' => $sourceLang,
+                    'target_lang' => $targetLang,
+                ]);
+
+                throw new TranslationException($errorMessage, $response->status());
+            }
+
+            $body = $response->body();
+            $elapsedMs = (microtime(true) - $startTime) * 1000;
+
+            if ($body === '' || $body === false) {
+                throw new TranslationException(
+                    'The regeneration service returned an empty file.'
+                );
+            }
+
+            Log::info('TranslationManager: Document regeneration completed', [
+                'file' => $originalName,
+                'overrides' => count($overrides),
+                'size' => strlen($body),
+                'execution_time_ms' => $elapsedMs,
+            ]);
+
+            // The regenerate endpoint streams the binary file back.
+            $ext = strtolower('.' . pathinfo($originalName, PATHINFO_EXTENSION));
+            $outExt = config('translation.extension_map.' . ltrim($ext, '.'), $ext);
+            $stem = pathinfo($originalName, PATHINFO_FILENAME);
+            $downloadFilename = $stem . '_regenerated' . $outExt;
 
             return [
                 'body' => $body,
@@ -150,7 +293,7 @@ class TranslationManager
             ];
 
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
-            Log::error('TranslationManager: Cannot connect to Python service for document', [
+            Log::error('TranslationManager: Cannot connect to Python service for regeneration', [
                 'url' => $this->pythonUrl,
                 'error' => $e->getMessage(),
             ]);

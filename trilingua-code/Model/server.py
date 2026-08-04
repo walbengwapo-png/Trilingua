@@ -23,6 +23,7 @@ import time as _time
 # Ensure the Model directory is on the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import base64
 import shutil
 import tempfile
 import io
@@ -240,6 +241,19 @@ EXTENSION_MAP = {
 }
 
 
+def _content_type_for_ext(ext: str) -> str:
+    """Best-effort MIME type for a given output extension."""
+    return {
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".pdf":  "application/pdf",
+        ".txt":  "text/plain",
+        ".md":   "text/markdown",
+        ".csv":  "text/csv",
+    }.get(ext or "", "application/octet-stream")
+
+
 # ---------------------------------------------------------------------------
 # Health check
 # ---------------------------------------------------------------------------
@@ -401,7 +415,90 @@ async def translate_document(
         # Clean up the temporary directory
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
-        # Return the file
+        # Return the JSON envelope: base64 file bytes + per-block review data.
+        # Laravel decodes file_base64 and persists `blocks` for admin review.
+        return {
+            "file_base64": base64.b64encode(file_contents).decode("ascii"),
+            "blocks": getattr(result, "blocks", None) or [],
+            "sidecar": getattr(result, "sidecar", None),
+            "download_filename": download_name,
+            "mime_type": _content_type_for_ext(out_ext),
+        }
+    except HTTPException:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise
+    except Exception as e:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        print(f"[SERVER] Exception during translation: {str(e)}")
+        raise HTTPException(500, f"Translation error: {str(e)}")
+
+
+# ---------------------------------------------------------------------------
+# POST /translate/document/regenerate — reconstruction-only re-render of an
+# edited document. Requires a sidecar captured at translate time plus the
+# ORIGINAL source file (needed for PDF and in-place DOCX/PPTX/XLSX replay).
+# No extraction, analysis, prepass, memory, or AI translation runs here.
+# ---------------------------------------------------------------------------
+@app.post("/translate/document/regenerate")
+async def translate_document_regenerate(
+    file: UploadFile = File(...),
+    sidecar: str = Form(...),
+    blocks: str = Form(""),
+    overrides: str = Form("{}"),
+    source_lang: str = Form(""),
+    target_lang: str = Form(""),
+    pdf_column_mode: str = Form("auto"),
+):
+    import json as _json
+    tmp_dir = tempfile.mkdtemp()
+    try:
+        input_path = os.path.join(tmp_dir, f"original{os.path.splitext(file.filename)[1].lower()}")
+        contents = await file.read()
+        with open(input_path, "wb") as f:
+            f.write(contents)
+
+        try:
+            decoded = _json.loads(sidecar)
+        except Exception:
+            raise HTTPException(400, "Invalid 'sidecar' JSON.")
+
+        # Allow an explicit blocks payload to override/replace the sidecar blocks.
+        if blocks:
+            try:
+                decoded["blocks"] = _json.loads(blocks)
+            except Exception:
+                raise HTTPException(400, "Invalid 'blocks' JSON.")
+
+        try:
+            overrides_dict = _json.loads(overrides) or {}
+        except Exception:
+            raise HTTPException(400, "Invalid 'overrides' JSON.")
+
+        fmt = (decoded.get("format") or "").lower()
+        out_ext = fmt if fmt in EXTENSION_MAP.values() else ".pdf"
+        output_path = os.path.join(tmp_dir, f"regenerated{out_ext}")
+
+        from document.regenerator import reconstruct_from_sidecar
+        reconstruct_from_sidecar(
+            decoded,
+            overrides=overrides_dict,
+            original_file=input_path,
+            output_file=output_path,
+            source_lang=source_lang or decoded.get("source_lang", ""),
+            target_lang=target_lang or decoded.get("target_lang", ""),
+            pdf_column_mode=pdf_column_mode or decoded.get("pdf_column_mode", "auto"),
+        )
+
+        if not os.path.exists(output_path):
+            raise HTTPException(500, "Regeneration produced no output file.")
+
+        with open(output_path, "rb") as f:
+            file_contents = f.read()
+
+        original_stem = os.path.splitext(file.filename)[0]
+        download_name = f"{original_stem}_regenerated{out_ext}"
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
         return StreamingResponse(
             io.BytesIO(file_contents),
             media_type="application/octet-stream",
@@ -412,8 +509,8 @@ async def translate_document(
         raise
     except Exception as e:
         shutil.rmtree(tmp_dir, ignore_errors=True)
-        print(f"[SERVER] Exception during translation: {str(e)}")
-        raise HTTPException(500, f"Translation error: {str(e)}")
+        print(f"[SERVER] Exception during regeneration: {str(e)}")
+        raise HTTPException(500, f"Regeneration error: {str(e)}")
 
 
 # ---------------------------------------------------------------------------

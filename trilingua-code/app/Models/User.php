@@ -53,6 +53,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Translations this user reviewed (admin review history).
+     */
+    public function reviewedTranslations()
+    {
+        return $this->hasMany(TranslationHistory::class, 'reviewed_by');
+    }
+
+    /**
      * Send the password reset notification using our branded email.
      */
     public function sendPasswordResetNotification($token): void

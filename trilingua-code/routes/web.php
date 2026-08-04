@@ -10,6 +10,10 @@ use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TranslationController;
+use App\Http\Controllers\Admin\ReviewController;
+use App\Http\Controllers\Admin\TextReviewController;
+use App\Http\Controllers\Admin\DocumentReviewController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -63,4 +67,25 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
     Route::post('/history/redownload/{id}', [HistoryController::class, 'redownload'])->name('history.redownload');
     Route::post('/history/redownload-original/{id}', [HistoryController::class, 'redownloadOriginal'])->name('history.redownload-original');
     Route::delete('/history/{id}', [HistoryController::class, 'destroy'])->name('history.destroy');
+
+    // ── Admin (auth + throttle inherited from the outer group) ────────────
+    Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+        // Read-only review queue + detail
+        Route::get('/review', [ReviewController::class, 'index'])->name('review.index');
+        Route::get('/review/{translation}', [ReviewController::class, 'show'])->name('review.show');
+
+        // ── Text review write actions ─────────────────────────────────────
+        Route::post('/review/{translation}/verify', [TextReviewController::class, 'verify'])->name('review.text.verify');
+        Route::post('/review/{translation}/update', [TextReviewController::class, 'update'])->name('review.text.update');
+        Route::post('/review/{translation}/flag', [TextReviewController::class, 'flag'])->name('review.text.flag');
+
+        // ── Document review write actions ─────────────────────────────────
+        Route::post('/review/{translation}/blocks/{block}/verify', [DocumentReviewController::class, 'verifyBlock'])->name('review.block.verify');
+        Route::post('/review/{translation}/blocks/{block}/update', [DocumentReviewController::class, 'updateBlock'])->name('review.block.update');
+        Route::post('/review/{translation}/blocks/{block}/flag', [DocumentReviewController::class, 'flagBlock'])->name('review.block.flag');
+        Route::post('/review/{translation}/bulk-approve', [DocumentReviewController::class, 'bulkApprove'])->name('review.block.bulk-approve');
+        Route::post('/review/{translation}/save-regenerate', [DocumentReviewController::class, 'saveAndRegenerate'])->name('review.save-regenerate');
+    });
 });

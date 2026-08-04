@@ -475,4 +475,6 @@
     color: var(--muted);
     white-space: nowrap;
     padding: 1px 6px;
-    background: var(--bg, #f8
+    background: var(--bg, #f8f9fa);
+    border-radius: 6px;
+}

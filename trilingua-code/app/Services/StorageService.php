@@ -110,6 +110,45 @@ class StorageService
     }
 
     /**
+     * Download a file from Supabase Storage.
+     *
+     * @param  string $storagePath Path inside the bucket.
+     * @return string  Raw file contents.
+     * @throws \RuntimeException on failure.
+     */
+    public function downloadFile(string $storagePath): string
+    {
+        $supabaseUrl    = config('services.supabase.url');
+        $serviceRoleKey = config('services.supabase.service_role_key');
+        $bucket         = config('services.supabase.bucket');
+
+        $downloadUrl = rtrim($supabaseUrl, '/') . '/storage/v1/object/' . $bucket . '/' . $storagePath;
+
+        try {
+            $response = $this->guzzle->get($downloadUrl, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $serviceRoleKey,
+                ],
+            ]);
+        } catch (ConnectException $e) {
+            throw new \RuntimeException(
+                'Supabase Storage download failed: could not connect. ' . $e->getMessage(),
+                0,
+                $e
+            );
+        }
+
+        $statusCode = $response->getStatusCode();
+        if ($statusCode < 200 || $statusCode >= 300) {
+            throw new \RuntimeException(
+                'Supabase Storage download failed: HTTP ' . $statusCode
+            );
+        }
+
+        return (string) $response->getBody();
+    }
+
+    /**
      * Generate a new signed URL for an existing object in Supabase Storage.
      *
      * @param  string $storagePath Path inside the bucket.

@@ -77,6 +77,11 @@ class DocumentContext:
     # List of (block_index, source_text, translated_text, context_hint, document_type)
     deferred_reviews: list[tuple[int, str, str, str, str]] = field(default_factory=list)
 
+    # Admin review support: per-block AI quality review results.
+    # Mapping block_index -> {"score": float, "issues": [QualityIssue-dict]}.
+    # Surfaced from the AI quality reviewer's in-memory output — never recomputed.
+    block_quality: dict[int, dict] = field(default_factory=dict)
+
     # ── Warnings ──────────────────────────────────────────────────────────
     warnings: list[str] = field(default_factory=list)
 
@@ -144,6 +149,40 @@ class DocumentContext:
             self.deferred_reviews.append(
                 (block_index, source, translation, context_hint, document_type)
             )
+
+    @staticmethod
+    def _issue_to_dict(i) -> dict:
+        """Normalize a QualityIssue dataclass (or dict) to a plain dict.
+
+        Branch on type instead of relying on ``getattr(..., default)`` —
+        Python evaluates the default argument eagerly, so calling
+        ``getattr(i, "severity", i.get("severity"))`` would crash on a
+        dataclass (which has no ``.get`` method).
+        """
+        fields = ("severity", "category", "description",
+                  "source_snippet", "translation_snippet")
+        if isinstance(i, dict):
+            return {f: i.get(f, "") for f in fields}
+        return {f: getattr(i, f, "") for f in fields}
+
+    def record_block_quality(self, block_index: int, score: float,
+                             issues: list) -> None:
+        """Record the AI quality review for a single block.
+
+        Thread-safe — uses the same internal lock as record_llm_call.
+        Stores a plain-dict snapshot so it can be serialized into the
+        regeneration sidecar and persisted by Laravel.
+
+        Args:
+            block_index: Index of the block within the document.
+            score: Quality score (0.0 - 100.0).
+            issues: Iterable of QualityIssue dataclasses (or dicts).
+        """
+        with self._llm_lock:
+            self.block_quality[block_index] = {
+                "score": round(float(score), 1),
+                "issues": [self._issue_to_dict(i) for i in (issues or [])],
+            }
 
     def record_llm_call(self, elapsed_ms: float) -> None:
         """Record an LLM API call and its duration.

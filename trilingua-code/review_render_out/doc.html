@@ -1,30 +1,21 @@
 <!doctype html>
-<html lang="en" data-theme="{{ auth()->user()->theme ?? 'light' }}">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'Dashboard') — TriLingua</title>
-    @vite(['resources/css/base.css', 'resources/css/layouts/app.css', 'resources/js/app.js'])
-    @yield('styles')
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Review Document Translation — TriLingua</title>
+    <link rel="preload" as="style" href="http://localhost/build/assets/base-CEMKm2vs.css" /><link rel="preload" as="style" href="http://localhost/build/assets/app-DsOQLhfI.css" /><link rel="modulepreload" as="script" href="http://localhost/build/assets/app-CcNNqum8.js" /><link rel="stylesheet" href="http://localhost/build/assets/base-CEMKm2vs.css" /><link rel="stylesheet" href="http://localhost/build/assets/app-DsOQLhfI.css" /><script type="module" src="http://localhost/build/assets/app-CcNNqum8.js"></script>        <link rel="preload" as="style" href="http://localhost/build/assets/admin-Ci44rnKm.css" /><link rel="stylesheet" href="http://localhost/build/assets/admin-Ci44rnKm.css" />    <meta name="csrf-token" content="RfOkTXj8LURLQbrDwD08ZeeZs2gcqlbnCPwd6LyU">
 </head>
 <body class="app-body">
 
-{{-- Global toast container --}}
+
 <div id="toast-container" aria-live="polite" aria-atomic="false" style="position:fixed;top:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none"></div>
 
-{{-- Login success toast --}}
-@if (session('login_success'))
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        showToast('success', 'Welcome back, {{ addslashes(auth()->user()->name ?? "User") }}!', 'You have successfully signed in.');
-    });
-</script>
-@endif
 
-{{-- Mobile top bar --}}
+
+
 <div class="mobile-topbar" id="mobile-topbar">
-    <a href="{{ route('dashboard') }}" class="mobile-topbar__brand">
+    <a href="http://localhost/dashboard" class="mobile-topbar__brand">
         <div class="brand__icon" style="width:28px;height:28px">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/>
@@ -39,15 +30,15 @@
     </button>
 </div>
 
-{{-- Sidebar overlay (mobile) --}}
+
 <div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
 
 <div class="app-container">
 
-    {{-- Sidebar --}}
+    
     <aside class="sidebar" id="sidebar">
-        {{-- Brand --}}
-        <a href="{{ route('dashboard') }}" class="brand">
+        
+        <a href="http://localhost/dashboard" class="brand">
             <div class="brand__icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/>
@@ -56,10 +47,10 @@
             <span class="brand__name">TriLingua</span>
         </a>
 
-        {{-- Navigation --}}
+        
         <nav class="nav" aria-label="Main navigation">
 
-            <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+            <a href="http://localhost/dashboard" class="nav-link ">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
                     <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
@@ -67,7 +58,7 @@
                 Dashboard
             </a>
 
-            <a href="{{ route('translate') }}" class="nav-link {{ request()->routeIs('translate*') ? 'active' : '' }}">
+            <a href="http://localhost/translate" class="nav-link ">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/>
                     <path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/>
@@ -75,7 +66,7 @@
                 New Translation
             </a>
 
-            <a href="{{ route('documents') }}" class="nav-link {{ request()->routeIs('documents*') ? 'active' : '' }}">
+            <a href="http://localhost/documents" class="nav-link ">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                     <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
@@ -84,7 +75,7 @@
                 My Documents
             </a>
 
-            <a href="{{ route('history') }}" class="nav-link {{ request()->routeIs('history*') ? 'active' : '' }}">
+            <a href="http://localhost/history" class="nav-link ">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <circle cx="12" cy="12" r="10"/>
                     <polyline points="12 6 12 12 16 14"/>
@@ -92,7 +83,7 @@
                 Saved Translations
             </a>
 
-            <a href="{{ route('settings') }}" class="nav-link {{ request()->routeIs('settings*') ? 'active' : '' }}">
+            <a href="http://localhost/settings" class="nav-link ">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <circle cx="12" cy="12" r="3"/>
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -100,27 +91,24 @@
                 Settings
             </a>
 
-            @if(auth()->user()->is_admin)
-            <a href="{{ route('admin.dashboard') }}" class="nav-link {{ request()->routeIs('admin.*') ? 'active' : '' }}">
+                        <a href="http://localhost/admin/review" class="nav-link active">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
                 </svg>
-                Admin
+                Review Queue
             </a>
-            @endif
-        </nav>
-        {{-- User section at bottom --}}
+                    </nav>
+        
         <div class="sidebar-user">
             <div class="sidebar-user__avatar" aria-hidden="true">
-                {{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}
+                A
             </div>
             <div class="sidebar-user__info">
-                <div class="sidebar-user__name">{{ auth()->user()->name ?? 'User' }}</div>
+                <div class="sidebar-user__name">Admin User</div>
                 <div class="sidebar-user__role">Member</div>
             </div>
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button type="submit" class="sidebar-logout" title="Sign out">
+            <form method="POST" action="http://localhost/logout">
+                <input type="hidden" name="_token" value="RfOkTXj8LURLQbrDwD08ZeeZs2gcqlbnCPwd6LyU" autocomplete="off">                <button type="submit" class="sidebar-logout" title="Sign out">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                         <polyline points="16 17 21 12 16 7"/>
@@ -131,15 +119,15 @@
         </div>
     </aside>
 
-    {{-- Main content --}}
+    
     <main class="main">
         <header class="header">
             <div class="header-left">
-                <h1 class="title">@yield('title', 'Dashboard')</h1>
-                <p class="header-subtitle">@yield('subtitle', '')</p>
+                <h1 class="title">Review Document Translation</h1>
+                <p class="header-subtitle"></p>
             </div>
             <div class="header-right">
-                {{-- Notification bell --}}
+                
                 <button class="header-icon-btn" aria-label="Notifications" title="Notifications">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -147,40 +135,39 @@
                     </svg>
                 </button>
 
-                {{-- User avatar dropdown --}}
+                
                 <div class="header-user" id="header-user-btn" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
                     <div class="header-user__avatar" aria-hidden="true">
-                        {{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}
+                        A
                     </div>
                     <div class="header-user__info">
-                        <span class="header-user__name">{{ auth()->user()->name ?? 'User' }}</span>
-                        <span class="header-user__email">{{ auth()->user()->email ?? '' }}</span>
+                        <span class="header-user__name">Admin User</span>
+                        <span class="header-user__email">admin@example.com</span>
                     </div>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="header-user__chevron">
                         <polyline points="6 9 12 15 18 9"/>
                     </svg>
                 </div>
 
-                {{-- Dropdown menu --}}
+                
                 <div class="header-dropdown" id="header-dropdown" aria-hidden="true">
                     <div class="header-dropdown__info">
                         <div class="header-dropdown__avatar" aria-hidden="true">
-                            {{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}
+                            A
                         </div>
                         <div>
-                            <div class="header-dropdown__name">{{ auth()->user()->name ?? 'User' }}</div>
-                            <div class="header-dropdown__email">{{ auth()->user()->email ?? '' }}</div>
+                            <div class="header-dropdown__name">Admin User</div>
+                            <div class="header-dropdown__email">admin@example.com</div>
                         </div>
                     </div>
                     <div class="header-dropdown__divider"></div>
-                    <a href="{{ route('settings') }}" class="header-dropdown__item">
+                    <a href="http://localhost/settings" class="header-dropdown__item">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                         Settings
                     </a>
                     <div class="header-dropdown__divider"></div>
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
-                        <button type="submit" class="header-dropdown__item header-dropdown__item--danger">
+                    <form method="POST" action="http://localhost/logout">
+                        <input type="hidden" name="_token" value="RfOkTXj8LURLQbrDwD08ZeeZs2gcqlbnCPwd6LyU" autocomplete="off">                        <button type="submit" class="header-dropdown__item header-dropdown__item--danger">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                             Sign out
                         </button>
@@ -190,7 +177,142 @@
         </header>
 
         <div>
-            @yield('content')
+            <div class="stack">
+
+    <a href="http://localhost/admin/review" class="review-back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        Back to review queue
+    </a>
+
+    <div class="review-detail-card">
+        <div class="review-detail__header">
+            <div>
+                <span class="status-badge status-badge--pending">Pending</span>
+                <h2 class="review-detail__title" style="font-size:1.15rem;font-weight:700;color:var(--text);margin:10px 0 0">employment_contract.pdf</h2>
+                                    <p class="review-detail__subtitle" style="font-size:0.82rem;color:var(--muted);margin:4px 0 0">translated to → employment_contract_ceb.pdf</p>
+                            </div>
+        </div>
+
+        <div class="review-readonly">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Read-only preview. Verify / edit / flag actions are not available yet.
+        </div>
+
+        
+        <div class="review-detail__meta">
+            <div class="review-detail__meta-item">
+                <span class="review-detail__meta-label">Source Language</span>
+                <span class="review-detail__meta-value">English</span>
+            </div>
+            <div class="review-detail__meta-item">
+                <span class="review-detail__meta-label">Target Language</span>
+                <span class="review-detail__meta-value">Cebuano</span>
+            </div>
+            <div class="review-detail__meta-item">
+                <span class="review-detail__meta-label">Quality Score</span>
+                <span class="review-detail__meta-value">62</span>
+            </div>
+            <div class="review-detail__meta-item">
+                <span class="review-detail__meta-label">Submitted By</span>
+                <span class="review-detail__meta-value">Andre James (andre@example.com)</span>
+            </div>
+            <div class="review-detail__meta-item">
+                <span class="review-detail__meta-label">Submitted At</span>
+                <span class="review-detail__meta-value">2026-08-04 04:51 UTC</span>
+            </div>
+            <div class="review-detail__meta-item">
+                <span class="review-detail__meta-label">Blocks</span>
+                <span class="review-detail__meta-value">3</span>
+            </div>
+        </div>
+
+        
+        <h4 class="review-detail__section-title">Extracted Blocks</h4>
+
+                    <div class="block-list">
+                                                <div class="block-card">
+                    <div class="block-card__head">
+                        <div class="block-card__badges">
+                            <span class="block-card__index">Block #0</span>
+                            <span class="block-card__type">paragraph</span>
+                                                    </div>
+                        <span class="quality-score" style="min-width:0">
+                            <span class="quality-score__dot quality-score__dot--medium" aria-hidden="true"></span>
+                            74
+                        </span>
+                    </div>
+
+                    <div class="block-card__pairs">
+                        <div class="block-card__pair">
+                            <span class="block-card__pair-label">Source</span>
+                            <div class="block-card__text">This agreement is entered into by and between the Company and the Employee.</div>
+                        </div>
+                        <div class="block-card__pair">
+                            <span class="block-card__pair-label">AI Translation</span>
+                            <div class="block-card__text">Kini nga kasabutan gihimo tali sa Company ug sa Empleyado.</div>
+                        </div>
+                                            </div>
+                </div>
+                                                <div class="block-card">
+                    <div class="block-card__head">
+                        <div class="block-card__badges">
+                            <span class="block-card__index">Block #1</span>
+                            <span class="block-card__type">paragraph</span>
+                                                            <span class="status-badge status-badge--edited">Edited</span>
+                                                    </div>
+                        <span class="quality-score" style="min-width:0">
+                            <span class="quality-score__dot quality-score__dot--low" aria-hidden="true"></span>
+                            45
+                        </span>
+                    </div>
+
+                    <div class="block-card__pairs">
+                        <div class="block-card__pair">
+                            <span class="block-card__pair-label">Source</span>
+                            <div class="block-card__text">The employee shall receive a monthly salary of 50,000 pesos.</div>
+                        </div>
+                        <div class="block-card__pair">
+                            <span class="block-card__pair-label">AI Translation</span>
+                            <div class="block-card__text">Ang empleyado makadawat ug bulanang suweldo nga 50,000 pesos.</div>
+                        </div>
+                                                <div class="block-card__pair">
+                            <span class="block-card__pair-label">Current (edited)</span>
+                            <div class="block-card__text block-card__text--edited">Ang empleyado makahabo ug bulanan nga sikrito 50,000 ka pesos.</div>
+                        </div>
+                                            </div>
+                </div>
+                                                <div class="block-card">
+                    <div class="block-card__head">
+                        <div class="block-card__badges">
+                            <span class="block-card__index">Block #2</span>
+                            <span class="block-card__type">list</span>
+                                                            <span class="status-badge status-badge--edited">Edited</span>
+                                                    </div>
+                        <span class="quality-score" style="min-width:0">
+                            <span class="quality-score__dot quality-score__dot--high" aria-hidden="true"></span>
+                            81
+                        </span>
+                    </div>
+
+                    <div class="block-card__pairs">
+                        <div class="block-card__pair">
+                            <span class="block-card__pair-label">Source</span>
+                            <div class="block-card__text">Working hours are from 9am to 6pm.</div>
+                        </div>
+                        <div class="block-card__pair">
+                            <span class="block-card__pair-label">AI Translation</span>
+                            <div class="block-card__text">Ang oras sa trabaho mao ang buntag alas-9 hangtod alas-6 sa gabii.</div>
+                        </div>
+                                                <div class="block-card__pair">
+                            <span class="block-card__pair-label">Current (edited)</span>
+                            <div class="block-card__text block-card__text--edited">Ang oras sa trabaho mao ang alas-9 sa buntag hangtod alas-6 sa gabii.</div>
+                        </div>
+                                            </div>
+                </div>
+                            </div>
+            </div>
+
+</div>
         </div>
     </main>
 
@@ -253,6 +375,5 @@ window.showToast = function (type, title, message, duration) {
     document.addEventListener('keydown', function(e){ if(e.key==='Escape') close(); });
 })();
 </script>
-@yield('scripts')
 </body>
 </html>

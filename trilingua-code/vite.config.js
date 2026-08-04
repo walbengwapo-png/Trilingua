@@ -17,6 +17,7 @@ export default defineConfig({
                 'resources/css/views/my-documents.css',
                 'resources/css/views/translation.css',
                 'resources/css/views/welcome.css',
+                'resources/css/views/admin.css',
                 'resources/js/app.js'
             ],
             refresh: true,

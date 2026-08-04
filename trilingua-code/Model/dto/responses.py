@@ -44,6 +44,11 @@ class DocumentTranslationResponse:
     document_type: str = ""
     quality_score: Optional[float] = None
     cache_hits: int = 0
+    # Admin review support: serialized block set + structural metadata that
+    # allows reconstruction-only regeneration later. Populated only when the
+    # document path produced per-block data.
+    sidecar: Optional[dict] = None
+    blocks: list = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)

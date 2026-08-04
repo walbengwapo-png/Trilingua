@@ -2,10 +2,12 @@
 
 namespace App\Jobs;
 
+use App\Services\BlockService;
 use App\Services\HistoryService;
 use App\Services\StorageService;
 use App\Services\Translation\TranslationManager;
 use App\Services\TranslationService;
+use App\Support\ReviewStatus;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -36,7 +38,8 @@ class TranslateDocumentJob implements ShouldQueue
         public string $pdfColumnMode = 'auto',
         public string $tempPath,
         public int $userId,
-        public ?string $originalStoragePath = null
+        public ?string $originalStoragePath = null,
+        public string $mode = 'balanced'
     ) {}
 
     /**
@@ -56,7 +59,8 @@ class TranslateDocumentJob implements ShouldQueue
     public function handle(
         TranslationManager $translationManager,
         StorageService $storageService,
-        HistoryService $historyService
+        HistoryService $historyService,
+        BlockService $blockService
     ): void {
         // Store initial "processing" state in cache so frontend knows we're working
         $this->storeResult([
@@ -85,7 +89,8 @@ class TranslateDocumentJob implements ShouldQueue
                 $uploadedFile,
                 $this->sourceLang,
                 $this->targetLang,
-                $this->pdfColumnMode
+                $this->pdfColumnMode,
+                $this->mode
             );
 
             $downloadFilename = $translationResult['download_filename'];
@@ -125,8 +130,9 @@ class TranslateDocumentJob implements ShouldQueue
                 ]);
 
                 // Create history record (non-blocking)
+                $history = null;
                 try {
-                    $historyService->insertRecord([
+                    $history = $historyService->insertRecord([
                         'user_id'               => $this->userId,
                         'original_filename'     => $this->originalName,
                         'translated_filename'   => $downloadFilename,
@@ -137,9 +143,13 @@ class TranslateDocumentJob implements ShouldQueue
                         'original_storage_path' => $this->originalStoragePath,
                         'file_size'             => $this->fileSize,
                         'status'                => 'completed',
+                        'review_status'         => ReviewStatus::PENDING,
                         'signed_url_expires_at' => $storageResult['signed_url_expires_at'],
                         'job_id'                => $this->jobUuid,
                     ]);
+
+                    // Persist per-block review data + roll up quality score.
+                    $this->persistDocumentBlocks($blockService, $history, $translationResult);
                 } catch (\Throwable $e) {
                     Log::warning('Job: Failed to insert history record (non-fatal)', [
                         'exception' => $e->getMessage(),
@@ -169,8 +179,9 @@ class TranslateDocumentJob implements ShouldQueue
                     ]);
 
                     // Create history record for inline download
+                    $history = null;
                     try {
-                        $historyService->insertRecord([
+                        $history = $historyService->insertRecord([
                             'user_id'               => $this->userId,
                             'original_filename'     => $this->originalName,
                             'translated_filename'   => $downloadFilename,
@@ -179,8 +190,12 @@ class TranslateDocumentJob implements ShouldQueue
                             'created_at'            => now()->toIso8601String(),
                             'file_size'             => $this->fileSize,
                             'status'                => 'completed',
+                            'review_status'         => ReviewStatus::PENDING,
                             'job_id'                => $this->jobUuid,
                         ]);
+
+                        // Persist per-block review data + roll up quality score.
+                        $this->persistDocumentBlocks($blockService, $history, $translationResult);
                     } catch (\Throwable $e) {
                         Log::warning('Job: Failed to insert history record for inline download (non-fatal)', [
                             'exception' => $e->getMessage(),
@@ -216,6 +231,36 @@ class TranslateDocumentJob implements ShouldQueue
             // Do NOT call $this->fail() — with sync queue, that would throw an
             // exception back to the controller causing a 500 error. Instead we
             // store the failure in cache for the frontend to poll.
+        }
+    }
+
+    /**
+     * Persist per-block review data and the sidecar onto the history row.
+     *
+     * Blocks only exist for document translations and are never persisted for
+     * text translations. This is a best-effort post-processing step — a failure
+     * here must not fail an otherwise-successful translation delivery.
+     */
+    private function persistDocumentBlocks(
+        BlockService $blockService,
+        ?\App\Models\TranslationHistory $history,
+        array $translationResult
+    ): void {
+        if ($history === null) {
+            return;
+        }
+        try {
+            $history->load('blocks')->blocks()->delete();
+            $blockService->persistBlocks(
+                $history,
+                $translationResult['blocks'] ?? [],
+                $translationResult['sidecar'] ?? null
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Job: Failed to persist document blocks (non-fatal)', [
+                'exception' => $e->getMessage(),
+                'translation_history_id' => $history->id ?? null,
+            ]);
         }
     }
 

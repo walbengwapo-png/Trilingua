@@ -678,6 +678,8 @@ class TranslationPipeline:
                 retranslated_count = 0
                 for idx, source_text, rev_text in review_entries:
                     review = batch_reviews.get(idx)
+                    if ctx and review is not None:
+                        ctx.record_block_quality(idx, review.score, review.issues)
                     if review and quality_reviewer.needs_retranslation(review):
                         context = ""
                         if document_memory:
@@ -741,13 +743,22 @@ class TranslationPipeline:
                 # Preserve position metadata for PDF
                 for key in ("position", "page", "slide", "shape_id", "para_idx",
                             "sheet", "row", "col", "table_index",
-                            "alignment"):
+                            "alignment", "lines", "links"):
                     if key in block:
                         new_block[key] = block[key]
 
                 # Preserve original text for PDF expansion ratio
                 if "position" in block:
                     new_block["_original_text"] = block["text"]
+
+                # Surface the AI quality review (score + issues) on the block.
+                # The reviewer's output already exists in-memory — this only
+                # copies it onto the block for the regeneration sidecar.
+                if ctx:
+                    q = ctx.block_quality.get(i)
+                    if q:
+                        new_block["quality_score"] = q.get("score")
+                        new_block["quality_issues"] = q.get("issues")
 
                 translated_blocks.append(new_block)
             else:
@@ -876,6 +887,8 @@ class TranslationPipeline:
                     translation=translated,
                     document_type=document_profile.document_type if document_profile else "",
                 )
+            if ctx and review is not None:
+                ctx.record_block_quality(block_index, review.score, review.issues)
             if quality_reviewer.needs_retranslation(review):
                 with llm_call_profile(ctx) if ctx else _nullcontext():
                     retry_response = self.provider.translate(

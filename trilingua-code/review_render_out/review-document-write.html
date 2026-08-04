@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Review Document Translation — TriLingua</title>
+    <link rel="preload" as="style" href="http://localhost/build/assets/base-CEMKm2vs.css" /><link rel="preload" as="style" href="http://localhost/build/assets/app-DsOQLhfI.css" /><link rel="modulepreload" as="script" href="http://localhost/build/assets/app-CcNNqum8.js" /><link rel="stylesheet" href="http://localhost/build/assets/base-CEMKm2vs.css" /><link rel="stylesheet" href="http://localhost/build/assets/app-DsOQLhfI.css" /><script type="module" src="http://localhost/build/assets/app-CcNNqum8.js"></script>        <link rel="preload" as="style" href="http://localhost/build/assets/admin-BZjpdCxB.css" /><link rel="stylesheet" href="http://localhost/build/assets/admin-BZjpdCxB.css" />    <meta name="csrf-token" content="OX3ohikiIJpwbRIaVjhnXx72X9pXZodTBujvMmfQ">
+</head>
+<body class="app-body">
+
+
+<div id="toast-container" aria-live="polite" aria-atomic="false" style="position:fixed;top:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none"></div>
+
+
+
+
+<div class="mobile-topbar" id="mobile-topbar">
+    <a href="http://localhost/dashboard" class="mobile-topbar__brand">
+        <div class="brand__icon" style="width:28px;height:28px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/>
+            </svg>
+        </div>
+        <span class="mobile-topbar__name">TriLingua</span>
+    </a>
+    <button class="hamburger" id="hamburger-btn" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sidebar">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+    </button>
+</div>
+
+
+<div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
+
+<div class="app-container">
+
+    
+    <aside class="sidebar" id="sidebar">
+        
+        <a href="http://localhost/dashboard" class="brand">
+            <div class="brand__icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/>
+                </svg>
+            </div>
+            <span class="brand__name">TriLingua</span>
+        </a>
+
+        
+        <nav class="nav" aria-label="Main navigation">
+
+            <a href="http://localhost/dashboard" class="nav-link ">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                Dashboard
+            </a>
+
+            <a href="http://localhost/translate" class="nav-link ">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/>
+                    <path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/>
+                </svg>
+                New Translation
+            </a>
+
+            <a href="http://localhost/documents" class="nav-link ">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                </svg>
+                My Documents
+            </a>
+
+            <a href="http://localhost/history" class="nav-link ">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                Saved Translations
+            </a>
+
+            <a href="http://localhost/settings" class="nav-link ">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                Settings
+            </a>
+
+                        <a href="http://localhost/admin" class="nav-link active">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+                Admin
+            </a>
+                    </nav>
+        
+        <div class="sidebar-user">
+            <div class="sidebar-user__avatar" aria-hidden="true">
+                A
+            </div>
+            <div class="sidebar-user__info">
+                <div class="sidebar-user__name">Alice Admin</div>
+                <div class="sidebar-user__role">Member</div>
+            </div>
+            <form method="POST" action="http://localhost/logout">
+                <input type="hidden" name="_token" value="OX3ohikiIJpwbRIaVjhnXx72X9pXZodTBujvMmfQ" autocomplete="off">                <button type="submit" class="sidebar-logout" title="Sign out">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                        <polyline points="16 17 21 12 16 7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    
+    <main class="main">
+        <header class="header">
+            <div class="header-left">
+                <h1 class="title">Review Document Translation</h1>
+                <p class="header-subtitle"></p>
+            </div>
+            <div class="header-right">
+                
+                <button class="header-icon-btn" aria-label="Notifications" title="Notifications">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                </button>
+
+                
+                <div class="header-user" id="header-user-btn" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
+                    <div class="header-user__avatar" aria-hidden="true">
+                        A
+                    </div>
+                    <div class="header-user__info">
+                        <span class="header-user__name">Alice Admin</span>
+                        <span class="header-user__email">abdul.olson@example.net</span>
+                    </div>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="header-user__chevron">
+                        <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                </div>
+
+                
+                <div class="header-dropdown" id="header-dropdown" aria-hidden="true">
+                    <div class="header-dropdown__info">
+                        <div class="header-dropdown__avatar" aria-hidden="true">
+                            A
+                        </div>
+                        <div>
+                            <div class="header-dropdown__name">Alice Admin</div>
+                            <div class="header-dropdown__email">abdul.olson@example.net</div>
+                        </div>
+                    </div>
+                    <div class="header-dropdown__divider"></div>
+                    <a href="http://localhost/settings" class="header-dropdown__item">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        Settings
+                    </a>
+                    <div class="header-dropdown__divider"></div>
+                    <form method="POST" action="http://localhost/logout">
+                        <input type="hidden" name="_token" value="OX3ohikiIJpwbRIaVjhnXx72X9pXZodTBujvMmfQ" autocomplete="off">                        <button type="submit" class="header-dropdown__item header-dropdown__item--danger">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                            Sign out
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </header>
+
+        <div>
+            <div class="stack">
+
+    <a href="http://localhost/admin/review" class="review-back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        Back to review queue
+    </a>
+
+    <div class="review-detail-card">
+        <div class="review-detail__header">
+            <div>
+                <span class="status-badge status-badge--pending">Pending</span>
+                <h2 class="review-detail__title" style="font-size:1.15rem;font-weight:700;color:var(--text);margin:10px 0 0">contract.pdf</h2>
+                                    <p class="review-detail__subtitle" style="font-size:0.82rem;color:var(--muted);margin:4px 0 0">translated to → contract_ceb.pdf</p>
+                            </div>
+        </div>
+
+        
+        <div class="review-detail__meta">
+            <div class="review-detail__meta-item">
+                <span class="review-detail__meta-label">Source Language</span>
+                <span class="review-detail__meta-value">English</span>
+            </div>
+            <div class="review-detail__meta-item">
+                <span class="review-detail__meta-label">Target Language</span>
+                <span class="review-detail__meta-value">Cebuano</span>
+            </div>
+            <div class="review-detail__meta-item">
+                <span class="review-detail__meta-label">Quality Score</span>
+                <span class="review-detail__meta-value">62</span>
+            </div>
+            <div class="review-detail__meta-item">
+                <span class="review-detail__meta-label">Submitted By</span>
+                <span class="review-detail__meta-value">Bob User (kdeckow@example.net)</span>
+            </div>
+            <div class="review-detail__meta-item">
+                <span class="review-detail__meta-label">Submitted At</span>
+                <span class="review-detail__meta-value">2026-08-04 05:12 UTC</span>
+            </div>
+            <div class="review-detail__meta-item">
+                <span class="review-detail__meta-label">Blocks</span>
+                <span class="review-detail__meta-value">3</span>
+            </div>
+        </div>
+
+        
+        <div class="review-form-card">
+            <h4 class="review-form-card__title">Document Actions</h4>
+
+            <form method="POST" action="http://localhost/admin/review/3/bulk-approve" class="review-inline-form"
+                  data-review-form data-reload="true">
+                <input type="hidden" name="_token" value="OX3ohikiIJpwbRIaVjhnXx72X9pXZodTBujvMmfQ" autocomplete="off">                <label for="threshold" class="review-form-note" style="margin:0">Verify blocks with score ≥</label>
+                <input type="number" name="threshold" id="threshold" class="review-input" min="0" max="100" value="80" required>
+                <button type="submit" class="review-btn review-btn--success">Bulk Approve</button>
+            </form>
+
+            <form method="POST" action="http://localhost/admin/review/3/save-regenerate" class="review-form-card" style="margin-top:14px"
+                  id="save-regenerate-form" data-regen-form>
+                <input type="hidden" name="_token" value="OX3ohikiIJpwbRIaVjhnXx72X9pXZodTBujvMmfQ" autocomplete="off">                <p class="review-form-note" style="margin:0 0 8px">
+                    Collects every edited block and re-renders the document synchronously (reconstruction only —
+                    AI translation is never re-run). The new version is uploaded and you get download links for both files.
+                </p>
+                <input type="text" name="note" class="review-input" placeholder="Optional audit note" style="width:100%;margin-bottom:8px">
+                <button type="submit" class="review-btn review-btn--warning" id="regen-btn">Save &amp; Regenerate</button>
+                <span class="review-form-note" id="regen-spinner" style="display:none">Regenerating… this can take a minute.</span>
+            </form>
+
+            <div id="regen-result"></div>
+        </div>
+
+        
+        <h4 class="review-detail__section-title">Extracted Blocks</h4>
+
+                    <div class="block-list">
+                                                <div class="block-card" data-block-id="1" data-block-index="0">
+                    <div class="block-card__head">
+                        <div class="block-card__badges">
+                            <span class="block-card__index">Block #0</span>
+                            <span class="block-card__type">paragraph</span>
+                            <span class="status-badge status-badge--pending">Pending</span>
+                                                    </div>
+                        <span class="quality-score" style="min-width:0">
+                            <span class="quality-score__dot quality-score__dot--high" aria-hidden="true"></span>
+                            91
+                        </span>
+                    </div>
+
+                    <div class="block-card__pairs">
+                        <div class="block-card__pair">
+                            <span class="block-card__pair-label">Source</span>
+                            <div class="block-card__text">This Agreement is entered into on 2024-01-01.</div>
+                        </div>
+                        <div class="block-card__pair">
+                            <span class="block-card__pair-label">AI Translation (immutable)</span>
+                            <div class="block-card__text block-card__text--highlight">Kini nga Kasabutan nahimo kaniadtong 2024-01-01.</div>
+                        </div>
+                        <div class="block-card__pair">
+                            <span class="block-card__pair-label">Current Text (editable)</span>
+                            <textarea class="block-card__edit-textarea" name="current_text" data-block-current>Kini nga Kasabutan nahimo kaniadtong 2024-01-01.</textarea>
+                        </div>
+                    </div>
+
+                    
+                    <div class="block-card__actions">
+                        <form method="POST" action="http://localhost/admin/review/3/blocks/1/verify"
+                              class="review-inline-form" data-review-form data-reload="true">
+                            <input type="hidden" name="_token" value="OX3ohikiIJpwbRIaVjhnXx72X9pXZodTBujvMmfQ" autocomplete="off">                            <button type="submit" class="review-btn review-btn--success">Verify</button>
+                        </form>
+
+                        <form method="POST" action="http://localhost/admin/review/3/blocks/1/update"
+                              class="review-inline-form" data-review-form data-reload="true">
+                            <input type="hidden" name="_token" value="OX3ohikiIJpwbRIaVjhnXx72X9pXZodTBujvMmfQ" autocomplete="off">                            <input type="hidden" name="current_text" value="Kini nga Kasabutan nahimo kaniadtong 2024-01-01.">
+                            <button type="submit" class="review-btn review-btn--warning">Save Edit</button>
+                        </form>
+
+                        <form method="POST" action="http://localhost/admin/review/3/blocks/1/flag"
+                              class="review-inline-form" data-review-form data-reload="true">
+                            <input type="hidden" name="_token" value="OX3ohikiIJpwbRIaVjhnXx72X9pXZodTBujvMmfQ" autocomplete="off">                            <select name="reason" class="review-select" required aria-label="Flag reason">
+                                <option value="">Flag…</option>
+                                                                    <option value="mistranslation" >Mistranslation</option>
+                                                                    <option value="missing_content" >Missing Content</option>
+                                                                    <option value="formatting_broken" >Formatting Broken</option>
+                                                                    <option value="hallucination" >Hallucination</option>
+                                                                    <option value="terminology_error" >Terminology Error</option>
+                                                                    <option value="other" >Other</option>
+                                                            </select>
+                            <button type="submit" class="review-btn review-btn--danger">Flag</button>
+                        </form>
+                    </div>
+                </div>
+                                                <div class="block-card" data-block-id="2" data-block-index="1">
+                    <div class="block-card__head">
+                        <div class="block-card__badges">
+                            <span class="block-card__index">Block #1</span>
+                            <span class="block-card__type">paragraph</span>
+                            <span class="status-badge status-badge--pending">Pending</span>
+                                                    </div>
+                        <span class="quality-score" style="min-width:0">
+                            <span class="quality-score__dot quality-score__dot--medium" aria-hidden="true"></span>
+                            73
+                        </span>
+                    </div>
+
+                    <div class="block-card__pairs">
+                        <div class="block-card__pair">
+                            <span class="block-card__pair-label">Source</span>
+                            <div class="block-card__text">Party A shall deliver the goods.</div>
+                        </div>
+                        <div class="block-card__pair">
+                            <span class="block-card__pair-label">AI Translation (immutable)</span>
+                            <div class="block-card__text block-card__text--highlight">Ang Partido A magpadala sa mga butang.</div>
+                        </div>
+                        <div class="block-card__pair">
+                            <span class="block-card__pair-label">Current Text (editable)</span>
+                            <textarea class="block-card__edit-textarea" name="current_text" data-block-current>Ang Partido A magpadala sa mga butang.</textarea>
+                        </div>
+                    </div>
+
+                    
+                    <div class="block-card__actions">
+                        <form method="POST" action="http://localhost/admin/review/3/blocks/2/verify"
+                              class="review-inline-form" data-review-form data-reload="true">
+                            <input type="hidden" name="_token" value="OX3ohikiIJpwbRIaVjhnXx72X9pXZodTBujvMmfQ" autocomplete="off">                            <button type="submit" class="review-btn review-btn--success">Verify</button>
+                        </form>
+
+                        <form method="POST" action="http://localhost/admin/review/3/blocks/2/update"
+                              class="review-inline-form" data-review-form data-reload="true">
+                            <input type="hidden" name="_token" value="OX3ohikiIJpwbRIaVjhnXx72X9pXZodTBujvMmfQ" autocomplete="off">                            <input type="hidden" name="current_text" value="Ang Partido A magpadala sa mga butang.">
+                            <button type="submit" class="review-btn review-btn--warning">Save Edit</button>
+                        </form>
+
+                        <form method="POST" action="http://localhost/admin/review/3/blocks/2/flag"
+                              class="review-inline-form" data-review-form data-reload="true">
+                            <input type="hidden" name="_token" value="OX3ohikiIJpwbRIaVjhnXx72X9pXZodTBujvMmfQ" autocomplete="off">                            <select name="reason" class="review-select" required aria-label="Flag reason">
+                                <option value="">Flag…</option>
+                                                                    <option value="mistranslation" >Mistranslation</option>
+                                                                    <option value="missing_content" >Missing Content</option>
+                                                                    <option value="formatting_broken" >Formatting Broken</option>
+                                                                    <option value="hallucination" >Hallucination</option>
+                                                                    <option value="terminology_error" >Terminology Error</option>
+                                                                    <option value="other" >Other</option>
+                                                            </select>
+                            <button type="submit" class="review-btn review-btn--danger">Flag</button>
+                        </form>
+                    </div>
+                </div>
+                                                <div class="block-card" data-block-id="3" data-block-index="2">
+                    <div class="block-card__head">
+                        <div class="block-card__badges">
+                            <span class="block-card__index">Block #2</span>
+                            <span class="block-card__type">paragraph</span>
+                            <span class="status-badge status-badge--flagged">Flagged</span>
+                                                    </div>
+                        <span class="quality-score" style="min-width:0">
+                            <span class="quality-score__dot quality-score__dot--low" aria-hidden="true"></span>
+                            38
+                        </span>
+                    </div>
+
+                    <div class="block-card__pairs">
+                        <div class="block-card__pair">
+                            <span class="block-card__pair-label">Source</span>
+                            <div class="block-card__text">Payment terms are 30 days net.</div>
+                        </div>
+                        <div class="block-card__pair">
+                            <span class="block-card__pair-label">AI Translation (immutable)</span>
+                            <div class="block-card__text block-card__text--highlight">Ang mga termino sa pagbayad kay 30 ka adlaw.</div>
+                        </div>
+                        <div class="block-card__pair">
+                            <span class="block-card__pair-label">Current Text (editable)</span>
+                            <textarea class="block-card__edit-textarea" name="current_text" data-block-current>Ang mga termino sa pagbayad kay 30 ka adlaw.</textarea>
+                        </div>
+                    </div>
+
+                    
+                    <div class="block-card__actions">
+                        <form method="POST" action="http://localhost/admin/review/3/blocks/3/verify"
+                              class="review-inline-form" data-review-form data-reload="true">
+                            <input type="hidden" name="_token" value="OX3ohikiIJpwbRIaVjhnXx72X9pXZodTBujvMmfQ" autocomplete="off">                            <button type="submit" class="review-btn review-btn--success">Verify</button>
+                        </form>
+
+                        <form method="POST" action="http://localhost/admin/review/3/blocks/3/update"
+                              class="review-inline-form" data-review-form data-reload="true">
+                            <input type="hidden" name="_token" value="OX3ohikiIJpwbRIaVjhnXx72X9pXZodTBujvMmfQ" autocomplete="off">                            <input type="hidden" name="current_text" value="Ang mga termino sa pagbayad kay 30 ka adlaw.">
+                            <button type="submit" class="review-btn review-btn--warning">Save Edit</button>
+                        </form>
+
+                        <form method="POST" action="http://localhost/admin/review/3/blocks/3/flag"
+                              class="review-inline-form" data-review-form data-reload="true">
+                            <input type="hidden" name="_token" value="OX3ohikiIJpwbRIaVjhnXx72X9pXZodTBujvMmfQ" autocomplete="off">                            <select name="reason" class="review-select" required aria-label="Flag reason">
+                                <option value="">Flag…</option>
+                                                                    <option value="mistranslation" >Mistranslation</option>
+                                                                    <option value="missing_content" >Missing Content</option>
+                                                                    <option value="formatting_broken" >Formatting Broken</option>
+                                                                    <option value="hallucination" >Hallucination</option>
+                                                                    <option value="terminology_error" >Terminology Error</option>
+                                                                    <option value="other" >Other</option>
+                                                            </select>
+                            <button type="submit" class="review-btn review-btn--danger">Flag</button>
+                        </form>
+                    </div>
+                </div>
+                            </div>
+            </div>
+
+</div>
+
+<script>
+(function () {
+    'use strict';
+    var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+    // Keep each block's hidden current_text input in sync with its textarea so
+    // "Save Edit" posts the latest value.
+    document.querySelectorAll('.block-card').forEach(function (card) {
+        var textarea = card.querySelector('textarea[data-block-current]');
+        var hidden = card.querySelector('input[name="current_text"]');
+        if (textarea && hidden) {
+            textarea.addEventListener('input', function () { hidden.value = textarea.value; });
+        }
+    });
+
+    function postForm(form) {
+        var btn = form.querySelector('button[type="submit"]');
+        var label = btn.textContent.trim();
+        btn.disabled = true;
+        btn.textContent = 'Working…';
+
+        var body = new FormData(form);
+        return fetch(form.action, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            body: body
+        })
+        .then(function (r) { return r.text().then(function (raw) { return { r: r, raw: raw }; }); })
+        .then(function (res) {
+            btn.disabled = false;
+            btn.textContent = label;
+            var data = null;
+            try { data = JSON.parse(res.raw); } catch (e) {}
+            if (!res.r.ok) {
+                if (window.showToast) showToast('error', 'Action failed', (data && data.error) || 'Could not update.');
+                return null;
+            }
+            return data;
+        })
+        .catch(function (err) {
+            btn.disabled = false;
+            btn.textContent = label;
+            if (window.showToast) showToast('error', 'Error', err.message || 'Network error.');
+            return null;
+        });
+    }
+
+    document.querySelectorAll('form[data-review-form]').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            postForm(form).then(function (data) {
+                if (!data) return;
+                if (window.showToast) showToast('success', 'Updated', 'Status: ' + (data.status || 'ok'));
+                if (form.getAttribute('data-reload') === 'true') {
+                    window.location.reload();
+                }
+            });
+        });
+    });
+
+    // ── Save & Regenerate ──────────────────────────────────────────────
+    var regenForm = document.getElementById('save-regenerate-form');
+    if (regenForm) {
+        regenForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var btn = document.getElementById('regen-btn');
+            var spinner = document.getElementById('regen-spinner');
+            var result = document.getElementById('regen-result');
+            var label = btn.textContent;
+            btn.disabled = true;
+            spinner.style.display = '';
+            result.innerHTML = '';
+
+            var body = new FormData(regenForm);
+            fetch(regenForm.action, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                body: body
+            })
+            .then(function (r) { return r.text().then(function (raw) { return { r: r, raw: raw }; }); })
+            .then(function (res) {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+                var data = null;
+                try { data = JSON.parse(res.raw); } catch (e) {}
+                if (!res.r.ok) {
+                    if (window.showToast) showToast('error', 'Regeneration failed', (data && data.error) || 'Could not regenerate.');
+                    return;
+                }
+                if (window.showToast) showToast('success', 'Regenerated', 'New version uploaded (' + (data.edited_blocks ?? 0) + ' edited blocks).');
+                var html =
+                    '<div class="regen-result">' +
+                    '<strong>Regeneration complete.</strong> (' + (data.edited_blocks ?? 0) + ' edited blocks included)' +
+                    '<div class="regen-result__links">' +
+                    '<a href="' + data.new_download_url + '">Download new version (' + (data.new_download_filename || 'file') + ')</a>';
+                if (data.original_download_url) {
+                    html += '<a href="' + data.original_download_url + '">Download original</a>';
+                }
+                html += '</div></div>';
+                result.innerHTML = html;
+                // Refresh so the badges show the latest block statuses.
+                setTimeout(function () { window.location.reload(); }, 1200);
+            })
+            .catch(function (err) {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+                if (window.showToast) showToast('error', 'Error', err.message || 'Network error.');
+            });
+        });
+    }
+})();
+</script>
+        </div>
+    </main>
+
+</div>
+
+<script>
+// ── Global toast system ───────────────────────────────────────────────────
+window.showToast = function (type, title, message, duration) {
+    var icons = {
+        success: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+        error:   '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+        warning: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+        info:    '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'
+    };
+    var colors = { success: '#10b981', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6' };
+    var t = type || 'success';
+    var el = document.createElement('div');
+    el.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 16px;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(15,23,42,0.14),0 2px 8px rgba(15,23,42,0.08);border-left:4px solid ' + (colors[t]||colors.info) + ';max-width:360px;pointer-events:all;animation:toast-in 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards';
+    el.setAttribute('role', 'alert');
+    el.innerHTML =
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="' + (colors[t]||colors.info) + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0" aria-hidden="true">' + (icons[t]||icons.info) + '</svg>' +
+        '<div style="flex:1;min-width:0"><p style="margin:0 0 2px;font-size:0.875rem;font-weight:600;color:#111827">' + title + '</p>' + (message ? '<p style="margin:0;font-size:0.8125rem;color:#6b7280">' + message + '</p>' : '') + '</div>' +
+        '<button onclick="this.closest(\'[role=alert]\').remove()" style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:2px;border-radius:4px;display:flex;flex-shrink:0" aria-label="Dismiss"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
+    var container = document.getElementById('toast-container');
+    if (container) container.appendChild(el);
+    setTimeout(function () {
+        el.style.animation = 'toast-out 0.25s ease forwards';
+        setTimeout(function () { el.remove(); }, 260);
+    }, duration || 4000);
+};
+
+// ── Hamburger / sidebar ───────────────────────────────────────────────────
+(function () {
+    var sidebar   = document.getElementById('sidebar');
+    var overlay   = document.getElementById('sidebar-overlay');
+    var hamburger = document.getElementById('hamburger-btn');
+
+    function openSidebar()  { sidebar.classList.add('open'); overlay.classList.add('active'); hamburger.setAttribute('aria-expanded','true'); document.body.style.overflow='hidden'; }
+    function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('active'); hamburger.setAttribute('aria-expanded','false'); document.body.style.overflow=''; }
+
+    if (hamburger) hamburger.addEventListener('click', openSidebar);
+    if (overlay)   overlay.addEventListener('click', closeSidebar);
+    if (sidebar)   sidebar.querySelectorAll('.nav-link').forEach(function(l){ l.addEventListener('click', function(){ if(window.innerWidth<=768) closeSidebar(); }); });
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeSidebar(); });
+})();
+
+// ── Header user dropdown ──────────────────────────────────────────────────
+(function () {
+    var btn      = document.getElementById('header-user-btn');
+    var dropdown = document.getElementById('header-dropdown');
+    if (!btn || !dropdown) return;
+
+    function open()  { dropdown.classList.add('open'); btn.setAttribute('aria-expanded','true'); dropdown.setAttribute('aria-hidden','false'); }
+    function close() { dropdown.classList.remove('open'); btn.setAttribute('aria-expanded','false'); dropdown.setAttribute('aria-hidden','true'); }
+    function toggle(){ dropdown.classList.contains('open') ? close() : open(); }
+
+    btn.addEventListener('click', toggle);
+    btn.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); } });
+    document.addEventListener('click', function(e){ if(!btn.contains(e.target)&&!dropdown.contains(e.target)) close(); });
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape') close(); });
+})();
+</script>
+</body>
+</html>

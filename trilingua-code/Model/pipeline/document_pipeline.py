@@ -31,6 +31,11 @@ from config.processing_modes import MODES, VALID_MODES, get_mode
 from dto.requests import DocumentTranslationRequest, LANGUAGES
 from dto.responses import DocumentTranslationResponse
 from document.extractor import analyze_document
+from document.regenerator import (
+    finalize_sidecar,
+    rich_block_entry,
+    inplace_block_entry,
+)
 from document.reconstructor import (
     _translate_docx_inplace_with_translator,
     translate_pptx_inplace,
@@ -421,6 +426,17 @@ class DocumentPipeline:
             if bleu_score is not None:
                 print(f"  [BLEU] Score: {bleu_score:.2f}")
 
+        # ── Build regeneration sidecar (admin review support) ─────────────
+        # Capture the block set + structural metadata so an admin edit can be
+        # reconstructed later WITHOUT re-running extraction/analysis/translation.
+        sidecar_entries = []
+        for idx, tb in enumerate(translated_blocks):
+            src_text = tb.get("_original_text")
+            if src_text is None and idx < len(blocks):
+                src_text = blocks[idx].get("text", "")
+            sidecar_entries.append(rich_block_entry(idx, tb, src_text or ""))
+        sidecar = finalize_sidecar(sidecar_entries, request, ctx.source_format, ctx)
+
         # ── Finalize ─────────────────────────────────────────────────────
         ctx.stop_timer()
         ctx.log_summary()
@@ -442,6 +458,8 @@ class DocumentPipeline:
             warnings=ctx.warnings,
             mode=ctx.mode.name,
             document_type=ctx.document_profile.document_type if ctx.document_profile else "",
+            sidecar=sidecar,
+            blocks=sidecar_entries,
         )
 
     # ── In-place Translation ────────────────────────────────────────────────
@@ -459,7 +477,8 @@ class DocumentPipeline:
             ctx.translation_cache = translation_cache
 
         # Build the translate function with enhanced context
-        def _translate_fn(text, block_type="paragraph"):
+        # (renamed core; wrapped below to capture per-block admin-review data)
+        def _translate_block(text, block_type="paragraph"):
             # Check cache first
             if translation_cache:
                 cached = translation_cache.get(
@@ -517,6 +536,20 @@ class DocumentPipeline:
             ctx.blocks_translated += 1
             return translated
 
+        # Admin review support: capture per-element block data with a stable
+        # block_index = call order, so an edit can be replayed in-place later.
+        _captured_blocks = []
+        _capture_counter = {"i": -1}
+
+        def _translate_fn(text, block_type="paragraph"):
+            _capture_counter["i"] += 1
+            translated = _translate_block(text, block_type)
+            _captured_blocks.append(inplace_block_entry(
+                _capture_counter["i"], block_type,
+                text, translated,
+            ))
+            return translated
+
         # Choose the right in-place translator
         if ext == ".docx":
             _translate_docx_inplace_with_translator(
@@ -542,12 +575,16 @@ class DocumentPipeline:
         if translation_cache:
             translation_cache.clear_document_cache()
 
+        sidecar = finalize_sidecar(_captured_blocks, request, ext, ctx)
+
         return DocumentTranslationResponse(
             output_path=output_file,
             provider=self.translation_pipeline.provider.name,
             model=self.translation_pipeline.provider.model_name,
             total_execution_time_ms=ctx.total_time_ms,
             mode=ctx.mode.name,
+            sidecar=sidecar,
+            blocks=_captured_blocks,
         )
 
     # ── CSV Translation ─────────────────────────────────────────────────────
@@ -558,6 +595,7 @@ class DocumentPipeline:
         print("[TRANSLATE] Translating...")
 
         translated_rows = []
+        cell_blocks = []
         for row_idx, row in enumerate(csv_data["data"]):
             translated_row = []
             for col_idx, cell in enumerate(row):
@@ -566,10 +604,22 @@ class DocumentPipeline:
                         cell, request.source_lang, request.target_lang,
                         ctx=ctx,
                     )
+                    cell_blocks.append(inplace_block_entry(
+                        len(cell_blocks), "cell", cell, translated,
+                    ))
                     translated_row.append(translated)
                 else:
                     translated_row.append(cell)
             translated_rows.append(translated_row)
+
+        # Annotate cell blocks with row/col for CSV regeneration
+        _bi = 0
+        for row_idx, row in enumerate(csv_data["data"]):
+            for col_idx, cell in enumerate(row):
+                if cell.strip() and len(cell.split()) >= 1:
+                    cell_blocks[_bi]["row"] = row_idx
+                    cell_blocks[_bi]["col"] = col_idx
+                    _bi += 1
 
         print("\n[OUTPUT] Rebuilding CSV ->", output_file)
         write_csv(translated_rows, output_file)
@@ -578,6 +628,9 @@ class DocumentPipeline:
         ctx.log_summary()
         total_chunks = sum(len(row) for row in translated_rows)
 
+        sidecar = finalize_sidecar(cell_blocks, request, ".csv", ctx,
+                                   extra={"rows": translated_rows})
+
         return DocumentTranslationResponse(
             output_path=output_file,
             provider=self.translation_pipeline.provider.name,
@@ -585,6 +638,8 @@ class DocumentPipeline:
             total_chunks=total_chunks,
             total_execution_time_ms=ctx.total_time_ms,
             mode=ctx.mode.name,
+            sidecar=sidecar,
+            blocks=cell_blocks,
         )
 
     # ── Single Block Translation Helper ─────────────────────────────────────
