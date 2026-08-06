@@ -87,5 +87,6 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
         Route::post('/review/{translation}/blocks/{block}/flag', [DocumentReviewController::class, 'flagBlock'])->name('review.block.flag');
         Route::post('/review/{translation}/bulk-approve', [DocumentReviewController::class, 'bulkApprove'])->name('review.block.bulk-approve');
         Route::post('/review/{translation}/save-regenerate', [DocumentReviewController::class, 'saveAndRegenerate'])->name('review.save-regenerate');
+        Route::get('/review/{translation}/file', [DocumentReviewController::class, 'showTranslatedFile'])->name('review.document.file');
     });
 });

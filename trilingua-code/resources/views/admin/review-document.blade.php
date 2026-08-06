@@ -3,7 +3,7 @@
 @section('title', 'Review Document Translation')
 
 @section('styles')
-    @vite(['resources/css/views/admin.css'])
+    @vite(['resources/css/views/admin.css', 'resources/js/review-document.js'])
 @endsection
 
 @section('content')
@@ -80,81 +80,141 @@
             <div id="regen-result"></div>
         </div>
 
-        {{-- Blocks --}}
-        <h4 class="review-detail__section-title">Extracted Blocks</h4>
+        {{-- ── Two-pane review layout ──────────────────────────────────── --}}
+        <div class="review-split">
 
-        @if ($record->blocks->isEmpty())
-            <p class="empty-state">No blocks were extracted for this document.</p>
-        @else
-            <div class="block-list">
-                @foreach ($record->blocks as $block)
-                @php
-                    $different = isset($block->current_text) && $block->current_text !== $block->ai_translated_text;
-                    $score = $block->quality_score;
-                    $level = $score === null ? '' : ($score < 60 ? 'low' : ($score < 80 ? 'medium' : 'high'));
-                @endphp
-                <div class="block-card" data-block-id="{{ $block->id }}" data-block-index="{{ $block->block_index }}">
-                    <div class="block-card__head">
-                        <div class="block-card__badges">
-                            <span class="block-card__index">Block #{{ $block->block_index }}</span>
-                            <span class="block-card__type">{{ $block->block_type ?? 'block' }}</span>
-                            <span class="status-badge status-badge--{{ $block->status }}">{{ ucfirst($block->status) }}</span>
-                            @if ($different)
-                                <span class="status-badge status-badge--edited">Edited</span>
-                            @endif
-                        </div>
-                        <span class="quality-score" style="min-width:0">
-                            <span class="quality-score__dot quality-score__dot--{{ $level }}" aria-hidden="true"></span>
-                            {{ $score === null ? '—' : $score }}
-                        </span>
+            {{-- LEFT: Translated Document (reference) --}}
+            <section class="review-pane review-pane--preview">
+                <div class="review-pane__head">
+                    <div class="review-pane__title-wrap">
+                        <h4 class="review-pane__title">Translated Document</h4>
+                        @if ($previewUrl)
+                            <a class="review-pane__download" href="{{ $previewUrl }}" target="_blank" rel="noopener">Download</a>
+                        @endif
                     </div>
-
-                    <div class="block-card__pairs">
-                        <div class="block-card__pair">
-                            <span class="block-card__pair-label">Source</span>
-                            <div class="block-card__text">{{ $block->source_text ?? '—' }}</div>
-                        </div>
-                        <div class="block-card__pair">
-                            <span class="block-card__pair-label">AI Translation (immutable)</span>
-                            <div class="block-card__text block-card__text--highlight">{{ $block->ai_translated_text ?? '—' }}</div>
-                        </div>
-                        <div class="block-card__pair">
-                            <span class="block-card__pair-label">Current Text (editable)</span>
-                            <textarea class="block-card__edit-textarea" name="current_text" data-block-current>{{ $block->current_text ?? '' }}</textarea>
-                        </div>
-                    </div>
-
-                    {{-- Per-block actions --}}
-                    <div class="block-card__actions">
-                        <form method="POST" action="{{ route('admin.review.block.verify', [$record->id, $block->id]) }}"
-                              class="review-inline-form" data-review-form data-reload="true">
-                            @csrf
-                            <button type="submit" class="review-btn review-btn--success">Verify</button>
-                        </form>
-
-                        <form method="POST" action="{{ route('admin.review.block.update', [$record->id, $block->id]) }}"
-                              class="review-inline-form" data-review-form data-reload="true">
-                            @csrf
-                            <input type="hidden" name="current_text" value="{{ $block->current_text }}">
-                            <button type="submit" class="review-btn review-btn--warning">Save Edit</button>
-                        </form>
-
-                        <form method="POST" action="{{ route('admin.review.block.flag', [$record->id, $block->id]) }}"
-                              class="review-inline-form" data-review-form data-reload="true">
-                            @csrf
-                            <select name="reason" class="review-select" required aria-label="Flag reason">
-                                <option value="">Flag…</option>
-                                @foreach (\App\Support\FlagReason::ALL as $reason)
-                                    <option value="{{ $reason }}" @selected($block->flag_reason === $reason)>{{ ucwords(str_replace('_', ' ', $reason)) }}</option>
-                                @endforeach
-                            </select>
-                            <button type="submit" class="review-btn review-btn--danger">Flag</button>
-                        </form>
+                    <div class="review-pane__tabs" id="preview-tabs">
+                        <button type="button" class="review-pane__tab is-active" data-tab="final">Final</button>
+                        <button type="button" class="review-pane__tab" data-tab="draft">Draft</button>
                     </div>
                 </div>
-                @endforeach
-            </div>
-        @endif
+
+                <div class="review-pane__body">
+                    <div class="preview-panel" id="preview-final">
+                        @if ($previewUrl && $isPdf)
+                            <iframe class="review-pane__frame" src="{{ $previewUrl }}" title="Translated document"></iframe>
+                        @elseif ($previewUrl && in_array($previewExt, ['docx', 'xlsx']))
+                            <div id="converter-host"
+                                 data-ext="{{ $previewExt }}"
+                                 data-file-url="{{ route('admin.review.document.file', $record->id) }}">
+                                <div class="review-pane__loading">Loading preview…</div>
+                            </div>
+                        @else
+                            <div class="review-pane__placeholder">
+                                <p>Live preview is only available for <strong>PDF</strong>, <strong>DOCX</strong>, and <strong>XLSX</strong>.</p>
+                                <p>This translated file is a <strong>{{ strtoupper($previewExt ?: 'document') }}</strong>.</p>
+                                @if ($previewUrl)
+                                    <a class="review-btn" href="{{ $previewUrl }}" target="_blank" rel="noopener">Download translated document</a>
+                                @elseif ($record->storage_path)
+                                    <p class="review-form-note">Preview URL could not be generated.</p>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                    <div class="preview-panel" id="preview-draft" style="display:none">
+                        <div class="preview-draft__note">
+                            Showing your <strong>unsaved edits</strong> in blue. Switch to <strong>Final</strong> to compare against the saved file.
+                        </div>
+                        <div class="preview-draft__doc" id="draft-doc"></div>
+                    </div>
+                </div>
+            </section>
+
+            {{-- RIGHT: Editable Document --}}
+            <section class="review-pane review-pane--editable">
+                <div class="review-pane__head">
+                    <h4 class="review-pane__title">
+                        Editable Document
+                        <span class="count-badge">{{ $record->blocks->count() }}</span>
+                    </h4>
+                </div>
+
+                <div class="review-pane__body">
+                    @if ($record->blocks->isEmpty())
+                        <p class="empty-state">No blocks were extracted for this document.</p>
+                    @else
+                        <div class="doc-block-list">
+                            @foreach ($record->blocks as $block)
+                            @php
+                                $different = isset($block->current_text) && $block->current_text !== $block->ai_translated_text;
+                                $score     = $block->quality_score;
+                                $level     = $score === null ? '' : ($score < 60 ? 'low' : ($score < 80 ? 'medium' : 'high'));
+                            @endphp
+                            <div class="doc-block" data-block-id="{{ $block->id }}" data-block-index="{{ $block->block_index }}">
+                                <div class="doc-block__head">
+                                    <div class="block-card__badges">
+                                        <span class="block-card__index">Block #{{ $block->block_index }}</span>
+                                        <span class="block-card__type">{{ $block->block_type ?? 'block' }}</span>
+                                        <span class="status-badge status-badge--{{ $block->status }}">{{ ucfirst($block->status) }}</span>
+                                        @if ($different)
+                                            <span class="status-badge status-badge--edited">Edited</span>
+                                        @endif
+                                    </div>
+                                    <span class="quality-score" style="min-width:0">
+                                        <span class="quality-score__dot quality-score__dot--{{ $level }}" aria-hidden="true"></span>
+                                        {{ $score === null ? '—' : $score }}
+                                    </span>
+                                </div>
+
+                                <textarea class="doc-block__editor" name="current_text" data-block-current
+                                          data-saved="{{ htmlspecialchars($block->current_text ?? '', ENT_QUOTES) }}">{{ $block->current_text ?? '' }}</textarea>
+
+                                <details class="doc-block__ref">
+                                    <summary>Source &amp; AI reference</summary>
+                                    <div class="doc-block__ref-content">
+                                        <div class="block-card__pair">
+                                            <span class="block-card__pair-label">Source</span>
+                                            <div class="block-card__text">{{ $block->source_text ?? '—' }}</div>
+                                        </div>
+                                        <div class="block-card__pair">
+                                            <span class="block-card__pair-label">AI Translation (immutable)</span>
+                                            <div class="block-card__text block-card__text--highlight">{{ $block->ai_translated_text ?? '—' }}</div>
+                                        </div>
+                                    </div>
+                                </details>
+
+                                <div class="block-card__actions">
+                                    <form method="POST" action="{{ route('admin.review.block.verify', [$record->id, $block->id]) }}"
+                                          class="review-inline-form" data-review-form data-reload="true">
+                                        @csrf
+                                        <button type="submit" class="review-btn review-btn--success">Verify</button>
+                                    </form>
+
+                                    <form method="POST" action="{{ route('admin.review.block.update', [$record->id, $block->id]) }}"
+                                          class="review-inline-form" data-review-form data-reload="true">
+                                        @csrf
+                                        <input type="hidden" name="current_text" value="{{ htmlspecialchars($block->current_text ?? '', ENT_QUOTES) }}">
+                                        <button type="submit" class="review-btn review-btn--warning">Save Edit</button>
+                                    </form>
+
+                                    <form method="POST" action="{{ route('admin.review.block.flag', [$record->id, $block->id]) }}"
+                                          class="review-inline-form" data-review-form data-reload="true">
+                                        @csrf
+                                        <select name="reason" class="review-select" required aria-label="Flag reason">
+                                            <option value="">Flag…</option>
+                                            @foreach (\App\Support\FlagReason::ALL as $reason)
+                                                <option value="{{ $reason }}" @selected($block->flag_reason === $reason)>{{ ucwords(str_replace('_', ' ', $reason)) }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button type="submit" class="review-btn review-btn--danger">Flag</button>
+                                    </form>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            </section>
+        </div>
     </div>
 
 </div>
@@ -166,7 +226,7 @@
 
     // Keep each block's hidden current_text input in sync with its textarea so
     // "Save Edit" posts the latest value.
-    document.querySelectorAll('.block-card').forEach(function (card) {
+    document.querySelectorAll('.doc-block').forEach(function (card) {
         var textarea = card.querySelector('textarea[data-block-current]');
         var hidden = card.querySelector('input[name="current_text"]');
         if (textarea && hidden) {

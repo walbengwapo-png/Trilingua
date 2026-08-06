@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\TranslationHistory;
+use App\Services\StorageService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class ReviewController extends Controller
 {
+    public function __construct(private StorageService $storage) {}
+
     /**
      * GET /admin/review — render the admin review queue.
      *
@@ -99,7 +102,26 @@ class ReviewController extends Controller
 
         if ($history->translation_type === 'document') {
             $history->load('blocks');
-            return view('admin.review-document', ['record' => $history]);
+
+            // Build the translated-file preview data for the two-pane layout.
+            $previewUrl = null;
+            if (!blank($history->storage_path)) {
+                try {
+                    $previewUrl = $this->storage->generateSignedUrl($history->storage_path)['signed_url'] ?? null;
+                } catch (\Throwable $e) {
+                    Log::warning('ReviewController::show could not sign translated file', [
+                        'translation_id' => $history->id,
+                        'exception' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            return view('admin.review-document', [
+                'record'      => $history,
+                'previewUrl'  => $previewUrl,
+                'isPdf'       => strtolower((string) pathinfo((string) $history->translated_filename, PATHINFO_EXTENSION)) === 'pdf',
+                'previewExt'  => strtolower((string) pathinfo((string) $history->translated_filename, PATHINFO_EXTENSION)),
+            ]);
         }
 
         return view('admin.review-text', ['record' => $history]);

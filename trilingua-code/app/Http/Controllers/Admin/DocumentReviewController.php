@@ -12,6 +12,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
 /**
  * Admin write actions for DOCUMENT translations (block-level).
  *
@@ -166,5 +168,64 @@ class DocumentReviewController extends Controller
                 'edited_blocks' => $result['edited_blocks'],
             ];
         }, 'saveAndRegenerate');
+    }
+
+    /**
+     * GET /admin/review/{translation}/file — stream the translated file's bytes
+     * with the correct Content-Type.
+     *
+     * Returns a same-origin copy of the Supabase object so the browser can read
+     * it for client-side preview (PDF iframe, mammoth/SheetJS conversion)
+     * without hitting CORS on the signed URL.
+     */
+    public function showTranslatedFile(TranslationHistory $translation): StreamedResponse
+    {
+        if ($translation->translation_type !== 'document' || blank($translation->storage_path)) {
+            abort(404, 'Translated file not found.');
+        }
+
+        $filename = $translation->translated_filename ?: 'translation.pdf';
+        $ext      = strtolower((string) pathinfo($filename, PATHINFO_EXTENSION));
+
+        try {
+            $bytes = $this->storage->downloadFile($translation->storage_path);
+        } catch (\Throwable $e) {
+            Log::error('DocumentReviewController::showTranslatedFile failed', [
+                'storage_path' => $translation->storage_path,
+                'exception' => $e->getMessage(),
+            ]);
+            abort(404, 'Translated file not found.');
+        }
+
+        $mime = (string) \mime_content_type($translation->storage_path);
+        $mime = $mime !== '' ? $mime : $this->mimeForExtension($ext);
+
+        $response = new StreamedResponse(function () use ($bytes) {
+            echo $bytes;
+        }, 200, [
+            'Content-Type'        => $mime,
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            'Cache-Control'       => 'private, max-age=60',
+        ]);
+
+        return $response;
+    }
+
+    /**
+     * Best-effort MIME lookup, used when the storage path has no on-disk extension.
+     */
+    private function mimeForExtension(string $ext): string
+    {
+        return match ($ext) {
+            'pdf'    => 'application/pdf',
+            'docx'   => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xlsx'   => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'pptx'   => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'txt', 'md' => 'text/plain',
+            'csv'    => 'text/csv',
+            'rtf'    => 'application/rtf',
+            'odt'    => 'application/vnd.oasis.opendocument.text',
+            default  => 'application/octet-stream',
+        };
     }
 }
