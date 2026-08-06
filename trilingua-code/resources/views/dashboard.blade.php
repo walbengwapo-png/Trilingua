@@ -159,11 +159,7 @@
                             {{ isset($record['created_at']) ? \Carbon\Carbon::parse($record['created_at'])->format('M j, Y') : '—' }}
                         </td>
                         <td>
-                            @if (($record['translation_type'] ?? 'document') === 'document')
-                                <span class="status-pill status-pill--completed">Completed</span>
-                            @else
-                                <span class="status-pill status-pill--text">Text</span>
-                            @endif
+                            <span class="status-pill status-pill--{{ $record['review_status'] ?? 'pending' }}">{{ ucfirst($record['review_status'] ?? 'pending') }}</span>
                         </td>
                     </tr>
                     @empty

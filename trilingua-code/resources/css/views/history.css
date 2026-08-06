@@ -194,6 +194,22 @@
     min-width: 38px;
 }
 
+/* ── Review status badge ─────────────────────────────────────────────────── */
+.status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin-left: auto;
+}
+.status-badge--pending  { background: #fef3c7; color: #b45309; }
+.status-badge--verified { background: #d1fae5; color: #047857; }
+.status-badge--edited   { background: #e0f0ff; color: #1a6fb5; }
+.status-badge--flagged  { background: #fee2e2; color: #b91c1c; }
+
 /* ── Action icon row ─────────────────────────────────────────────────────── */
 .history-card__actions {
     display: flex;

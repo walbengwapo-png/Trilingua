@@ -74,6 +74,13 @@
                 <option value="language">Group by Language Pair</option>
                 <option value="none">No Grouping</option>
             </select>
+            <select id="history-status" class="history-select" aria-label="Filter by status">
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="verified">Verified</option>
+                <option value="edited">Edited</option>
+                <option value="flagged">Flagged</option>
+            </select>
             <select id="history-sort" class="history-select" aria-label="Sort order">
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
@@ -119,10 +126,14 @@
                         : \Illuminate\Support\Str::limit($record['source_text'] ?? '', 80);
                     $dateStr  = \Carbon\Carbon::parse($record['created_at'])->utc()->format('Y-m-d H:i') . ' UTC';
                 @endphp
+                @php
+                    $reviewStatus = $record['review_status'] ?? 'pending';
+                @endphp
                 <div class="history-card"
-                     data-search="{{ strtolower($preview . ' ' . ($record['source_language'] ?? '') . ' ' . ($record['target_language'] ?? '')) }}"
+                     data-search="{{ strtolower($preview . ' ' . ($record['source_language'] ?? '') . ' ' . ($record['target_language'] ?? '') . ' ' . $reviewStatus) }}"
                      data-date="{{ $record['created_at'] ?? '' }}"
                      data-lang="{{ $langPair }}"
+                     data-review-status="{{ $reviewStatus }}"
                      data-id="{{ $record['id'] }}">
 
                     <div class="history-card__header">
@@ -130,6 +141,7 @@
                         <span class="type-badge type-badge--{{ $isDoc ? 'doc' : 'text' }}">
                             {{ $isDoc ? 'Document' : 'Text' }}
                         </span>
+                        <span class="status-badge status-badge--{{ $reviewStatus }}">{{ ucfirst($reviewStatus) }}</span>
                     </div>
 
                     <div class="history-card__body">
@@ -256,6 +268,10 @@
                 <div class="detail-modal__meta-item">
                     <span class="detail-modal__meta-label">Status</span>
                     <span class="detail-modal__meta-value" id="detail-status"></span>
+                </div>
+                <div class="detail-modal__meta-item">
+                    <span class="detail-modal__meta-label">Review Status</span>
+                    <span class="detail-modal__meta-value" id="detail-review-status"></span>
                 </div>
                 <div class="detail-modal__meta-item" id="detail-user-wrap">
                     <span class="detail-modal__meta-label">Created By</span>
@@ -505,6 +521,7 @@
         document.getElementById('detail-date').textContent = formatDate(data.created_at);
         document.getElementById('detail-type').textContent = isDoc ? 'Document Translation' : 'Text Translation';
         document.getElementById('detail-status').textContent = (data.status || 'completed').charAt(0).toUpperCase() + (data.status || 'completed').slice(1);
+        document.getElementById('detail-review-status').textContent = (data.review_status || 'pending').charAt(0).toUpperCase() + (data.review_status || 'pending').slice(1);
 
         // File size
         var filesizeWrap = document.getElementById('detail-filesize-wrap');
@@ -695,9 +712,10 @@
         });
     }
 
-    // ── Client-side search, group-by, and sort ───────────────────────────────
+    // ── Client-side search, group-by, status filter, and sort ──────────────
     var searchInput  = document.getElementById('history-search');
     var groupSelect  = document.getElementById('history-group');
+    var statusSelect = document.getElementById('history-status');
     var sortSelect   = document.getElementById('history-sort');
     var contentEl    = document.getElementById('history-content');
 
@@ -715,9 +733,14 @@
     // Apply search filter: hide cards whose data-search doesn't match query
     function applySearch(query) {
         var q = query.trim().toLowerCase();
+        var s = (statusSelect ? statusSelect.value : '').toLowerCase();
         getAllCards().forEach(function (card) {
             var haystack = (card.getAttribute('data-search') || '').toLowerCase();
-            card.style.display = (!q || haystack.indexOf(q) !== -1) ? '' : 'none';
+            var status = (card.getAttribute('data-review-status') || 'pending').toLowerCase();
+            var visible = true;
+            if (q && haystack.indexOf(q) === -1) visible = false;
+            if (s && status !== s) visible = false;
+            card.style.display = visible ? '' : 'none';
         });
         // Hide groups that have no visible cards
         getAllGroups().forEach(function (group) {
@@ -775,6 +798,7 @@
 
     if (searchInput) searchInput.addEventListener('input', applyAll);
     if (groupSelect) groupSelect.addEventListener('change', applyAll);
+    if (statusSelect) statusSelect.addEventListener('change', applyAll);
     if (sortSelect)  sortSelect.addEventListener('change', applyAll);
 
     // Initial sort (newest first by default)
