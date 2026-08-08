@@ -12,6 +12,7 @@
     {{-- Language selection bar --}}
     <div class="lang-bar">
         <div class="lang-bar__select-wrap">
+            <span class="lang-bar__label">From</span>
             <select id="source-lang" aria-label="Source language">
                 <option value="English" selected>English</option>
                 <option value="Cebuano">Cebuano</option>
@@ -19,7 +20,7 @@
             </select>
         </div>
 
-        <button class="lang-bar__swap" id="swap-btn" aria-label="Swap languages" title="Swap languages">
+        <button class="lang-bar__swap" id="swap-btn" type="button" aria-label="Swap languages" title="Swap languages">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M7 16V4m0 0L3 8m4-4l4 4"/>
                 <path d="M17 8v12m0 0l4-4m-4 4l-4-4"/>
@@ -27,6 +28,7 @@
         </button>
 
         <div class="lang-bar__select-wrap">
+            <span class="lang-bar__label">To</span>
             <select id="target-lang" aria-label="Target language">
                 <option value="English">English</option>
                 <option value="Cebuano" selected>Cebuano</option>
@@ -78,6 +80,12 @@
                 </select>
 
                 <span id="char-counter" aria-live="polite">0/5000</span>
+
+                {{-- Clear --}}
+                <button id="clear-btn" type="button" class="clear-btn" title="Clear source text" aria-label="Clear source text">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    Clear
+                </button>
             </div>
 
             <div class="translation-panel__error" id="source-error" role="alert"></div>
@@ -158,6 +166,7 @@
     var translateBtn  = document.getElementById('translate-btn');
     var copyBtn       = document.getElementById('copy-btn');
     var saveBtn       = document.getElementById('save-btn');
+    var clearBtn      = document.getElementById('clear-btn');
     var outputDownload = document.getElementById('output-download');
     var downloadLink   = document.getElementById('download-link');
 
@@ -190,11 +199,27 @@
         updateCounter();
     });
 
+    // ── Language exclusivity ─────────────────────────────────────────────────
+    function syncExclusive(from, to) {
+        for (var i = 0; i < to.options.length; i++) {
+            var opt = to.options[i];
+            opt.disabled = (opt.value === from.value && opt.value !== to.value);
+        }
+    }
+    function syncLangOptions() {
+        syncExclusive(sourceLang, targetLang);
+        syncExclusive(targetLang, sourceLang);
+    }
+    sourceLang.addEventListener('change', syncLangOptions);
+    targetLang.addEventListener('change', syncLangOptions);
+    syncLangOptions();
+
     // ── Swap ─────────────────────────────────────────────────────────────────
     swapBtn.addEventListener('click', function () {
         var src = sourceLang.value, tgt = targetLang.value;
         if (src === tgt) { showError(sourceError, 'Source and target languages must be different.'); return; }
         sourceLang.value = tgt; targetLang.value = src;
+        syncLangOptions();
         clearError(sourceError); outputText.textContent = ''; clearError(outputError);
     });
 
@@ -356,6 +381,14 @@
             });
         }, 2000); // Poll every 2 seconds
     }
+
+    // ── Clear ─────────────────────────────────────────────────────────────────
+    clearBtn.addEventListener('click', function () {
+        sourceText.value = '';
+        updateCounter();
+        outputText.textContent = '';
+        clearError(sourceError); clearError(outputError);
+    });
 
     // ── Copy ──────────────────────────────────────────────────────────────────
     copyBtn.addEventListener('click', function () {
