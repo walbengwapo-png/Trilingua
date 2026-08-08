@@ -1,8 +1,15 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+        (function () {
+            var t = 'light';
+            try { t = localStorage.getItem('trilingua-theme') || 'light'; } catch (e) {}
+            document.documentElement.dataset.theme = (t === 'dark') ? 'dark' : 'light';
+        })();
+    </script>
     <title>@yield('title', 'TriLingua') — TriLingua</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/favicon.ico" sizes="any">
