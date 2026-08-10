@@ -7,6 +7,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use App\Models\UserActivityLog;
 
 class SettingsController extends Controller
 {
@@ -32,7 +34,33 @@ class SettingsController extends Controller
             'email' => 'required|string|email|unique:users,email,' . $user->id,
         ]);
 
+        // Capture previous values for audit trail
+        $previousName = $user->name;
+        $previousEmail = $user->email;
+
         $user->update($validated);
+
+        // Log changed fields
+        if ($previousName !== $validated['name']) {
+            $this->logActivity([
+                'user_id'       => Auth::id(),
+                'action'        => 'account_updated',
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+                'previous_value'=> 'name: ' . $previousName,
+                'new_value'     => 'name: ' . $validated['name'],
+            ]);
+        }
+        if ($previousEmail !== $validated['email']) {
+            $this->logActivity([
+                'user_id'       => Auth::id(),
+                'action'        => 'account_updated',
+                'ip_address'    => $request->ip(),
+                'user_agent'    => $request->userAgent(),
+                'previous_value'=> 'email: ' . $previousEmail,
+                'new_value'     => 'email: ' . $validated['email'],
+            ]);
+        }
 
         return back()->with('success', 'Account information updated successfully.');
     }
@@ -53,22 +81,40 @@ class SettingsController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        // Log password change (never log password content)
+        $this->logActivity([
+            'user_id'       => Auth::id(),
+            'action'        => 'password_changed',
+            'ip_address'    => $request->ip(),
+            'user_agent'    => $request->userAgent(),
+            'previous_value'=> null,
+            'new_value'     => null,
+            'note'          => 'Password was changed.',
+        ]);
+
         return back()->with('password_success', 'Password updated successfully.');
     }
 
     /**
-     * Update general settings (theme, language).
+     * Update general settings (theme).
      */
     public function updateGeneral(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'theme' => 'required|string|in:light,dark',
-            'language' => 'required|string|in:en,tl,ceb',
         ]);
 
         $user = Auth::user();
         $user->update($validated);
 
         return back()->with('general_success', 'General settings updated successfully.');
+    }
+
+    /**
+     * Append an entry to user_activity_log.
+     */
+    private function logActivity(array $data): void
+    {
+        UserActivityLog::create($data);
     }
 }

@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\UserActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -46,10 +48,19 @@ class LoginController extends Controller
         if (Auth::attempt($credentials, $remember)) {
             // Clear login attempts on successful login
             $this->clearLoginAttempts($request);
-            
+
+            // Log successful login
+            $this->logActivity([
+                'user_id'         => Auth::id(),
+                'attempted_email' => $request->input('email'),
+                'action'          => 'login_success',
+                'ip_address'      => $request->ip(),
+                'user_agent'      => $request->userAgent(),
+            ]);
+
             // Regenerate session to prevent session fixation
             $request->session()->regenerate();
-            
+
             // Store additional security metadata
             $request->session()->put([
                 'user_agent' => $request->userAgent(),
@@ -59,6 +70,15 @@ class LoginController extends Controller
 
             return redirect()->intended(route('dashboard'))->with('login_success', true);
         }
+
+        // Log failed login
+        $this->logActivity([
+            'user_id'         => null,
+            'attempted_email' => $request->input('email'),
+            'action'          => 'login_failed',
+            'ip_address'      => $request->ip(),
+            'user_agent'      => $request->userAgent(),
+        ]);
 
         // Increment login attempts on failure
         $this->incrementLoginAttempts($request);
@@ -70,8 +90,16 @@ class LoginController extends Controller
 
     public function logout(Request $request)
     {
+        // Log logout before destroying the session
+        $this->logActivity([
+            'user_id'    => Auth::id(),
+            'action'     => 'logout',
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
         Auth::logout();
-        
+
         // Invalidate session and regenerate CSRF token
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -128,6 +156,14 @@ class LoginController extends Controller
             'ip' => $request->ip(),
             'user_agent' => $request->userAgent(),
         ]);
+    }
+
+    /**
+     * Append an entry to user_activity_log.
+     */
+    private function logActivity(array $data): void
+    {
+        UserActivityLog::create($data);
     }
 
     /**

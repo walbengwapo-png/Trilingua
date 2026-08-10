@@ -13,6 +13,20 @@
 {{-- Global toast container --}}
 <div id="toast-container" aria-live="polite" aria-atomic="false" style="position:fixed;top:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none"></div>
 
+{{-- Global error modal --}}
+<div id="error-modal" class="app-error-modal" style="display:none" role="alertdialog" aria-modal="true" aria-labelledby="error-modal-title" aria-describedby="error-modal-msg">
+    <div class="app-error-modal__overlay" id="error-modal-overlay"></div>
+    <div class="app-error-modal__dialog">
+        <button class="app-error-modal__close" id="error-modal-close" aria-label="Close">&times;</button>
+        <div class="app-error-modal__icon" aria-hidden="true">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
+        <h3 class="app-error-modal__title" id="error-modal-title">Something went wrong</h3>
+        <p class="app-error-modal__msg" id="error-modal-msg"></p>
+        <button class="app-error-modal__btn" id="error-modal-ok">OK</button>
+    </div>
+</div>
+
 {{-- Login success toast --}}
 @if (session('login_success'))
 <script>
@@ -92,14 +106,6 @@
                 Saved Translations
             </a>
 
-            <a href="{{ route('settings') }}" class="nav-link {{ request()->routeIs('settings*') ? 'active' : '' }}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <circle cx="12" cy="12" r="3"/>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                </svg>
-                Settings
-            </a>
-
             @if(auth()->user()->is_admin)
             <a href="{{ route('admin.dashboard') }}" class="nav-link {{ request()->routeIs('admin.*') ? 'active' : '' }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -108,6 +114,14 @@
                 Admin
             </a>
             @endif
+
+            <a href="{{ route('settings') }}" class="nav-link {{ request()->routeIs('settings*') ? 'active' : '' }}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                Settings
+            </a>
         </nav>
         {{-- User section at bottom --}}
         <div class="sidebar-user">
@@ -140,12 +154,26 @@
             </div>
             <div class="header-right">
                 {{-- Notification bell --}}
-                <button class="header-icon-btn" aria-label="Notifications" title="Notifications">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                    </svg>
-                </button>
+                <div class="notif-wrap" id="notif-wrap">
+                    <button class="header-icon-btn" id="notif-btn" aria-label="Notifications" title="Notifications" aria-haspopup="true" aria-expanded="false">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                        </svg>
+                    </button>
+                    <span class="notif-badge" id="notif-badge" hidden>0</span>
+
+                    <div class="notif-dropdown" id="notif-dropdown" aria-hidden="true">
+                        <div class="notif-dropdown__head">
+                            <span class="notif-dropdown__title">Notifications</span>
+                            <button type="button" class="notif-dropdown__markall" id="notif-markall">Mark all read</button>
+                        </div>
+                        <div class="notif-dropdown__list" id="notif-list">
+                            <div class="notif-dropdown__empty">Loading…</div>
+                        </div>
+                        <a href="{{ route('notifications.page') }}" class="notif-dropdown__viewall">View all notifications</a>
+                    </div>
+                </div>
 
                 {{-- User avatar dropdown --}}
                 <div class="header-user" id="header-user-btn" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
@@ -222,6 +250,40 @@ window.showToast = function (type, title, message, duration) {
     }, duration || 4000);
 };
 
+// ── Global error modal ────────────────────────────────────────────────────
+window.showErrorModal = function (title, message) {
+    var modal  = document.getElementById('error-modal');
+    var titleEl  = document.getElementById('error-modal-title');
+    var msgEl    = document.getElementById('error-modal-msg');
+    if (!modal) { window.alert(message || title || 'An error occurred.'); return; }
+
+    if (titleEl)  titleEl.textContent = title || 'Something went wrong';
+    if (msgEl)    msgEl.textContent   = message || '';
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    var ok        = document.getElementById('error-modal-ok');
+    var close     = document.getElementById('error-modal-close');
+    var overlay   = document.getElementById('error-modal-overlay');
+
+    function dismiss() {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+        if (ok)      ok.onclick      = null;
+        if (close)   close.onclick   = null;
+        if (overlay) overlay.onclick = null;
+        document.removeEventListener('keydown', onKey);
+    }
+    function onKey(e) { if (e.key === 'Escape') dismiss(); }
+
+    if (ok)      ok.onclick      = dismiss;
+    if (close)   close.onclick   = dismiss;
+    if (overlay) overlay.onclick = dismiss;
+    document.addEventListener('keydown', onKey);
+    if (ok) ok.focus();
+};
+
 // ── Hamburger / sidebar ───────────────────────────────────────────────────
 (function () {
     var sidebar   = document.getElementById('sidebar');
@@ -251,6 +313,122 @@ window.showToast = function (type, title, message, duration) {
     btn.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); } });
     document.addEventListener('click', function(e){ if(!btn.contains(e.target)&&!dropdown.contains(e.target)) close(); });
     document.addEventListener('keydown', function(e){ if(e.key==='Escape') close(); });
+})();
+
+// ── Notification bell ─────────────────────────────────────────────────────
+(function () {
+    var wrap   = document.getElementById('notif-wrap');
+    var btn    = document.getElementById('notif-btn');
+    var badge  = document.getElementById('notif-badge');
+    var panel  = document.getElementById('notif-dropdown');
+    var list   = document.getElementById('notif-list');
+    var markAll = document.getElementById('notif-markall');
+    if (!wrap || !btn || !panel || !list) return;
+
+    var csrfToken = document.querySelector('meta[name="csrf-token"]');
+    if (csrfToken) csrfToken = csrfToken.getAttribute('content');
+
+    function setUnread(n) {
+        n = Number(n) || 0;
+        if (n > 0) { badge.textContent = n > 99 ? '99+' : n; badge.hidden = false; }
+        else { badge.hidden = true; }
+    }
+
+    function open() {
+        panel.classList.add('open');
+        btn.setAttribute('aria-expanded','true');
+        panel.setAttribute('aria-hidden','false');
+        load();
+    }
+    function close() {
+        panel.classList.remove('open');
+        btn.setAttribute('aria-expanded','false');
+        panel.setAttribute('aria-hidden','true');
+    }
+    function toggle() { panel.classList.contains('open') ? close() : open(); }
+
+    function load() {
+        list.innerHTML = '<div class="notif-dropdown__empty">Loading…</div>';
+        fetch('/notifications/data?limit=20', { headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                setUnread(res.unread_count || 0);
+                var items = res.notifications || [];
+                if (!items.length) {
+                    list.innerHTML = '<div class="notif-dropdown__empty">No notifications</div>';
+                    return;
+                }
+                var html = '';
+                items.forEach(function (n) {
+                    var d = n.data || {};
+                    var isRead = !!n.read_at;
+                    var cls = 'notif-item' + (isRead ? '' : ' notif-item--unread');
+                    var title = d.title || 'Notification';
+                    var sub;
+                    if (d.error) sub = 'Translation failed';
+                    else if (d.source_language && d.target_language) sub = d.source_language + ' → ' + d.target_language;
+                    else sub = '';
+                    var url = n.url || '#';
+                    var typeIcon = n.type && n.type.indexOf('Failed') !== -1 ? 'error' : 'success';
+                    html += '<a class="' + cls + '" href="' + url + '" data-url="' + url + '" data-id="' + n.id + '" aria-label="' + (isRead ? 'Read' : 'Unread') + ' notification">' +
+                        '<span class="notif-item__icon notif-item__icon--' + typeIcon + '" aria-hidden="true"></span>' +
+                        '<div class="notif-item__body"><p class="notif-item__title">' + title + '</p>' +
+                        (sub ? '<p class="notif-item__sub">' + sub + '</p>' : '') +
+                        '<p class="notif-item__time">' + (n.created_at ? new Date(n.created_at).toLocaleString() : '') + '</p></div></a>';
+                });
+                list.innerHTML = html;
+
+                function openNotification(el) {
+                    var url = el.getAttribute('data-url');
+                    if (url && url !== '#') {
+                        markRead(el.getAttribute('data-id'), el).finally(function () {
+                            window.location.href = url;
+                        });
+                    } else {
+                        markRead(el.getAttribute('data-id'), el);
+                    }
+                }
+
+                list.querySelectorAll('.notif-item--unread').forEach(function (el) {
+                    el.addEventListener('click', function (e) { e.preventDefault(); openNotification(el); });
+                    el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openNotification(el); } });
+                });
+            })
+            .catch(function () {
+                list.innerHTML = '<div class="notif-dropdown__empty">Failed to load notifications</div>';
+            });
+    }
+
+    function markRead(id, el) {
+        var payload = id ? JSON.stringify({ id: id }) : '{}';
+        return fetch('/notifications/read', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+            body: payload
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                setUnread(res.unread_count || 0);
+                if (el) { el.classList.remove('notif-item--unread'); }
+            })
+            .catch(function () {});
+    }
+
+    btn.addEventListener('click', toggle);
+    if (markAll) markAll.addEventListener('click', function () { markRead(null, null); });
+
+    document.addEventListener('click', function (e) {
+        if (wrap && !wrap.contains(e.target)) close();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') close();
+    });
+
+    setUnread(badge.textContent);
+    fetch('/notifications/data?limit=1', { headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return r.json(); })
+        .then(function (res) { setUnread(res.unread_count || 0); })
+        .catch(function () {});
 })();
 </script>
 @yield('scripts')

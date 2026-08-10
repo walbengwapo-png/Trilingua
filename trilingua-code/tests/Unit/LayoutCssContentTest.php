@@ -74,9 +74,9 @@ class LayoutCssContentTest extends TestCase
     public function test_guest_css_contains_auth_logo_selector(): void
     {
         $this->assertStringContainsString(
-            '.auth-logo',
+            '.auth-brand__logo',
             $this->guestCssContent,
-            'layouts/guest.css should contain .auth-logo selector'
+            'layouts/guest.css should contain .auth-brand__logo selector'
         );
     }
 
@@ -322,7 +322,7 @@ class LayoutCssContentTest extends TestCase
     }
 
     /**
-     * Test that layouts/app.css contains storage indicator selector
+     * Test that layouts/app.css contains sidebar user selector
      * 
      * **Validates: Requirements 7.2**
      */
@@ -332,14 +332,14 @@ class LayoutCssContentTest extends TestCase
     public function test_app_css_contains_storage_selector(): void
     {
         $this->assertStringContainsString(
-            '.storage',
+            '.sidebar-user',
             $this->appCssContent,
-            'layouts/app.css should contain .storage selector'
+            'layouts/app.css should contain .sidebar-user selector'
         );
     }
 
     /**
-     * Test that layouts/app.css contains progress bar selector
+     * Test that layouts/app.css contains header right selector
      * 
      * **Validates: Requirements 7.2**
      */
@@ -349,9 +349,9 @@ class LayoutCssContentTest extends TestCase
     public function test_app_css_contains_progress_selector(): void
     {
         $this->assertStringContainsString(
-            '.progress',
+            '.header-right',
             $this->appCssContent,
-            'layouts/app.css should contain .progress selector'
+            'layouts/app.css should contain .header-right selector'
         );
     }
 }

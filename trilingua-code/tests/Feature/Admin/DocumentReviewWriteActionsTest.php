@@ -55,21 +55,23 @@ class DocumentReviewWriteActionsTest extends TestCase
         ], $overrides));
     }
 
-    public function test_verify_block_sets_verified_and_logs(): void
+    public function test_verify_document_cascades_to_blocks(): void
     {
         $admin = $this->makeAdmin();
         $history = $this->makeDocRecord($this->makeUser());
-        $block = $this->makeBlock($history, 0);
+        $blockA = $this->makeBlock($history, 0);
+        $blockB = $this->makeBlock($history, 1);
 
-        $result = app(ReviewService::class)->verifyBlock($history->id, $block->id, $admin->id);
+        $result = app(ReviewService::class)->verifyDocument($history->id, $admin->id);
 
-        $this->assertSame(ReviewStatus::VERIFIED, $result->status);
+        $this->assertSame(ReviewStatus::VERIFIED, $result->review_status);
+        $this->assertSame(ReviewStatus::VERIFIED, $blockA->fresh()->status);
+        $this->assertSame(ReviewStatus::VERIFIED, $blockB->fresh()->status);
 
         $log = TranslationEditLog::where('translation_history_id', $history->id)->latest('id')->first();
         $this->assertNotNull($log);
         $this->assertSame('verify', $log->action);
-        $this->assertSame($block->id, $log->translation_block_id);
-        $this->assertSame('Ai text 0', $log->previous_text);
+        $this->assertNull($log->translation_block_id);
     }
 
     public function test_update_block_audits_previous_and_preserves_ai_text(): void
@@ -104,44 +106,38 @@ class DocumentReviewWriteActionsTest extends TestCase
         $this->assertSame(0, TranslationEditLog::where('translation_history_id', $history->id)->count());
     }
 
-    public function test_flag_block_sets_reason_and_logs(): void
+    public function test_flag_document_cascades_to_blocks(): void
     {
         $admin = $this->makeAdmin();
         $history = $this->makeDocRecord($this->makeUser());
-        $block = $this->makeBlock($history, 0);
+        $blockA = $this->makeBlock($history, 0);
+        $blockB = $this->makeBlock($history, 1);
 
-        $result = app(ReviewService::class)->flagBlock($history->id, $block->id, $admin->id, 'formatting_broken', 'Line broken');
+        $result = app(ReviewService::class)->flagDocument($history->id, $admin->id, 'formatting_broken', 'Line broken');
 
-        $this->assertSame(ReviewStatus::FLAGGED, $result->status);
+        $this->assertSame(ReviewStatus::FLAGGED, $result->review_status);
         $this->assertSame('formatting_broken', $result->flag_reason);
         $this->assertSame('Line broken', $result->flag_note);
+        $this->assertSame(ReviewStatus::FLAGGED, $blockA->fresh()->status);
+        $this->assertSame('formatting_broken', $blockA->fresh()->flag_reason);
+        $this->assertSame(ReviewStatus::FLAGGED, $blockB->fresh()->status);
+        $this->assertSame('formatting_broken', $blockB->fresh()->flag_reason);
 
         $log = TranslationEditLog::where('translation_history_id', $history->id)->latest('id')->first();
         $this->assertNotNull($log);
         $this->assertSame('flag', $log->action);
-        $this->assertSame($block->id, $log->translation_block_id);
+        $this->assertNull($log->translation_block_id);
     }
 
-    public function test_bulk_approve_verifies_only_blocks_at_or_above_threshold(): void
+    public function test_flag_document_rejects_invalid_reason(): void
     {
         $admin = $this->makeAdmin();
         $history = $this->makeDocRecord($this->makeUser());
-        $this->makeBlock($history, 0, ['quality_score' => 95]);
-        $this->makeBlock($history, 1, ['quality_score' => 60]);
-        $this->makeBlock($history, 2, ['quality_score' => 85]);
+        $this->makeBlock($history, 0);
 
-        $result = app(ReviewService::class)->bulkApprove($history->id, $admin->id, 80);
+        $this->expectException(\InvalidArgumentException::class);
 
-        $this->assertSame(2, $result['approved']);
-        $this->assertSame(3, $result['total']);
-
-        $blocks = $history->blocks()->orderBy('block_index')->get();
-        $this->assertSame(ReviewStatus::VERIFIED, $blocks[0]->status);
-        $this->assertSame(ReviewStatus::PENDING, $blocks[1]->status);
-        $this->assertSame(ReviewStatus::VERIFIED, $blocks[2]->status);
-
-        // Two audit rows (one per approved block).
-        $this->assertSame(2, TranslationEditLog::where('translation_history_id', $history->id)->count());
+        app(ReviewService::class)->flagDocument($history->id, $admin->id, 'not-a-real-reason');
     }
 
     public function test_find_block_scoped_to_history_throws_on_mismatch(): void
@@ -153,6 +149,72 @@ class DocumentReviewWriteActionsTest extends TestCase
         $other = $this->makeDocRecord($this->makeUser());
         $block = $this->makeBlock($history, 0);
 
-        app(ReviewService::class)->verifyBlock($other->id, $block->id, $admin->id);
+        app(ReviewService::class)->updateBlock($other->id, $block->id, $admin->id, 'Edited text');
+    }
+
+    public function test_apply_block_edits_audits_changes_and_skips_no_ops(): void
+    {
+        $admin = $this->makeAdmin();
+        $history = $this->makeDocRecord($this->makeUser());
+        $blockA = $this->makeBlock($history, 0);
+        $blockB = $this->makeBlock($history, 1);
+
+        $changed = app(ReviewService::class)->applyBlockEdits(
+            $history->id,
+            $admin->id,
+            [
+                $blockA->id => 'Bag-ong text A',
+                $blockB->id => 'Ai text 1', // unchanged → must be a no-op
+                999 => 'ignored',           // unknown block → must be a no-op
+            ],
+        );
+
+        $this->assertSame(1, $changed);
+        $this->assertSame('Bag-ong text A', $blockA->fresh()->current_text);
+        $this->assertSame(ReviewStatus::EDITED, $blockA->fresh()->status);
+        $this->assertSame('Ai text 1', $blockB->fresh()->current_text);
+        $this->assertSame(ReviewStatus::PENDING, $blockB->fresh()->status);
+        $this->assertSame(ReviewStatus::EDITED, $history->fresh()->review_status);
+
+        $logs = TranslationEditLog::where('translation_history_id', $history->id)->get();
+        $this->assertCount(1, $logs);
+        $this->assertSame('edit', $logs[0]->action);
+        $this->assertSame('Ai text 0', $logs[0]->previous_text);
+        $this->assertSame('Bag-ong text A', $logs[0]->new_text);
+    }
+
+    public function test_apply_block_edits_no_op_when_nothing_changes(): void
+    {
+        $admin = $this->makeAdmin();
+        $history = $this->makeDocRecord($this->makeUser());
+        $block = $this->makeBlock($history, 0);
+
+        $changed = app(ReviewService::class)->applyBlockEdits(
+            $history->id,
+            $admin->id,
+            [$block->id => 'Ai text 0'],
+        );
+
+        $this->assertSame(0, $changed);
+        $this->assertSame(ReviewStatus::PENDING, $history->fresh()->review_status);
+        $this->assertSame(0, TranslationEditLog::where('translation_history_id', $history->id)->count());
+    }
+
+    public function test_apply_block_edits_ignores_blocks_from_other_histories(): void
+    {
+        $admin = $this->makeAdmin();
+        $history = $this->makeDocRecord($this->makeUser());
+        $other = $this->makeDocRecord($this->makeUser());
+        $otherBlock = $this->makeBlock($other, 0);
+
+        $changed = app(ReviewService::class)->applyBlockEdits(
+            $history->id,
+            $admin->id,
+            [$otherBlock->id => 'Hacked text'],
+        );
+
+        $this->assertSame(0, $changed);
+        $this->assertSame('Ai text 0', $otherBlock->fresh()->current_text);
+        $this->assertSame(0, TranslationEditLog::where('translation_history_id', $history->id)->count());
     }
 }

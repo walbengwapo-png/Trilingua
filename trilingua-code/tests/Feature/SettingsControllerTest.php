@@ -314,12 +314,10 @@ class SettingsControllerTest extends TestCase
     // -------------------------------------------------------------------------
     // updateGeneral tests
     //
-    // Validates: Requirements 4.6, 8.5
+    // Validates: Requirement 4.6
     //
     // Requirement 4.6: THE Settings_System SHALL support two theme options:
     //   light and dark.
-    // Requirement 8.5: THE Settings_System SHALL display available language
-    //   options (English, Tagalog, Cebuano).
     // -------------------------------------------------------------------------
 
     /**
@@ -334,14 +332,10 @@ class SettingsControllerTest extends TestCase
      */
     public function test_valid_theme_update_saves_to_database_and_redirects_with_success(): void
     {
-        $user = User::factory()->create([
-            'theme'    => 'light',
-            'language' => 'en',
-        ]);
+        $user = User::factory()->create(['theme' => 'light']);
 
         $response = $this->actingAs($user)->post('/settings/general', [
-            'theme'    => 'dark',
-            'language' => 'en',
+            'theme' => 'dark',
         ]);
 
         $response->assertRedirect();
@@ -350,38 +344,6 @@ class SettingsControllerTest extends TestCase
         $this->assertDatabaseHas('users', [
             'id'    => $user->id,
             'theme' => 'dark',
-        ]);
-    }
-
-    /**
-     * Test that a valid language update saves to the database.
-     *
-     * Submitting a valid language value ('en', 'tl', or 'ceb') must persist
-     * the value to the users table.
-     *
-     * Requirement 8.4: When a User selects a language, THE Settings_System
-     *   SHALL save the language preference to the database.
-     * Requirement 8.5: THE Settings_System SHALL display available language
-     *   options (English, Tagalog, Cebuano).
-     */
-    public function test_valid_language_update_saves_to_database(): void
-    {
-        $user = User::factory()->create([
-            'theme'    => 'light',
-            'language' => 'en',
-        ]);
-
-        $response = $this->actingAs($user)->post('/settings/general', [
-            'theme'    => 'light',
-            'language' => 'tl',
-        ]);
-
-        $response->assertRedirect();
-        $response->assertSessionHas('general_success');
-
-        $this->assertDatabaseHas('users', [
-            'id'       => $user->id,
-            'language' => 'tl',
         ]);
     }
 
@@ -396,14 +358,10 @@ class SettingsControllerTest extends TestCase
      */
     public function test_invalid_theme_value_is_rejected(): void
     {
-        $user = User::factory()->create([
-            'theme'    => 'light',
-            'language' => 'en',
-        ]);
+        $user = User::factory()->create(['theme' => 'light']);
 
         $response = $this->actingAs($user)->post('/settings/general', [
-            'theme'    => 'blue',
-            'language' => 'en',
+            'theme' => 'blue',
         ]);
 
         $response->assertSessionHasErrors(['theme']);
@@ -416,32 +374,18 @@ class SettingsControllerTest extends TestCase
     }
 
     /**
-     * Test that an invalid language value is rejected with a validation error.
+     * Test that the settings view no longer renders a language preference field.
      *
-     * Only 'en', 'tl', and 'ceb' are accepted language values. Any other value
-     * (e.g. 'fr') must produce a validation error on the language field.
-     *
-     * Requirement 8.5: THE Settings_System SHALL display available language
-     *   options (English, Tagalog, Cebuano).
+     * Requirement: THE Settings_System SHALL NOT expose a language preference.
      */
-    public function test_invalid_language_value_is_rejected(): void
+    public function test_settings_view_has_no_language_field(): void
     {
-        $user = User::factory()->create([
-            'theme'    => 'light',
-            'language' => 'en',
-        ]);
+        $user = User::factory()->create(['theme' => 'light']);
 
-        $response = $this->actingAs($user)->post('/settings/general', [
-            'theme'    => 'light',
-            'language' => 'fr',
-        ]);
+        $response = $this->actingAs($user)->get('/settings');
 
-        $response->assertSessionHasErrors(['language']);
-
-        // The database value must remain unchanged.
-        $this->assertDatabaseHas('users', [
-            'id'       => $user->id,
-            'language' => 'en',
-        ]);
+        $response->assertOk();
+        $response->assertDontSee('name="language"', false);
+        $response->assertDontSee('>Language</label>', false);
     }
 }

@@ -128,33 +128,39 @@ class ReviewService
     }
 
     /**
-     * Verify a single document block (pending → verified).
+     * Mark an entire document translation as verified (pending → verified).
+     *
+     * The history row is updated first, then every block is cascaded to
+     * 'verified' so the block list stays consistent with the document status.
+     * A single history-level audit entry is written (no per-block rows).
      *
      * @param  int  $historyId
-     * @param  int  $blockId
      * @param  int  $adminId
      * @param  string|null  $note
-     * @return TranslationBlock
+     * @return TranslationHistory
      */
-    public function verifyBlock(int $historyId, int $blockId, int $adminId, ?string $note = null): TranslationBlock
+    public function verifyDocument(int $historyId, int $adminId, ?string $note = null): TranslationHistory
     {
-        $block = $this->findBlock($historyId, $blockId);
+        $history = $this->verify($historyId, $adminId, $note);
 
-        $block->status = ReviewStatus::VERIFIED;
-        $block->edited_by = $adminId;
-        $block->edited_at = now();
-        $block->save();
+        $history->blocks()->update([
+            'status' => ReviewStatus::VERIFIED,
+            'edited_by' => $adminId,
+            'edited_at' => now(),
+            'flag_reason' => null,
+            'flag_note' => null,
+        ]);
 
-        $this->log($historyId, $block->id, $adminId, 'verify', $block->current_text, $block->current_text, $note);
-
-        return $block;
+        return $history;
     }
 
     /**
      * Edit a single document block's current_text (→ edited).
      *
      * ai_translated_text is NEVER touched. The PREVIOUS current_text is logged
-     * to translation_edit_log before being overwritten.
+     * to translation_edit_log before being overwritten. When a block actually
+     * changes, the parent document's review_status is also flipped to 'edited'
+     * so the document-level status stays consistent for the submitting user.
      *
      * @param  int  $historyId
      * @param  int  $blockId
@@ -181,20 +187,97 @@ class ReviewService
         $block->edited_at = now();
         $block->save();
 
+        // Propagate the change up to the document row so users see 'edited'.
+        $history = $this->findHistory($historyId);
+        $history->review_status = ReviewStatus::EDITED;
+        $history->reviewed_by = $adminId;
+        $history->reviewed_at = now();
+        $history->save();
+
         return $block;
     }
 
     /**
-     * Flag a single document block (pending → flagged).
+     * Persist admin edits for several blocks at once, keyed by block id
+     * ({block_id: new_text}). Blocks outside this history, or whose text is
+     * unchanged, are skipped — no audit row is written for a no-op. When any
+     * block actually changes, the history row is flipped to 'edited'.
+     *
+     * Same invariant as updateBlock(): the PREVIOUS current_text is audited
+     * first and ai_translated_text is never touched.
      *
      * @param  int  $historyId
-     * @param  int  $blockId
+     * @param  int  $adminId
+     * @param  array<int|string, string>  $blockIdToText  {block_id: new_text}
+     * @param  string|null  $note  Optional audit note.
+     * @return int  Number of blocks actually changed.
+     */
+    public function applyBlockEdits(
+        int $historyId,
+        int $adminId,
+        array $blockIdToText,
+        ?string $note = null,
+    ): int {
+        $history = $this->findHistory($historyId);
+
+        $ids = array_values(array_filter(
+            array_map('intval', array_keys($blockIdToText)),
+            fn ($id) => $id > 0,
+        ));
+
+        $blocks = $ids === []
+            ? collect()
+            : TranslationBlock::where('translation_history_id', $historyId)
+                ->whereIn('id', $ids)
+                ->get()
+                ->keyBy('id');
+
+        $edited = 0;
+        foreach ($blockIdToText as $blockId => $newText) {
+            $block = $blocks->get((int) $blockId);
+            if (!$block) {
+                continue;
+            }
+            $newText = (string) $newText;
+            if ($block->current_text === $newText) {
+                continue;
+            }
+
+            $this->log($history->id, $block->id, $adminId, 'edit', $block->current_text, $newText, $note);
+
+            $block->current_text = $newText;
+            $block->status = ReviewStatus::EDITED;
+            $block->edited_by = $adminId;
+            $block->edited_at = now();
+            $block->save();
+
+            $edited++;
+        }
+
+        if ($edited > 0) {
+            $history->review_status = ReviewStatus::EDITED;
+            $history->reviewed_by = $adminId;
+            $history->reviewed_at = now();
+            $history->save();
+        }
+
+        return $edited;
+    }
+
+    /**
+     * Mark an entire document translation as flagged (pending → flagged).
+     *
+     * The history row is updated first, then every block is cascaded to
+     * 'flagged' with the same reason/note so the block list stays consistent
+     * with the document status. A single history-level audit entry is written.
+     *
+     * @param  int  $historyId
      * @param  int  $adminId
      * @param  string  $reason
      * @param  string|null  $note
-     * @return TranslationBlock
+     * @return TranslationHistory
      */
-    public function flagBlock(int $historyId, int $blockId, int $adminId, string $reason, ?string $note = null): TranslationBlock
+    public function flagDocument(int $historyId, int $adminId, string $reason, ?string $note = null): TranslationHistory
     {
         if (!in_array($reason, FlagReason::ALL, true)) {
             throw new \InvalidArgumentException(
@@ -202,53 +285,17 @@ class ReviewService
             );
         }
 
-        $block = $this->findBlock($historyId, $blockId);
-        $history = $block->translationHistory;
+        $history = $this->flag($historyId, $adminId, $reason, $note);
 
-        $block->status = ReviewStatus::FLAGGED;
-        $block->flag_reason = $reason;
-        $block->flag_note = $note;
-        $block->edited_by = $adminId;
-        $block->edited_at = now();
-        $block->save();
+        $history->blocks()->update([
+            'status' => ReviewStatus::FLAGGED,
+            'flag_reason' => $reason,
+            'flag_note' => $note,
+            'edited_by' => $adminId,
+            'edited_at' => now(),
+        ]);
 
-        $this->log($historyId, $block->id, $adminId, 'flag', $block->current_text, $block->current_text, $note ?: "Flagged: {$reason}");
-
-        return $block;
-    }
-
-    /**
-     * Bulk-approve every block whose quality_score is at or above a threshold.
-     *
-     * Each approved block is verified and logged. Returns the count approved
-     * and the parent history so the caller can report progress.
-     *
-     * @param  int  $historyId
-     * @param  int  $adminId
-     * @param  int  $threshold  Minimum quality_score to auto-verify.
-     * @return array{approved: int, total: int, history: TranslationHistory}
-     */
-    public function bulkApprove(int $historyId, int $adminId, int $threshold): array
-    {
-        $history = $this->findHistory($historyId);
-        $history->load('blocks');
-
-        $approved = 0;
-        foreach ($history->blocks as $block) {
-            if ($block->quality_score === null) {
-                continue;
-            }
-            if ($block->quality_score >= $threshold && $block->status !== ReviewStatus::VERIFIED) {
-                $this->verifyBlock($history->id, $block->id, $adminId);
-                $approved++;
-            }
-        }
-
-        return [
-            'approved' => $approved,
-            'total' => $history->blocks->count(),
-            'history' => $history,
-        ];
+        return $history;
     }
 
     /**
@@ -421,7 +468,7 @@ class ReviewService
         $outExt = config('translation.extension_map.' . ltrim($ext, '.'), $ext ?: '.txt');
         return [
             'version' => 2,
-            'format' => $outExt,
+            'format' => '.' . ltrim($outExt, '.'),
             'source_lang' => $history->source_language ?? '',
             'target_lang' => $history->target_language ?? '',
             'pdf_column_mode' => 'auto',

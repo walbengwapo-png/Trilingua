@@ -132,7 +132,7 @@
                 btn.disabled = false;
                 btn.textContent = label;
                 if (!res.r.ok) {
-                    if (window.showToast) showToast('error', 'Action failed', (data && data.error) || 'Could not update.');
+                    if (window.showErrorModal) showErrorModal('Action failed', (data && data.error) || 'Could not update.');
                     return;
                 }
                 if (window.showToast) showToast('success', 'Updated', 'Status: ' + (data.status || 'ok'));
@@ -142,7 +142,7 @@
             .catch(function (err) {
                 btn.disabled = false;
                 btn.textContent = label;
-                if (window.showToast) showToast('error', 'Error', err.message || 'Network error.');
+                if (window.showErrorModal) showErrorModal('Action failed', err.message || 'Network error.');
             });
         });
     });

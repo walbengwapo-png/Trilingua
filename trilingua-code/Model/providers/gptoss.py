@@ -24,6 +24,10 @@ class GPTOSSProvider(TranslationProvider):
     def __init__(self, api_url: str = "", model: str = ""):
         self._api_url = api_url or os.environ.get("OLLAMA_CLOUD_URL", "http://localhost:11434/api/chat")
         self._model = model or os.environ.get("OLLAMA_CLOUD_MODEL", "gpt-oss:20b-cloud")
+        # keep_alive: how long Ollama keeps the model loaded between requests.
+        # Default 30m avoids GPU spin-up on every request without pinning the
+        # model in memory indefinitely. "-1" pins it forever.
+        self._keep_alive = os.environ.get("OLLAMA_KEEP_ALIVE", "30m")
         self._session = requests.Session()
         adapter = requests.adapters.HTTPAdapter(pool_maxsize=self._POOL_SIZE)
         self._session.mount("https://", adapter)
@@ -66,11 +70,13 @@ class GPTOSSProvider(TranslationProvider):
                             {"role": "user", "content": user_msg},
                         ],
                         "stream": False,
+                        "keep_alive": self._keep_alive,
                         "options": {
                             "temperature": 0.3,
                         },
                     },
-                    timeout=300,  # Ollama Cloud GPU spin-up can exceed 60s on first request
+                    timeout=120,  # 300s -> 120s: model runs cold took ~5-20s; a hung
+                                  # request shouldn't tie up a worker thread for 5 min
                 )
 
                 if resp.status_code == 429:
@@ -197,9 +203,10 @@ class GPTOSSProvider(TranslationProvider):
                         {"role": "user", "content": "hello"},
                     ],
                     "stream": False,
+                    "keep_alive": self._keep_alive,
                     "options": {"temperature": 0.1},
                 },
-                timeout=300,
+                timeout=120,
             )
             resp.raise_for_status()
             return True

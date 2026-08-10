@@ -163,6 +163,8 @@ def apply_overrides(blocks, overrides):
     """
     if not overrides:
         return [dict(b) for b in blocks]
+    if isinstance(overrides, list):
+        overrides = {str(i): v for i, v in enumerate(overrides)}
     norm = {str(k): v for k, v in overrides.items()}
     out = []
     for b in blocks:

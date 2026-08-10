@@ -61,7 +61,12 @@ from config.processing_modes import ProcessingMode
 from .phase_profiler import llm_call_profile
 
 # OPTIMIZATION: Env var defaults (Tasks 1, 3, 4)
-_TRANSLATION_CONCURRENCY = int(os.environ.get("TRANSLATION_CONCURRENCY", "16"))
+# gptoss: 8 parallel calls (matches GPTOSSProvider._POOL_SIZE=8). Batching now
+# packs many blocks into few requests, so parallelism overlaps the remaining
+# long-block calls. Mistral is still capped at 4 (see executor setup below) —
+# it rate-limits harder on Ollama Cloud.
+# Tunable per environment via TRANSLATION_CONCURRENCY.
+_TRANSLATION_CONCURRENCY = int(os.environ.get("TRANSLATION_CONCURRENCY", "8"))
 _TRANSLATION_BATCH_ENABLED = os.environ.get("TRANSLATION_BATCH_ENABLED", "true").lower() == "true"
 _TRANSLATION_CACHE_ENABLED = os.environ.get("TRANSLATION_CACHE_ENABLED", "true").lower() == "true"
 _TRANSLATION_CACHE_TTL_DAYS = int(os.environ.get("TRANSLATION_CACHE_TTL_DAYS", "30"))
@@ -79,9 +84,12 @@ _TRANSLATION_BATCHED_REVIEW = os.environ.get(
 _TRANSLATION_MAX_TOKENS = int(os.environ.get("TRANSLATION_MAX_TOKENS", "400"))
 
 # OPTIMIZATION: Provider-aware batching limits (Tier 2b)
+# gptoss: 2000/8 -> 4000/12 (larger batches = fewer LLM calls per document;
+# the batch is one HTTP request, so bigger batches cut round-trip overhead).
+# mistral: 4000/12 -> 6000/16 (larger context window + relaxed rate limits).
 _PROVIDER_BATCH_LIMITS = {
-    "gptoss": {"max_batch_chars": 2000, "max_batch_items": 8},
-    "mistral": {"max_batch_chars": 4000, "max_batch_items": 12},
+    "gptoss": {"max_batch_chars": 4000, "max_batch_items": 12},
+    "mistral": {"max_batch_chars": 6000, "max_batch_items": 16},
 }
 _DEFAULT_BATCH_LIMITS = {"max_batch_chars": 1500, "max_batch_items": 5}
 
@@ -295,6 +303,20 @@ class TranslationPipeline:
         # 1. Estimate tokens
         estimated_tokens = self.provider.estimate_tokens(request.text)
 
+        # OPTIMIZATION: Persistent cache lookup (mirrors the document/batch
+        # paths). Repeated phrases / reviewed-and-fixed blocks are served
+        # instantly instead of re-hitting the LLM.
+        cache = self._get_cache()
+        if cache and request.text and request.text.strip():
+            cached = cache.get(request.text, request.target_lang, self.provider.name)
+            if cached is not None:
+                return TranslationResponse(
+                    translated_text=cached,
+                    provider=self.provider.name,
+                    model=self.provider.model_name,
+                    execution_time_ms=(time.time() - start_time) * 1000,
+                )
+
         # 2. Build context hint
         context_hint = request.context_hint
         if not context_hint:
@@ -310,9 +332,14 @@ class TranslationPipeline:
             document_type=request.document_type,
         )
 
-        # 4. Push to context buffer on success (for fast mode)
+        # 4. Push to context buffer on success (for fast mode) and persist
         if response.success and response.translated_text:
             self.context_buffer.push(response.translated_text)
+            if cache:
+                cache.put(
+                    request.text, request.target_lang,
+                    self.provider.name, response.translated_text,
+                )
 
         # 5. Update execution time
         response.execution_time_ms = (time.time() - start_time) * 1000
@@ -472,6 +499,7 @@ class TranslationPipeline:
                                 quality_reviewer: AIQualityReviewer | None = None,
                                 semantic_chunker: Any | None = None,
                                 document_profile: DocumentProfile | None = None,
+                                context_preamble: str = "",
                                 ctx=None) -> list[dict]:
         """Translate a list of document blocks with concurrent execution, batching, and caching.
 
@@ -499,6 +527,8 @@ class TranslationPipeline:
             quality_reviewer: Optional AIQualityReviewer.
             semantic_chunker: Optional SemanticChunker.
             document_profile: Optional DocumentProfile.
+            context_preamble: Optional extra context (e.g. prepass summary) that is
+                prepended to the memory context for single-block translation calls.
             ctx: Optional DocumentContext for stats tracking.
 
         Returns:
@@ -556,8 +586,12 @@ class TranslationPipeline:
                 continue
             work_items.append((i, text, block.get("type", "paragraph")))
 
-        # OPTIMIZATION: Phase 4 — Build batches for short blocks (Task 3)
-        # A batch is a list of (block_index, text, block_type) tuples
+        # OPTIMIZATION: Phase 4 — Build batches (Task 3)
+        # A batch is a list of (block_index, text, block_type) tuples.
+        # Packing is char-budget driven (provider-aware limits) so blocks of
+        # ANY length — including long paragraphs — travel together in one
+        # request when they fit. A block that alone exceeds the budget still
+        # becomes its own single-item batch (unchanged behavior).
         batches: list[list[tuple[int, str, str]]] = []
         batched_indices: set[int] = set()
 
@@ -568,19 +602,19 @@ class TranslationPipeline:
             )
             max_batch_items = provider_limits["max_batch_items"]
             max_batch_chars = provider_limits["max_batch_chars"]
+            # Leave headroom for the JSON wrapper + "max N chars" instruction
+            content_budget = int(max_batch_chars * 0.9)
 
             current_batch: list[tuple[int, str, str]] = []
             current_batch_chars = 0
             for item in work_items:
                 idx, text, btype = item
-                token_count = len(text.split())
                 char_count = len(text)
-                # Check both token threshold AND char limit
-                within_token_limit = token_count < 80
                 within_batch_size = len(current_batch) < max_batch_items
-                within_char_limit = current_batch_chars + char_count <= max_batch_chars
+                within_char_limit = current_batch_chars + char_count <= content_budget
+                fits_alone = char_count <= content_budget
 
-                if within_token_limit and within_batch_size and within_char_limit:
+                if within_batch_size and within_char_limit:
                     current_batch.append(item)
                     current_batch_chars += char_count
                 else:
@@ -588,6 +622,11 @@ class TranslationPipeline:
                         batches.append(current_batch)
                     current_batch = [item]
                     current_batch_chars = char_count
+                if not fits_alone and current_batch and len(current_batch) == 1:
+                    # Oversized block — flush it as its own single-item batch
+                    batches.append(current_batch)
+                    current_batch = []
+                    current_batch_chars = 0
             if current_batch:
                 batches.append(current_batch)
 
@@ -625,7 +664,7 @@ class TranslationPipeline:
                         self._translate_batch_worker,
                         batch, source_lang, target_lang,
                         document_memory, translation_cache, worker_quality_reviewer,
-                        document_profile, ctx,
+                        document_profile, context_preamble, ctx,
                     )
                     future_to_batch[future] = batch_idx
 
@@ -647,7 +686,8 @@ class TranslationPipeline:
                                 translated = self._translate_single_worker(
                                     text, source_lang, target_lang, btype,
                                     document_memory, translation_cache,
-                                    worker_quality_reviewer, document_profile, idx, ctx,
+                                    worker_quality_reviewer, document_profile, idx,
+                                    context_preamble, ctx,
                                 )
                                 results[idx] = translated
                                 if ctx:
@@ -686,14 +726,15 @@ class TranslationPipeline:
                             context = document_memory.get_context_for_block(
                                 {"text": source_text, "type": ""}, idx
                             )
-                        retry_response = self.provider.translate(
-                            text=source_text,
-                            source_lang=source_lang,
-                            target_lang=target_lang,
-                            block_type="paragraph",
-                            context_hint=f"{context}\nPrevious issues: {review.summary}",
-                            document_type=document_profile.document_type if document_profile else "",
-                        )
+                        with llm_call_profile(ctx) if ctx else _nullcontext():
+                            retry_response = self.provider.translate(
+                                text=source_text,
+                                source_lang=source_lang,
+                                target_lang=target_lang,
+                                block_type="paragraph",
+                                context_hint=f"{context}\nPrevious issues: {review.summary}",
+                                document_type=document_profile.document_type if document_profile else "",
+                            )
                         if retry_response.success and retry_response.translated_text:
                             results[idx] = retry_response.translated_text
                             retranslated_count += 1
@@ -776,6 +817,7 @@ class TranslationPipeline:
         source_lang: str, target_lang: str,
         document_memory, translation_cache,
         quality_reviewer, document_profile,
+        context_preamble: str = "",
         ctx=None,
     ) -> dict[int, str]:
         """Translate a batch of blocks (single or multiple) in a worker thread.
@@ -791,7 +833,8 @@ class TranslationPipeline:
             translated = self._translate_single_worker(
                 text, source_lang, target_lang, btype,
                 document_memory, translation_cache,
-                quality_reviewer, document_profile, idx, ctx,
+                quality_reviewer, document_profile, idx,
+                context_preamble, ctx,
             )
             batch_results[idx] = translated
         else:
@@ -825,7 +868,8 @@ class TranslationPipeline:
                         translated = self._translate_single_worker(
                             text, source_lang, target_lang, btype,
                             document_memory, translation_cache,
-                            quality_reviewer, document_profile, idx, ctx,
+                            quality_reviewer, document_profile, idx,
+                            context_preamble, ctx,
                         )
                         batch_results[idx] = translated
             else:
@@ -834,7 +878,8 @@ class TranslationPipeline:
                     translated = self._translate_single_worker(
                         text, source_lang, target_lang, btype,
                         document_memory, translation_cache,
-                        quality_reviewer, document_profile, idx, ctx,
+                        quality_reviewer, document_profile, idx,
+                        context_preamble, ctx,
                     )
                     batch_results[idx] = translated
 
@@ -845,6 +890,7 @@ class TranslationPipeline:
         self, text: str, source_lang: str, target_lang: str,
         block_type: str, document_memory, translation_cache,
         quality_reviewer, document_profile, block_index: int,
+        context_preamble: str = "",
         ctx=None,
     ) -> str:
         """Translate a single chunk in a worker thread.
@@ -865,6 +911,13 @@ class TranslationPipeline:
             context = document_memory.get_context_for_block(
                 {"text": text, "type": block_type}, block_index
             )
+
+        # OPTIMIZATION: Inject shared context preamble (prepass summary/terms)
+        if context_preamble:
+            if context:
+                context = context_preamble + "\n" + context
+            else:
+                context = context_preamble
 
         # Translate via provider (synchronous call — runs in thread pool)
         with llm_call_profile(ctx) if ctx else _nullcontext():

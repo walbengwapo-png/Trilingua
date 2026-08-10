@@ -2,11 +2,15 @@
 
 namespace App\Jobs;
 
+use App\Models\User;
+use App\Notifications\TranslationCompleted;
+use App\Notifications\TranslationFailed;
 use App\Services\BlockService;
 use App\Services\HistoryService;
 use App\Services\StorageService;
 use App\Services\Translation\TranslationManager;
 use App\Services\TranslationService;
+use App\Support\AdminNotifier;
 use App\Support\ReviewStatus;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -39,7 +43,8 @@ class TranslateDocumentJob implements ShouldQueue
         public string $tempPath,
         public int $userId,
         public ?string $originalStoragePath = null,
-        public string $mode = 'balanced'
+        public string $mode = 'balanced',
+        public ?int $parentDocumentId = null
     ) {}
 
     /**
@@ -146,6 +151,7 @@ class TranslateDocumentJob implements ShouldQueue
                         'review_status'         => ReviewStatus::PENDING,
                         'signed_url_expires_at' => $storageResult['signed_url_expires_at'],
                         'job_id'                => $this->jobUuid,
+                        'parent_document_id'    => $this->parentDocumentId,
                     ]);
 
                     // Persist per-block review data + roll up quality score.
@@ -156,6 +162,9 @@ class TranslateDocumentJob implements ShouldQueue
                         'user_id' => $this->userId,
                     ]);
                 }
+
+                $this->notifyCompleted($history);
+                $this->notifyAdminsAwaitingReview($history);
 
                 return;
             } catch (\Throwable $storageError) {
@@ -192,6 +201,7 @@ class TranslateDocumentJob implements ShouldQueue
                             'status'                => 'completed',
                             'review_status'         => ReviewStatus::PENDING,
                             'job_id'                => $this->jobUuid,
+                            'parent_document_id'    => $this->parentDocumentId,
                         ]);
 
                         // Persist per-block review data + roll up quality score.
@@ -201,6 +211,9 @@ class TranslateDocumentJob implements ShouldQueue
                             'exception' => $e->getMessage(),
                         ]);
                     }
+
+                    $this->notifyCompleted($history);
+                    $this->notifyAdminsAwaitingReview($history);
 
                     return;
                 }
@@ -227,6 +240,8 @@ class TranslateDocumentJob implements ShouldQueue
                 'status' => 'failed',
                 'error' => $e->getMessage(),
             ]);
+
+            $this->notifyFailed($this->originalName, $e->getMessage());
 
             // Do NOT call $this->fail() — with sync queue, that would throw an
             // exception back to the controller causing a 500 error. Instead we
@@ -288,6 +303,50 @@ class TranslateDocumentJob implements ShouldQueue
             $result,
             now()->addHours(1)
         );
+    }
+
+    /**
+     * Push a "translation completed" database notification to the owner.
+     */
+    private function notifyCompleted(?\App\Models\TranslationHistory $history): void
+    {
+        if ($history === null) {
+            return;
+        }
+        try {
+            User::find($this->userId)?->notify(new TranslationCompleted($history));
+        } catch (\Throwable $e) {
+            Log::warning('Job: Failed to send completion notification (non-fatal)', [
+                'exception' => $e->getMessage(),
+                'user_id' => $this->userId,
+            ]);
+        }
+    }
+
+    /**
+     * Push a "translation failed" database notification to the owner.
+     */
+    private function notifyFailed(string $filename, string $message): void
+    {
+        try {
+            User::find($this->userId)?->notify(new TranslationFailed($filename, $message));
+        } catch (\Throwable $e) {
+            Log::warning('Job: Failed to send failure notification (non-fatal)', [
+                'exception' => $e->getMessage(),
+                'user_id' => $this->userId,
+            ]);
+        }
+    }
+
+    /**
+     * Fan out a "new translation awaiting review" notification to every admin.
+     */
+    private function notifyAdminsAwaitingReview(?\App\Models\TranslationHistory $history): void
+    {
+        if ($history === null) {
+            return;
+        }
+        AdminNotifier::awaitingReview($history, User::find($this->userId)?->name);
     }
 
     /**

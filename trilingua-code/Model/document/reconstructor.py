@@ -91,7 +91,8 @@ def translate_docx_inplace(input_file, output_file, source_lang, target_lang,
 
 
 def _translate_docx_inplace_with_translator(input_file, output_file, translate_fn,
-                                            glossary_store=None, progress_callback=None):
+                                            glossary_store=None, progress_callback=None,
+                                            save=True):
     """
     Translate a DOCX file in-place using a provided translation function.
     
@@ -101,6 +102,9 @@ def _translate_docx_inplace_with_translator(input_file, output_file, translate_f
         translate_fn: Callable(text, block_type) -> translated_text
         glossary_store: Optional GlossaryStore for post-processing
         progress_callback: Optional callable(completed, total)
+        save: Whether to write output_file. When False, the document is only
+            walked (used to collect translatable text in call order without
+            writing a file).
     """
     from docx import Document
     from docx.oxml.ns import qn
@@ -250,14 +254,20 @@ def _translate_docx_inplace_with_translator(input_file, output_file, translate_f
     except Exception:
         pass
 
-    doc.save(output_file)
+    if save:
+        doc.save(output_file)
 
 
 def translate_pptx_inplace(input_file, output_file, translate_fn,
-                           glossary_store=None, progress_callback=None):
+                           glossary_store=None, progress_callback=None,
+                           save=True):
     """
     Translate a PPTX file by iterating slides/shapes/paragraphs in-place.
     Uses a provided translation function instead of hardcoded Mistral.
+
+    Args:
+        save: Whether to write output_file. When False, the deck is only
+            walked (used to collect translatable text in call order).
     """
     from pptx import Presentation
     from pptx.enum.shapes import MSO_SHAPE_TYPE
@@ -337,15 +347,21 @@ def translate_pptx_inplace(input_file, output_file, translate_fn,
     for slide in prs.slides:
         _translate_shapes(slide.shapes)
 
-    prs.save(output_file)
-    print(f"  [OK] PPTX saved with layout preservation ({completed} items translated)")
+    if save:
+        prs.save(output_file)
+        print(f"  [OK] PPTX saved with layout preservation ({completed} items translated)")
 
 
 def translate_xlsx_inplace(input_file, output_file, translate_fn,
-                           glossary_store=None, progress_callback=None):
+                           glossary_store=None, progress_callback=None,
+                           save=True):
     """
     Translate an XLSX file by iterating all cells in-place.
     Uses a provided translation function.
+
+    Args:
+        save: Whether to write output_file. When False, the workbook is only
+            walked (used to collect translatable text in call order).
     """
     from openpyxl import load_workbook
 
@@ -376,9 +392,10 @@ def translate_xlsx_inplace(input_file, output_file, translate_fn,
                 if progress_callback:
                     progress_callback(completed, total_cells)
 
-    wb.save(output_file)
+    if save:
+        wb.save(output_file)
+        print(f"  [OK] XLSX saved with perfect layout preservation ({completed} cells translated)")
     wb.close()
-    print(f"  [OK] XLSX saved with perfect layout preservation ({completed} cells translated)")
 
 
 def write_docx(blocks, output_file, original_file=None):

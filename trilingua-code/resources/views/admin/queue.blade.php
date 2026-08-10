@@ -23,6 +23,14 @@
 
     {{-- Filters --}}
     <form method="GET" action="{{ route('admin.review.index') }}" class="review-filters">
+        <div class="review-filters__field review-filters__field--search">
+            <label class="review-filters__label" for="f-q">Search</label>
+            <input type="search" name="q" id="f-q" class="review-input"
+                   placeholder="Search filename or text…"
+                   value="{{ $filters['q'] ?? '' }}"
+                   aria-label="Search translations">
+        </div>
+
         <div class="review-filters__field">
             <label class="review-filters__label" for="f-status">Status</label>
             <select name="status" id="f-status" class="review-select">
@@ -49,6 +57,25 @@
                 <option value="">All types</option>
                 <option value="document" @selected(($filters['type'] ?? '') === 'document')>Document</option>
                 <option value="text" @selected(($filters['type'] ?? '') === 'text')>Text</option>
+            </select>
+        </div>
+
+        <div class="review-filters__field">
+            <label class="review-filters__label" for="f-priority">Priority</label>
+            <select name="priority" id="f-priority" class="review-select">
+                <option value="">All</option>
+                <option value="1" @selected(($filters['priority'] ?? '') === '1')>Priority only</option>
+                <option value="0" @selected(($filters['priority'] ?? '') === '0')>Non-priority</option>
+            </select>
+        </div>
+
+        <div class="review-filters__field">
+            <label class="review-filters__label" for="f-lang">Language Pair</label>
+            <select name="lang_pair" id="f-lang" class="review-select">
+                <option value="">All pairs</option>
+                @foreach ($langPairs as $pair)
+                    <option value="{{ $pair }}" @selected(($filters['lang_pair'] ?? '') === $pair)>{{ $pair }}</option>
+                @endforeach
             </select>
         </div>
 
@@ -98,14 +125,19 @@
                         : \Illuminate\Support\Str::limit($record->source_text ?? '', 60);
                     $dateStr = \Carbon\Carbon::parse($record->created_at)->utc()->format('Y-m-d H:i') . ' UTC';
                 @endphp
-                <tr>
+                <tr @class(['review-table__row--priority' => !empty($record->is_priority)])>
                     <td>
                         <span class="quality-score">
                             <span class="quality-score__dot quality-score__dot--{{ $level }}" aria-hidden="true"></span>
                             {{ $score === null ? '—' : $score }}
                         </span>
                     </td>
-                    <td><span class="status-badge status-badge--{{ $record->review_status }}">{{ ucfirst($record->review_status) }}</span></td>
+                    <td>
+                        @if (!empty($record->is_priority))
+                            <span class="priority-badge" title="Requested priority review">Priority</span>
+                        @endif
+                        <span class="status-badge status-badge--{{ $record->review_status }}">{{ ucfirst($record->review_status) }}</span>
+                    </td>
                     <td>
                         <span class="type-badge type-badge--{{ $isDoc ? 'doc' : 'text' }}">
                             {{ $isDoc ? 'Document' : 'Text' }}

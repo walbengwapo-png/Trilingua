@@ -174,7 +174,7 @@ class TranslationManager
 
             // Build output filename
             $stem = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-            $downloadFilename = $data['download_filename'] ?? ($stem . '_translated' . $outExt);
+            $downloadFilename = $data['download_filename'] ?? ($stem . '_translated.' . $outExt);
 
             return [
                 'body' => $body,
@@ -243,7 +243,7 @@ class TranslationManager
 
             $response = $http->post("{$this->pythonUrl}/translate/document/regenerate", [
                 'sidecar' => json_encode($sidecar),
-                'overrides' => json_encode($overrides),
+                'overrides' => json_encode($overrides, JSON_FORCE_OBJECT),
                 'source_lang' => $sourceLang,
                 'target_lang' => $targetLang,
                 'pdf_column_mode' => $pdfColumnMode,
@@ -284,7 +284,7 @@ class TranslationManager
             $ext = strtolower('.' . pathinfo($originalName, PATHINFO_EXTENSION));
             $outExt = config('translation.extension_map.' . ltrim($ext, '.'), $ext);
             $stem = pathinfo($originalName, PATHINFO_FILENAME);
-            $downloadFilename = $stem . '_regenerated' . $outExt;
+            $downloadFilename = $stem . '_regenerated.' . $outExt;
 
             return [
                 'body' => $body,

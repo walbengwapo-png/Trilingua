@@ -80,15 +80,18 @@ class ViewCssContentTest extends TestCase
     }
 
     /**
-     * Test that login.css contains authentication form styles
+     * Test that the shared auth form styles live in layouts/guest.css
+     * 
+     * The login/register blades use the guest layout, which loads
+     * layouts/guest.css. Common auth form styles were consolidated there.
      */
     #[\PHPUnit\Framework\Attributes\Test]
     #[\PHPUnit\Framework\Attributes\Group('per-view-css-architecture')]
     #[\PHPUnit\Framework\Attributes\Group('view-css')]
     public function test_login_css_contains_auth_form_styles(): void
     {
-        $loginCssPath = $this->basePath . '/auth/login.css';
-        $content = file_get_contents($loginCssPath);
+        $guestCssPath = dirname($this->basePath) . '/layouts/guest.css';
+        $content = file_get_contents($guestCssPath);
 
         $requiredSelectors = [
             '.auth-form',
@@ -103,32 +106,32 @@ class ViewCssContentTest extends TestCase
             $this->assertMatchesRegularExpression(
                 $pattern,
                 $content,
-                "login.css should contain selector: {$selector}"
+                "layouts/guest.css should contain selector: {$selector}"
             );
         }
     }
 
     /**
-     * Test that login.css contains forgot password link styles
+     * Test that the shared forgot password styles live in layouts/guest.css
      */
     #[\PHPUnit\Framework\Attributes\Test]
     #[\PHPUnit\Framework\Attributes\Group('per-view-css-architecture')]
     #[\PHPUnit\Framework\Attributes\Group('view-css')]
     public function test_login_css_contains_forgot_password_styles(): void
     {
-        $loginCssPath = $this->basePath . '/auth/login.css';
-        $content = file_get_contents($loginCssPath);
+        $guestCssPath = dirname($this->basePath) . '/layouts/guest.css';
+        $content = file_get_contents($guestCssPath);
 
         $this->assertStringContainsString(
             '.auth-forgot',
             $content,
-            'login.css should contain .auth-forgot selector for forgot password link'
+            'layouts/guest.css should contain .auth-forgot selector for forgot password link'
         );
 
         $this->assertStringContainsString(
             '.link-underline',
             $content,
-            'login.css should contain .link-underline selector'
+            'layouts/guest.css should contain .link-underline selector'
         );
     }
 
@@ -202,8 +205,9 @@ class ViewCssContentTest extends TestCase
         $content = file_get_contents($dashboardCssPath);
 
         $statusClasses = [
-            '.text-success',
-            '.text-warning',
+            '.status-pill',
+            '.status-pill--verified',
+            '.status-pill--flagged',
         ];
 
         foreach ($statusClasses as $class) {
@@ -329,19 +333,19 @@ class ViewCssContentTest extends TestCase
 
     /**
      * Test that login.css and register.css share common authentication styles
+     * 
+     * Both auth blades use the guest layout, which loads layouts/guest.css,
+     * so the common auth selectors live in that shared stylesheet.
      */
     #[\PHPUnit\Framework\Attributes\Test]
     #[\PHPUnit\Framework\Attributes\Group('per-view-css-architecture')]
     #[\PHPUnit\Framework\Attributes\Group('view-css')]
     public function test_login_and_register_share_common_auth_styles(): void
     {
-        $loginCssPath = $this->basePath . '/auth/login.css';
-        $registerCssPath = $this->basePath . '/auth/register.css';
-        
-        $loginContent = file_get_contents($loginCssPath);
-        $registerContent = file_get_contents($registerCssPath);
+        $guestCssPath = dirname($this->basePath) . '/layouts/guest.css';
+        $content = file_get_contents($guestCssPath);
 
-        // Common selectors that should be in both files
+        // Common selectors that should be in the shared guest stylesheet
         $commonSelectors = [
             '.auth-form',
             '.btn-auth',
@@ -352,14 +356,8 @@ class ViewCssContentTest extends TestCase
         foreach ($commonSelectors as $selector) {
             $this->assertStringContainsString(
                 $selector,
-                $loginContent,
-                "login.css should contain common auth selector: {$selector}"
-            );
-            
-            $this->assertStringContainsString(
-                $selector,
-                $registerContent,
-                "register.css should contain common auth selector: {$selector}"
+                $content,
+                "layouts/guest.css should contain common auth selector: {$selector}"
             );
         }
     }
@@ -409,7 +407,7 @@ class ViewCssContentTest extends TestCase
     public function test_view_css_files_contain_responsive_styles(): void
     {
         $cssFiles = [
-            'auth/login.css',
+            '../layouts/guest.css',
             'auth/register.css',
             'dashboard.css',
             'welcome.css',

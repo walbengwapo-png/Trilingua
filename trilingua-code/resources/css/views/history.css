@@ -98,6 +98,20 @@
 }
 .history-select:focus { border-color: var(--primary, #3b82f6); }
 
+/* ── Bookmarks header button ─────────────────────────────────────────────── */
+.history-bookmarks-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+.history-bookmarks-btn:hover {
+    border-color: var(--primary, #3b82f6);
+    color: var(--primary, #3b82f6);
+}
+
 /* ── Group section ───────────────────────────────────────────────────────── */
 .history-group {
     margin-bottom: 28px;
@@ -215,6 +229,8 @@
     display: flex;
     align-items: center;
     gap: 4px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .history-card__action-btn {
@@ -237,6 +253,9 @@
 }
 .history-card__action-btn.bookmark-btn--active {
     color: var(--primary, #3b82f6);
+}
+.history-card__action-btn.priority-btn--active {
+    color: #f59e0b;
 }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */

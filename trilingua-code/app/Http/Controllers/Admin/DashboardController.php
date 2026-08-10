@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\TranslationBlock;
 use App\Models\TranslationEditLog;
 use App\Models\TranslationHistory;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Log;
  */
 class DashboardController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
         try {
             $data = [
@@ -29,7 +29,10 @@ class DashboardController extends Controller
                 'flagReasonBreakdown'  => $this->flagReasonBreakdown(),
                 'avgTurnaround'        => $this->averageTurnaround(),
                 'topReviewers'         => $this->topReviewers(),
-                'activityOverTime'     => $this->activityOverTime(),
+                'activityOverTime'     => $this->activityOverTime(
+                    $request->query('from'), $request->query('to')
+                ),
+                'recentActivity'       => $this->recentActivity(),
             ];
         } catch (\Throwable $e) {
             Log::error('Admin\DashboardController::index failed', [
@@ -110,7 +113,12 @@ class DashboardController extends Controller
     }
 
     /**
-     * Flag-reason breakdown across history (text) rows and blocks (documents).
+     * Flag-reason breakdown across flagged translations.
+     *
+     * Each translation is counted ONCE regardless of how many of its document
+     * blocks share the flag reason — blocks merely mirror the document-level
+     * flag (ReviewService::flagDocument cascades to every block), so counting
+     * them would inflate the totals for a single document.
      */
     private function flagReasonBreakdown(): array
     {
@@ -120,12 +128,6 @@ class DashboardController extends Controller
             ->whereNotNull('flag_reason')
             ->get(['flag_reason']) as $r) {
             $byLabel[$r->flag_reason] = ($byLabel[$r->flag_reason] ?? 0) + 1;
-        }
-
-        foreach (TranslationBlock::where('status', 'flagged')
-            ->whereNotNull('flag_reason')
-            ->get('flag_reason') as $b) {
-            $byLabel[$b->flag_reason] = ($byLabel[$b->flag_reason] ?? 0) + 1;
         }
 
         arsort($byLabel);
@@ -176,14 +178,72 @@ class DashboardController extends Controller
     }
 
     /**
-     * Verify/edit/flag action counts grouped by day (last 30 days).
+     * Recent mixed activity feed for the dashboard "System Activity" panel.
+     *
+     * @return array<int, array<string, mixed>>
      */
-    private function activityOverTime(int $days = 30)
+    private function recentActivity(int $limit = 20): array
     {
-        $since = now()->subDays($days - 1)->startOfDay();
+        $review = TranslationEditLog::query()
+            ->select('id', 'action', 'admin_id', 'translation_history_id', 'created_at')
+            ->with(['admin:id,name', 'translationHistory:id,translated_filename,original_filename'])
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($r) => [
+                'type'       => 'review',
+                'action'     => $r->action,
+                'actor'      => $r->admin->name ?? 'Unknown',
+                'target'     => ($r->translationHistory
+                    ? ($r->translationHistory->translated_filename ?? $r->translationHistory->original_filename ?? '')
+                    : '#' . $r->translation_history_id),
+                'created_at' => $r->created_at,
+            ]);
 
-        $rows = TranslationEditLog::where('created_at', '>=', $since)
-            ->get(['action', 'created_at']);
+        $account = UserActivityLog::query()
+            ->select('id', 'action', 'user_id', 'attempted_email', 'ip_address', 'created_at')
+            ->with(['user:id,name'])
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($r) => [
+                'type'       => 'account',
+                'action'     => $r->action,
+                'actor'      => $r->user->name ?? ($r->attempted_email ?? 'Unknown'),
+                'target'     => $r->ip_address ?: '—',
+                'created_at' => $r->created_at,
+            ]);
+
+        return $review
+            ->concat($account)
+            ->sortByDesc(fn ($r) => $r['created_at'] ?? null)
+            ->take($limit)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Verify/edit/flag action counts grouped by day.
+     *
+     * @param  string|null  $from  'Y-m-d'
+     * @param  string|null  $to    'Y-m-d'
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function activityOverTime(?string $from, ?string $to): \Illuminate\Support\Collection
+    {
+        $query = TranslationEditLog::query();
+
+        if ($from) {
+            $query->whereDate('created_at', '>=', $from);
+        } else {
+            $query->whereDate('created_at', '>=', now()->subDays(29)->startOfDay());
+        }
+
+        if ($to) {
+            $query->whereDate('created_at', '<=', $to);
+        }
+
+        $rows = $query->get(['action', 'created_at']);
 
         $byDate = [];
         foreach ($rows as $row) {

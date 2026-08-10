@@ -46,6 +46,15 @@
                     var workbook = XLSX.read(buffer, { type: 'array' });
                     return { value: renderWorkbook(XLSX, workbook) };
                 }
+                if (ext === 'txt' || ext === 'md') {
+                    return { value: renderPlainText(buffer) };
+                }
+                if (ext === 'csv') {
+                    return { value: renderCsv(buffer) };
+                }
+                if (ext === 'rtf') {
+                    return { value: renderRtf(buffer) };
+                }
                 throw new Error('Unsupported file type.');
             })
             .then(function (result) {
@@ -64,6 +73,65 @@
         var sheet = workbook.Sheets[firstSheetName];
         if (!sheet) return '<p class="review-form-note">The workbook has no sheets.</p>';
         return XLSX.utils.sheet_to_html(sheet, { header: '', footer: '' });
+    }
+
+    // ── Plain text preview (txt / md) ──────────────────────────────────────
+    function renderPlainText(buffer) {
+        var text = new TextDecoder('utf-8').decode(buffer);
+        return '<pre class="converter-output converter-output--plain">' + escapeHtml(text || '') + '</pre>';
+    }
+
+    // ── CSV preview: parse (quote-aware) and render as a table ─────────────
+    function renderCsv(buffer) {
+        var text = new TextDecoder('utf-8').decode(buffer);
+        var rows = [];
+        var row = [], field = '', inQuotes = false;
+
+        for (var i = 0; i < text.length; i++) {
+            var c = text[i];
+            if (inQuotes) {
+                if (c === '"') {
+                    if (text[i + 1] === '"') { field += '"'; i++; }
+                    else inQuotes = false;
+                } else {
+                    field += c;
+                }
+            } else if (c === '"') {
+                inQuotes = true;
+            } else if (c === ',') {
+                row.push(field); field = '';
+            } else if (c === '\n') {
+                row.push(field); rows.push(row); row = []; field = '';
+            } else if (c !== '\r') {
+                field += c;
+            }
+        }
+        if (field !== '' || row.length) { row.push(field); rows.push(row); }
+        if (rows.length === 0) return '<p class="review-form-note">The file is empty.</p>';
+
+        var html = '<div class="converter-output converter-output--table"><table>';
+        rows.forEach(function (cells, r) {
+            html += '<tr>';
+            cells.forEach(function (cell) {
+                var tag = r === 0 ? 'th' : 'td';
+                html += '<' + tag + '>' + escapeHtml(cell) + '</' + tag + '>';
+            });
+            html += '</tr>';
+        });
+        return html + '</table></div>';
+    }
+
+    // ── RTF preview: strip control words, keep readable text ───────────────
+    function renderRtf(buffer) {
+        var text = new TextDecoder('latin1').decode(buffer);
+        text = text.replace(/\\'([0-9a-fA-F]{2})/g, function (_, hex) {
+            return String.fromCharCode(parseInt(hex, 16));
+        });
+        text = text.replace(/\\par[d]?/gi, '\n')
+            .replace(/\\tab/gi, '\t')
+            .replace(/\\(?:[a-zA-Z]+-?\d* ?|.)/g, '')
+            .replace(/[{}]/g, '');
+        return '<pre class="converter-output converter-output--plain">' + escapeHtml(text.trim() || '') + '</pre>';
     }
 
     // ── Draft preview: live block mirror ───────────────────────────────────

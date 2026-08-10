@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\TranslationHistory;
+use Illuminate\Support\Facades\DB;
 
 class HistoryService
 {
@@ -52,6 +53,36 @@ class HistoryService
             ->limit(200)
             ->get()
             ->toArray();
+    }
+
+    /**
+     * Fetch a user's bookmarked records, newest first, capped at 500.
+     *
+     * @param  int  $userId  The authenticated user's ID.
+     * @return array<int, array>  Each element is a translation_history row.
+     */
+    public function getBookmarked(int $userId): array
+    {
+        return TranslationHistory::where('user_id', $userId)
+            ->where('is_bookmarked', '=', DB::raw('true'))
+            ->orderBy('created_at', 'desc')
+            ->limit(500)
+            ->get()
+            ->toArray();
+    }
+
+    /**
+     * Fetch a page of history records for a user, newest first.
+     *
+     * @param  int  $userId  The authenticated user's ID.
+     * @param  int  $perPage  Records per page.
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator<int, array<string, mixed>>
+     */
+    public function getHistoryPaginated(int $userId, int $perPage = 50)
+    {
+        return TranslationHistory::where('user_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
     }
 
     /**
@@ -184,5 +215,35 @@ class HistoryService
         TranslationHistory::where('id', $id)->update([
             'signed_url_expires_at' => $newExpiry,
         ]);
+    }
+
+    /**
+     * Rename a record's display filename.
+     *
+     * Translations show their translated_filename, originals show their
+     * original_filename — rename whichever is the record's display name. The
+     * stored storage_path is untouched, so the file itself is unaffected.
+     *
+     * @param  int  $id      The record ID.
+     * @param  int  $userId  The authenticated user's ID (ownership check).
+     * @param  string  $newName  The new display filename (extension preserved).
+     * @return array{renamed: bool, record: array|null}
+     */
+    public function renameRecord(int $id, int $userId, string $newName): array
+    {
+        $record = TranslationHistory::find($id);
+
+        if (!$record || (int) $record->user_id !== $userId) {
+            return ['renamed' => false, 'record' => null];
+        }
+
+        if (blank($record->translated_filename)) {
+            $record->original_filename = $newName;
+        } else {
+            $record->translated_filename = $newName;
+        }
+        $record->save();
+
+        return ['renamed' => true, 'record' => $record->toArray()];
     }
 }

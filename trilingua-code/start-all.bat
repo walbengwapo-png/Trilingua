@@ -4,12 +4,15 @@ echo   TriLingua - Starting All Services
 echo ==========================================
 echo.
 
-echo [1/2] Starting Python Translation Server (port 5000)...
+echo [1/4] Starting Python Translation Server (port 5000)...
 start "Python Translation Server" cmd /c "cd /d %~dp0Model && python server.py"
 
 timeout /t 3 /nobreak >nul
 
-echo [2/2] Starting Laravel Web Server (port 8000)...
+echo [2/4] Starting Laravel Queue Worker...
+start "Laravel Queue Worker" cmd /c "set PHPRC=C:\php82 && C:\php82\php.exe -c C:\php82\php.ini artisan queue:work --timeout=590 --sleep=2"
+
+echo [3/4] Starting Laravel Web Server (port 8000)...
 echo.
 echo Open your browser to: http://127.0.0.1:8000
 echo.

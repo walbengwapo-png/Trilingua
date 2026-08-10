@@ -47,14 +47,15 @@ class DocumentReviewController extends Controller
     }
 
     /**
-     * POST /admin/review/{translation}/blocks/{block}/verify
+     * POST /admin/review/{translation}/verify-document — mark the whole document
+     * verified and cascade every block to verified.
      */
-    public function verifyBlock(Request $request, TranslationHistory $translation, int $block): JsonResponse
+    public function verifyDocument(Request $request, TranslationHistory $translation): JsonResponse
     {
         return $this->wrap(fn () => [
             'success' => true,
-            'status' => $this->review->verifyBlock($translation->id, $block, Auth::id())->status,
-        ], 'verifyBlock');
+            'status' => $this->review->verifyDocument($translation->id, Auth::id())->review_status,
+        ], 'verifyDocument');
     }
 
     /**
@@ -80,9 +81,10 @@ class DocumentReviewController extends Controller
     }
 
     /**
-     * POST /admin/review/{translation}/blocks/{block}/flag
+     * POST /admin/review/{translation}/flag-document — mark the whole document
+     * flagged and cascade every block to flagged with the same reason/note.
      */
-    public function flagBlock(Request $request, TranslationHistory $translation, int $block): JsonResponse
+    public function flagDocument(Request $request, TranslationHistory $translation): JsonResponse
     {
         $validated = $request->validate([
             'reason' => ['required', 'string', 'in:' . implode(',', \App\Support\FlagReason::ALL)],
@@ -91,50 +93,44 @@ class DocumentReviewController extends Controller
 
         return $this->wrap(fn () => [
             'success' => true,
-            'status' => $this->review->flagBlock(
+            'status' => $this->review->flagDocument(
                 $translation->id,
-                $block,
                 Auth::id(),
                 $validated['reason'],
                 $validated['note'] ?? null,
-            )->status,
-        ], 'flagBlock');
-    }
-
-    /**
-     * POST /admin/review/{translation}/bulk-approve — verify all blocks at/above a score threshold.
-     */
-    public function bulkApprove(Request $request, TranslationHistory $translation): JsonResponse
-    {
-        $validated = $request->validate([
-            'threshold' => ['required', 'integer', 'min:0', 'max:100'],
-        ]);
-
-        return $this->wrap(function () use ($validated, $translation) {
-            $result = $this->review->bulkApprove($translation->id, Auth::id(), (int) $validated['threshold']);
-            return [
-                'success' => true,
-                'approved' => $result['approved'],
-                'total' => $result['total'],
-            ];
-        }, 'bulkApprove');
+            )->review_status,
+        ], 'flagDocument');
     }
 
     /**
      * POST /admin/review/{translation}/save-regenerate — regenerate the document
      * from all edited blocks, return download links for the new + original.
+     *
+     * Accepts optional `blocks` ({block_id: new_text}) so on-screen edits that
+     * were not individually "Save Edit"-ted are persisted through the audited
+     * path before the document is re-rendered.
      */
     public function saveAndRegenerate(Request $request, TranslationHistory $translation): JsonResponse
     {
         $validated = $request->validate([
             'note' => ['nullable', 'string', 'max:2000'],
+            'blocks' => ['sometimes', 'array'],
+            'blocks.*' => ['string'],
         ]);
 
         return $this->wrap(function () use ($validated, $translation) {
-            $translation->load('blocks');
+            // Persist any on-screen (possibly unsaved) block edits through the
+            // audited path first, so regeneration reflects what the admin typed.
+            $appliedEdits = $this->review->applyBlockEdits(
+                $translation->id,
+                Auth::id(),
+                $validated['blocks'] ?? [],
+                $validated['note'] ?? null,
+            );
 
             // Collect the CURRENT state of every block so reconstruction uses
             // the persisted current_text (edited or not) as the source of truth.
+            $translation->load('blocks');
             $overrides = [];
             foreach ($translation->blocks as $block) {
                 $overrides[(int) $block->block_index] = $block->current_text;
@@ -165,7 +161,7 @@ class DocumentReviewController extends Controller
                 'new_download_url' => $result['signed_url'],
                 'new_download_filename' => $result['download_filename'],
                 'original_download_url' => $originalUrl,
-                'edited_blocks' => $result['edited_blocks'],
+                'edited_blocks' => $appliedEdits + $result['edited_blocks'],
             ];
         }, 'saveAndRegenerate');
     }
@@ -197,8 +193,21 @@ class DocumentReviewController extends Controller
             abort(404, 'Translated file not found.');
         }
 
-        $mime = (string) \mime_content_type($translation->storage_path);
-        $mime = $mime !== '' ? $mime : $this->mimeForExtension($ext);
+        // The storage_path is a Supabase bucket key, not a local filesystem
+        // path — mime_content_type() would fail on it (it throws under
+        // Laravel's handler). Detect from the filename extension first, which
+        // is authoritative for every format we produce, and only fall back to
+        // in-memory content sniffing for unknown extensions. Office formats are
+        // ZIP archives, so finfo alone would misreport them as application/zip
+        // — hence the extension-first order.
+        $mime = $this->mimeForExtension($ext);
+        if ($mime === 'application/octet-stream' && function_exists('finfo_open')) {
+            $finfo = new \finfo(FILEINFO_MIME_TYPE);
+            $sniffed = $finfo->buffer((string) $bytes);
+            if (is_string($sniffed) && $sniffed !== '' && $sniffed !== 'application/octet-stream') {
+                $mime = $sniffed;
+            }
+        }
 
         $response = new StreamedResponse(function () use ($bytes) {
             echo $bytes;

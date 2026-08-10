@@ -18,6 +18,7 @@ export default defineConfig({
                 'resources/css/views/translation.css',
                 'resources/css/views/welcome.css',
                 'resources/css/views/admin.css',
+                'resources/css/views/notifications.css',
                 'resources/js/app.js',
                 'resources/js/review-document.js'
             ],

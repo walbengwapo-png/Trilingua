@@ -5,14 +5,17 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\BookmarksController;
 use App\Http\Controllers\DocumentsController;
 use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TranslationController;
 use App\Http\Controllers\Admin\ReviewController;
 use App\Http\Controllers\Admin\TextReviewController;
 use App\Http\Controllers\Admin\DocumentReviewController;
+use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 
 Route::get('/', function () {
@@ -61,11 +64,23 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
     Route::post('/translate', [TranslationController::class, 'translate'])->name('translate.submit');
 
     Route::get('/documents', [DocumentsController::class, 'index'])->name('documents');
+    Route::post('/documents/{id}/re-translate', [DocumentsController::class, 'retranslate'])->name('documents.retranslate');
+    Route::get('/bookmarks', [BookmarksController::class, 'index'])->name('bookmarks');
+
+    Route::get('/notifications', [NotificationController::class, 'page'])->name('notifications.page');
+    Route::get('/notifications/data', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 
     Route::get('/history', [HistoryController::class, 'index'])->name('history');
     Route::get('/history/{id}', [HistoryController::class, 'detail'])->name('history.detail');
+    Route::get('/history/{id}/view', [HistoryController::class, 'view'])->name('history.view');
+    Route::get('/history/{id}/file', [HistoryController::class, 'showFile'])->name('history.file');
+    Route::get('/history/{id}/original-file', [HistoryController::class, 'showOriginalFile'])->name('history.original-file');
     Route::post('/history/redownload/{id}', [HistoryController::class, 'redownload'])->name('history.redownload');
     Route::post('/history/redownload-original/{id}', [HistoryController::class, 'redownloadOriginal'])->name('history.redownload-original');
+    Route::post('/history/{id}/rename', [HistoryController::class, 'rename'])->name('history.rename');
+    Route::post('/history/{id}/bookmark', [HistoryController::class, 'toggleBookmark'])->name('history.bookmark');
+    Route::post('/history/{id}/priority', [HistoryController::class, 'togglePriority'])->name('history.priority');
     Route::delete('/history/{id}', [HistoryController::class, 'destroy'])->name('history.destroy');
 
     // ── Admin (auth + throttle inherited from the outer group) ────────────
@@ -76,16 +91,18 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
         Route::get('/review', [ReviewController::class, 'index'])->name('review.index');
         Route::get('/review/{translation}', [ReviewController::class, 'show'])->name('review.show');
 
+        // Read-only audit trail viewer
+        Route::get('/audit', [AuditLogController::class, 'index'])->name('audit');
+
         // ── Text review write actions ─────────────────────────────────────
         Route::post('/review/{translation}/verify', [TextReviewController::class, 'verify'])->name('review.text.verify');
         Route::post('/review/{translation}/update', [TextReviewController::class, 'update'])->name('review.text.update');
         Route::post('/review/{translation}/flag', [TextReviewController::class, 'flag'])->name('review.text.flag');
 
         // ── Document review write actions ─────────────────────────────────
-        Route::post('/review/{translation}/blocks/{block}/verify', [DocumentReviewController::class, 'verifyBlock'])->name('review.block.verify');
+        Route::post('/review/{translation}/verify-document', [DocumentReviewController::class, 'verifyDocument'])->name('review.document.verify');
+        Route::post('/review/{translation}/flag-document', [DocumentReviewController::class, 'flagDocument'])->name('review.document.flag');
         Route::post('/review/{translation}/blocks/{block}/update', [DocumentReviewController::class, 'updateBlock'])->name('review.block.update');
-        Route::post('/review/{translation}/blocks/{block}/flag', [DocumentReviewController::class, 'flagBlock'])->name('review.block.flag');
-        Route::post('/review/{translation}/bulk-approve', [DocumentReviewController::class, 'bulkApprove'])->name('review.block.bulk-approve');
         Route::post('/review/{translation}/save-regenerate', [DocumentReviewController::class, 'saveAndRegenerate'])->name('review.save-regenerate');
         Route::get('/review/{translation}/file', [DocumentReviewController::class, 'showTranslatedFile'])->name('review.document.file');
     });

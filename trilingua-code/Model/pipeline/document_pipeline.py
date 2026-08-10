@@ -35,6 +35,7 @@ from document.regenerator import (
     finalize_sidecar,
     rich_block_entry,
     inplace_block_entry,
+    _make_inplace_translate_fn,
 )
 from document.reconstructor import (
     _translate_docx_inplace_with_translator,
@@ -74,7 +75,7 @@ _TRANSLATION_CACHE_TTL_DAYS = int(os.environ.get(
     "TRANSLATION_CACHE_TTL_DAYS", "30"
 ))
 _TRANSLATION_CONCURRENCY = int(os.environ.get(
-    "TRANSLATION_CONCURRENCY", "16"
+    "TRANSLATION_CONCURRENCY", "8"
 ))
 
 # OPTIMIZATION: Analyzer mode for Phase C Tier 2a
@@ -465,7 +466,18 @@ class DocumentPipeline:
     # ── In-place Translation ────────────────────────────────────────────────
 
     def _translate_inplace(self, request, ext, output_file, glossary_store, ctx):
-        """Translate a document in-place (DOCX/PPTX/XLSX)."""
+        """Translate a document in-place (DOCX/PPTX/XLSX).
+
+        Two-phase for speed:
+        1. Collect pass — walk the document once (no LLM, no save) to gather
+           every translatable text in the exact order the reconstructor applies it.
+        2. Parallel translate — send all texts through batch_translate_blocks
+           (thread pool + batching + shared cache + prepass context) instead of
+           one synchronous HTTP call per element.
+        3. Replay pass — run the same in-place walker again with a lookup
+           translate_fn (identical to admin regeneration) so per-run formatting
+           is preserved.
+        """
         # Initialize document memory if enabled
         if ctx.mode.document_memory:
             memory = DocumentMemory()
@@ -476,96 +488,57 @@ class DocumentPipeline:
         if translation_cache:
             ctx.translation_cache = translation_cache
 
-        # Build the translate function with enhanced context
-        # (renamed core; wrapped below to capture per-block admin-review data)
-        def _translate_block(text, block_type="paragraph"):
-            # Check cache first
-            if translation_cache:
-                cached = translation_cache.get(
-                    text, request.target_lang,
-                    self.translation_pipeline.provider.name,
-                )
-                if cached is not None:
-                    ctx.cache_stat(hit=True)
-                    ctx.blocks_cached += 1
-                    return cached
-
-            ctx.cache_stat(hit=False)
-
-            # Build context from document memory
-            context = ""
-            if ctx.document_memory:
-                context = ctx.document_memory.get_context_for_block(
-                    {"text": text, "type": block_type}, 0
-                )
-
-            # OPTIMIZATION: Inject prepass context (Task 5)
-            if ctx.prepass_summary or ctx.prepass_domain or ctx.prepass_terms:
-                prepass_preamble = build_prepass_injection(
-                    ctx.prepass_summary, ctx.prepass_domain, ctx.prepass_terms
-                )
-                if context:
-                    context = prepass_preamble + "\n" + context
-                else:
-                    context = prepass_preamble
-
-            # Translate via pipeline
-            from dto.requests import TranslationRequest
-            treq = TranslationRequest(
-                text=text,
-                source_lang=request.source_lang,
-                target_lang=request.target_lang,
-                block_type=block_type,
-                context_hint=context,
-                document_type=ctx.document_profile.document_type if ctx.document_profile else "",
+        # OPTIMIZATION: Build prepass injection once (Task 5)
+        prepass_preamble = ""
+        if ctx.prepass_summary or ctx.prepass_domain or ctx.prepass_terms:
+            prepass_preamble = build_prepass_injection(
+                ctx.prepass_summary, ctx.prepass_domain, ctx.prepass_terms
             )
-            resp = self.translation_pipeline.translate(treq)
-            translated = resp.translated_text
 
-            # Apply glossary
-            if glossary_store is not None:
-                translated = glossary_store.apply(translated)
+        # Choose the right in-place walker (collect and apply share it)
+        if ext == ".docx":
+            walker = _translate_docx_inplace_with_translator
+        elif ext == ".pptx":
+            walker = translate_pptx_inplace
+        elif ext == ".xlsx":
+            walker = translate_xlsx_inplace
+        else:
+            raise ValueError(f"Unsupported in-place format: {ext}")
 
-            # Cache the result
-            if translation_cache:
-                translation_cache.put(
-                    text, request.target_lang,
-                    self.translation_pipeline.provider.name, translated,
-                )
+        # ── Phase 1: Collect pass (no LLM calls, no save) ─────────────────
+        collected: list[tuple[str, str]] = []  # (block_type, src_text)
 
-            ctx.blocks_translated += 1
-            return translated
+        def _recorder(text, block_type="paragraph"):
+            collected.append((block_type, text))
+            return text
+
+        walker(request.file_path, output_file, _recorder,
+               glossary_store=None, save=False)
+
+        # ── Phase 2: Parallel translation ─────────────────────────────────
+        blocks = [{"type": bt, "text": src} for bt, src in collected]
+        translated_blocks = self.translation_pipeline.batch_translate_blocks(
+            blocks, request.source_lang, request.target_lang,
+            glossary_store=None,
+            document_memory=ctx.document_memory,
+            mode=ctx.mode,
+            translation_cache=translation_cache,
+            context_preamble=prepass_preamble,
+            ctx=ctx,
+        )
 
         # Admin review support: capture per-element block data with a stable
-        # block_index = call order, so an edit can be replayed in-place later.
+        # block_index = walk/call order, so an edit can be replayed in-place.
+        lookup: dict[int, str] = {}
         _captured_blocks = []
-        _capture_counter = {"i": -1}
+        for i, (bt, src) in enumerate(collected):
+            translated = translated_blocks[i]["text"] if i < len(translated_blocks) else src
+            lookup[i] = translated
+            _captured_blocks.append(inplace_block_entry(i, bt, src, translated))
 
-        def _translate_fn(text, block_type="paragraph"):
-            _capture_counter["i"] += 1
-            translated = _translate_block(text, block_type)
-            _captured_blocks.append(inplace_block_entry(
-                _capture_counter["i"], block_type,
-                text, translated,
-            ))
-            return translated
-
-        # Choose the right in-place translator
-        if ext == ".docx":
-            _translate_docx_inplace_with_translator(
-                request.file_path, output_file, _translate_fn,
-                glossary_store=glossary_store,
-            )
-        elif ext == ".pptx":
-            translate_pptx_inplace(
-                request.file_path, output_file, _translate_fn,
-                glossary_store=glossary_store,
-            )
-        elif ext == ".xlsx":
-            translate_xlsx_inplace(
-                request.file_path, output_file, _translate_fn,
-                glossary_store=glossary_store,
-            )
+        # ── Phase 3: Replay pass (preserve formatting) ────────────────────
+        walker(request.file_path, output_file, _make_inplace_translate_fn(lookup),
+               glossary_store=glossary_store, save=True)
 
         ctx.total_time_ms = ctx.stop_timer()
         ctx.log_summary()

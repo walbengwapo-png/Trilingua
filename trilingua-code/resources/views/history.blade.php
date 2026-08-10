@@ -69,6 +69,10 @@
             <h2>Saved Translations <span class="count-badge">{{ count($records) }}</span></h2>
         </div>
         <div class="history-page-header__controls">
+            <a href="{{ route('bookmarks') }}" class="history-select history-bookmarks-btn" title="View bookmarked translations">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                Bookmarks
+            </a>
             <input type="search" id="history-search" class="history-search" placeholder="Search translations…" aria-label="Search translations">
             <select id="history-group" class="history-select" aria-label="Group by">
                 <option value="language">Group by Language Pair</option>
@@ -191,19 +195,23 @@
                             </button>
                             @endif
 
-                            {{-- Share button --}}
-                            <button class="history-card__action-btn share-btn"
-                                    title="Share"
-                                    aria-label="Share translation">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                            {{-- Bookmark button --}}
+                            <button class="history-card__action-btn bookmark-btn {{ !empty($record['is_bookmarked']) ? 'bookmark-btn--active' : '' }}"
+                                    title="{{ !empty($record['is_bookmarked']) ? 'Remove bookmark' : 'Bookmark' }}"
+                                    data-id="{{ $record['id'] }}"
+                                    aria-label="Bookmark translation">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="{{ !empty($record['is_bookmarked']) ? 'currentColor' : 'none' }}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
                             </button>
 
-                            {{-- Bookmark button --}}
-                            <button class="history-card__action-btn bookmark-btn"
-                                    title="Bookmark"
-                                    aria-label="Bookmark translation">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                            {{-- Priority button (pending review records only) --}}
+                            @if (($record['review_status'] ?? 'pending') === 'pending')
+                            <button class="history-card__action-btn priority-btn {{ !empty($record['is_priority']) ? 'priority-btn--active' : '' }}"
+                                    title="{{ !empty($record['is_priority']) ? 'Remove priority request' : 'Request priority review' }}"
+                                    data-id="{{ $record['id'] }}"
+                                    aria-label="Request priority review">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="{{ !empty($record['is_priority']) ? 'currentColor' : 'none' }}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v-5"/><path d="M12 7h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
                             </button>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -393,10 +401,10 @@
                     window.location.href = data.download_url;
                     if (window.showToast) showToast('success', 'Download started', 'Your file is downloading.');
                 } else {
-                    showError('Unable to generate download link. Please try again later.');
+                    if (window.showErrorModal) showErrorModal('Download failed', 'Unable to generate download link. Please try again later.');
                 }
             })
-            .catch(function (err) { showError(err.message || 'Network error. Please try again.'); })
+            .catch(function (err) { if (window.showErrorModal) showErrorModal('Download failed', err.message || 'Network error. Please try again.'); })
             .finally(function () { btn.disabled = false; btn.innerHTML = orig; });
         });
     });
@@ -429,25 +437,61 @@
         });
     });
 
-    // ── Share (copy page URL to clipboard) ───────────────────────────────────
-    document.querySelectorAll('.share-btn').forEach(function (btn) {
+    // ── Bookmark (persisted) ────────────────────────────────────────────────
+    function setBookmarkVisual(btn, active) {
+        btn.classList.toggle('bookmark-btn--active', active);
+        var svg = btn.querySelector('svg');
+        if (svg) svg.style.fill = active ? 'currentColor' : 'none';
+        btn.title = active ? 'Remove bookmark' : 'Bookmark';
+    }
+
+    document.querySelectorAll('.bookmark-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(window.location.href).then(function () {
-                    if (window.showToast) showToast('info', 'Link copied', 'Page URL copied to clipboard.');
-                }).catch(function () {});
-            }
+            var id = btn.getAttribute('data-id');
+            if (!id) return;
+
+            fetchJson('/history/' + encodeURIComponent(id) + '/bookmark', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'Content-Type': 'application/json' }
+            })
+            .then(function (data) {
+                if (data && data.success) {
+                    setBookmarkVisual(btn, !!data.value);
+                    if (window.showToast) showToast('success', data.value ? 'Bookmarked' : 'Removed', data.value ? 'Translation bookmarked.' : 'Bookmark removed.');
+                }
+            })
+            .catch(function (err) {
+                if (window.showToast) showToast('error', 'Error', err.message || 'Failed to update bookmark.');
+            });
         });
     });
 
-    // ── Bookmark (visual toggle only) ────────────────────────────────────────
-    document.querySelectorAll('.bookmark-btn').forEach(function (btn) {
+    // ── Priority (request priority review, persisted) ─────────────────────
+    function setPriorityVisual(btn, active) {
+        btn.classList.toggle('priority-btn--active', active);
+        var svg = btn.querySelector('svg');
+        if (svg) svg.style.fill = active ? 'currentColor' : 'none';
+        btn.title = active ? 'Remove priority request' : 'Request priority review';
+    }
+
+    document.querySelectorAll('.priority-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            btn.classList.toggle('bookmark-btn--active');
-            var svg = btn.querySelector('svg');
-            if (svg) {
-                svg.style.fill = btn.classList.contains('bookmark-btn--active') ? 'currentColor' : 'none';
-            }
+            var id = btn.getAttribute('data-id');
+            if (!id) return;
+
+            fetchJson('/history/' + encodeURIComponent(id) + '/priority', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'Content-Type': 'application/json' }
+            })
+            .then(function (data) {
+                if (data && data.success) {
+                    setPriorityVisual(btn, !!data.value);
+                    if (window.showToast) showToast('success', data.value ? 'Priority requested' : 'Priority removed', data.value ? 'The admin has been notified to review this translation first.' : 'Priority review request removed.');
+                }
+            })
+            .catch(function (err) {
+                if (window.showToast) showToast('error', 'Error', err.message || 'Failed to update priority.');
+            });
         });
     });
 
@@ -486,7 +530,7 @@
             renderDetail(data);
         })
         .catch(function (err) {
-            if (window.showToast) showToast('error', 'Error', err.message || 'Failed to load details.');
+            if (window.showErrorModal) showErrorModal('Unable to load details', err.message || 'Failed to load details.');
             closeDetailModal();
         });
     }
@@ -583,7 +627,7 @@
                     if (res && res.download_url) window.location.href = res.download_url;
                 })
                 .catch(function (err) {
-                    if (window.showToast) showToast('error', 'Error', err.message);
+                    if (window.showErrorModal) showErrorModal('Download failed', err.message);
                 });
             } else {
                 // Copy text
@@ -607,7 +651,7 @@
                     if (res && res.download_url) window.location.href = res.download_url;
                 })
                 .catch(function (err) {
-                    if (window.showToast) showToast('error', 'Error', err.message);
+                    if (window.showErrorModal) showErrorModal('Download failed', err.message);
                 });
             };
         } else {
@@ -626,7 +670,7 @@
                     if (res && res.download_url) window.location.href = res.download_url;
                 })
                 .catch(function (err) {
-                    if (window.showToast) showToast('error', 'Error', err.message);
+                    if (window.showErrorModal) showErrorModal('Download failed', err.message);
                 });
             };
         } else {
@@ -649,11 +693,11 @@
         }
     });
 
-    // View details button click
+    // View details button click — navigate to the dedicated detail page
     document.querySelectorAll('.view-details-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
             var id = btn.getAttribute('data-id');
-            loadDetail(id);
+            window.location.href = '/history/' + encodeURIComponent(id) + '/view';
         });
     });
 
@@ -703,7 +747,7 @@
                 }
             })
             .catch(function (err) {
-                if (window.showToast) showToast('error', 'Error', err.message || 'Failed to delete.');
+                if (window.showErrorModal) showErrorModal('Delete failed', err.message || 'Failed to delete.');
             })
             .finally(function () {
                 deleteConfirmOk.disabled = false;
@@ -803,6 +847,12 @@
 
     // Initial sort (newest first by default)
     applyAll();
+
+    // ── Auto-open detail page from ?open={id} (notification deep link) ──
+    var openId = @json($openId ?? null);
+    if (openId) {
+        window.location.href = '/history/' + encodeURIComponent(openId) + '/view';
+    }
 
 })();
 </script>

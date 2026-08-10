@@ -161,17 +161,18 @@ class AdminWriteHttpTest extends TestCase
 
     // ── Document write actions over HTTP ─────────────────────────────────
 
-    public function test_http_block_verify(): void
+    public function test_http_document_verify_cascades_to_blocks(): void
     {
         $admin = $this->makeAdmin();
         $history = $this->makeDocRecord($this->makeUser());
         $block = $history->blocks->first();
 
         $this->actingAs($admin)
-            ->postJson("/admin/review/{$history->id}/blocks/{$block->id}/verify")
+            ->postJson("/admin/review/{$history->id}/verify-document")
             ->assertOk()
-            ->assertJson(['success' => true]);
+            ->assertJson(['success' => true, 'status' => 'verified']);
 
+        $this->assertSame('verified', $history->fresh()->review_status);
         $this->assertSame('verified', $block->fresh()->status);
     }
 
@@ -191,15 +192,32 @@ class AdminWriteHttpTest extends TestCase
         $this->assertSame('Kumusta kalibutan', $fresh->ai_translated_text);
     }
 
-    public function test_http_bulk_approve(): void
+    public function test_http_document_flag_cascades_to_blocks(): void
+    {
+        $admin = $this->makeAdmin();
+        $history = $this->makeDocRecord($this->makeUser());
+        $block = $history->blocks->first();
+
+        $this->actingAs($admin)
+            ->postJson("/admin/review/{$history->id}/flag-document", ['reason' => 'mistranslation', 'note' => 'Check this'])
+            ->assertOk()
+            ->assertJson(['success' => true, 'status' => 'flagged']);
+
+        $this->assertSame('flagged', $history->fresh()->review_status);
+        $this->assertSame('flagged', $block->fresh()->status);
+        $this->assertSame('mistranslation', $block->fresh()->flag_reason);
+    }
+
+    public function test_http_document_flag_rejects_missing_reason(): void
     {
         $admin = $this->makeAdmin();
         $history = $this->makeDocRecord($this->makeUser());
 
         $this->actingAs($admin)
-            ->postJson("/admin/review/{$history->id}/bulk-approve", ['threshold' => 80])
-            ->assertOk()
-            ->assertJson(['success' => true, 'approved' => 1]);
+            ->postJson("/admin/review/{$history->id}/flag-document", ['reason' => ''])
+            ->assertStatus(422);
+
+        $this->assertSame('pending', $history->fresh()->review_status);
     }
 
     public function test_http_save_regenerate_returns_new_and_original_links(): void
@@ -241,6 +259,63 @@ class AdminWriteHttpTest extends TestCase
                 'new_download_url' => 'https://supabase.test/regenerated',
                 'original_download_url' => 'https://supabase.test/original',
             ]);
+    }
+
+    public function test_http_save_regenerate_persists_unsaved_block_edits(): void
+    {
+        $admin = $this->makeAdmin();
+        $history = $this->makeDocRecord($this->makeUser());
+        $block = $history->blocks->first();
+
+        $storage = \Mockery::mock(\App\Services\StorageService::class);
+        $storage->shouldReceive('downloadFile')->once()->andReturn('original-bytes');
+        $storage->shouldReceive('uploadFile')->once()->andReturn([
+            'storage_path' => '1/regenerated.pdf',
+            'signed_url' => 'https://supabase.test/regenerated',
+            'signed_url_expires_at' => now()->toIso8601String(),
+        ]);
+        $storage->shouldReceive('generateSignedUrl')->once()->andReturn([
+            'signed_url' => 'https://supabase.test/original',
+            'signed_url_expires_at' => now()->toIso8601String(),
+        ]);
+        $this->app->instance(\App\Services\StorageService::class, $storage);
+
+        // The regeneration must be driven by the posted edit, proving unsaved
+        // textarea changes make it into the reconstructed document.
+        $translationManager = \Mockery::mock(\App\Services\Translation\TranslationManager::class);
+        $translationManager->shouldReceive('regenerateDocument')
+            ->once()
+            ->withArgs(function ($originalBytes, $originalName, $sidecar, $overrides) {
+                return ($overrides[0] ?? null) === 'Unsa nga hubad';
+            })
+            ->andReturn([
+                'body' => 'regenerated-bytes',
+                'download_filename' => 'contract_regenerated.pdf',
+                'mime_type' => 'application/pdf',
+            ]);
+        $this->app->instance(\App\Services\Translation\TranslationManager::class, $translationManager);
+
+        Http::fake();
+
+        $this->actingAs($admin)
+            ->postJson("/admin/review/{$history->id}/save-regenerate", [
+                'blocks' => [$block->id => 'Unsa nga hubad'],
+            ])
+            ->assertOk()
+            ->assertJsonPath('edited_blocks', 1);
+
+        // The edit was persisted through the audited path before regeneration.
+        $fresh = $block->fresh();
+        $this->assertSame('Unsa nga hubad', $fresh->current_text);
+        $this->assertSame('edited', $fresh->status);
+        $this->assertSame('Kumusta kalibutan', $fresh->ai_translated_text);
+        $this->assertSame('edited', $history->fresh()->review_status);
+
+        $log = TranslationEditLog::where('translation_history_id', $history->id)->latest('id')->first();
+        $this->assertNotNull($log);
+        $this->assertSame('edit', $log->action);
+        $this->assertSame('Kumusta kalibutan', $log->previous_text);
+        $this->assertSame('Unsa nga hubad', $log->new_text);
     }
 
     // ── Dashboard ───────────────────────────────────────────────────────

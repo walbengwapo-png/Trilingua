@@ -167,7 +167,7 @@
 
             <div class="settings-card">
                 <h3 class="settings-card-title">General Preferences</h3>
-                <p class="settings-card-description">Customize the appearance and language of the application.</p>
+                <p class="settings-card-description">Customize the appearance of the application.</p>
 
                 @if (session('general_success'))
                     <div class="alert alert-success">
@@ -194,29 +194,6 @@
                             </option>
                         </select>
                         @error('theme')
-                            <p class="error-message">{{ $message }}</p>
-                        @enderror
-                    </div>
-
-                    {{-- Language --}}
-                    <div class="form-field">
-                        <label for="language" class="form-label">Language</label>
-                        <select
-                            id="language"
-                            name="language"
-                            class="form-input {{ $errors->has('language') ? 'input-error' : '' }}"
-                        >
-                            <option value="en" {{ old('language', $user->language ?? 'en') === 'en' ? 'selected' : '' }}>
-                                English
-                            </option>
-                            <option value="tl" {{ old('language', $user->language ?? 'en') === 'tl' ? 'selected' : '' }}>
-                                Tagalog
-                            </option>
-                            <option value="ceb" {{ old('language', $user->language ?? 'en') === 'ceb' ? 'selected' : '' }}>
-                                Cebuano
-                            </option>
-                        </select>
-                        @error('language')
                             <p class="error-message">{{ $message }}</p>
                         @enderror
                     </div>

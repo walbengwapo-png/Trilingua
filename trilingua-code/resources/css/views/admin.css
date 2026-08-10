@@ -80,6 +80,25 @@
 .review-select:focus,
 .review-input:focus { border-color: var(--primary, #3b82f6); }
 .review-input { cursor: text; min-width: 120px; }
+.review-filters__field--search .review-input { min-width: 220px; }
+
+/* ── Priority badge ────────────────────────────────────────────────────── */
+.priority-badge {
+    display: inline-block;
+    margin-right: 6px;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #f59e0b;
+}
+.review-table__row--priority td {
+    background: rgba(245, 158, 11, 0.06);
+}
 
 /* ── Status badge ────────────────────────────────────────────────────── */
 .status-badge {
@@ -239,6 +258,30 @@
     padding: 16px 0 4px;
 }
 .review-pagination nav { display: inline-flex; }
+
+.review-pagination__controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+.review-pagination__info {
+    font-size: 0.82rem;
+    color: var(--muted);
+    white-space: nowrap;
+}
+.review-btn--disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+.review-filters__field--grow { flex: 1 1 180px; }
+.block-filters__summary {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin: 0 0 10px;
+    text-align: right;
+}
+.block-filters { margin-bottom: 14px; }
 
 /* ── Empty state ─────────────────────────────────────────────────────── */
 .empty-state {
@@ -765,6 +808,22 @@
     font-size: 0.85rem;
     text-align: left;
 }
+
+/* Plain-text / RTF / Markdown preview */
+.converter-output--plain {
+    margin: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: #fbfbfc;
+}
+
+/* CSV preview */
+.converter-output--table { overflow-x: auto; }
+.converter-output--table table { margin: 0; }
+.converter-output--table th { background: var(--bg, #f8f9fa); }
 
 /* Draft preview */
 .preview-draft__note {

@@ -421,6 +421,29 @@ button[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
     flex-shrink: 0;
 }
 
+/* Translating state: collapse the button into a circular spinner */
+#translate-btn.is-loading {
+    width: 54px;
+    height: 54px;
+    padding: 0;
+    border-radius: 50%;
+    gap: 0;
+    justify-content: center;
+    box-shadow: 0 4px 18px rgba(59,130,246,0.45);
+    animation: translate-pulse 1.2s ease-in-out infinite;
+}
+
+#translate-btn.is-loading .btn-spinner {
+    width: 26px;
+    height: 26px;
+    border-width: 3px;
+}
+
+@keyframes translate-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */

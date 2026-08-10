@@ -34,6 +34,10 @@ class TranslationHistory extends Model
         'reviewed_at',
         'flag_reason',
         'flag_note',
+        'is_priority',
+        'priority_at',
+        'is_bookmarked',
+        'bookmarked_at',
     ];
 
     protected $casts = [
@@ -43,6 +47,10 @@ class TranslationHistory extends Model
         'reviewed_at' => 'datetime',
         'quality_score' => 'integer',
         'sidecar' => 'array',
+        'is_priority' => 'boolean',
+        'priority_at' => 'datetime',
+        'is_bookmarked' => 'boolean',
+        'bookmarked_at' => 'datetime',
     ];
 
     public function user()

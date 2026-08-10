@@ -49,21 +49,35 @@
             </div>
             <div class="review-detail__meta-item">
                 <span class="review-detail__meta-label">Blocks</span>
-                <span class="review-detail__meta-value">{{ $record->blocks->count() }}</span>
+                <span class="review-detail__meta-value">{{ $totalBlocks }}</span>
             </div>
         </div>
 
-        {{-- Bulk approve + Save & Regenerate --}}
+        {{-- Document-level actions --}}
         <div class="review-form-card">
             <h4 class="review-form-card__title">Document Actions</h4>
 
-            <form method="POST" action="{{ route('admin.review.block.bulk-approve', $record->id) }}" class="review-inline-form"
-                  data-review-form data-reload="true">
-                @csrf
-                <label for="threshold" class="review-form-note" style="margin:0">Verify blocks with score ≥</label>
-                <input type="number" name="threshold" id="threshold" class="review-input" min="0" max="100" value="80" required>
-                <button type="submit" class="review-btn review-btn--success">Bulk Approve</button>
-            </form>
+            <p class="review-form-note" id="unsaved-count" style="display:none;margin:0 0 10px"></p>
+
+            <div class="block-card__actions" style="border-top:none;padding-top:0;margin-top:0">
+                <form method="POST" action="{{ route('admin.review.document.verify', $record->id) }}" class="review-inline-form"
+                      data-review-form data-reload="true" data-confirm-dirty="true">
+                    @csrf
+                    <button type="submit" class="review-btn review-btn--success">Verify Document</button>
+                </form>
+
+                <form method="POST" action="{{ route('admin.review.document.flag', $record->id) }}" class="review-inline-form"
+                      data-review-form data-reload="true" data-confirm-dirty="true">
+                    @csrf
+                    <select name="reason" class="review-select" required aria-label="Flag reason">
+                        <option value="">Flag…</option>
+                        @foreach (\App\Support\FlagReason::ALL as $reason)
+                            <option value="{{ $reason }}" @selected($record->flag_reason === $reason)>{{ ucwords(str_replace('_', ' ', $reason)) }}</option>
+                        @endforeach
+                    </select>
+                    <button type="submit" class="review-btn review-btn--danger">Flag Document</button>
+                </form>
+            </div>
 
             <form method="POST" action="{{ route('admin.review.save-regenerate', $record->id) }}" class="review-form-card" style="margin-top:14px"
                   id="save-regenerate-form" data-regen-form>
@@ -102,7 +116,7 @@
                     <div class="preview-panel" id="preview-final">
                         @if ($previewUrl && $isPdf)
                             <iframe class="review-pane__frame" src="{{ $previewUrl }}" title="Translated document"></iframe>
-                        @elseif ($previewUrl && in_array($previewExt, ['docx', 'xlsx']))
+                        @elseif ($previewUrl && in_array($previewExt, ['docx', 'xlsx', 'txt', 'md', 'csv', 'rtf']))
                             <div id="converter-host"
                                  data-ext="{{ $previewExt }}"
                                  data-file-url="{{ route('admin.review.document.file', $record->id) }}">
@@ -134,16 +148,58 @@
                 <div class="review-pane__head">
                     <h4 class="review-pane__title">
                         Editable Document
-                        <span class="count-badge">{{ $record->blocks->count() }}</span>
+                        <span class="count-badge">{{ $totalBlocks }}</span>
                     </h4>
                 </div>
 
                 <div class="review-pane__body">
-                    @if ($record->blocks->isEmpty())
-                        <p class="empty-state">No blocks were extracted for this document.</p>
+                    {{-- Block filters --}}
+                    <form method="GET" action="{{ route('admin.review.show', $record->id) }}" class="review-filters block-filters">
+                        <div class="review-filters__field">
+                            <label class="review-filters__label" for="b-status">Status</label>
+                            <select name="status" id="b-status" class="review-select">
+                                <option value="">All statuses</option>
+                                @foreach (\App\Support\ReviewStatus::ALL as $s)
+                                    <option value="{{ $s }}" @selected(($blocksFilter['status'] ?? '') === $s)>{{ ucfirst($s) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="review-filters__field">
+                            <label class="review-filters__label" for="b-score">Score ≥</label>
+                            <input type="number" name="score_min" id="b-score" class="review-input" min="0" max="100"
+                                   value="{{ $blocksFilter['score_min'] ?? '' }}" placeholder="Any">
+                        </div>
+
+                        <div class="review-filters__field review-filters__field--grow">
+                            <label class="review-filters__label" for="b-search">Search</label>
+                            <input type="search" name="search" id="b-search" class="review-input" style="width:100%"
+                                   value="{{ $blocksFilter['search'] ?? '' }}" placeholder="Source or translation…">
+                        </div>
+
+                        <div class="review-filters__field">
+                            <label class="review-filters__label" for="b-sort">Sort</label>
+                            <select name="sort" id="b-sort" class="review-select">
+                                <option value="score" @selected(($blocksFilter['sort'] ?? 'score') === 'score')>Score (worst first)</option>
+                                <option value="index" @selected(($blocksFilter['sort'] ?? '') === 'index')>Block order</option>
+                                <option value="status" @selected(($blocksFilter['sort'] ?? '') === 'status')>Status</option>
+                            </select>
+                        </div>
+
+                        <div class="review-filters__actions">
+                            <button type="submit" class="review-btn review-btn--primary">Filter</button>
+                            <a href="{{ route('admin.review.show', $record->id) }}" class="review-btn">Clear</a>
+                        </div>
+                    </form>
+
+                    @if ($blocks->isEmpty())
+                        <p class="empty-state">No blocks match the current filters.</p>
                     @else
+                        <p class="block-filters__summary">
+                            Showing {{ $blocks->count() }} of {{ $totalBlocks }} blocks
+                        </p>
                         <div class="doc-block-list">
-                            @foreach ($record->blocks as $block)
+                            @foreach ($blocks as $block)
                             @php
                                 $different = isset($block->current_text) && $block->current_text !== $block->ai_translated_text;
                                 $score     = $block->quality_score;
@@ -183,34 +239,35 @@
                                 </details>
 
                                 <div class="block-card__actions">
-                                    <form method="POST" action="{{ route('admin.review.block.verify', [$record->id, $block->id]) }}"
-                                          class="review-inline-form" data-review-form data-reload="true">
-                                        @csrf
-                                        <button type="submit" class="review-btn review-btn--success">Verify</button>
-                                    </form>
-
                                     <form method="POST" action="{{ route('admin.review.block.update', [$record->id, $block->id]) }}"
-                                          class="review-inline-form" data-review-form data-reload="true">
+                                          class="review-inline-form" data-review-form data-inplace="true">
                                         @csrf
                                         <input type="hidden" name="current_text" value="{{ htmlspecialchars($block->current_text ?? '', ENT_QUOTES) }}">
                                         <button type="submit" class="review-btn review-btn--warning">Save Edit</button>
-                                    </form>
-
-                                    <form method="POST" action="{{ route('admin.review.block.flag', [$record->id, $block->id]) }}"
-                                          class="review-inline-form" data-review-form data-reload="true">
-                                        @csrf
-                                        <select name="reason" class="review-select" required aria-label="Flag reason">
-                                            <option value="">Flag…</option>
-                                            @foreach (\App\Support\FlagReason::ALL as $reason)
-                                                <option value="{{ $reason }}" @selected($block->flag_reason === $reason)>{{ ucwords(str_replace('_', ' ', $reason)) }}</option>
-                                            @endforeach
-                                        </select>
-                                        <button type="submit" class="review-btn review-btn--danger">Flag</button>
                                     </form>
                                 </div>
                             </div>
                             @endforeach
                         </div>
+
+                        {{-- Pagination (manual prev/next so it inherits app styling) --}}
+                        @if ($blocks->hasPages())
+                        <div class="review-pagination">
+                            <div class="review-pagination__controls">
+                                @if ($blocks->onFirstPage())
+                                    <span class="review-btn review-btn--disabled">Prev</span>
+                                @else
+                                    <a href="{{ $blocks->previousPageUrl() }}" class="review-btn">Prev</a>
+                                @endif
+                                <span class="review-pagination__info">Page {{ $blocks->currentPage() }} of {{ $blocks->lastPage() }}</span>
+                                @if ($blocks->hasMorePages())
+                                    <a href="{{ $blocks->nextPageUrl() }}" class="review-btn">Next</a>
+                                @else
+                                    <span class="review-btn review-btn--disabled">Next</span>
+                                @endif
+                            </div>
+                        </div>
+                        @endif
                     @endif
                 </div>
             </section>
@@ -224,13 +281,81 @@
     'use strict';
     var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
+    var suppressLeavePrompt = false;
+
     // Keep each block's hidden current_text input in sync with its textarea so
-    // "Save Edit" posts the latest value.
+    // "Save Edit" posts the latest value, and keep the unsaved-edit counter live.
     document.querySelectorAll('.doc-block').forEach(function (card) {
         var textarea = card.querySelector('textarea[data-block-current]');
         var hidden = card.querySelector('input[name="current_text"]');
         if (textarea && hidden) {
-            textarea.addEventListener('input', function () { hidden.value = textarea.value; });
+            textarea.addEventListener('input', function () {
+                hidden.value = textarea.value;
+                updateUnsavedCount();
+            });
+        }
+    });
+
+    function hasUnsavedEdits() {
+        var list = document.querySelectorAll('textarea[data-block-current]');
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].value !== (list[i].getAttribute('data-saved') || '')) return true;
+        }
+        return false;
+    }
+
+    function updateUnsavedCount() {
+        var el = document.getElementById('unsaved-count');
+        if (!el) return;
+        var count = 0;
+        document.querySelectorAll('textarea[data-block-current]').forEach(function (ta) {
+            if (ta.value !== (ta.getAttribute('data-saved') || '')) count++;
+        });
+        if (count > 0) {
+            el.style.display = '';
+            el.textContent = count + ' unsaved block edit' + (count === 1 ? '' : 's') +
+                ' — Save & Regenerate will include them.';
+        } else {
+            el.style.display = 'none';
+        }
+    }
+
+    // Reflect a successful in-place "Save Edit": mark the textarea as saved and
+    // update the status / Edited badges without a full page reload.
+    function applyBlockSaved(card) {
+        var textarea = card.querySelector('textarea[data-block-current]');
+        if (!textarea) return;
+        textarea.setAttribute('data-saved', textarea.value);
+
+        var aiEl = card.querySelector('.block-card__text--highlight');
+        var aiText = aiEl ? (aiEl.textContent || '') : '';
+        var different = textarea.value !== aiText;
+
+        var badges = card.querySelectorAll('.block-card__badges .status-badge');
+        if (badges.length) {
+            badges[0].className = 'status-badge status-badge--edited';
+            badges[0].textContent = 'Edited';
+        }
+
+        var editedBadge = null;
+        for (var i = 1; i < badges.length; i++) {
+            if (badges[i].textContent.trim() === 'Edited') { editedBadge = badges[i]; break; }
+        }
+        if (different && !editedBadge && badges.length) {
+            var b = document.createElement('span');
+            b.className = 'status-badge status-badge--edited';
+            b.textContent = 'Edited';
+            badges[0].parentNode.insertBefore(b, badges[0].nextSibling);
+        } else if (!different && editedBadge) {
+            editedBadge.parentNode.removeChild(editedBadge);
+        }
+    }
+
+    window.addEventListener('beforeunload', function (e) {
+        if (suppressLeavePrompt) return;
+        if (hasUnsavedEdits()) {
+            e.preventDefault();
+            e.returnValue = '';
         }
     });
 
@@ -253,7 +378,7 @@
             var data = null;
             try { data = JSON.parse(res.raw); } catch (e) {}
             if (!res.r.ok) {
-                if (window.showToast) showToast('error', 'Action failed', (data && data.error) || 'Could not update.');
+                if (window.showErrorModal) showErrorModal('Action failed', (data && data.error) || 'Could not update.');
                 return null;
             }
             return data;
@@ -261,7 +386,7 @@
         .catch(function (err) {
             btn.disabled = false;
             btn.textContent = label;
-            if (window.showToast) showToast('error', 'Error', err.message || 'Network error.');
+            if (window.showErrorModal) showErrorModal('Action failed', err.message || 'Network error.');
             return null;
         });
     }
@@ -269,10 +394,20 @@
     document.querySelectorAll('form[data-review-form]').forEach(function (form) {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
+            if (form.getAttribute('data-confirm-dirty') === 'true' && hasUnsavedEdits()) {
+                if (!window.confirm('You have unsaved block edits. Proceed without saving them?')) return;
+            }
             postForm(form).then(function (data) {
                 if (!data) return;
                 if (window.showToast) showToast('success', 'Updated', 'Status: ' + (data.status || 'ok'));
-                if (form.getAttribute('data-reload') === 'true') {
+                if (form.getAttribute('data-inplace') === 'true') {
+                    var card = form.closest('.doc-block');
+                    if (card) {
+                        applyBlockSaved(card);
+                        updateUnsavedCount();
+                    }
+                } else if (form.getAttribute('data-reload') === 'true') {
+                    suppressLeavePrompt = true;
                     window.location.reload();
                 }
             });
@@ -293,6 +428,16 @@
             result.innerHTML = '';
 
             var body = new FormData(regenForm);
+            // Include every on-screen block edit so regeneration reflects the
+            // latest typed text; blocks not visible keep their persisted state.
+            document.querySelectorAll('.doc-block').forEach(function (card) {
+                var textarea = card.querySelector('textarea[data-block-current]');
+                var blockId = card.getAttribute('data-block-id');
+                if (textarea && blockId) {
+                    body.append('blocks[' + blockId + ']', textarea.value);
+                }
+            });
+            suppressLeavePrompt = true;
             fetch(regenForm.action, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
@@ -305,7 +450,7 @@
                 var data = null;
                 try { data = JSON.parse(res.raw); } catch (e) {}
                 if (!res.r.ok) {
-                    if (window.showToast) showToast('error', 'Regeneration failed', (data && data.error) || 'Could not regenerate.');
+                    if (window.showErrorModal) showErrorModal('Regeneration failed', (data && data.error) || 'Could not regenerate.');
                     return;
                 }
                 if (window.showToast) showToast('success', 'Regenerated', 'New version uploaded (' + (data.edited_blocks ?? 0) + ' edited blocks).');
@@ -325,10 +470,12 @@
             .catch(function (err) {
                 btn.disabled = false;
                 spinner.style.display = 'none';
-                if (window.showToast) showToast('error', 'Error', err.message || 'Network error.');
+                if (window.showErrorModal) showErrorModal('Regeneration failed', err.message || 'Network error.');
             });
         });
     }
+
+    updateUnsavedCount();
 })();
 </script>
 @endsection
