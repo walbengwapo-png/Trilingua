@@ -2,7 +2,7 @@
 
 ## Overview
 
-Implement the `/translate` route end-to-end: a `TranslationException` class, a `TranslationService` that shells out to the Python NLLB-200 backend via `proc_open`, a `TranslationController` that validates requests and returns JSON or streamed downloads, a two-panel Blade view with inline vanilla JS, per-view CSS, Vite config update, sidebar nav link, PHPUnit unit + feature tests, eris property-based tests, and Playwright frontend tests.
+Implement the `/translate` route end-to-end: a `TranslationException` class, a `TranslationService` that shells out to the Python translation backend via `proc_open`, a `TranslationController` that validates requests and returns JSON or streamed downloads, a two-panel Blade view with inline vanilla JS, per-view CSS, Vite config update, sidebar nav link, PHPUnit unit + feature tests, eris property-based tests, and Playwright frontend tests.
 
 ---
 
@@ -41,7 +41,7 @@ Implement the `/translate` route end-to-end: a `TranslationException` class, a `
   - [ ]* 3.2 Write PHPUnit unit tests for `translateText` in `tests/Unit/TranslationServiceTest.php`
     - `test_translate_text_returns_translated_string` — mock subprocess (override command), verify return value
     - `test_translate_text_throws_on_nonzero_exit` — mock subprocess with exit code 1, verify `TranslationException` thrown
-    - `test_language_map_returns_correct_nllb_codes` — verify all three `LANGUAGE_MAP` entries via reflection or a public accessor
+    - `test_language_map_returns_correct_language_codes` — verify all three `LANGUAGE_MAP` entries via reflection or a public accessor
     - _Requirements: 7.2, 7.3, 7.5_
 
 - [x] 4. Implement `TranslationService::translateDocument()`
@@ -103,8 +103,8 @@ Implement the `/translate` route end-to-end: a `TranslationException` class, a `
     - Assert 422 response every time (minimum 100 iterations)
     - _Requirements: 2.7, 7.6_
 
-  - [ ]* 7.2 Create `tests/Unit/TranslationServicePropertyTest.php` — Property 9: language name maps to NLLB code
-    - Tag: `// Feature: new-translation-page, Property 9: Language name maps to correct NLLB code`
+  - [ ]* 7.2 Create `tests/Unit/TranslationServicePropertyTest.php` — Property 9: language name maps to language code
+  - Tag: `// Feature: new-translation-page, Property 9: Language name maps to correct language code`
     - Use `$this->forAll(Generator\elements('English', 'Cebuano', 'Filipino'))` to generate a language name
     - Assert the `LANGUAGE_MAP` constant returns `eng_Latn`, `ceb_Latn`, or `tgl_Latn` respectively
     - _Requirements: 7.2_

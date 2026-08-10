@@ -134,7 +134,7 @@ Three surgical bug fixes across the FastAPI microservice, Laravel controller/ser
 ## Notes
 
 - Tasks marked with `*` are optional and can be skipped for faster MVP
-- Properties 1 and 3 involve actual NLLB model inference and are slow; run with `@settings(max_examples=10)` in CI and full 100 iterations locally
+- Properties 1 and 3 involve actual model inference and are slow; run with `@settings(max_examples=10)` in CI and full 100 iterations locally
 - Properties 2, 4, 5, and 6 are fast (no model calls) and can run at full 100 iterations in CI
 - All property tests go in `Model/tests/test_translation_fixes_properties.py`
 - PHP unit tests go in the existing Laravel test suite under `tests/Unit/`

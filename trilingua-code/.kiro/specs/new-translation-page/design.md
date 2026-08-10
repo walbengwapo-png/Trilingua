@@ -2,7 +2,7 @@
 
 ## Overview
 
-The New Translation page is the primary feature of the TriLingua application. It gives authenticated users a single, focused interface for translating text or documents between English, Cebuano, and Filipino using the existing Python NLLB-200 backend.
+The New Translation page is the primary feature of the TriLingua application. It gives authenticated users a single, focused interface for translating text or documents between English, Cebuano, and Filipino using the existing Python translation backend.
 
 The page lives at `/translate`, is protected by the `auth` middleware, and integrates into the existing sidebar layout without changing the application shell. The design follows the established TriLingua patterns: a `TranslationController` handles HTTP concerns, a `TranslationService` encapsulates subprocess invocation, and a dedicated Blade view + per-view CSS file handle the UI.
 
@@ -400,9 +400,9 @@ document=<file>
 
 ---
 
-### Property 9: Language name maps to correct NLLB code
+### Property 9: Language name maps to correct language code
 
-*For any* language name in {English, Cebuano, Filipino}, the Translation_Service's internal mapping should return the corresponding NLLB code: `eng_Latn`, `ceb_Latn`, or `tgl_Latn` respectively.
+*For any* language name in {English, Cebuano, Filipino}, the Translation_Service's internal mapping should return the corresponding language code: `eng_Latn`, `ceb_Latn`, or `tgl_Latn` respectively.
 
 **Validates: Requirements 7.2**
 
@@ -501,7 +501,7 @@ Focus on specific examples, edge cases, and error conditions:
   - `test_translate_document_returns_output_path` — mock subprocess, verify path returned
   - `test_translate_document_maps_rtf_to_docx` — verify extension mapping for .rtf
   - `test_translate_document_maps_odt_to_docx` — verify extension mapping for .odt
-  - `test_language_map_returns_correct_nllb_codes` — verify all three mappings
+  - `test_language_map_returns_correct_language_codes` — verify all three mappings
 
 - `TranslationControllerTest`
   - `test_show_requires_authentication` — GET /translate without auth → 302 to /login
@@ -526,8 +526,8 @@ Tag format: `// Feature: new-translation-page, Property {N}: {property_text}`
 - **Property 3** — `TranslationControllerPropertyTest::test_same_language_always_rejected`
   Generate random language value L from {English, Cebuano, Filipino}; POST with source_lang == target_lang == L; assert 422 response every time.
 
-- **Property 9** — `TranslationServicePropertyTest::test_language_name_maps_to_nllb_code`
-  Generate random language name from {English, Cebuano, Filipino}; assert the mapping returns the correct NLLB code.
+- **Property 9** — `TranslationServicePropertyTest::test_language_name_maps_to_language_code`
+  Generate random language name from {English, Cebuano, Filipino}; assert the mapping returns the correct language code.
 
 - **Property 10** — `TranslationServicePropertyTest::test_nonzero_exit_throws_translation_exception`
   Generate random stderr string and random non-zero exit code; mock subprocess; assert TranslationException thrown with that stderr message.

@@ -2549,7 +2549,7 @@ class TestBLEUReporterUnreadableFile:
 # They do NOT assert translation quality — only that the pipeline completes
 # and returns the expected result structure.
 #
-# The NLLB model is loaded at module import time in document_translator_v3.
+# The translation model is loaded at module import time in document_translator_v3.
 # If the model is unavailable the entire module import will fail; we guard
 # against that with a module-level importorskip so the tests are skipped
 # gracefully in environments without the model weights.

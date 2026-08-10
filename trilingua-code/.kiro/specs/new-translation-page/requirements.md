@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The New Translation page is a core feature of the TriLingua Laravel application that allows authenticated users to translate text or documents between English, Cebuano, and Filipino (Tagalog). The page presents a two-panel layout — a source panel on the left and a translated output panel on the right — and integrates with the existing Python-based NLLB-200 translation backend (`document_translator_v3.py`). It must match the existing TriLingua UI design system (sidebar layout, CSS custom properties, card-based design).
+The New Translation page is a core feature of the TriLingua Laravel application that allows authenticated users to translate text or documents between English, Cebuano, and Filipino (Tagalog). The page presents a two-panel layout — a source panel on the left and a translated output panel on the right — and integrates with the existing Python-based translation backend (`document_translator_v3.py`). It must match the existing TriLingua UI design system (sidebar layout, CSS custom properties, card-based design).
 
 ## Glossary
 
@@ -16,9 +16,9 @@ The New Translation page is a core feature of the TriLingua Laravel application 
 - **Attachment_Button**: The button that opens a file-picker for document uploads.
 - **Translation_Controller**: The Laravel controller (`TranslationController`) that handles HTTP requests for the Translation_Page.
 - **Translation_Service**: The PHP service class (`TranslationService`) that invokes the Python translation backend via subprocess.
-- **Python_Backend**: The `document_translator_v3.py` script that performs NLLB-200-based translation.
+- **Python_Backend**: The `document_translator_v3.py` script that performs translation.
 - **Supported_Formats**: `.docx`, `.pdf`, `.txt`, `.md`, `.rtf`, `.odt`, `.csv`.
-- **NLLB_Language_Code**: The BCP-47-style code used by the Python_Backend — `eng_Latn` (English), `ceb_Latn` (Cebuano), `tgl_Latn` (Filipino).
+- **Language_Code**: The BCP-47-style code used by the Python_Backend — `eng_Latn` (English), `ceb_Latn` (Cebuano), `tgl_Latn` (Filipino).
 - **Sidebar**: The `<aside>` element rendered by `layouts/app.blade.php` containing the application navigation links.
 
 ---
@@ -131,9 +131,9 @@ The New Translation page is a core feature of the TriLingua Laravel application 
 #### Acceptance Criteria
 
 1. THE Translation_Service SHALL accept a source language name, a target language name, and either a plain-text string or a file path as input.
-2. THE Translation_Service SHALL map the human-readable language names (English, Cebuano, Filipino) to the corresponding NLLB_Language_Code values (`eng_Latn`, `ceb_Latn`, `tgl_Latn`).
-3. WHEN invoked with plain text, THE Translation_Service SHALL invoke the Python_Backend via a subprocess call, passing the text, source NLLB_Language_Code, and target NLLB_Language_Code, and SHALL return the translated string from stdout.
-4. WHEN invoked with a file path, THE Translation_Service SHALL invoke the Python_Backend via a subprocess call, passing the file path, source NLLB_Language_Code, and target NLLB_Language_Code, and SHALL return the path of the translated output file. The output file format SHALL follow the mapping: `.docx` → `.docx`, `.pdf` → `.pdf`, `.txt` → `.txt`, `.md` → `.md`, `.csv` → `.csv`, `.rtf` → `.docx`, `.odt` → `.docx`.
+2. THE Translation_Service SHALL map the human-readable language names (English, Cebuano, Filipino) to the corresponding Language_Code values (`eng_Latn`, `ceb_Latn`, `tgl_Latn`).
+3. WHEN invoked with plain text, THE Translation_Service SHALL invoke the Python_Backend via a subprocess call, passing the text, source Language_Code, and target Language_Code, and SHALL return the translated string from stdout.
+4. WHEN invoked with a file path, THE Translation_Service SHALL invoke the Python_Backend via a subprocess call, passing the file path, source Language_Code, and target Language_Code, and SHALL return the path of the translated output file. The output file format SHALL follow the mapping: `.docx` → `.docx`, `.pdf` → `.pdf`, `.txt` → `.txt`, `.md` → `.md`, `.csv` → `.csv`, `.rtf` → `.docx`, `.odt` → `.docx`.
 5. IF the Python_Backend process exits with a non-zero status code, THEN THE Translation_Service SHALL throw a `TranslationException` containing the stderr output from the Python_Backend.
 6. IF the source language name and target language name passed to the Translation_Service are identical, THEN THE Translation_Controller SHALL reject the request with a validation error message before invoking the Translation_Service.
 7. WHEN a plain-text translation is requested, THE Translation_Controller SHALL reject the request with a validation error if the text input is empty or exceeds 8 000 characters.

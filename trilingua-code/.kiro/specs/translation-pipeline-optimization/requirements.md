@@ -37,7 +37,7 @@ All new classes and the `_resolve_overflow` function must be importable from `do
 - **Embedded Font**: A font whose glyph data is physically included in the PDF file, detectable via `fitz.Document.get_page_fonts()`.
 - **Run**: A contiguous sequence of characters in a DOCX paragraph that share the same character-level formatting (bold, italic, color, font).
 - **column_mode**: The user-selected PDF reading mode — `"auto"`, `"single"`, `"left"`, or `"right"`.
-- **NLLB Code**: A language identifier of the form `eng_Latn`, `ceb_Latn`, or `tgl_Latn` used internally; mapped to human-readable names via `CODE_TO_LANG`.
+- **Language Code**: A language identifier of the form `eng_Latn`, `ceb_Latn`, or `tgl_Latn` used internally; mapped to human-readable names via `CODE_TO_LANG`.
 - **Notes Slide**: A PowerPoint slide's notes panel containing speaker notes text.
 
 ---
@@ -177,13 +177,13 @@ All new classes and the `_resolve_overflow` function must be importable from `do
 
 ### Requirement 10: CSV Language-Code Round-Trip Fix (Refined)
 
-**User Story:** As a developer, I want the CSV translation branch to pass language names directly to `_translate_single`, so that the fragile NLLB-code-to-name round-trip is eliminated and the code path matches the non-CSV branches.
+**User Story:** As a developer, I want the CSV translation branch to pass language names directly to `_translate_single`, so that the fragile language-code-to-name round-trip is eliminated and the code path matches the non-CSV branches.
 
 #### Acceptance Criteria
 
 1. WHEN `run_pipeline()` processes a CSV file, THE `Pipeline` SHALL pass `source_lang` and `target_lang` (the human-readable names, e.g. `"English"`, `"Cebuano"`, `"Filipino"`) directly as the `src_code` and `tgt_code` arguments to `_translate_single()`, without first converting them via `LANGUAGES[source_lang]`.
 2. WHEN `_translate_single()` receives a value for `src_code` or `tgt_code` that is not present as a key in `CODE_TO_LANG`, THE `Pipeline` SHALL use that value as-is as the `source_lang` or `target_lang` argument passed to `_translate_with_mistral()`.
-3. THE `LANGUAGES` dict and `CODE_TO_LANG` reverse-mapping SHALL remain present and unchanged in `document_translator_v3` so that all non-CSV callers that pass NLLB codes (e.g. `eng_Latn`) continue to resolve to the correct language names.
+3. THE `LANGUAGES` dict and `CODE_TO_LANG` reverse-mapping SHALL remain present and unchanged in `document_translator_v3` so that all non-CSV callers that pass language codes (e.g. `eng_Latn`) continue to resolve to the correct language names.
 
 ---
 

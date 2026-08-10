@@ -60,6 +60,46 @@
 .link-bold{color:var(--text);font-weight:600;text-decoration:none}
 .link-bold:hover{text-decoration:underline}
 
+/* Password visibility toggle */
+.input-password-wrapper {
+    position: relative;
+    display: block;
+}
+.input-password-wrapper input {
+    width: 100%;
+    box-sizing: border-box;
+    padding-right: 3rem;
+}
+.btn-toggle-password {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    margin: 0;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    z-index: 2;
+    transition: color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.btn-toggle-password:hover {
+    color: #374151;
+    background: #f1f5f9;
+}
+.btn-toggle-password:focus-visible {
+    outline: none;
+    color: #374151;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+}
+
 /* Responsive */
 @media(max-width:480px){
     /* Responsive styles for register-specific elements can be added here */

@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This spec covers three bug fixes for the Trilingua translation application — a Laravel + Python FastAPI system that translates text and documents between English, Cebuano, and Filipino using the NLLB-200 model.
+This spec covers three bug fixes for the Trilingua translation application — a Laravel + Python FastAPI system that translates text and documents between English, Cebuano, and Filipino using the Mistral AI translation model.
 
 **Bug 1 — Text translation fails for short inputs:** The `/translate/text` endpoint routes plain-text input through `run_pipeline()`, which applies a document-level word-count filter (`len(words) >= 3`). Short inputs such as "jeje bading" (2 words) are filtered to zero blocks, raising a `ValueError` that propagates as HTTP 500 and surfaces in the UI as "An unexpected error occurred."
 
@@ -14,9 +14,9 @@ This spec covers three bug fixes for the Trilingua translation application — a
 
 ## Glossary
 
-- **Translation_Service**: The Python FastAPI microservice (`Model/server.py`) that loads the NLLB-200 model and exposes HTTP endpoints for text and document translation.
+- **Translation_Service**: The Python FastAPI microservice (`Model/server.py`) that loads the translation model and exposes HTTP endpoints for text and document translation.
 - **Pipeline**: The `run_pipeline()` function in `document_translator_v3.py` that reads a document file, filters blocks, translates them, and writes the output file.
-- **_translate_single**: The low-level function in `document_translator_v3.py` that translates a single string directly through the NLLB-200 model, bypassing all document-level filtering.
+- **_translate_single**: The low-level function in `document_translator_v3.py` that translates a single string directly through the translation model, bypassing all document-level filtering.
 - **Word_Count_Filter**: The `len(p.split()) >= 3` guard applied inside `read_txt()`, `read_docx()`, `read_rtf()`, and `read_odt()` that discards blocks with fewer than 3 words.
 - **PDF_Column_Mode**: A parameter accepted by `read_pdf()` and `run_pipeline()` controlling how columns are detected: `"auto"`, `"single"`, `"left"`, or `"right"`.
 - **Laravel_Controller**: `TranslationController` in `app/Http/Controllers/TranslationController.php`, which handles `POST /translate` and `GET /translate/download/{token}`.

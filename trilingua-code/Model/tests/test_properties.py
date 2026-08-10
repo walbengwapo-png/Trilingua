@@ -51,10 +51,9 @@ def test_importable_symbols():
 # ---------------------------------------------------------------------------
 # Tokenizer approximation
 # ---------------------------------------------------------------------------
-# Loading the real NLLB tokenizer (facebook/nllb-200-distilled-600M) in tests
-# would require downloading ~1 GB of model weights and would be very slow.
-# Instead we use a word-count approximation that mirrors the budget check in
-# _translate_single():
+# Loading the real tokenizer in tests would require downloading ~1 GB of
+# model weights and would be very slow. Instead we use a word-count
+# approximation that mirrors the budget check in _translate_single():
 #
 #   1 word ≈ 1.3 tokens  →  400-token budget ≈ 307 words
 #
@@ -68,7 +67,7 @@ WORD_BUDGET = int(TOKEN_BUDGET / WORDS_PER_TOKEN)  # 307
 
 def _approx_token_count(text: str) -> int:
     """
-    Approximate the NLLB tokenizer token count for *text*.
+    Approximate the tokenizer token count for *text*.
 
     Uses the same 1-word ≈ 1.3-tokens heuristic that the production code
     relies on when the real tokenizer is unavailable.  The +2 accounts for
@@ -312,13 +311,13 @@ def test_context_hint_token_budget(hint: str, source: str):
     Property 4: Context hint token budget
 
     For any context hint string and source block string, the combined token
-    count of the encoded input passed to the NLLB model shall not exceed 400
+    count of the encoded input passed to the model shall not exceed 400
     tokens after the truncation logic in _translate_single() is applied.
 
     The test replicates the word-by-word front-truncation algorithm from
     _translate_single() using a word-count approximation
     (1 word ≈ 1.3 tokens, budget = 400 tokens ≈ 307 words) so that the
-    property can be verified quickly without loading the full NLLB tokenizer.
+    property can be verified quickly without loading the full tokenizer.
     """
     # Feature: translation-layout-quality, Property 4: Context hint token budget
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document covers the technical design for three targeted bug fixes in the Trilingua translation application. Trilingua is a Laravel + Python FastAPI system that translates text and documents between English, Cebuano, and Filipino using the NLLB-200-distilled-600M model.
+This document covers the technical design for three targeted bug fixes in the Trilingua translation application. Trilingua is a Laravel + Python FastAPI system that translates text and documents between English, Cebuano, and Filipino using the Mistral AI translation model.
 
 The three fixes address:
 
@@ -10,7 +10,7 @@ The three fixes address:
 2. **Bug 2** — The `/translate/document` endpoint has no way to select a PDF column mode, so bilingual PDFs always use `"auto"` and pick up both columns (source + partial translation), degrading output quality.
 3. **Bug 3** — Both fetch calls in the frontend call `response.json()` unconditionally; when the server returns a non-JSON error body, the parse throws and the catch handler shows the generic "Network error." instead of the real error.
 
-Each fix is surgical — no architectural changes, no new dependencies, no changes to the NLLB model loading or pipeline logic.
+Each fix is surgical — no architectural changes, no new dependencies, no changes to the model loading or pipeline logic.
 
 ---
 

@@ -10,7 +10,7 @@ from dataclasses import dataclass, field, asdict
 from typing import Optional
 
 
-# Supported language codes (NLLB-compatible, kept from original)
+# Supported language codes (kept from original)
 LANGUAGES = {
     "English":  "eng_Latn",
     "Cebuano":  "ceb_Latn",
@@ -26,8 +26,8 @@ class TranslationRequest:
     text: str
     source_lang: str          # Human-readable name, e.g. "English"
     target_lang: str          # Human-readable name, e.g. "Cebuano"
-    source_code: str = ""     # NLLB code, auto-filled from source_lang
-    target_code: str = ""     # NLLB code, auto-filled from target_lang
+    source_code: str = ""     # Language code, auto-filled from source_lang
+    target_code: str = ""     # Language code, auto-filled from target_lang
     context_hint: str = ""    # Optional context from previous chunks
     block_type: str = "paragraph"  # paragraph, header, footer, table_cell, etc.
     document_type: str = ""   # Document type for specialized prompts (Phase 4)

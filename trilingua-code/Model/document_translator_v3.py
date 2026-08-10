@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """Document Translator v4 — Mistral AI Powered
 =============================================
-Replaces the NLLB-200 model with Mistral AI API for:
+Replaces the original translation pipeline with the Mistral AI API for:
   - 5-10x faster translation
   - Better translation quality
   - No GPU required
   - No 2.5GB model download
 
 Key improvements over v3:
-  - Mistral AI API as the sole translation engine (NLLB removed)
+  - Mistral AI API as the sole translation engine
   - Template-based DOCX writer (modifies original in-place → perfect layout)
   - PPTX support (read/write with python-pptx)
   - XLSX support (read/write with openpyxl)
@@ -1030,7 +1030,7 @@ def _translate_single(text, src_code, tgt_code, context_hint="", block_type="par
     """
     Translate a single piece of text using Mistral AI.
     
-    The src_code/tgt_code are NLLB-style codes (eng_Latn, ceb_Latn, tgl_Latn)
+    The src_code/tgt_code are language codes (eng_Latn, ceb_Latn, tgl_Latn)
     kept for backward compatibility. We map them back to language names.
     block_type provides structural context (e.g. 'header', 'table_cell').
     """

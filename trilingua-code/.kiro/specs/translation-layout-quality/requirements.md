@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This feature improves the output quality of the Trilingua document translation system across two dimensions: translation quality and document layout fidelity. The system currently uses `facebook/nllb-200-distilled-600M` for English ↔ Cebuano ↔ Filipino translation and reconstructs translated documents as PDF or DOCX files. Known gaps include weak fluency from the distilled model, no cross-block context, no terminology consistency, mid-sentence chunk splits, hardcoded fonts in PDF output, white-rect bleed on non-white backgrounds, overflow pushing into adjacent blocks, and near-total loss of DOCX formatting (styles, color, alignment, tables).
+This feature improves the output quality of the Trilingua document translation system across two dimensions: translation quality and document layout fidelity. The system currently uses the Mistral AI translation model for English ↔ Cebuano ↔ Filipino translation and reconstructs translated documents as PDF or DOCX files. Known gaps include no cross-block context, no terminology consistency, mid-sentence chunk splits, hardcoded fonts in PDF output, white-rect bleed on non-white backgrounds, overflow pushing into adjacent blocks, and near-total loss of DOCX formatting (styles, color, alignment, tables).
 
 ## Glossary
 
@@ -18,7 +18,7 @@ This feature improves the output quality of the Trilingua document translation s
 - **Background_Sampler**: A component that samples the pixel color of the area behind a text Block to determine the correct erase fill color.
 - **Column_Detector**: The existing component that splits page blocks into left and right columns.
 - **Style_Mapper**: A component that maps DOCX paragraph style names (e.g., "Heading 1", "List Bullet") to their python-docx equivalents in the output document.
-- **NLLB_Model**: The `facebook/nllb-200-distilled-600M` seq2seq model currently used for translation.
+- **Translation_Model**: The Mistral AI translation model currently used for translation.
 - **BLEU**: Bilingual Evaluation Understudy score — a standard metric for translation quality.
 
 ---

@@ -139,7 +139,7 @@ def pytest_configure(config):
 
     config.addinivalue_line(
         "markers",
-        "slow: marks tests as slow (e.g. end-to-end pipeline tests that load the NLLB model)",
+        "slow: marks tests as slow (e.g. end-to-end pipeline tests that load the translation model)",
     )
     config.addinivalue_line(
         "markers",

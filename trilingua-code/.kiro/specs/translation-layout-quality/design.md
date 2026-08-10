@@ -2,7 +2,7 @@
 
 ## Overview
 
-This feature improves the Trilingua document translation pipeline across two dimensions: **translation quality** and **document layout fidelity**. The system uses `facebook/nllb-200-distilled-600M` for English ↔ Cebuano ↔ Filipino translation and reconstructs translated documents as PDF or DOCX files.
+This feature improves the Trilingua document translation pipeline across two dimensions: **translation quality** and **document layout fidelity**. The system uses the Mistral AI translation model for English ↔ Cebuano ↔ Filipino translation and reconstructs translated documents as PDF or DOCX files.
 
 The improvements are implemented as nine focused components added to or replacing logic in `Model/document_translator_v3.py`, with no changes to `server.py` or the Laravel application layer. All components are pure Python and integrate into the existing `run_pipeline()` function.
 
@@ -393,7 +393,7 @@ deque[str]  # maxlen=2; each entry is the translated text of one block
 
 ### Property 4: Context hint token budget
 
-*For any* context hint string and source block string, the combined token count of the encoded input passed to the NLLB model shall not exceed 400 tokens.
+*For any* context hint string and source block string, the combined token count of the encoded input passed to the model shall not exceed 400 tokens.
 
 **Validates: Requirements 2.3**
 

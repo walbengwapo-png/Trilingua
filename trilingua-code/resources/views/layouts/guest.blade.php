@@ -52,7 +52,7 @@
 
         <div class="auth-brand__tagline">
             <h2>Translate across<br>three languages</h2>
-            <p>Powered by NLLB-200 AI — translate text and documents between English, Cebuano, and Filipino instantly.</p>
+            <p>Translate text and documents between English, Cebuano, and Filipino instantly.</p>
 
             <div class="auth-brand__langs">
                 <span class="auth-brand__lang-pill">

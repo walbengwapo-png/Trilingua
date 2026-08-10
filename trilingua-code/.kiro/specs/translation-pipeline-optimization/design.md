@@ -351,7 +351,7 @@ _translate_single(cell, source_lang, target_lang, ...)
 
 `_translate_single()` already handles the case where `src_code` is not a key in `CODE_TO_LANG` by using the value as-is (`CODE_TO_LANG.get(src_code, src_code)`). No changes to `_translate_single()` are needed beyond verifying this fallback is present.
 
-`LANGUAGES` and `CODE_TO_LANG` are left unchanged so non-CSV callers that pass NLLB codes continue to work.
+`LANGUAGES` and `CODE_TO_LANG` are left unchanged so non-CSV callers that pass language codes continue to work.
 
 ---
 
@@ -689,7 +689,7 @@ The following integration scenarios require mocking of external dependencies (Mi
 - **Req 5.8**: `write_pdf_preserved()` → verify `Font_Mapper.resolve` is called with the correct arguments per block.
 - **Req 6.6**: `write_pdf_preserved()` where `insert_textbox` returns negative → verify `_resolve_overflow` is called.
 - **Req 8**: `translate_docx_inplace()` with a multi-section document → verify header/footer paragraphs are translated with correct block types.
-- **Req 10**: `run_pipeline()` with a CSV file → mock `_translate_single`, verify it receives `source_lang`/`target_lang` names, not NLLB codes.
+- **Req 10**: `run_pipeline()` with a CSV file → mock `_translate_single`, verify it receives `source_lang`/`target_lang` names, not language codes.
 
 ### Smoke Tests
 
