@@ -16,18 +16,33 @@
     background: none;
     border: none;
     cursor: pointer;
-    padding: 0;
+    padding: 6px;
     margin: 0;
     color: #94a3b8;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 22px;
-    height: 22px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
     z-index: 2;
-    transition: color 0.2s, transform 0.2s;
+    transition: color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 .btn-toggle-password:hover {
     color: #374151;
-    transform: translateY(-50%) scale(1.15);
+    background: #f1f5f9;
+}
+.btn-toggle-password:focus-visible {
+    outline: none;
+    color: #374151;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+}
+
+[data-theme="dark"] .btn-toggle-password:hover {
+    color: #f9fafb;
+    background: #2d3748;
+}
+[data-theme="dark"] .btn-toggle-password:focus-visible {
+    color: #f9fafb;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.4);
 }

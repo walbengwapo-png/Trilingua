@@ -1,9 +1,18 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+        (function () {
+            var t = 'light';
+            try { t = localStorage.getItem('trilingua-theme') || 'light'; } catch (e) {}
+            document.documentElement.dataset.theme = (t === 'dark') ? 'dark' : 'light';
+        })();
+    </script>
     <title>@yield('title', 'TriLingua') — TriLingua</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/favicon.ico" sizes="any">
     @vite(['resources/css/base.css', 'resources/css/layouts/guest.css', 'resources/js/app.js'])
     @yield('styles')
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -23,8 +32,19 @@
 
         <div class="auth-brand__logo">
             <div class="auth-brand__logo-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z" fill="white"/>
+                <svg width="28" height="28" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <circle cx="32" cy="19" r="14.5" fill="none" stroke="#ffffff" stroke-width="11"/>
+                    <circle cx="32" cy="19" r="14.5" fill="none" stroke="#3b82f6" stroke-width="8.5"/>
+                    <circle cx="20.7" cy="38.5" r="14.5" fill="none" stroke="#ffffff" stroke-width="11"/>
+                    <circle cx="20.7" cy="38.5" r="14.5" fill="none" stroke="#10b981" stroke-width="8.5"/>
+                    <circle cx="43.3" cy="38.5" r="14.5" fill="none" stroke="#ffffff" stroke-width="11"/>
+                    <circle cx="43.3" cy="38.5" r="14.5" fill="none" stroke="#f43f5e" stroke-width="8.5"/>
+                    <g transform="rotate(-6 32 32)">
+                        <rect x="25.5" y="24" width="13" height="16" rx="3" fill="#ffffff"/>
+                        <rect x="28" y="27.5" width="8" height="2.5" rx="1.25" fill="#3b82f6"/>
+                        <rect x="28" y="32" width="8" height="2.5" rx="1.25" fill="#cbd5e1"/>
+                        <rect x="28" y="36.5" width="6" height="2.5" rx="1.25" fill="#cbd5e1"/>
+                    </g>
                 </svg>
             </div>
             <span class="auth-brand__logo-name">TriLingua</span>

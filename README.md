@@ -1,6 +1,8 @@
 # TriLingua - 3-Way Translation System
 
-> **Capstone Project** - A document-level translation system for Cebuano, Filipino, and English languages
+![TriLingua Banner](docs/banner.png)
+
+> **Capstone Project** - A multilingual document translation system for English, Filipino, and Cebuano languages
 
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=flat&logo=laravel)](https://laravel.com)
 [![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=flat&logo=python)](https://python.org)
