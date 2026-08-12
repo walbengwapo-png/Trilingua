@@ -215,3 +215,117 @@ body {
     height: auto;
     display: block;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Pagination
+   ══════════════════════════════════════════════════════════════════════════ */
+.pg {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.pg__inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pg__pages {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.pg-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card-bg);
+    color: var(--text);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease,
+                border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.pg-btn:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+}
+.pg-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.30);
+}
+.pg-btn:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+.pg-btn[aria-disabled="true"] {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+.pg-arrow {
+    line-height: 1;
+}
+
+.pg-num {
+    min-width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card-bg);
+    color: var(--text);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease,
+                border-color 0.18s ease;
+}
+.pg-num:hover {
+    background: rgba(59, 130, 246, 0.08);
+    border-color: rgba(59, 130, 246, 0.25);
+    color: var(--primary);
+}
+.pg-num:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+.pg-num.is-active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    font-weight: 600;
+    cursor: default;
+}
+.pg-num--dots {
+    border-color: transparent;
+    background: transparent;
+    cursor: default;
+}
+.pg-num--dots:hover {
+    background: transparent;
+    border-color: transparent;
+    color: var(--text);
+}
+
+@media (max-width: 640px) {
+    .pg__inner { gap: 6px; }
+    .pg__pages { gap: 4px; }
+}
