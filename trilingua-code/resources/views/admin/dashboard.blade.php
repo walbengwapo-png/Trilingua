@@ -26,7 +26,9 @@
         <div class="stat-card">
             <div class="stat-card__label">Pending Review</div>
             <div class="stat-card__value">{{ $stats['pending'] }}</div>
-            <a href="{{ route('admin.review.index') }}" class="stat-card__link">View queue &rarr;</a>
+            <a href="{{ route('admin.review.index') }}" class="stat-card__link">
+                View queue <span class="stat-card__link-arrow">&rarr;</span>
+            </a>
         </div>
         <div class="stat-card">
             <div class="stat-card__label">Verified (no edit)</div>
