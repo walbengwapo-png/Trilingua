@@ -99,8 +99,7 @@
             $allCount      = count($documents);
             $recentCount   = count(array_filter($documents, fn($d) =>
                 \Carbon\Carbon::parse($d['created_at'])->isCurrentMonth()));
-            $sharedCount   = 0;   // not yet tracked in DB — show 0
-            $archivedCount = 0;   // not yet tracked in DB — show 0
+
 
             // Separate originals (no parent) from translations (have parent)
             $originals = array_values(array_filter($documents, fn($d) => empty($d['parent_document_id'])));
@@ -155,12 +154,6 @@
             </button>
             <button class="tab-btn" data-tab="recent" role="tab" aria-selected="false">
                 Recent <span class="tab-count">{{ $recentCount }}</span>
-            </button>
-            <button class="tab-btn" data-tab="shared" role="tab" aria-selected="false">
-                Shared <span class="tab-count">{{ $sharedCount }}</span>
-            </button>
-            <button class="tab-btn" data-tab="archived" role="tab" aria-selected="false">
-                Archived <span class="tab-count">{{ $archivedCount }}</span>
             </button>
         </div>
 
@@ -561,8 +554,6 @@
 
             var matchTab = true;
             if (state.tab === 'recent')   { matchTab = recent; }
-            if (state.tab === 'shared')   { matchTab = false; }   // 0 shared — hide all
-            if (state.tab === 'archived') { matchTab = false; }   // 0 archived — hide all
 
             card.style.display = (matchSearch && matchLang && matchTab) ? '' : 'none';
         });
