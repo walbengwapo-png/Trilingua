@@ -3,7 +3,7 @@
 @section('title', 'Translation History')
 
 @section('styles')
-    @vite(['resources/css/views/history.css'])
+    @vite(['resources/css/views/history.css', 'resources/css/views/admin.css'])
 
     {{-- Inline modal styles (ensures they work without Vite recompilation) --}}
     <style>
@@ -146,6 +146,16 @@
                             {{ $isDoc ? 'Document' : 'Text' }}
                         </span>
                         <span class="status-badge status-badge--{{ $reviewStatus }}">{{ ucfirst($reviewStatus) }}</span>
+                        @if (!empty($record['quality_score']))
+                            @php
+                                $score = (int) $record['quality_score'];
+                                $scoreClass = $score >= 80 ? 'high' : ($score >= 50 ? 'medium' : 'low');
+                            @endphp
+                            <span class="quality-score" title="Quality score: {{ $score }}/100">
+                                <span class="quality-score__dot quality-score__dot--{{ $scoreClass }}"></span>
+                                {{ $score }}
+                            </span>
+                        @endif
                     </div>
 
                     <div class="history-card__body">
@@ -228,102 +238,6 @@
 
 </div>
 
-{{-- ═══════════════════════════════════════════════════════════════════════════ --}}
-{{-- Translation Details Modal                                                --}}
-{{-- ═══════════════════════════════════════════════════════════════════════════ --}}
-<div id="detail-modal" class="detail-modal" style="display:none">
-    <div class="detail-modal__overlay"></div>
-    <div class="detail-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="detail-modal-title">
-        <button class="detail-modal__close" id="detail-modal-close" aria-label="Close">&times;</button>
-
-        {{-- Loading state --}}
-        <div id="detail-modal-loading" class="detail-modal__loading">
-            <div class="detail-modal__spinner"></div>
-            <p>Loading details…</p>
-        </div>
-
-        {{-- Content (hidden until loaded) --}}
-        <div id="detail-modal-content" style="display:none">
-            {{-- Header --}}
-            <div class="detail-modal__header">
-                <div class="detail-modal__type-badge" id="detail-type-badge"></div>
-                <h3 id="detail-modal-title" class="detail-modal__title"></h3>
-                <p class="detail-modal__subtitle" id="detail-modal-subtitle"></p>
-            </div>
-
-            {{-- Metadata grid --}}
-            <div class="detail-modal__meta-grid" id="detail-meta-grid">
-                <div class="detail-modal__meta-item">
-                    <span class="detail-modal__meta-label">Source Language</span>
-                    <span class="detail-modal__meta-value" id="detail-source-lang"></span>
-                </div>
-                <div class="detail-modal__meta-item">
-                    <span class="detail-modal__meta-label">Target Language</span>
-                    <span class="detail-modal__meta-value" id="detail-target-lang"></span>
-                </div>
-                <div class="detail-modal__meta-item">
-                    <span class="detail-modal__meta-label">Date & Time</span>
-                    <span class="detail-modal__meta-value" id="detail-date"></span>
-                </div>
-                <div class="detail-modal__meta-item">
-                    <span class="detail-modal__meta-label">Translation Type</span>
-                    <span class="detail-modal__meta-value" id="detail-type"></span>
-                </div>
-                <div class="detail-modal__meta-item" id="detail-filesize-wrap">
-                    <span class="detail-modal__meta-label">File Size</span>
-                    <span class="detail-modal__meta-value" id="detail-filesize"></span>
-                </div>
-                <div class="detail-modal__meta-item">
-                    <span class="detail-modal__meta-label">Status</span>
-                    <span class="detail-modal__meta-value" id="detail-status"></span>
-                </div>
-                <div class="detail-modal__meta-item">
-                    <span class="detail-modal__meta-label">Review Status</span>
-                    <span class="detail-modal__meta-value" id="detail-review-status"></span>
-                </div>
-                <div class="detail-modal__meta-item" id="detail-user-wrap">
-                    <span class="detail-modal__meta-label">Created By</span>
-                    <span class="detail-modal__meta-value" id="detail-user"></span>
-                </div>
-            </div>
-
-            {{-- Text content preview (for text translations) --}}
-            <div id="detail-text-section" style="display:none">
-                <h4 class="detail-modal__section-title">Original Text</h4>
-                <div class="detail-modal__text-block" id="detail-source-text"></div>
-                <h4 class="detail-modal__section-title">Translated Text</h4>
-                <div class="detail-modal__text-block" id="detail-translated-text"></div>
-            </div>
-
-            {{-- Translations list (for original documents) --}}
-            <div id="detail-translations-section" style="display:none">
-                <h4 class="detail-modal__section-title">Translations</h4>
-                <div id="detail-translations-list" class="detail-modal__translations-list"></div>
-            </div>
-
-            {{-- Quick actions --}}
-            <div class="detail-modal__actions">
-                <button class="detail-modal__action-btn detail-modal__action-btn--primary" id="detail-action-view">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    View Translation
-                </button>
-                <button class="detail-modal__action-btn" id="detail-action-download" style="display:none">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Download Translated
-                </button>
-                <button class="detail-modal__action-btn" id="detail-action-original" style="display:none">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    Open Original
-                </button>
-                <button class="detail-modal__action-btn detail-modal__action-btn--danger" id="detail-action-delete">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                    Delete
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
 {{-- Delete confirmation dialog --}}
 <div id="delete-confirm" class="detail-modal" style="display:none">
     <div class="detail-modal__overlay"></div>
@@ -355,26 +269,6 @@
                 return data;
             });
         });
-    }
-
-    // ── Helper: format file size ────────────────────────────────────────────
-    function formatFileSize(bytes) {
-        if (!bytes) return '—';
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / 1048576).toFixed(1) + ' MB';
-    }
-
-    // ── Helper: format date ─────────────────────────────────────────────────
-    function formatDate(dateStr) {
-        if (!dateStr) return '—';
-        try {
-            var d = new Date(dateStr);
-            return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) +
-                   ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        } catch (e) {
-            return dateStr;
-        }
     }
 
     // ── Re-download ──────────────────────────────────────────────────────────
@@ -495,205 +389,7 @@
         });
     });
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // Translation Details Modal
-    // ══════════════════════════════════════════════════════════════════════════
-    var detailModal      = document.getElementById('detail-modal');
-    var detailOverlay    = detailModal.querySelector('.detail-modal__overlay');
-    var detailClose      = document.getElementById('detail-modal-close');
-    var detailLoading    = document.getElementById('detail-modal-loading');
-    var detailContent    = document.getElementById('detail-modal-content');
-    var currentRecordId  = null;
-
-    function openDetailModal() {
-        detailModal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeDetailModal() {
-        detailModal.style.display = 'none';
-        document.body.style.overflow = '';
-        currentRecordId = null;
-    }
-
-    function loadDetail(id) {
-        currentRecordId = id;
-        detailLoading.style.display = '';
-        detailContent.style.display = 'none';
-        openDetailModal();
-
-        fetchJson('/history/' + encodeURIComponent(id), {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        })
-        .then(function (data) {
-            renderDetail(data);
-        })
-        .catch(function (err) {
-            if (window.showErrorModal) showErrorModal('Unable to load details', err.message || 'Failed to load details.');
-            closeDetailModal();
-        });
-    }
-
-    function renderDetail(data) {
-        detailLoading.style.display = 'none';
-        detailContent.style.display = '';
-
-        var isDoc = (data.translation_type || 'document') === 'document';
-        var isOriginal = !data.parent_document_id;
-
-        // Type badge
-        var typeBadge = document.getElementById('detail-type-badge');
-        typeBadge.textContent = isDoc ? 'Document' : 'Text';
-        typeBadge.className = 'detail-modal__type-badge detail-modal__type-badge--' + (isDoc ? 'doc' : 'text');
-
-        // Title
-        var titleEl = document.getElementById('detail-modal-title');
-        titleEl.textContent = isDoc
-            ? (data.translated_filename || data.original_filename || 'Document')
-            : 'Text Translation';
-
-        // Subtitle
-        var subtitleEl = document.getElementById('detail-modal-subtitle');
-        subtitleEl.textContent = isDoc
-            ? (data.original_filename ? 'from: ' + data.original_filename : '')
-            : '';
-
-        // Metadata
-        document.getElementById('detail-source-lang').textContent = data.source_language || '—';
-        document.getElementById('detail-target-lang').textContent = data.target_language || '—';
-        document.getElementById('detail-date').textContent = formatDate(data.created_at);
-        document.getElementById('detail-type').textContent = isDoc ? 'Document Translation' : 'Text Translation';
-        document.getElementById('detail-status').textContent = (data.status || 'completed').charAt(0).toUpperCase() + (data.status || 'completed').slice(1);
-        document.getElementById('detail-review-status').textContent = (data.review_status || 'pending').charAt(0).toUpperCase() + (data.review_status || 'pending').slice(1);
-
-        // File size
-        var filesizeWrap = document.getElementById('detail-filesize-wrap');
-        if (isDoc && data.file_size) {
-            filesizeWrap.style.display = '';
-            document.getElementById('detail-filesize').textContent = formatFileSize(data.file_size);
-        } else {
-            filesizeWrap.style.display = 'none';
-        }
-
-        // User
-        var userWrap = document.getElementById('detail-user-wrap');
-        userWrap.style.display = 'none'; // Not available in current schema
-
-        // Text section
-        var textSection = document.getElementById('detail-text-section');
-        if (!isDoc) {
-            textSection.style.display = '';
-            document.getElementById('detail-source-text').textContent = data.source_text || '—';
-            document.getElementById('detail-translated-text').textContent = data.translated_text || '—';
-        } else {
-            textSection.style.display = 'none';
-        }
-
-        // Translations list (for original documents)
-        var translationsSection = document.getElementById('detail-translations-section');
-        var translationsList = document.getElementById('detail-translations-list');
-        if (isDoc && isOriginal && data.translations && data.translations.length > 0) {
-            translationsSection.style.display = '';
-            translationsList.innerHTML = '';
-            data.translations.forEach(function (t) {
-                var item = document.createElement('div');
-                item.className = 'detail-modal__translation-item';
-                item.innerHTML =
-                    '<span class="detail-modal__translation-name">' + (t.translated_filename || 'Translation') + '</span>' +
-                    '<span class="detail-modal__translation-lang">' + (t.source_language || '') + ' → ' + (t.target_language || '') + '</span>' +
-                    '<span class="detail-modal__translation-date">' + formatDate(t.created_at) + '</span>';
-                translationsList.appendChild(item);
-            });
-        } else {
-            translationsSection.style.display = 'none';
-        }
-
-        // Action buttons
-        var viewBtn = document.getElementById('detail-action-view');
-        var downloadBtn = document.getElementById('detail-action-download');
-        var originalBtn = document.getElementById('detail-action-original');
-        var deleteBtn = document.getElementById('detail-action-delete');
-
-        // View button
-        viewBtn.onclick = function () {
-            if (isDoc) {
-                // Trigger re-download
-                fetchJson('/history/redownload/' + encodeURIComponent(data.id), {
-                    method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'Content-Type': 'application/json' }
-                })
-                .then(function (res) {
-                    if (res && res.download_url) window.location.href = res.download_url;
-                })
-                .catch(function (err) {
-                    if (window.showErrorModal) showErrorModal('Download failed', err.message);
-                });
-            } else {
-                // Copy text
-                if (navigator.clipboard && data.translated_text) {
-                    navigator.clipboard.writeText(data.translated_text).then(function () {
-                        if (window.showToast) showToast('success', 'Copied!', 'Translation copied to clipboard.');
-                    });
-                }
-            }
-        };
-
-        // Download translated button (documents only)
-        if (isDoc) {
-            downloadBtn.style.display = '';
-            downloadBtn.onclick = function () {
-                fetchJson('/history/redownload/' + encodeURIComponent(data.id), {
-                    method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'Content-Type': 'application/json' }
-                })
-                .then(function (res) {
-                    if (res && res.download_url) window.location.href = res.download_url;
-                })
-                .catch(function (err) {
-                    if (window.showErrorModal) showErrorModal('Download failed', err.message);
-                });
-            };
-        } else {
-            downloadBtn.style.display = 'none';
-        }
-
-        // Open original button (documents with original_storage_path)
-        if (isDoc && data.original_storage_path) {
-            originalBtn.style.display = '';
-            originalBtn.onclick = function () {
-                fetchJson('/history/redownload-original/' + encodeURIComponent(data.id), {
-                    method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'Content-Type': 'application/json' }
-                })
-                .then(function (res) {
-                    if (res && res.download_url) window.location.href = res.download_url;
-                })
-                .catch(function (err) {
-                    if (window.showErrorModal) showErrorModal('Download failed', err.message);
-                });
-            };
-        } else {
-            originalBtn.style.display = 'none';
-        }
-
-        // Delete button
-        deleteBtn.onclick = function () {
-            showDeleteConfirm(data.id);
-        };
-    }
-
-    // Close modal
-    if (detailClose) detailClose.addEventListener('click', closeDetailModal);
-    if (detailOverlay) detailOverlay.addEventListener('click', closeDetailModal);
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') {
-            closeDetailModal();
-            closeDeleteConfirm();
-        }
-    });
-
-    // View details button click — navigate to the dedicated detail page
+    // ── View details button click — navigate to the dedicated detail page ──
     document.querySelectorAll('.view-details-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
             var id = btn.getAttribute('data-id');
@@ -735,7 +431,6 @@
             })
             .then(function () {
                 closeDeleteConfirm();
-                closeDetailModal();
                 if (window.showToast) showToast('success', 'Deleted', 'Translation has been deleted.');
                 // Remove the card from the page
                 var card = document.querySelector('.history-card[data-id="' + deleteTargetId + '"]');
