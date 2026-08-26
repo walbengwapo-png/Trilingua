@@ -128,6 +128,27 @@
                 @endforeach
             </select>
 
+            <select id="docs-date-filter" class="docs-filter-select" aria-label="Filter by date">
+                <option value="">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="year">This Year</option>
+            </select>
+
+            <select id="docs-filetype-filter" class="docs-filter-select" aria-label="Filter by file type">
+                <option value="">All File Types</option>
+                <option value="pdf">PDF</option>
+                <option value="docx">Word (.docx)</option>
+                <option value="txt">Text (.txt)</option>
+                <option value="md">Markdown (.md)</option>
+                <option value="rtf">Rich Text (.rtf)</option>
+                <option value="odt">OpenDoc (.odt)</option>
+                <option value="csv">CSV (.csv)</option>
+                <option value="pptx">PowerPoint (.pptx)</option>
+                <option value="xlsx">Excel (.xlsx)</option>
+            </select>
+
             <div class="docs-view-toggle" role="group" aria-label="View mode">
                 <button id="docs-grid-btn" class="docs-view-btn docs-view-btn--active" aria-label="Grid view" aria-pressed="true">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -180,6 +201,8 @@
                     $langClass    = $langColors[$langLabel] ?? 'badge--default';
                     $date         = \Carbon\Carbon::parse($doc['created_at'])->format('M j, Y');
                     $isCurrentMonth = \Carbon\Carbon::parse($doc['created_at'])->isCurrentMonth();
+                    // Derive file type from filename for filtering
+                    $fileType = strtolower(pathinfo($doc['original_filename'] ?? $doc['translated_filename'] ?? '', PATHINFO_EXTENSION));
                 @endphp
 
                 <div class="doc-card"
@@ -187,7 +210,9 @@
                      data-title="{{ strtolower($displayName) }}"
                      data-lang="{{ $langPair }}"
                      data-status="{{ $isOriginal ? 'original' : 'translated' }}"
-                     data-recent="{{ $isCurrentMonth ? 'true' : 'false' }}">
+                     data-recent="{{ $isCurrentMonth ? 'true' : 'false' }}"
+                     data-file-type="{{ $fileType }}"
+                     data-date="{{ \Carbon\Carbon::parse($doc['created_at'])->toDateString() }}">
                     {{-- Coloured top accent bar (matches language badge colour) --}}
                     <div class="doc-card__accent doc-card__accent--{{ strtolower($langLabel) }}"></div>
 
@@ -527,6 +552,8 @@
     var grid       = document.getElementById('docs-grid');
     var searchEl   = document.getElementById('docs-search');
     var langEl     = document.getElementById('docs-lang-filter');
+    var dateEl     = document.getElementById('docs-date-filter');
+    var filetypeEl = document.getElementById('docs-filetype-filter');
     var gridBtn    = document.getElementById('docs-grid-btn');
     var listBtn    = document.getElementById('docs-list-btn');
     var tabBtns    = document.querySelectorAll('.tab-btn');
@@ -540,22 +567,44 @@
     var state = {
         search: '',
         lang:   '',
+        date:   '',
+        filetype: '',
         tab:    'all'
     };
 
     function applyFilters() {
+        var now = new Date();
+        var todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
         cards.forEach(function (card) {
-            var title   = card.getAttribute('data-title') || '';
-            var lang    = card.getAttribute('data-lang')   || '';
-            var recent  = card.getAttribute('data-recent') === 'true';
+            var title    = card.getAttribute('data-title') || '';
+            var lang     = card.getAttribute('data-lang')   || '';
+            var recent   = card.getAttribute('data-recent') === 'true';
+            var fileType = card.getAttribute('data-file-type') || '';
+            var dateStr  = card.getAttribute('data-date') || '';
 
             var matchSearch = !state.search || title.indexOf(state.search.toLowerCase()) !== -1;
             var matchLang   = !state.lang   || lang === state.lang;
 
+            var matchDate = true;
+            if (state.date === 'today')  { matchDate = dateStr === todayStr; }
+            else if (state.date === 'week')  {
+                var cardDate = new Date(dateStr);
+                var weekAgo = new Date(now);
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                matchDate = cardDate >= weekAgo;
+            }
+            else if (state.date === 'month') { matchDate = recent; }
+            else if (state.date === 'year')  {
+                matchDate = dateStr && dateStr.substring(0, 4) === String(now.getFullYear());
+            }
+
+            var matchFileType = !state.filetype || fileType === state.filetype;
+
             var matchTab = true;
             if (state.tab === 'recent')   { matchTab = recent; }
 
-            card.style.display = (matchSearch && matchLang && matchTab) ? '' : 'none';
+            card.style.display = (matchSearch && matchLang && matchDate && matchFileType && matchTab) ? '' : 'none';
         });
     }
 
@@ -571,6 +620,22 @@
     if (langEl) {
         langEl.addEventListener('change', function () {
             state.lang = langEl.value;
+            applyFilters();
+        });
+    }
+
+    // Date filter
+    if (dateEl) {
+        dateEl.addEventListener('change', function () {
+            state.date = dateEl.value;
+            applyFilters();
+        });
+    }
+
+    // File type filter
+    if (filetypeEl) {
+        filetypeEl.addEventListener('change', function () {
+            state.filetype = filetypeEl.value;
             applyFilters();
         });
     }
