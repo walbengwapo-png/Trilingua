@@ -38,8 +38,9 @@
                     <polyline points="14 2 14 8 20 8"/>
                 </svg>
             </div>
-            <div class="stat-card__label">Total Documents</div>
+            <div class="stat-card__label">Documents</div>
             <div class="stat-card__value">{{ $stats['totalDocs'] }}</div>
+            <div class="stat-card__sub">{{ $stats['totalTexts'] }} text translation{{ $stats['totalTexts'] !== 1 ? 's' : '' }}</div>
         </div>
 
         <div class="stat-card">
@@ -49,7 +50,7 @@
                     <polyline points="17 6 23 6 23 12"/>
                 </svg>
             </div>
-            <div class="stat-card__label">Translations This Month</div>
+            <div class="stat-card__label">This Month</div>
             <div class="stat-card__value">{{ $stats['translationsThisMonth'] }}</div>
         </div>
 
@@ -61,6 +62,17 @@
             </div>
             <div class="stat-card__label">Words Translated</div>
             <div class="stat-card__value">{{ number_format($stats['wordsTranslated']) }}</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-card__icon stat-card__icon--amber">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/>
+                    <path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/>
+                </svg>
+            </div>
+            <div class="stat-card__label">Top Language Pair</div>
+            <div class="stat-card__value stat-card__value--sm">{{ $stats['topLangPair'] }}</div>
         </div>
     </div>
 
@@ -106,6 +118,18 @@
             <div>
                 <div class="quick-action-card__label">View History</div>
                 <div class="quick-action-card__desc">Browse past translations</div>
+            </div>
+        </a>
+
+        <a href="{{ route('bookmarks') }}" class="quick-action-card">
+            <div class="quick-action-card__icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                </svg>
+            </div>
+            <div>
+                <div class="quick-action-card__label">Bookmarks</div>
+                <div class="quick-action-card__desc">View saved translations</div>
             </div>
         </a>
     </div>

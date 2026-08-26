@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\HistoryService;
+use App\Services\TranslationStatsService;
 use Illuminate\Support\Facades\Auth;
 use Throwable;
 
@@ -34,40 +35,14 @@ class DashboardController extends Controller
     /**
      * Compute dashboard stat values from an array of translation_history records.
      *
+     * Delegates to TranslationStatsService so the admin user-detail page can
+     * reuse the same logic.
+     *
      * @param  array<int, array>  $records  Rows returned by HistoryService::getHistory().
      * @return array{totalDocs: int, translationsThisMonth: int, wordsTranslated: int}
      */
     public function computeStats(array $records): array
     {
-        $currentMonthPrefix = date('Y-m');
-
-        $totalDocs             = 0;
-        $translationsThisMonth = 0;
-        $wordsTranslated       = 0;
-
-        foreach ($records as $r) {
-            $isDocument = ($r['translation_type'] ?? '') === 'document';
-
-            if ($isDocument) {
-                $totalDocs++;
-                // Document records have no stored word count; use a fixed estimate of
-                // 250 words per document as a reasonable default.
-                $wordsTranslated += 250;
-            } else {
-                // Text record — count actual words in the source text.
-                $wordsTranslated += str_word_count($r['source_text'] ?? '');
-            }
-
-            // Count records created in the current calendar month.
-            if (str_starts_with($r['created_at'] ?? '', $currentMonthPrefix)) {
-                $translationsThisMonth++;
-            }
-        }
-
-        return [
-            'totalDocs'             => $totalDocs,
-            'translationsThisMonth' => $translationsThisMonth,
-            'wordsTranslated'       => $wordsTranslated,
-        ];
+        return TranslationStatsService::compute($records);
     }
 }
