@@ -16,6 +16,7 @@
             <p>Review queue analytics and system activity.</p>
         </div>
         <div class="review-page-header__controls">
+            <a href="{{ route('admin.users.index') }}" class="review-btn">User List</a>
             <a href="{{ route('admin.review.index') }}" class="review-btn">Open Review Queue</a>
             <a href="{{ route('admin.audit') }}" class="review-btn">View Full Audit Log</a>
         </div>
@@ -26,7 +27,7 @@
         <div class="stat-card">
             <div class="stat-card__label">Pending Review</div>
             <div class="stat-card__value">{{ $stats['pending'] }}</div>
-            <a href="{{ route('admin.review.index') }}" class="stat-card__link">View queue &rarr;</a>
+            <a href="{{ route('admin.review.index') }}" class="review-btn review-btn--primary">View queue &rarr;</a>
         </div>
         <div class="stat-card">
             <div class="stat-card__label">Verified (no edit)</div>
@@ -35,6 +36,47 @@
         <div class="stat-card">
             <div class="stat-card__label">Avg Turnaround</div>
             <div class="stat-card__value">{{ $avgTurnaround === null ? '—' : $avgTurnaround . 'h' }}</div>
+        </div>
+    </div>
+
+    {{-- System health indicators --}}
+    <div class="review-table-card">
+        <h3 class="card-title">System Health</h3>
+        <div class="cards-grid cards-grid--health">
+            <div class="stat-card stat-card--compact">
+                <div class="stat-card__label">Database</div>
+                <div class="stat-card__value stat-card__value--sm">
+                    @if ($systemHealth['db_ok'])
+                        <span class="status-dot status-dot--ok"></span> Connected
+                    @else
+                        <span class="status-dot status-dot--error"></span> Down
+                    @endif
+                </div>
+            </div>
+            <div class="stat-card stat-card--compact">
+                <div class="stat-card__label">Storage</div>
+                <div class="stat-card__value stat-card__value--sm">
+                    @if ($systemHealth['storage_ok'])
+                        <span class="status-dot status-dot--ok"></span> Available
+                    @else
+                        <span class="status-dot status-dot--error"></span> Unavailable
+                    @endif
+                </div>
+            </div>
+            <div class="stat-card stat-card--compact">
+                <div class="stat-card__label">Queue Pending</div>
+                <div class="stat-card__value">{{ $systemHealth['queue_pending'] }}</div>
+            </div>
+            <div class="stat-card stat-card--compact">
+                <div class="stat-card__label">Queue Failed</div>
+                <div class="stat-card__value">
+                    @if ($systemHealth['queue_failed'] > 0)
+                        <span class="stat-card__value stat-card__value--error">{{ $systemHealth['queue_failed'] }}</span>
+                    @else
+                        0
+                    @endif
+                </div>
+            </div>
         </div>
     </div>
 
@@ -94,6 +136,41 @@
                 </table>
             @endif
         </div>
+    </div>
+
+    {{-- User activity table --}}
+    <div class="review-table-card" style="margin-top: 24px;">
+        <h3 class="card-title">User Activity (Last 30 Days)</h3>
+        @if (empty($userActivity))
+            <p class="empty-state">No user activity in the last 30 days.</p>
+        @else
+            <table class="review-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Email</th>
+                        <th>Translations</th>
+                        <th>Documents</th>
+                        <th>Text</th>
+                        <th>Last Active</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($userActivity as $row)
+                    <tr>
+                        <td>{{ $row['name'] }}</td>
+                        <td>{{ $row['email'] }}</td>
+                        <td><span class="count-badge">{{ $row['translation_count'] }}</span></td>
+                        <td>{{ $row['doc_count'] }}</td>
+                        <td>{{ $row['text_count'] }}</td>
+                        <td>{{ \Carbon\Carbon::parse($row['last_active'])->diffForHumans() }}</td>
+                        <td><a href="{{ route('admin.users.show', $row['user_id']) }}" class="review-btn" style="font-size:0.78rem">View</a></td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
     </div>
 
 </div>

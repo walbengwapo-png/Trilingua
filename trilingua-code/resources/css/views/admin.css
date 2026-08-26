@@ -291,6 +291,104 @@
     padding: 32px 0;
 }
 
+/* ── Generic helpers (audit log) ─────────────────────────────────────── */
+.text-nowrap { white-space: nowrap; }
+.text-muted { color: var(--muted); }
+
+.audit-details {
+    font-size: 0.82rem;
+    word-break: break-word;
+}
+.audit-details__note {
+    display: block;
+    margin-top: 2px;
+    color: var(--muted);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Admin user directory (users list + user detail)
+   ══════════════════════════════════════════════════════════════════════════ */
+.user-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.user-cell__avatar,
+.user-profile__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--primary, #3b82f6);
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+.user-cell__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+.user-cell__name {
+    font-weight: 600;
+    color: var(--text);
+}
+.user-cell__email {
+    font-size: 0.78rem;
+    color: var(--muted);
+    word-break: break-word;
+}
+
+.user-profile__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+}
+.user-profile__avatar {
+    width: 56px;
+    height: 56px;
+    font-size: 1.3rem;
+}
+.user-profile__identity {
+    min-width: 0;
+    flex: 1 1 240px;
+}
+.user-profile__name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text);
+}
+.user-profile__email {
+    font-size: 0.88rem;
+    color: var(--muted);
+    margin-top: 2px;
+    word-break: break-word;
+}
+.user-profile__meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+    font-size: 0.82rem;
+    color: var(--muted);
+}
+.user-profile__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-left: auto;
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    Read-only detail views (text + document)
    ══════════════════════════════════════════════════════════════════════════ */
@@ -530,6 +628,30 @@
     gap: 20px;
 }
 .admin-grid-2 .review-table-card { overflow-x: auto; }
+
+/* ── System health grid ──────────────────────────────────────────────── */
+.cards-grid--health {
+    grid-template-columns: repeat(4, 1fr);
+}
+.stat-card--compact {
+    padding: 14px 18px;
+}
+.stat-card--compact .stat-card__value { font-size: 1.1rem; }
+
+.stat-card__value--error {
+    color: #ef4444;
+}
+
+.status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+.status-dot--ok    { background: #10b981; }
+.status-dot--error { background: #ef4444; }
 
 @media (max-width: 1100px) {
     .cards-grid--admin { grid-template-columns: repeat(3, 1fr); }

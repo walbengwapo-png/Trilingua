@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\TranslationEditLog;
 use App\Models\TranslationHistory;
 use App\Models\User;
+use App\Models\UserActivityLog;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +34,8 @@ class DashboardController extends Controller
                     $request->query('from'), $request->query('to')
                 ),
                 'recentActivity'       => $this->recentActivity(),
+                'systemHealth'         => $this->systemHealth(),
+                'userActivity'         => $this->userActivity(),
             ];
         } catch (\Throwable $e) {
             Log::error('Admin\DashboardController::index failed', [
@@ -49,6 +52,14 @@ class DashboardController extends Controller
                 'avgTurnaround' => null,
                 'topReviewers' => collect(),
                 'activityOverTime' => collect(),
+                'recentActivity' => [],
+                'systemHealth' => [
+                    'queue_pending' => 0,
+                    'queue_failed' => 0,
+                    'db_ok' => false,
+                    'storage_ok' => false,
+                ],
+                'userActivity' => [],
             ];
         }
 
@@ -258,5 +269,82 @@ class DashboardController extends Controller
 
         ksort($byDate);
         return collect(array_values($byDate));
+    }
+
+    /**
+     * Lightweight system health snapshot: queue depth, DB connectivity, storage.
+     */
+    private function systemHealth(): array
+    {
+        $queuePending = 0;
+        $queueFailed  = 0;
+        $dbOk         = false;
+        $storageOk    = false;
+
+        try {
+            $queuePending = \DB::table('jobs')->count();
+        } catch (\Throwable $e) {
+            // table may not exist yet
+        }
+
+        try {
+            $queueFailed = \DB::table('failed_jobs')->count();
+        } catch (\Throwable $e) {
+            // table may not exist yet
+        }
+
+        try {
+            \DB::select('SELECT 1');
+            $dbOk = true;
+        } catch (\Throwable $e) {
+            // connection down
+        }
+
+        try {
+            $storageOk = \Storage::disk('local')->put('_health_check', 'ok')
+                         && \Storage::disk('local')->exists('_health_check')
+                         && \Storage::disk('local')->delete('_health_check');
+        } catch (\Throwable $e) {
+            $storageOk = false;
+        }
+
+        return [
+            'queue_pending' => $queuePending,
+            'queue_failed'  => $queueFailed,
+            'db_ok'         => $dbOk,
+            'storage_ok'    => $storageOk,
+        ];
+    }
+
+    /**
+     * Top active users by number of translations created in the last 30 days.
+     */
+    private function userActivity(int $limit = 10): array
+    {
+        return TranslationHistory::where('created_at', '>=', now()->subDays(30))
+            ->join('users', 'users.id', '=', 'translation_history.user_id')
+            ->selectRaw('
+                translation_history.user_id,
+                users.name,
+                users.email,
+                COUNT(*) as translation_count,
+                SUM(CASE WHEN translation_history.translation_type = ? THEN 1 ELSE 0 END) as doc_count,
+                SUM(CASE WHEN translation_history.translation_type = ? THEN 1 ELSE 0 END) as text_count,
+                MAX(translation_history.created_at) as last_active
+            ', ['document', 'text'])
+            ->groupBy('translation_history.user_id', 'users.name', 'users.email')
+            ->orderByDesc('translation_count')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($r) => [
+                'user_id'            => $r->user_id,
+                'name'               => $r->name,
+                'email'              => $r->email,
+                'translation_count'  => (int) $r->translation_count,
+                'doc_count'          => (int) $r->doc_count,
+                'text_count'         => (int) $r->text_count,
+                'last_active'        => $r->last_active,
+            ])
+            ->all();
     }
 }
