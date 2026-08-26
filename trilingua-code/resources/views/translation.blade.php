@@ -143,6 +143,15 @@
         </button>
     </div>
 
+{{-- Non-modal progress indicator, shown while a translation is running --}}
+    <div class="translate-progress" id="translate-progress" role="status" aria-live="polite" aria-hidden="true">
+        <span class="translate-progress__spinner" aria-hidden="true"></span>
+        <span class="translate-progress__body">
+            <span class="translate-progress__stage" id="translate-progress-stage">Translating…</span>
+            <span class="translate-progress__timer" id="translate-progress-timer">0s</span>
+        </span>
+    </div>
+
 </div>
 
 <script>
@@ -255,6 +264,44 @@
     });
 
     // ── Translate ─────────────────────────────────────────────────────────────
+    // Non-modal progress indicator (spinner + stage + elapsed time).
+    var progressEl      = document.getElementById('translate-progress');
+    var progressStage   = document.getElementById('translate-progress-stage');
+    var progressTimer   = document.getElementById('translate-progress-timer');
+    var progressStart   = 0;
+    var progressTimerId = null;
+
+    function showProgress(stage) {
+        progressStage.textContent = stage;
+        progressStart = Date.now();
+        updateProgressTimer();
+        progressEl.classList.add('is-visible');
+        progressEl.setAttribute('aria-hidden', 'false');
+        if (progressTimerId === null) {
+            progressTimerId = setInterval(updateProgressTimer, 1000);
+        }
+    }
+
+    function setProgressStage(stage) {
+        progressStage.textContent = stage;
+    }
+
+    function updateProgressTimer() {
+        var secs = Math.max(0, Math.floor((Date.now() - progressStart) / 1000));
+        var mins = Math.floor(secs / 60);
+        var rem  = secs % 60;
+        progressTimer.textContent = (mins > 0 ? mins + 'm ' : '') + rem + 's';
+    }
+
+    function hideProgress() {
+        if (progressTimerId !== null) {
+            clearInterval(progressTimerId);
+            progressTimerId = null;
+        }
+        progressEl.classList.remove('is-visible');
+        progressEl.setAttribute('aria-hidden', 'true');
+    }
+
     function setLoading(on) {
         translateBtn.disabled = on;
         translateBtn.classList.toggle('is-loading', on);
@@ -274,6 +321,7 @@
         var file = fileInput.files[0];
         var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         setLoading(true);
+        showProgress(file ? 'Uploading document…' : 'Translating text…');
 
         var formData = new FormData();
         formData.append('source_lang', sourceLang.value);
@@ -286,7 +334,7 @@
             if (ext === '.pdf') formData.append('pdf_column_mode', pdfColumnMode.value);
         } else {
             var text = sourceText.value.trim();
-            if (!text) { showError(sourceError, 'Please enter text to translate.'); setLoading(false); return; }
+            if (!text) { showError(sourceError, 'Please enter text to translate.'); setLoading(false); hideProgress(); return; }
             formData.append('text', text);
         }
 
@@ -302,12 +350,14 @@
 
                 if (res.ok && data && data.status === 'processing' && data.job_id) {
                     // Document translation queued - poll for status
-                    outputText.textContent = 'Translation in progress... This may take a few minutes depending on document size.';
+                    setProgressStage(data.duplicate ? 'Already translating this file…' : 'Translating document…');
+                    outputText.textContent = data.message || 'Translation in progress... This may take a few minutes depending on document size.';
                     outputDownload.setAttribute('hidden', '');
                     copyBtn.setAttribute('aria-disabled', 'true');
                     saveBtn.setAttribute('aria-disabled', 'true');
                     pollJobStatus(data.job_id);
                 } else if (res.ok && data && (data.download_url || data.download_data)) {
+                    hideProgress();
                     outputText.textContent = '';
                     outputDownload.removeAttribute('hidden');
                     downloadLink.href = data.download_data || data.download_url;
@@ -317,23 +367,28 @@
                     saveBtn.setAttribute('aria-disabled', 'true');
                     if (window.showToast) showToast('success', 'Document translated!', 'Your file is ready to download.');
                 } else if (res.ok && data && data.translated) {
+                    hideProgress();
                     outputText.textContent = data.translated;
                     outputDownload.setAttribute('hidden', '');
                     copyBtn.removeAttribute('aria-disabled');
                     saveBtn.removeAttribute('aria-disabled');
                 } else if (res.status === 422 && data && data.errors) {
+                    hideProgress();
                     showError(sourceError, data.errors[Object.keys(data.errors)[0]][0]);
                 } else if (res.status === 504) {
+                    hideProgress();
                     showError(outputError, (data && data.error) || 'Translation took too long. Please try with a smaller file.');
                 } else if (res.status === 400 && data && data.error) {
+                    hideProgress();
                     showError(sourceError, data.error);
                 } else {
+                    hideProgress();
                     var errorMsg = (data && (data.error || data.detail)) || 'Translation failed. Please try again.';
                     showError(outputError, errorMsg);
                 }
             });
         })
-        .catch(function () { showError(outputError, 'Network error. Please check your connection and try again.'); })
+        .catch(function () { hideProgress(); showError(outputError, 'Network error. Please check your connection and try again.'); })
         .finally(function () { setLoading(false); });
     });
 
@@ -345,6 +400,7 @@
             attempts++;
             if (attempts > maxAttempts) {
                 clearInterval(interval);
+                hideProgress();
                 showError(outputError, 'Translation timed out. Please try again or contact support if the issue persists.');
                 return;
             }
@@ -360,6 +416,7 @@
 
                     if (data && data.status === 'completed') {
                         clearInterval(interval);
+                        hideProgress();
                         outputText.textContent = '';
                         outputDownload.removeAttribute('hidden');
                         downloadLink.href = data.download_data || data.download_url;
@@ -370,10 +427,16 @@
                         if (window.showToast) showToast('success', 'Document translated!', 'Your file is ready to download.');
                     } else if (data && data.status === 'failed') {
                         clearInterval(interval);
+                        hideProgress();
                         showError(outputError, (data && data.error) || 'Translation failed. Please try again.');
+                    } else if (!res.ok) {
+                        // Server error during polling — stop to avoid silent loop
+                        clearInterval(interval);
+                        hideProgress();
+                        showError(outputError, 'Could not retrieve translation status. Please try again or contact support.');
                     } else if (attempts % 15 === 0) {
-                        // Update message every 30 seconds
-                        outputText.textContent = 'Still translating... (' + Math.round(attempts / 30) + ' minute(s) elapsed)';
+                        // Refresh the overlay stage every ~30 seconds while polling
+                        setProgressStage('Still translating…');
                     }
                 });
             })

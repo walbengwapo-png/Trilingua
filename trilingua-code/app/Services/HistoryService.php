@@ -34,9 +34,11 @@ class HistoryService
             'parent_document_id'    => $data['parent_document_id'] ?? null,
             'file_size'             => $data['file_size'] ?? null,
             'status'                => $data['status'] ?? 'completed',
+            'review_status'         => $data['review_status'] ?? null,
             'signed_url_expires_at' => $data['signed_url_expires_at'] ?? null,
             'source_text'           => $data['source_text'] ?? null,
             'translated_text'       => $data['translated_text'] ?? null,
+            'job_id'                => $data['job_id'] ?? null,
         ]);
     }
 
