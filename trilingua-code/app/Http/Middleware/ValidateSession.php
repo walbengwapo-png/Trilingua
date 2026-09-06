@@ -24,20 +24,17 @@ class ValidateSession
         // Validate user agent hasn't changed (prevents session hijacking)
         $storedUserAgent = $request->session()->get('user_agent');
         if ($storedUserAgent && $storedUserAgent !== $request->userAgent()) {
-            Auth::logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-            
-            \Log::warning('Session hijacking attempt detected', [
+            // Log the mismatch but don't log the user out - user agents can
+            // legitimately change (browser updates, extensions, etc.)
+            \Log::info('User agent changed', [
                 'user_id' => Auth::id(),
                 'stored_agent' => $storedUserAgent,
                 'current_agent' => $request->userAgent(),
                 'ip' => $request->ip(),
             ]);
-            
-            return redirect()->route('login')->withErrors([
-                'email' => 'Your session has been terminated for security reasons. Please login again.',
-            ]);
+
+            // Update stored user agent to prevent repeated warnings
+            $request->session()->put('user_agent', $request->userAgent());
         }
 
         // Validate IP address hasn't changed drastically (optional, can be strict)

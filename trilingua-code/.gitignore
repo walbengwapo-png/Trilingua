@@ -3,6 +3,9 @@
 .env
 .env.backup
 .env.production
+.env.demo
+.env.tunnel
+.env.tunnel.example
 .phpactor.json
 .phpunit.result.cache
 /.fleet
@@ -37,3 +40,14 @@ env/
 *.egg-info/
 dist/
 build/
+
+# Translation runtime output — never commit local documents, caches, or renders.
+/Model/cache/*.db
+/Model/cache/*.db-shm
+/Model/cache/*.db-wal
+/Model/translated_*
+/translated_*
+/review_render_out/
+/storage/demo/
+/bootstrap/cache/*.php
+!/bootstrap/cache/.gitignore

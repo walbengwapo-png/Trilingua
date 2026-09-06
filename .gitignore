@@ -1,0 +1,6 @@
+# Local migration artifacts and credentials must never be committed.
+cookies.txt
+passwords.txt
+env content.txt
+partially_done.zip
+translated_*

@@ -1,0 +1,242 @@
+/* Shared dashboard visualizations (bars, sparklines, kpi cards, deltas) */
+
+/* ── Layout helpers ─────────────────────────────────────────────────────── */
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+.panel {
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 22px 24px;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 4px 16px rgba(15,23,42,0.04);
+}
+.panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.panel__title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0;
+}
+.panel__hint {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-weight: 500;
+}
+
+/* ── Delta / trend chip ─────────────────────────────────────────────────── */
+.delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 99px;
+    white-space: nowrap;
+}
+.delta--up   { background: #dcfce7; color: #15803d; }
+.delta--down { background: #fee2e2; color: #b91c1c; }
+.delta--flat { background: #f1f5f9; color: #64748b; }
+.delta__arrow { font-size: 0.78rem; line-height: 1; }
+
+/* ── KPI card (trended stat card) ───────────────────────────────────────── */
+.kpi-card {
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 18px 22px;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 4px 16px rgba(15,23,42,0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.kpi-card__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.kpi-card__label {
+    font-size: 0.8125rem;
+    color: var(--muted);
+    font-weight: 500;
+}
+.kpi-card__value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+    letter-spacing: -0.03em;
+}
+.kpi-card__value--sm { font-size: 1.15rem; }
+.kpi-card__sub {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin: 0;
+}
+.kpi-card__link {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--primary);
+    text-decoration: none;
+}
+.kpi-card__link:hover { text-decoration: underline; }
+
+/* ── Horizontal bar meter (proportion) ──────────────────────────────────── */
+.bar-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.82rem;
+}
+.bar-row + .bar-row { margin-top: 12px; }
+.bar-row__label {
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.bar-row__track {
+    height: 8px;
+    border-radius: 99px;
+    background: var(--bg);
+    overflow: hidden;
+}
+.bar-row__fill {
+    height: 100%;
+    border-radius: 99px;
+    background: var(--primary);
+    transition: width 0.3s ease;
+}
+.bar-row__fill--good    { background: #16a34a; }
+.bar-row__fill--medium  { background: #d97706; }
+.bar-row__fill--bad     { background: #dc2626; }
+.bar-row__fill--neutral { background: #64748b; }
+.bar-row__value {
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    min-width: 44px;
+    text-align: right;
+}
+.bar-row__sub {
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-weight: 400;
+}
+
+/* ── Sparkline (inline-block stacked bars) ──────────────────────────────── */
+.sparkline {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 40px;
+    margin-top: 10px;
+}
+.sparkline__bar {
+    flex: 1 1 0;
+    min-width: 2px;
+    background: var(--primary);
+    border-radius: 1px 1px 0 0;
+    opacity: 0.85;
+    transition: opacity 0.15s;
+}
+.sparkline__bar:hover { opacity: 1; }
+
+/* ── KPI grid (trended stat cards) ─────────────────────────────────────── */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+/* ── Panel grids (inner two/three/four column splits) ──────────────────── */
+.panel-grid {
+    display: grid;
+    gap: 16px;
+}
+.panel-grid--2 { grid-template-columns: 1fr 1fr; }
+.panel-grid--4 { grid-template-columns: repeat(4, 1fr); }
+
+/* ── Quality badge ──────────────────────────────────────────────────────── */
+.quality-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.quality-badge--good    { background: #dcfce7; color: #15803d; }
+.quality-badge--medium  { background: #fef3c7; color: #b45309; }
+.quality-badge--poor    { background: #fee2e2; color: #b91c1c; }
+.quality-badge--empty   { background: #f1f5f9; color: #64748b; }
+.quality-badge__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 99px;
+    background: currentColor;
+    flex-shrink: 0;
+}
+
+/* ── Mini stat grid inside panels ───────────────────────────────────────── */
+.mini-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+}
+.mini-stat__label { font-size: 0.7rem; color: var(--muted); font-weight: 500; }
+.mini-stat__value { font-size: 1.15rem; font-weight: 700; color: var(--text); line-height: 1.2; }
+.mini-stat__sub    { font-size: 0.7rem; color: var(--muted); }
+
+/* ── Legend / small labels ──────────────────────────────────────────────── */
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 12px;
+    font-size: 0.72rem;
+    color: var(--muted);
+}
+.legend__item { display: inline-flex; align-items: center; gap: 5px; }
+.legend__swatch { width: 10px; height: 10px; border-radius: 3px; }
+
+/* ── Empty state for panels ─────────────────────────────────────────────── */
+.panel-empty {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    padding: 28px 0;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .panel-grid--4 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 900px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .grid-3 { grid-template-columns: repeat(2, 1fr); }
+    .panel-grid--2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+    .grid-3 { grid-template-columns: 1fr; }
+    .kpi-card__value { font-size: 1.6rem; }
+    .kpi-grid { grid-template-columns: 1fr; }
+    .panel-grid--4 { grid-template-columns: 1fr; }
+}

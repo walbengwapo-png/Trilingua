@@ -268,8 +268,10 @@
     letter-spacing: 0.04em;
 }
 
-.status-pill--completed { background: #d1fae5; color: #065f46; }
-.status-pill--text      { background: #e0f2fe; color: #0369a1; }
+.status-pill--pending  { background: #fef3c7; color: #b45309; }
+.status-pill--verified { background: #d1fae5; color: #065f46; }
+.status-pill--edited   { background: #e0f0ff; color: #1a6fb5; }
+.status-pill--flagged  { background: #fee2e2; color: #b91c1c; }
 
 /* ── Empty state ────────────────────────────────────────────────────────── */
 .table-empty {

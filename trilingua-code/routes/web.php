@@ -5,11 +5,21 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\GoogleController;
+use App\Http\Controllers\BookmarksController;
 use App\Http\Controllers\DocumentsController;
 use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TranslationController;
+use App\Http\Controllers\Admin\ReviewController;
+use App\Http\Controllers\Admin\TextReviewController;
+use App\Http\Controllers\Admin\DocumentReviewController;
+use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -30,6 +40,12 @@ Route::middleware('throttle:10,1')->group(function () {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
     Route::post('/login', [LoginController::class, 'login'])->name('login.attempt');
 
+    // Google OAuth — guest-only, rate limited alongside the other auth routes.
+    Route::middleware('guest')->group(function () {
+        Route::get('/auth/google', [GoogleController::class, 'redirect'])->name('auth.google.redirect');
+        Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('auth.google.callback');
+    });
+
     // Password reset
     Route::get('/forgot-password', [ForgotPasswordController::class, 'show'])->name('password.request');
     Route::post('/forgot-password', [ForgotPasswordController::class, 'send'])->name('password.email');
@@ -45,6 +61,14 @@ Route::post('/logout', [LoginController::class, 'logout'])
 Route::middleware(['auth', 'throttle:60,1'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Status endpoint sits behind auth + throttle: the job owner polls their
+    // own job_id only, so this is safe for long translations (session lifetime
+    // far exceeds the ~6 min polling window).
+    Route::get('/translate/status/{jobId}', [TranslationController::class, 'status'])
+        ->name('translate.status');
+
+    Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
+
     Route::get('/settings', [SettingsController::class, 'show'])->name('settings');
     Route::post('/settings/account', [SettingsController::class, 'updateAccount'])->name('settings.account');
     Route::post('/settings/password', [SettingsController::class, 'updatePassword'])->name('settings.password');
@@ -52,10 +76,53 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
 
     Route::get('/translate', [TranslationController::class, 'show'])->name('translate');
     Route::post('/translate', [TranslationController::class, 'translate'])->name('translate.submit');
-    Route::get('/translate/download/{token}', [TranslationController::class, 'download'])->name('translate.download');
 
     Route::get('/documents', [DocumentsController::class, 'index'])->name('documents');
+    Route::post('/documents/{id}/re-translate', [DocumentsController::class, 'retranslate'])->name('documents.retranslate');
+    Route::get('/bookmarks', [BookmarksController::class, 'index'])->name('bookmarks');
+
+    Route::get('/notifications', [NotificationController::class, 'page'])->name('notifications.page');
+    Route::get('/notifications/data', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 
     Route::get('/history', [HistoryController::class, 'index'])->name('history');
+    Route::get('/history/{id}', [HistoryController::class, 'detail'])->name('history.detail');
+    Route::get('/history/{id}/view', [HistoryController::class, 'view'])->name('history.view');
+    Route::get('/history/{id}/file', [HistoryController::class, 'showFile'])->name('history.file');
+    Route::get('/history/{id}/original-file', [HistoryController::class, 'showOriginalFile'])->name('history.original-file');
     Route::post('/history/redownload/{id}', [HistoryController::class, 'redownload'])->name('history.redownload');
+    Route::post('/history/redownload-original/{id}', [HistoryController::class, 'redownloadOriginal'])->name('history.redownload-original');
+    Route::post('/history/{id}/rename', [HistoryController::class, 'rename'])->name('history.rename');
+    Route::post('/history/{id}/bookmark', [HistoryController::class, 'toggleBookmark'])->name('history.bookmark');
+    Route::post('/history/{id}/priority', [HistoryController::class, 'togglePriority'])->name('history.priority');
+    Route::delete('/history/{id}', [HistoryController::class, 'destroy'])->name('history.destroy');
+
+    // ── Admin (auth + throttle inherited from the outer group) ────────────
+    Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+        // Read-only review queue + detail
+        Route::get('/review', [ReviewController::class, 'index'])->name('review.index');
+        Route::get('/review/{translation}', [ReviewController::class, 'show'])->name('review.show');
+
+        // Read-only audit trail viewer
+        Route::get('/audit', [AuditLogController::class, 'index'])->name('audit');
+
+        // Read-only user directory
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show');
+        Route::get('/users/{user}/translations', [UserController::class, 'translations'])->name('users.translations');
+
+        // ── Text review write actions ─────────────────────────────────────
+        Route::post('/review/{translation}/verify', [TextReviewController::class, 'verify'])->name('review.text.verify');
+        Route::post('/review/{translation}/update', [TextReviewController::class, 'update'])->name('review.text.update');
+        Route::post('/review/{translation}/flag', [TextReviewController::class, 'flag'])->name('review.text.flag');
+
+        // ── Document review write actions ─────────────────────────────────
+        Route::post('/review/{translation}/verify-document', [DocumentReviewController::class, 'verifyDocument'])->name('review.document.verify');
+        Route::post('/review/{translation}/flag-document', [DocumentReviewController::class, 'flagDocument'])->name('review.document.flag');
+        Route::post('/review/{translation}/blocks/{block}/update', [DocumentReviewController::class, 'updateBlock'])->name('review.block.update');
+        Route::post('/review/{translation}/save-regenerate', [DocumentReviewController::class, 'saveAndRegenerate'])->name('review.save-regenerate');
+        Route::get('/review/{translation}/file', [DocumentReviewController::class, 'showTranslatedFile'])->name('review.document.file');
+    });
 });

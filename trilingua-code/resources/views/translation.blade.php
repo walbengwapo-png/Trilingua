@@ -12,6 +12,7 @@
     {{-- Language selection bar --}}
     <div class="lang-bar">
         <div class="lang-bar__select-wrap">
+            <span class="lang-bar__label">From</span>
             <select id="source-lang" aria-label="Source language">
                 <option value="English" selected>English</option>
                 <option value="Cebuano">Cebuano</option>
@@ -19,7 +20,7 @@
             </select>
         </div>
 
-        <button class="lang-bar__swap" id="swap-btn" aria-label="Swap languages" title="Swap languages">
+        <button class="lang-bar__swap" id="swap-btn" type="button" aria-label="Swap languages" title="Swap languages">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M7 16V4m0 0L3 8m4-4l4 4"/>
                 <path d="M17 8v12m0 0l4-4m-4 4l-4-4"/>
@@ -27,10 +28,20 @@
         </button>
 
         <div class="lang-bar__select-wrap">
+            <span class="lang-bar__label">To</span>
             <select id="target-lang" aria-label="Target language">
                 <option value="English">English</option>
                 <option value="Cebuano" selected>Cebuano</option>
                 <option value="Filipino">Filipino</option>
+            </select>
+        </div>
+
+        <div class="lang-bar__mode-wrap">
+            <label class="lang-bar__label" for="translation-mode">Mode</label>
+            <select id="translation-mode" aria-label="Translation processing mode">
+                <option value="fast">Fast</option>
+                <option value="balanced" selected>Balanced</option>
+                <option value="thorough">Thorough</option>
             </select>
         </div>
     </div>
@@ -78,6 +89,12 @@
                 </select>
 
                 <span id="char-counter" aria-live="polite">0/5000</span>
+
+                {{-- Clear --}}
+                <button id="clear-btn" type="button" class="clear-btn" title="Clear source text" aria-label="Clear source text">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    Clear
+                </button>
             </div>
 
             <div class="translation-panel__error" id="source-error" role="alert"></div>
@@ -135,6 +152,15 @@
         </button>
     </div>
 
+{{-- Non-modal progress indicator, shown while a translation is running --}}
+    <div class="translate-progress" id="translate-progress" role="status" aria-live="polite" aria-hidden="true">
+        <span class="translate-progress__spinner" aria-hidden="true"></span>
+        <span class="translate-progress__body">
+            <span class="translate-progress__stage" id="translate-progress-stage">Translating…</span>
+            <span class="translate-progress__timer" id="translate-progress-timer">0s</span>
+        </span>
+    </div>
+
 </div>
 
 <script>
@@ -145,6 +171,7 @@
     var charCounter   = document.getElementById('char-counter');
     var sourceLang    = document.getElementById('source-lang');
     var targetLang    = document.getElementById('target-lang');
+    var translationMode = document.getElementById('translation-mode');
     var swapBtn       = document.getElementById('swap-btn');
     var outputText    = document.getElementById('output-text');
     var attachBtn     = document.getElementById('attach-btn');
@@ -158,6 +185,7 @@
     var translateBtn  = document.getElementById('translate-btn');
     var copyBtn       = document.getElementById('copy-btn');
     var saveBtn       = document.getElementById('save-btn');
+    var clearBtn      = document.getElementById('clear-btn');
     var outputDownload = document.getElementById('output-download');
     var downloadLink   = document.getElementById('download-link');
 
@@ -190,11 +218,27 @@
         updateCounter();
     });
 
+    // ── Language exclusivity ─────────────────────────────────────────────────
+    function syncExclusive(from, to) {
+        for (var i = 0; i < to.options.length; i++) {
+            var opt = to.options[i];
+            opt.disabled = (opt.value === from.value && opt.value !== to.value);
+        }
+    }
+    function syncLangOptions() {
+        syncExclusive(sourceLang, targetLang);
+        syncExclusive(targetLang, sourceLang);
+    }
+    sourceLang.addEventListener('change', syncLangOptions);
+    targetLang.addEventListener('change', syncLangOptions);
+    syncLangOptions();
+
     // ── Swap ─────────────────────────────────────────────────────────────────
     swapBtn.addEventListener('click', function () {
         var src = sourceLang.value, tgt = targetLang.value;
         if (src === tgt) { showError(sourceError, 'Source and target languages must be different.'); return; }
         sourceLang.value = tgt; targetLang.value = src;
+        syncLangOptions();
         clearError(sourceError); outputText.textContent = ''; clearError(outputError);
     });
 
@@ -230,11 +274,56 @@
     });
 
     // ── Translate ─────────────────────────────────────────────────────────────
+    // Non-modal progress indicator (spinner + stage + elapsed time).
+    var progressEl      = document.getElementById('translate-progress');
+    var progressStage   = document.getElementById('translate-progress-stage');
+    var progressTimer   = document.getElementById('translate-progress-timer');
+    var progressStart   = 0;
+    var progressTimerId = null;
+
+    function showProgress(stage) {
+        progressStage.textContent = stage;
+        progressStart = Date.now();
+        updateProgressTimer();
+        progressEl.classList.add('is-visible');
+        progressEl.setAttribute('aria-hidden', 'false');
+        if (progressTimerId === null) {
+            progressTimerId = setInterval(updateProgressTimer, 1000);
+        }
+    }
+
+    function setProgressStage(stage) {
+        progressStage.textContent = stage;
+    }
+
+    function updateProgressTimer() {
+        var secs = Math.max(0, Math.floor((Date.now() - progressStart) / 1000));
+        var mins = Math.floor(secs / 60);
+        var rem  = secs % 60;
+        progressTimer.textContent = (mins > 0 ? mins + 'm ' : '') + rem + 's';
+    }
+
+    function hideProgress() {
+        if (progressTimerId !== null) {
+            clearInterval(progressTimerId);
+            progressTimerId = null;
+        }
+        progressEl.classList.remove('is-visible');
+        progressEl.setAttribute('aria-hidden', 'true');
+    }
+
     function setLoading(on) {
         translateBtn.disabled = on;
+        translateBtn.classList.toggle('is-loading', on);
         translateBtn.innerHTML = on
-            ? '<span class="btn-spinner"></span> Translating…'
+            ? '<span class="btn-spinner btn-spinner--lg"></span>'
             : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg> Translate';
+        // Toggle skeleton loading state on output panel
+        if (on) {
+            outputText.classList.add('skeleton-loading');
+        } else {
+            outputText.classList.remove('skeleton-loading');
+        }
     }
 
     translateBtn.addEventListener('click', function () {
@@ -242,10 +331,12 @@
         var file = fileInput.files[0];
         var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         setLoading(true);
+        showProgress(file ? 'Uploading document…' : 'Translating text…');
 
         var formData = new FormData();
         formData.append('source_lang', sourceLang.value);
         formData.append('target_lang', targetLang.value);
+        formData.append('mode', translationMode.value);
         formData.append('_token', csrfToken);
 
         if (file) {
@@ -254,7 +345,7 @@
             if (ext === '.pdf') formData.append('pdf_column_mode', pdfColumnMode.value);
         } else {
             var text = sourceText.value.trim();
-            if (!text) { showError(sourceError, 'Please enter text to translate.'); setLoading(false); return; }
+            if (!text) { showError(sourceError, 'Please enter text to translate.'); setLoading(false); hideProgress(); return; }
             formData.append('text', text);
         }
 
@@ -268,30 +359,105 @@
                 var data = null;
                 try { data = JSON.parse(raw); } catch (e) {}
 
-                if (res.ok && data && data.download_url) {
+                if (res.ok && data && data.status === 'processing' && data.job_id) {
+                    // Document translation queued - poll for status
+                    setProgressStage(data.duplicate ? 'Already translating this file…' : 'Translating document…');
+                    outputText.textContent = data.message || 'Translation in progress... This may take a few minutes depending on document size.';
+                    outputDownload.setAttribute('hidden', '');
+                    copyBtn.setAttribute('aria-disabled', 'true');
+                    saveBtn.setAttribute('aria-disabled', 'true');
+                    pollJobStatus(data.job_id);
+                } else if (res.ok && data && (data.download_url || data.download_data)) {
+                    hideProgress();
                     outputText.textContent = '';
                     outputDownload.removeAttribute('hidden');
-                    downloadLink.href = data.download_url;
+                    downloadLink.href = data.download_data || data.download_url;
                     downloadLink.download = data.download_filename || 'translated_document';
-                    downloadLink.querySelector('svg + *') && (downloadLink.lastChild.textContent = 'Download: ' + (data.download_filename || 'translated_document'));
                     downloadLink.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download: ' + (data.download_filename || 'translated_document');
                     copyBtn.setAttribute('aria-disabled', 'true');
                     saveBtn.setAttribute('aria-disabled', 'true');
                     if (window.showToast) showToast('success', 'Document translated!', 'Your file is ready to download.');
                 } else if (res.ok && data && data.translated) {
+                    hideProgress();
                     outputText.textContent = data.translated;
                     outputDownload.setAttribute('hidden', '');
                     copyBtn.removeAttribute('aria-disabled');
                     saveBtn.removeAttribute('aria-disabled');
                 } else if (res.status === 422 && data && data.errors) {
+                    hideProgress();
                     showError(sourceError, data.errors[Object.keys(data.errors)[0]][0]);
+                } else if (res.status === 504) {
+                    hideProgress();
+                    showError(outputError, (data && data.error) || 'Translation took too long. Please try with a smaller file.');
+                } else if (res.status === 400 && data && data.error) {
+                    hideProgress();
+                    showError(sourceError, data.error);
                 } else {
-                    showError(outputError, (data && (data.error || data.detail)) || 'Translation failed. Please try again.');
+                    hideProgress();
+                    var errorMsg = (data && (data.error || data.detail)) || 'Translation failed. Please try again.';
+                    showError(outputError, errorMsg);
                 }
             });
         })
-        .catch(function () { showError(outputError, 'Network error. Please check your connection and try again.'); })
+        .catch(function () { hideProgress(); showError(outputError, 'Network error. Please check your connection and try again.'); })
         .finally(function () { setLoading(false); });
+    });
+
+    // Poll for document translation status
+    function pollJobStatus(jobId) {
+        var maxAttempts = 180; // 6 minutes max (180 * 2s)
+        var attempts = 0;
+        var interval = setInterval(function () {
+            attempts++;
+            if (attempts > maxAttempts) {
+                clearInterval(interval);
+                hideProgress();
+                showError(outputError, 'Translation timed out. Please try again or contact support if the issue persists.');
+                return;
+            }
+
+            fetch('/translate/status/' + jobId, {
+                credentials: 'include',
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(function (res) {
+                return res.text().then(function (raw) {
+                    var data = null;
+                    try { data = JSON.parse(raw); } catch (e) {}
+
+                    if (data && data.status === 'completed') {
+                        clearInterval(interval);
+                        hideProgress();
+                        outputText.textContent = '';
+                        outputDownload.removeAttribute('hidden');
+                        downloadLink.href = data.download_data || data.download_url;
+                        downloadLink.download = data.download_filename || 'translated_document';
+                        downloadLink.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download: ' + (data.download_filename || 'translated_document');
+                        copyBtn.setAttribute('aria-disabled', 'true');
+                        saveBtn.setAttribute('aria-disabled', 'true');
+                        if (window.showToast) showToast('success', 'Document translated!', 'Your file is ready to download.');
+                    } else if (data && data.status === 'failed') {
+                        clearInterval(interval);
+                        hideProgress();
+                        showError(outputError, (data && data.error) || 'Translation failed. Please try again.');
+                    } else if (attempts % 15 === 0) {
+                        // Refresh the overlay stage every ~30 seconds while polling
+                        setProgressStage('Still translating…');
+                    }
+                });
+            })
+            .catch(function () {
+                // Don't show error on polling failure, just continue
+            });
+        }, 2000); // Poll every 2 seconds
+    }
+
+    // ── Clear ─────────────────────────────────────────────────────────────────
+    clearBtn.addEventListener('click', function () {
+        sourceText.value = '';
+        updateCounter();
+        outputText.textContent = '';
+        clearError(sourceError); clearError(outputError);
     });
 
     // ── Copy ──────────────────────────────────────────────────────────────────

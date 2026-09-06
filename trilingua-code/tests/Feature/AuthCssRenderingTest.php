@@ -67,7 +67,7 @@ class AuthCssRenderingTest extends TestCase
         // These classes should be styled by the CSS file
         $response->assertSee('class="auth-container"', false);
         $response->assertSee('class="auth-card"', false);
-        $response->assertSee('class="auth-logo"', false);
+        $response->assertSee('class="auth-brand__logo"', false);
         $response->assertSee('class="auth-header"', false);
         
         // Verify form elements that require styling are present
@@ -92,7 +92,7 @@ class AuthCssRenderingTest extends TestCase
         $response->assertStatus(200);
         
         // Verify the page content
-        $response->assertSee('Create your account', false);
+        $response->assertSee('Create account', false);
         
         // CRITICAL ASSERTION: Verify Vite directive is present in the HTML
         $content = $response->getContent();
@@ -109,7 +109,7 @@ class AuthCssRenderingTest extends TestCase
         // Verify that CSS classes used in the guest layout are present in the HTML
         $response->assertSee('class="auth-container"', false);
         $response->assertSee('class="auth-card"', false);
-        $response->assertSee('class="auth-logo"', false);
+        $response->assertSee('class="auth-brand__logo"', false);
         
         // Verify form elements that require styling are present
         $response->assertSee('class="btn-auth"', false);
@@ -333,7 +333,7 @@ class AuthCssRenderingTest extends TestCase
         
         // Verify user information is displayed
         $response->assertSee($user->name, false);
-        $response->assertSee('Logout', false);
+        $response->assertSee('Sign out', false);
     }
     
     /**
@@ -435,7 +435,7 @@ class AuthCssRenderingTest extends TestCase
         $response->assertSee('method="POST"', false);
         $response->assertSee('action="' . route('logout') . '"', false);
         $response->assertSee('type="submit"', false);
-        $response->assertSee('Logout', false);
+        $response->assertSee('Sign out', false);
         
         // Test that logout functionality works
         $logoutResponse = $this->post('/logout');
@@ -527,21 +527,20 @@ class AuthCssRenderingTest extends TestCase
         $response->assertSee('New Translation', false);
         $response->assertSee('Saved Translations', false);
         
-        // Verify storage indicator
-        $response->assertSee('class="storage"', false);
-        $response->assertSee('Storage', false);
-        $response->assertSee('class="progress"', false);
+        // Verify sidebar user section
+        $response->assertSee('class="sidebar-user"', false);
+        $response->assertSee('class="sidebar-logout"', false);
         
         // Verify header structure
         $response->assertSee('class="header"', false);
         $response->assertSee('class="title"', false);
-        $response->assertSee('class="header-right user"', false);
+        $response->assertSee('class="header-right"', false);
         
         // Verify user section
-        $response->assertSee('class="user-name"', false);
+        $response->assertSee('class="header-user"', false);
         $response->assertSee($user->name, false);
-        $response->assertSee('class="btn secondary"', false);
-        $response->assertSee('Logout', false);
+        $response->assertSee('class="header-user__name"', false);
+        $response->assertSee('Sign out', false);
         
         // Verify main content area
         $response->assertSee('class="main"', false);

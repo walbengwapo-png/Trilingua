@@ -47,6 +47,12 @@ class StorageService
                 0,
                 $e
             );
+        } catch (\Throwable $e) {
+            throw new \RuntimeException(
+                'Supabase Storage upload failed: ' . $e->getMessage(),
+                0,
+                $e
+            );
         }
 
         $statusCode = $response->getStatusCode();
@@ -64,6 +70,82 @@ class StorageService
             'signed_url'            => $signedResult['signed_url'],
             'signed_url_expires_at' => $signedResult['signed_url_expires_at'],
         ];
+    }
+
+    /**
+     * Delete a file from Supabase Storage.
+     *
+     * @param  string $storagePath Path inside the bucket.
+     * @throws \RuntimeException on failure.
+     */
+    public function deleteFile(string $storagePath): void
+    {
+        $supabaseUrl    = config('services.supabase.url');
+        $serviceRoleKey = config('services.supabase.service_role_key');
+        $bucket         = config('services.supabase.bucket');
+
+        $deleteUrl = rtrim($supabaseUrl, '/') . '/storage/v1/object/' . $bucket . '/' . $storagePath;
+
+        try {
+            $response = $this->guzzle->delete($deleteUrl, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $serviceRoleKey,
+                ],
+            ]);
+        } catch (ConnectException $e) {
+            throw new \RuntimeException(
+                'Supabase Storage delete failed: could not connect. ' . $e->getMessage(),
+                0,
+                $e
+            );
+        }
+
+        $statusCode = $response->getStatusCode();
+
+        // 200 OK or 404 (already gone) are both acceptable
+        if ($statusCode >= 300 && $statusCode !== 404) {
+            $body = (string) $response->getBody();
+            throw new \RuntimeException('Supabase Storage delete failed: ' . $body);
+        }
+    }
+
+    /**
+     * Download a file from Supabase Storage.
+     *
+     * @param  string $storagePath Path inside the bucket.
+     * @return string  Raw file contents.
+     * @throws \RuntimeException on failure.
+     */
+    public function downloadFile(string $storagePath): string
+    {
+        $supabaseUrl    = config('services.supabase.url');
+        $serviceRoleKey = config('services.supabase.service_role_key');
+        $bucket         = config('services.supabase.bucket');
+
+        $downloadUrl = rtrim($supabaseUrl, '/') . '/storage/v1/object/' . $bucket . '/' . $storagePath;
+
+        try {
+            $response = $this->guzzle->get($downloadUrl, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $serviceRoleKey,
+                ],
+            ]);
+        } catch (ConnectException $e) {
+            throw new \RuntimeException(
+                'Supabase Storage download failed: could not connect. ' . $e->getMessage(),
+                0,
+                $e
+            );
+        }
+
+        $statusCode = $response->getStatusCode();
+        if ($statusCode < 200 || $statusCode >= 300) {
+            throw new \RuntimeException(
+                'Supabase Storage download failed: HTTP ' . $statusCode
+            );
+        }
+
+        return (string) $response->getBody();
     }
 
     /**
