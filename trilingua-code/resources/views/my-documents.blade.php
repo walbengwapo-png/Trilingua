@@ -167,15 +167,17 @@
         <div class="docs-grid" id="docs-grid">
             @foreach ($documents as $doc)
                 @php
-                    $isTranslated = !empty($doc['original_filename']) && !empty($doc['translated_filename']);
-                    $isOriginal   = empty($doc['parent_document_id']);
+                    $presentation = \App\Support\TranslationPresentation::for($doc, auth()->user()->resolvedPreferences());
+                    $asset         = $presentation['asset'];
+                    $isTranslated  = in_array($asset['key'], ['translation_output', 'reviewed_final'], true);
+                    $isOriginal    = $asset['key'] === 'original';
                     $hasParent    = !empty($doc['parent_document_id']);
                     // Get child translations for this record
                     $childTranslations = $translationsByParent[$doc['id']] ?? [];
                     $translationCount  = count($childTranslations);
 
                     // Determine the display name and language badge
-                    $displayName  = $doc['translated_filename'] ?? $doc['original_filename'] ?? 'Untitled';
+                    $displayName  = $presentation['title'];
                     $langLabel    = $doc['source_language'] ?? '—';
                     $langPair     = ($doc['source_language'] ?? '') . ' → ' . ($doc['target_language'] ?? '');
                     // Pick a colour for the language badge based on language
@@ -185,7 +187,7 @@
                         'English'  => 'badge--english',
                     ];
                     $langClass    = $langColors[$langLabel] ?? 'badge--default';
-                    $date         = \Carbon\Carbon::parse($doc['created_at'])->format('M j, Y');
+                    $date         = $presentation['date'];
                     $isCurrentMonth = \Carbon\Carbon::parse($doc['created_at'])->isCurrentMonth();
                 @endphp
 
@@ -193,7 +195,7 @@
                      data-id="{{ $doc['id'] }}"
                      data-title="{{ strtolower($displayName) }}"
                      data-lang="{{ $langPair }}"
-                     data-status="{{ $isOriginal ? 'original' : 'translated' }}"
+                     data-status="{{ $asset['key'] }}"
                      data-recent="{{ $isCurrentMonth ? 'true' : 'false' }}">
                     {{-- Coloured top accent bar (matches language badge colour) --}}
                     <div class="doc-card__accent doc-card__accent--{{ strtolower($langLabel) }}"></div>
@@ -208,12 +210,15 @@
                         </div>
 
                         {{-- Document title --}}
-                        <h3 class="doc-card__title" title="{{ $displayName }}">{{ $displayName }}</h3>
+                        <h3 class="doc-card__title" title="{{ $displayName }}"><span aria-hidden="true">{{ match($presentation['file_icon']) { 'pdf' => 'PDF', 'spreadsheet' => 'XLS', 'slides' => 'PPT', 'text' => 'TXT', default => 'DOC' } }}</span> {{ $displayName }}</h3>
 
                         {{-- Original / Translated badge --}}
                         <div class="doc-card__type-row">
-                            @if ($hasParent)
-                                <span class="type-pill type-pill--translated">Translated</span>
+                            @if ($asset['key'] === 'reviewed_final')
+                                <span class="type-pill type-pill--translated">Reviewed final</span>
+                                <span class="doc-card__from-label">Version {{ $presentation['version'] }}</span>
+                            @elseif ($hasParent || $asset['key'] === 'translation_output')
+                                <span class="type-pill type-pill--translated">Translation output</span>
                                 <span class="doc-card__from-label">
                                     from: <span class="doc-card__from-name" title="{{ $doc['original_filename'] }}">{{ \Illuminate\Support\Str::limit($doc['original_filename'], 40) }}</span>
                                 </span>
@@ -265,7 +270,7 @@
 
                     {{-- Footer: date + action --}}
                     <div class="doc-card__footer">
-                        <span class="doc-card__date">{{ $date }}</span>
+                        <time class="doc-card__date" datetime="{{ $doc['created_at'] ?? '' }}" title="{{ $date['exact'] }}">{{ $date['relative'] }}</time>
                         <div class="doc-card__actions">
                             @if ($hasParent)
                                 {{-- Translation: download translated + view original --}}

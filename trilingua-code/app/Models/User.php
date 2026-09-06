@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Notifications\ResetPasswordNotification;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Support\UserPreferences;
 
 class User extends Authenticatable
 {
@@ -26,6 +27,7 @@ class User extends Authenticatable
         'theme',
         'is_admin',
         'google_id',
+        'preferences',
     ];
 
     /**
@@ -49,6 +51,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'preferences' => 'array',
         ];
     }
 
@@ -66,6 +69,18 @@ class User extends Authenticatable
     public function reviewedTranslations()
     {
         return $this->hasMany(TranslationHistory::class, 'reviewed_by');
+    }
+
+    /** One source of truth for role labels used throughout the UI. */
+    public function roleLabel(): string
+    {
+        return $this->is_admin ? 'Administrator' : 'Member';
+    }
+
+    /** @return array<string, mixed> */
+    public function resolvedPreferences(): array
+    {
+        return UserPreferences::normalize($this->preferences);
     }
 
     /**

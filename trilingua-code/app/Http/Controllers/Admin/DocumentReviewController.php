@@ -37,12 +37,12 @@ class DocumentReviewController extends Controller
             Log::error("DocumentReviewController::{$context} failed", [
                 'exception' => $e->getMessage(),
             ]);
-            return response()->json(['error' => $e->getMessage()], 422);
+            return response()->json(['error' => ['code' => 'review_validation_failed', 'message' => 'The review changes could not be applied. Check the form and try again.', 'retryable' => false]], 422);
         } catch (\Throwable $e) {
             Log::error("DocumentReviewController::{$context} failed", [
                 'exception' => $e->getMessage(),
             ]);
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json(['error' => ['code' => 'review_update_failed', 'message' => 'The review could not be saved. Please try again.', 'retryable' => true]], 500);
         }
     }
 
@@ -52,9 +52,11 @@ class DocumentReviewController extends Controller
      */
     public function verifyDocument(Request $request, TranslationHistory $translation): JsonResponse
     {
+        $validated = $request->validate(['note' => ['nullable', 'string', 'max:2000']]);
         return $this->wrap(fn () => [
             'success' => true,
-            'status' => $this->review->verifyDocument($translation->id, Auth::id())->review_status,
+            'status' => $this->review->verifyDocument($translation->id, Auth::id(), $validated['note'] ?? null)->review_status,
+            'audit' => ['action' => 'verify', 'persisted' => true],
         ], 'verifyDocument');
     }
 
@@ -65,7 +67,7 @@ class DocumentReviewController extends Controller
     {
         $validated = $request->validate([
             'current_text' => ['required', 'string'],
-            'note' => ['nullable', 'string', 'max:2000'],
+            'note' => ['required', 'string', 'max:2000'],
         ]);
 
         return $this->wrap(fn () => [
@@ -99,6 +101,7 @@ class DocumentReviewController extends Controller
                 $validated['reason'],
                 $validated['note'] ?? null,
             )->review_status,
+            'audit' => ['action' => 'flag', 'persisted' => true],
         ], 'flagDocument');
     }
 
@@ -162,6 +165,8 @@ class DocumentReviewController extends Controller
                 'new_download_filename' => $result['download_filename'],
                 'original_download_url' => $originalUrl,
                 'edited_blocks' => $appliedEdits + $result['edited_blocks'],
+                'version' => $result['version'] ?? null,
+                'audit' => ['action' => 'regenerate', 'persisted' => true],
             ];
         }, 'saveAndRegenerate');
     }
@@ -174,20 +179,22 @@ class DocumentReviewController extends Controller
      * it for client-side preview (PDF iframe, mammoth/SheetJS conversion)
      * without hitting CORS on the signed URL.
      */
-    public function showTranslatedFile(TranslationHistory $translation): StreamedResponse
+    public function showTranslatedFile(Request $request, TranslationHistory $translation): StreamedResponse
     {
-        if ($translation->translation_type !== 'document' || blank($translation->storage_path)) {
+        $version = $translation->versions()->whereKey($request->integer('version'))->first()
+            ?? $translation->currentVersion;
+        $storagePath = $version?->storage_path ?? $translation->storage_path;
+        $filename = $version?->translated_filename ?: ($translation->translated_filename ?: 'translation.pdf');
+        if ($translation->translation_type !== 'document' || blank($storagePath)) {
             abort(404, 'Translated file not found.');
         }
-
-        $filename = $translation->translated_filename ?: 'translation.pdf';
         $ext      = strtolower((string) pathinfo($filename, PATHINFO_EXTENSION));
 
         try {
-            $bytes = $this->storage->downloadFile($translation->storage_path);
+            $bytes = $this->storage->downloadFile($storagePath);
         } catch (\Throwable $e) {
             Log::error('DocumentReviewController::showTranslatedFile failed', [
-                'storage_path' => $translation->storage_path,
+                'storage_path' => $storagePath,
                 'exception' => $e->getMessage(),
             ]);
             abort(404, 'Translated file not found.');

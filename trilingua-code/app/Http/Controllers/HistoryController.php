@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\TranslationHistory;
+use App\Models\DocumentVersion;
 use App\Services\HistoryService;
 use App\Services\StorageService;
 use Illuminate\Contracts\View\View;
@@ -86,7 +87,7 @@ class HistoryController extends Controller
     /**
      * GET /history/{id}/file — stream the translated file inline (ownership-checked).
      */
-    public function showFile(int $id): StreamedResponse
+    public function showFile(Request $request, int $id): StreamedResponse
     {
         $record = $this->history->getRecord($id);
 
@@ -98,18 +99,20 @@ class HistoryController extends Controller
             abort(403, 'Forbidden.');
         }
 
-        if (($record['translation_type'] ?? 'document') !== 'document' || blank($record['storage_path'])) {
+        $version = $this->versionFor($request, $id, $record);
+        $storagePath = $version?->storage_path ?? $record['storage_path'];
+        $filename = $version?->translated_filename ?: ($record['translated_filename'] ?: 'translation.pdf');
+
+        if (($record['translation_type'] ?? 'document') !== 'document' || blank($storagePath)) {
             abort(404, 'Translated file not found.');
         }
-
-        $filename = $record['translated_filename'] ?: 'translation.pdf';
         $ext      = strtolower((string) pathinfo((string) $filename, PATHINFO_EXTENSION));
 
         try {
-            $bytes = $this->storage->downloadFile($record['storage_path']);
+            $bytes = $this->storage->downloadFile($storagePath);
         } catch (\Throwable $e) {
             Log::error('HistoryController::showFile failed', [
-                'storage_path' => $record['storage_path'],
+                'storage_path' => $storagePath,
                 'exception'    => $e->getMessage(),
             ]);
             abort(404, 'Translated file not found.');
@@ -194,6 +197,25 @@ class HistoryController extends Controller
         };
     }
 
+    /** Resolve a requested version only within the current history record. */
+    private function versionFor(Request $request, int $historyId, array $record): ?DocumentVersion
+    {
+        $versionId = $request->integer('version');
+        if ($versionId > 0) {
+            return DocumentVersion::where('id', $versionId)
+                ->where('translation_history_id', $historyId)
+                ->firstOrFail();
+        }
+
+        if (!empty($record['current_version_id'])) {
+            return DocumentVersion::where('id', $record['current_version_id'])
+                ->where('translation_history_id', $historyId)
+                ->first();
+        }
+
+        return null;
+    }
+
     /**
      * GET /history/{id} — return full metadata for a translation record (for the details modal).
      */
@@ -258,9 +280,15 @@ class HistoryController extends Controller
             );
         }
 
+        $version = $this->versionFor($request, $id, $record);
+        $storagePath = $version?->storage_path ?? $record['storage_path'];
+        if (blank($storagePath)) {
+            return response()->json(['error' => 'This file is no longer available.'], 404);
+        }
+
         // 3. Generate a new signed URL via StorageService
         try {
-            $storageResult = $this->storage->generateSignedUrl($record['storage_path']);
+            $storageResult = $this->storage->generateSignedUrl($storagePath);
         } catch (\Throwable $e) {
             // 4. Map "not found" exceptions to 404
             if (stripos($e->getMessage(), 'not found') !== false) {
@@ -296,6 +324,7 @@ class HistoryController extends Controller
         // 7. Return the new download URL
         return response()->json([
             'download_url' => $storageResult['signed_url'],
+            'version' => $version?->version ?? 1,
         ], 200);
     }
 

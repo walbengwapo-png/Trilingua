@@ -60,7 +60,7 @@
 <div class="stack">
 
     @if ($error)
-        <p class="error-message">Unable to load history. Please try again later.</p>
+        <x-async-state state="error" message="We could not load your saved translations." :retry-url="route('history')" />
     @else
 
     {{-- Page header --}}
@@ -90,11 +90,12 @@
                 <option value="oldest">Oldest First</option>
                 <option value="lang-az">Language A–Z</option>
             </select>
+            <button type="button" id="history-clear" class="history-select" hidden>Clear filters</button>
         </div>
     </div>
 
     @if (empty($records))
-        <p class="empty-state">You have no translation history yet.</p>
+        <x-async-state state="empty" message="You have no translation history yet." />
     @else
 
     @php
@@ -117,6 +118,7 @@
             <div class="history-cards">
                 @foreach ($groupRecords as $record)
                 @php
+                    $presentation = \App\Support\TranslationPresentation::for($record, auth()->user()->resolvedPreferences());
                     $isDoc    = ($record['translation_type'] ?? 'document') === 'document';
                     $matchPct = $isDoc
                         ? 100
@@ -128,10 +130,10 @@
                     $preview  = $isDoc
                         ? ($record['original_filename'] ?? 'Document')
                         : \Illuminate\Support\Str::limit($record['source_text'] ?? '', 80);
-                    $dateStr  = \Carbon\Carbon::parse($record['created_at'])->utc()->format('Y-m-d H:i') . ' UTC';
+                    $dateStr  = $presentation['date'];
                 @endphp
                 @php
-                    $reviewStatus = $record['review_status'] ?? 'pending';
+                    $reviewStatus = $presentation['lifecycle']['review_status'];
                 @endphp
                 <div class="history-card"
                      data-search="{{ strtolower($preview . ' ' . ($record['source_language'] ?? '') . ' ' . ($record['target_language'] ?? '') . ' ' . $reviewStatus) }}"
@@ -145,7 +147,7 @@
                         <span class="type-badge type-badge--{{ $isDoc ? 'doc' : 'text' }}">
                             {{ $isDoc ? 'Document' : 'Text' }}
                         </span>
-                        <span class="status-badge status-badge--{{ $reviewStatus }}">{{ ucfirst($reviewStatus) }}</span>
+                        <span class="status-badge status-badge--{{ $reviewStatus }}" title="{{ $presentation['lifecycle']['translation_label'] }}; {{ $presentation['lifecycle']['review_label'] }}">{{ $presentation['lifecycle']['label'] }}</span>
                     </div>
 
                     <div class="history-card__body">
@@ -156,7 +158,7 @@
                     </div>
 
                     <div class="history-card__footer">
-                        <span class="history-card__date">{{ $dateStr }}</span>
+                        <time class="history-card__date" datetime="{{ $record['created_at'] ?? '' }}" title="{{ $dateStr['exact'] }}">{{ $dateStr['relative'] }}</time>
                         <div class="history-card__actions">
                             {{-- View Details button (opens modal) --}}
                             <button class="history-card__action-btn view-details-btn"
@@ -219,6 +221,10 @@
             </div>
         </section>
         @endforeach
+    </div>
+
+    <div id="history-no-results" class="empty-state" hidden>
+        No translations match these filters. <button type="button" id="history-no-results-clear" class="link">Clear filters</button>
     </div>
 
     @endif {{-- empty($records) --}}
@@ -791,6 +797,12 @@
             var visibleCards = group.querySelectorAll('.history-card:not([style*="display: none"])');
             group.style.display = visibleCards.length > 0 ? '' : 'none';
         });
+        var hasVisible = getAllCards().some(function (card) { return card.style.display !== 'none'; });
+        var noResults = document.getElementById('history-no-results');
+        var clear = document.getElementById('history-clear');
+        var hasFilter = !!q || !!s;
+        if (noResults) noResults.hidden = hasVisible || !hasFilter;
+        if (clear) clear.hidden = !hasFilter;
     }
 
     // Apply group-by toggle: when "none", flatten all cards into a single pseudo-group
@@ -844,6 +856,19 @@
     if (groupSelect) groupSelect.addEventListener('change', applyAll);
     if (statusSelect) statusSelect.addEventListener('change', applyAll);
     if (sortSelect)  sortSelect.addEventListener('change', applyAll);
+
+    function clearFilters() {
+        if (searchInput) searchInput.value = '';
+        if (statusSelect) statusSelect.value = '';
+        if (groupSelect) groupSelect.value = 'language';
+        if (sortSelect) sortSelect.value = 'newest';
+        applyAll();
+        if (searchInput) searchInput.focus();
+    }
+    var clearFiltersBtn = document.getElementById('history-clear');
+    var noResultsClearBtn = document.getElementById('history-no-results-clear');
+    if (clearFiltersBtn) clearFiltersBtn.addEventListener('click', clearFilters);
+    if (noResultsClearBtn) noResultsClearBtn.addEventListener('click', clearFilters);
 
     // Initial sort (newest first by default)
     applyAll();

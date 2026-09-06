@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use App\Models\UserActivityLog;
+use App\Support\UserPreferences;
 
 class SettingsController extends Controller
 {
@@ -30,7 +31,9 @@ class SettingsController extends Controller
             $scrollToAccount = $request->query('section') === 'account';
         }
 
-        return view('settings', compact('user', 'scrollToAccount'));
+        $preferences = $user->resolvedPreferences();
+
+        return view('settings', compact('user', 'scrollToAccount', 'preferences'));
     }
 
     /**
@@ -107,16 +110,47 @@ class SettingsController extends Controller
     }
 
     /**
-     * Update general settings (theme).
+     * Update durable translation, date, notification, accessibility, and theme
+     * preferences. They deliberately live in one JSON field so adding a
+     * preference does not require another user-schema change.
      */
     public function updateGeneral(Request $request): RedirectResponse
     {
+        $user = Auth::user();
+        $defaults = $user->resolvedPreferences();
         $validated = $request->validate([
             'theme' => 'required|string|in:light,dark',
+            // These are optional at the HTTP boundary for backwards
+            // compatibility with the original theme-only settings form.
+            'source_language' => 'nullable|string|in:English,Cebuano,Filipino',
+            'target_language' => 'nullable|string|in:English,Cebuano,Filipino',
+            'translation_mode' => 'nullable|string|in:fast,balanced,thorough',
+            'timezone' => 'nullable|timezone',
+            'date_format' => 'nullable|string|in:M j, Y g:i A T,Y-m-d H:i T',
+            'notifications.translation_complete' => 'nullable|boolean',
+            'notifications.review_updates' => 'nullable|boolean',
+            'reduced_motion' => 'nullable|boolean',
         ]);
 
-        $user = Auth::user();
-        $user->update($validated);
+        $sourceLanguage = $validated['source_language'] ?? $defaults['source_language'];
+        $targetLanguage = $validated['target_language'] ?? $defaults['target_language'];
+        if ($sourceLanguage === $targetLanguage) {
+            return back()->withErrors(['target_language' => 'The default source and target languages must be different.'])->withInput();
+        }
+        $preferences = UserPreferences::normalize(array_merge($user->preferences ?? [], [
+            'source_language' => $sourceLanguage,
+            'target_language' => $targetLanguage,
+            'translation_mode' => $validated['translation_mode'] ?? $defaults['translation_mode'],
+            'timezone' => $validated['timezone'] ?? $defaults['timezone'],
+            'date_format' => $validated['date_format'] ?? $defaults['date_format'],
+            'notifications' => $request->has('notifications') ? [
+                'translation_complete' => $request->boolean('notifications.translation_complete'),
+                'review_updates' => $request->boolean('notifications.review_updates'),
+            ] : $defaults['notifications'],
+            'reduced_motion' => $request->has('reduced_motion') ? $request->boolean('reduced_motion') : $defaults['reduced_motion'],
+            'theme' => $validated['theme'],
+        ]));
+        $user->update(['theme' => $validated['theme'], 'preferences' => $preferences]);
 
         return back()->with('general_success', 'General settings updated successfully.');
     }

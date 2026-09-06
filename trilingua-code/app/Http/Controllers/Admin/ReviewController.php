@@ -136,7 +136,7 @@ class ReviewController extends Controller
      */
     public function show(Request $request, TranslationHistory $translation): View
     {
-        $history = $translation->load(['user', 'reviewer']);
+        $history = $translation->load(['user', 'reviewer', 'versions', 'currentVersion']);
 
         if ($history->translation_type === 'document') {
             // Block list with filters + pagination. Documents can contain
@@ -149,6 +149,10 @@ class ReviewController extends Controller
 
             if ($scoreMin = $request->query('score_min')) {
                 $blocksQuery->where('quality_score', '>=', (int) $scoreMin);
+            }
+
+            if ($issue = $request->query('issue')) {
+                $blocksQuery->whereJsonContains('quality_issues', $issue);
             }
 
             if ($search = trim((string) $request->query('search'))) {
@@ -180,6 +184,15 @@ class ReviewController extends Controller
                 ->orderBy('block_index')
                 ->get(['id', 'block_index', 'current_text', 'ai_translated_text']);
 
+            $issues = $history->blocks()
+                ->whereNotNull('quality_issues')
+                ->get(['quality_issues'])
+                ->flatMap(fn ($block) => (array) $block->quality_issues)
+                ->filter()
+                ->unique()
+                ->sort()
+                ->values();
+
             // Per-record admin audit trail for the collapsible "Edit History".
             $editHistory = \App\Http\Controllers\Admin\AuditLogController::forRecord($history->id);
 
@@ -189,8 +202,9 @@ class ReviewController extends Controller
             // the storage driver and often forces a DOWNLOAD. Admins want to
             // preview the document inline, not trigger a download.
             $previewUrl = null;
-            if (!blank($history->storage_path)) {
-                $previewUrl = route('admin.review.document.file', $history->id);
+            $selectedVersion = $history->versions->firstWhere('id', $request->integer('version')) ?? $history->currentVersion ?? $history->versions->last();
+            if (!blank($selectedVersion?->storage_path ?? $history->storage_path)) {
+                $previewUrl = route('admin.review.document.file', ['translation' => $history->id, 'version' => $selectedVersion?->id]);
             }
 
             return view('admin.review-document', [
@@ -199,6 +213,8 @@ class ReviewController extends Controller
                 'documentBlocks'=> $documentBlocks,
                 'totalBlocks'   => $history->blocks()->count(),
                 'blocksFilter'  => $request->query(),
+                'issues'        => $issues,
+                'selectedVersion'=> $selectedVersion,
                 'previewUrl'    => $previewUrl,
                 'isPdf'         => strtolower((string) pathinfo((string) $history->translated_filename, PATHINFO_EXTENSION)) === 'pdf',
                 'previewExt'    => strtolower((string) pathinfo((string) $history->translated_filename, PATHINFO_EXTENSION)),

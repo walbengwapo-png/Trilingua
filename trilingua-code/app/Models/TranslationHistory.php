@@ -39,6 +39,7 @@ class TranslationHistory extends Model
         'is_bookmarked',
         'bookmarked_at',
         'job_id',
+        'current_version_id',
     ];
 
     protected $casts = [
@@ -97,5 +98,16 @@ class TranslationHistory extends Model
     public function editLog(): HasMany
     {
         return $this->hasMany(TranslationEditLog::class);
+    }
+
+    /** Every durable file artifact, ordered by creation/version. */
+    public function versions(): HasMany
+    {
+        return $this->hasMany(DocumentVersion::class)->orderBy('version');
+    }
+
+    public function currentVersion(): BelongsTo
+    {
+        return $this->belongsTo(DocumentVersion::class, 'current_version_id');
     }
 }

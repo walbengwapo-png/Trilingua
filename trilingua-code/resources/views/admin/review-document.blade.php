@@ -7,6 +7,9 @@
 @endsection
 
 @section('content')
+@php
+    $presentation = \App\Support\TranslationPresentation::for($record, auth()->user()->resolvedPreferences());
+@endphp
 <div class="stack">
 
     <a href="{{ route('admin.review.index') }}" class="review-back">
@@ -17,7 +20,7 @@
     <div class="review-detail-card">
         <div class="review-detail__header">
             <div>
-                <span class="status-badge status-badge--{{ $record->review_status }}">{{ ucfirst($record->review_status) }}</span>
+                <span class="status-badge status-badge--{{ $record->review_status }}" title="{{ $presentation['lifecycle']['translation_label'] }}; {{ $presentation['lifecycle']['review_label'] }}">{{ $presentation['lifecycle']['label'] }}</span>
                 <h2 class="review-detail__title" style="font-size:1.15rem;font-weight:700;color:var(--text);margin:10px 0 0">{{ $record->original_filename ?? 'Document Translation' }}</h2>
                 @if ($record->translated_filename)
                     <p class="review-detail__subtitle" style="font-size:0.82rem;color:var(--muted);margin:4px 0 0">translated to → {{ $record->translated_filename }}</p>
@@ -37,7 +40,7 @@
             </div>
             <div class="review-detail__meta-item">
                 <span class="review-detail__meta-label">Quality Score</span>
-                <span class="review-detail__meta-value">{{ $record->quality_score === null ? '—' : $record->quality_score }}</span>
+                <span class="review-detail__meta-value"><x-quality-badge :score="$record->quality_score" /></span>
             </div>
             <div class="review-detail__meta-item">
                 <span class="review-detail__meta-label">Submitted By</span>
@@ -45,12 +48,18 @@
             </div>
             <div class="review-detail__meta-item">
                 <span class="review-detail__meta-label">Submitted At</span>
-                <span class="review-detail__meta-value">{{ \Carbon\Carbon::parse($record->created_at)->utc()->format('Y-m-d H:i') }} UTC</span>
+                <time class="review-detail__meta-value" datetime="{{ $record->created_at }}" title="{{ $presentation['date']['exact'] }}">{{ $presentation['date']['relative'] }}</time>
             </div>
             <div class="review-detail__meta-item">
                 <span class="review-detail__meta-label">Blocks</span>
                 <span class="review-detail__meta-value">{{ $totalBlocks }}</span>
             </div>
+            @if ($record->flag_reason)
+            <div class="review-detail__meta-item">
+                <span class="review-detail__meta-label">Flag reason</span>
+                <span class="review-detail__meta-value">{{ ucwords(str_replace('_', ' ', $record->flag_reason)) }} — {{ $record->flag_note }}</span>
+            </div>
+            @endif
         </div>
 
         {{-- Document-level actions --}}
@@ -63,7 +72,8 @@
                 <form method="POST" action="{{ route('admin.review.document.verify', $record->id) }}" class="review-inline-form"
                       data-review-form data-reload="true" data-confirm-dirty="true">
                     @csrf
-                    <button type="submit" class="review-btn review-btn--success">Verify Document</button>
+                    <input type="text" name="note" class="review-input" placeholder="Optional verification note" aria-label="Verification note">
+                    <button type="submit" class="review-btn review-btn--success" data-shortcut="v">Verify Document</button>
                 </form>
 
                 <form method="POST" action="{{ route('admin.review.document.flag', $record->id) }}" class="review-inline-form"
@@ -75,7 +85,8 @@
                             <option value="{{ $reason }}" @selected($record->flag_reason === $reason)>{{ ucwords(str_replace('_', ' ', $reason)) }}</option>
                         @endforeach
                     </select>
-                    <button type="submit" class="review-btn review-btn--danger">Flag Document</button>
+                    <input type="text" name="note" class="review-input" placeholder="Required flag note" required aria-label="Required flag note">
+                    <button type="submit" class="review-btn review-btn--danger" data-shortcut="f">Flag Document</button>
                 </form>
             </div>
 
@@ -92,6 +103,7 @@
             </form>
 
             <div id="regen-result"></div>
+            <div id="review-result" class="review-form-note" role="status" aria-live="polite"></div>
         </div>
 
         {{-- ── Two-pane review layout ──────────────────────────────────── --}}
@@ -106,6 +118,15 @@
                             <a class="review-pane__download" href="{{ $previewUrl }}" target="_blank" rel="noopener">Download</a>
                         @endif
                     </div>
+                    @if ($record->versions->isNotEmpty())
+                    <form method="GET" action="{{ route('admin.review.show', $record->id) }}">
+                        <select name="version" class="review-select" onchange="this.form.submit()" aria-label="Select document version">
+                            @foreach ($record->versions as $version)
+                                <option value="{{ $version->id }}" @selected($selectedVersion && $selectedVersion->id === $version->id)>v{{ $version->version }} · {{ $version->artifact_label }}</option>
+                            @endforeach
+                        </select>
+                    </form>
+                    @endif
                     <div class="review-pane__tabs" id="preview-tabs">
                         <button type="button" class="review-pane__tab is-active" data-tab="final">Final</button>
                         <button type="button" class="review-pane__tab" data-tab="draft">Draft</button>
@@ -119,7 +140,7 @@
                         @elseif ($previewUrl && in_array($previewExt, ['docx', 'xlsx', 'txt', 'md', 'csv', 'rtf']))
                             <div id="converter-host"
                                  data-ext="{{ $previewExt }}"
-                                 data-file-url="{{ route('admin.review.document.file', $record->id) }}">
+                                 data-file-url="{{ $previewUrl }}">
                                 <div class="review-pane__loading">Loading preview…</div>
                             </div>
                         @else
@@ -166,6 +187,16 @@
                         </div>
 
                         <div class="review-filters__field">
+                            <label class="review-filters__label" for="b-issue">Issue</label>
+                            <select name="issue" id="b-issue" class="review-select">
+                                <option value="">All issues</option>
+                                @foreach ($issues as $issue)
+                                    <option value="{{ $issue }}" @selected(($blocksFilter['issue'] ?? '') === $issue)>{{ ucwords(str_replace('_', ' ', $issue)) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="review-filters__field">
                             <label class="review-filters__label" for="b-score">Score ≥</label>
                             <input type="number" name="score_min" id="b-score" class="review-input" min="0" max="100"
                                    value="{{ $blocksFilter['score_min'] ?? '' }}" placeholder="Any">
@@ -203,7 +234,6 @@
                             @php
                                 $different = isset($block->current_text) && $block->current_text !== $block->ai_translated_text;
                                 $score     = $block->quality_score;
-                                $level     = $score === null ? '' : ($score < 60 ? 'low' : ($score < 80 ? 'medium' : 'high'));
                             @endphp
                             <div class="doc-block" data-block-id="{{ $block->id }}" data-block-index="{{ $block->block_index }}">
                                 <div class="doc-block__head">
@@ -215,10 +245,7 @@
                                             <span class="status-badge status-badge--edited">Edited</span>
                                         @endif
                                     </div>
-                                    <span class="quality-score" style="min-width:0">
-                                        <span class="quality-score__dot quality-score__dot--{{ $level }}" aria-hidden="true"></span>
-                                        {{ $score === null ? '—' : $score }}
-                                    </span>
+                                    <x-quality-badge :score="$score" />
                                 </div>
 
                                 <textarea class="doc-block__editor" name="current_text" data-block-current
@@ -243,6 +270,7 @@
                                           class="review-inline-form" data-review-form data-inplace="true">
                                         @csrf
                                         <input type="hidden" name="current_text" value="{{ htmlspecialchars($block->current_text ?? '', ENT_QUOTES) }}">
+                                        <input type="text" name="note" class="review-input" placeholder="Optional block comment" aria-label="Comment for block {{ $block->block_index }}">
                                         <button type="submit" class="review-btn review-btn--warning">Save Edit</button>
                                     </form>
                                 </div>
@@ -378,7 +406,8 @@
             var data = null;
             try { data = JSON.parse(res.raw); } catch (e) {}
             if (!res.r.ok) {
-                if (window.showErrorModal) showErrorModal('Action failed', (data && data.error) || 'Could not update.');
+                var message = data && data.error && typeof data.error === 'object' ? data.error.message : 'Could not update.';
+                if (window.showErrorModal) showErrorModal('Action failed', message);
                 return null;
             }
             return data;
@@ -397,18 +426,24 @@
             if (form.getAttribute('data-confirm-dirty') === 'true' && hasUnsavedEdits()) {
                 if (!window.confirm('You have unsaved block edits. Proceed without saving them?')) return;
             }
+            var action = (form.querySelector('button[type="submit"]') || {}).textContent || 'update';
+            var reason = form.querySelector('[name="reason"]');
+            var summary = 'Confirm: ' + action.trim() + (reason && reason.value ? ' (' + reason.options[reason.selectedIndex].text + ')' : '') + '. This result will be recorded in the audit history.';
+            if (!window.confirm(summary)) return;
             postForm(form).then(function (data) {
                 if (!data) return;
                 if (window.showToast) showToast('success', 'Updated', 'Status: ' + (data.status || 'ok'));
+                var auditResult = document.getElementById('review-result');
+                if (auditResult) auditResult.textContent = 'Saved: ' + (data.audit && data.audit.action ? data.audit.action : 'review update') + ' is recorded in the audit history.';
                 if (form.getAttribute('data-inplace') === 'true') {
                     var card = form.closest('.doc-block');
                     if (card) {
                         applyBlockSaved(card);
                         updateUnsavedCount();
                     }
-                } else if (form.getAttribute('data-reload') === 'true') {
-                    suppressLeavePrompt = true;
-                    window.location.reload();
+                } else {
+                    var status = document.querySelector('.review-detail__header .status-badge');
+                    if (status && data.status) { status.className = 'status-badge status-badge--' + data.status; status.textContent = 'Translation complete · Review ' + data.status; }
                 }
             });
         });
@@ -425,7 +460,7 @@
             var label = btn.textContent;
             btn.disabled = true;
             spinner.style.display = '';
-            result.innerHTML = '';
+            result.replaceChildren();
 
             var body = new FormData(regenForm);
             // Include every on-screen block edit so regeneration reflects the
@@ -437,7 +472,6 @@
                     body.append('blocks[' + blockId + ']', textarea.value);
                 }
             });
-            suppressLeavePrompt = true;
             fetch(regenForm.action, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
@@ -450,22 +484,21 @@
                 var data = null;
                 try { data = JSON.parse(res.raw); } catch (e) {}
                 if (!res.r.ok) {
-                    if (window.showErrorModal) showErrorModal('Regeneration failed', (data && data.error) || 'Could not regenerate.');
+                    var message = data && data.error && typeof data.error === 'object' ? data.error.message : 'Could not regenerate.';
+                    if (window.showErrorModal) showErrorModal('Regeneration failed', message);
                     return;
                 }
                 if (window.showToast) showToast('success', 'Regenerated', 'New version uploaded (' + (data.edited_blocks ?? 0) + ' edited blocks).');
-                var html =
-                    '<div class="regen-result">' +
-                    '<strong>Regeneration complete.</strong> (' + (data.edited_blocks ?? 0) + ' edited blocks included)' +
-                    '<div class="regen-result__links">' +
-                    '<a href="' + data.new_download_url + '">Download new version (' + (data.new_download_filename || 'file') + ')</a>';
-                if (data.original_download_url) {
-                    html += '<a href="' + data.original_download_url + '">Download original</a>';
-                }
-                html += '</div></div>';
-                result.innerHTML = html;
-                // Refresh so the badges show the latest block statuses.
-                setTimeout(function () { window.location.reload(); }, 1200);
+                suppressLeavePrompt = true;
+                var box = document.createElement('div'); box.className = 'regen-result';
+                var heading = document.createElement('strong'); heading.textContent = 'Regeneration complete.'; box.appendChild(heading);
+                box.appendChild(document.createTextNode(' v' + (data.version || 'new') + ' contains ' + (data.edited_blocks ?? 0) + ' edited blocks.'));
+                var links = document.createElement('div'); links.className = 'regen-result__links';
+                var output = document.createElement('a'); output.href = data.new_download_url; output.textContent = 'Download new version (' + (data.new_download_filename || 'file') + ')'; links.appendChild(output);
+                if (data.original_download_url) { var original = document.createElement('a'); original.href = data.original_download_url; original.textContent = 'Download original'; links.appendChild(original); }
+                box.appendChild(links); result.appendChild(box);
+                var auditResult = document.getElementById('review-result');
+                if (auditResult) auditResult.textContent = 'Saved: regeneration created immutable version ' + (data.version || '') + ' and is recorded in the audit history.';
             })
             .catch(function (err) {
                 btn.disabled = false;
@@ -476,6 +509,12 @@
     }
 
     updateUnsavedCount();
+    document.addEventListener('keydown', function (event) {
+        if (event.altKey || event.ctrlKey || event.metaKey || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
+        if (event.key.toLowerCase() === 'v') { var verify = document.querySelector('[data-shortcut="v"]'); if (verify) { event.preventDefault(); verify.focus(); } }
+        if (event.key.toLowerCase() === 'f') { var flag = document.querySelector('[data-shortcut="f"]'); if (flag) { event.preventDefault(); flag.focus(); } }
+        if (event.key.toLowerCase() === 'e') { var editor = document.querySelector('textarea[data-block-current]'); if (editor) { event.preventDefault(); editor.focus(); } }
+    });
 })();
 </script>
 @endsection

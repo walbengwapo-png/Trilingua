@@ -459,6 +459,16 @@
     margin-bottom: 16px;
 }
 
+/* Text reviews use the same clear source → translation comparison as the
+   document review without requiring the document preview interface. */
+.review-comparison {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+.review-comparison .review-text-block { margin-bottom: 0; min-height: 120px; }
+
 /* ── Block list (document review) ───────────────────────────────────── */
 .block-list {
     display: flex;
@@ -573,6 +583,7 @@
     .review-select, .review-input { width: 100%; }
     .review-filters { flex-direction: column; align-items: stretch; }
     .review-filters__actions { justify-content: flex-end; }
+    .review-comparison { grid-template-columns: 1fr; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════

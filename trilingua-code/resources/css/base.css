@@ -20,6 +20,7 @@
     
     /* Layout dimensions */
     --sidebar-width: 260px;
+    --focus-ring: 0 0 0 3px rgba(59, 130, 246, .38);
 }
 
 /* Light theme - explicit data-theme attribute */
@@ -49,6 +50,15 @@
 /* Global Resets */
 * {
     box-sizing: border-box;
+}
+
+:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
+
+[data-reduced-motion="true"] *, [data-reduced-motion="true"] *::before, [data-reduced-motion="true"] *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
 }
 
 html,
@@ -215,3 +225,9 @@ body {
     height: auto;
     display: block;
 }
+
+.ui-state { display:flex; flex-direction:column; align-items:center; gap:12px; padding:28px; text-align:center; color:var(--muted); border:1px dashed var(--border); border-radius:var(--radius); background:var(--card-bg); }
+.ui-state--error { color:#b91c1c; border-color:#fecaca; }
+.ui-feedback { padding:12px 14px; border-radius:8px; margin:0 0 16px; }
+.ui-feedback--success { color:#166534; background:#dcfce7; border:1px solid #bbf7d0; }
+.ui-feedback--error { color:#b91c1c; background:#fef2f2; border:1px solid #fecaca; }

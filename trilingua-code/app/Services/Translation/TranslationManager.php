@@ -52,8 +52,9 @@ class TranslationManager
                 ->post("{$this->pythonUrl}/translate/text", $request->toArray());
 
             if ($response->failed()) {
-                $errorMessage = $response->json('detail') 
-                    ?? $response->json('error') 
+                $error = $response->json('error');
+                $errorMessage = $response->json('detail')
+                    ?? (is_array($error) ? ($error['message'] ?? null) : $error)
                     ?? "Python service returned status {$response->status()}";
                 
                 Log::error('TranslationManager: Python text translation failed', [
@@ -133,8 +134,9 @@ class TranslationManager
                 ]);
 
             if ($response->failed()) {
-                $errorMessage = $response->json('detail') 
-                    ?? $response->json('error') 
+                $error = $response->json('error');
+                $errorMessage = $response->json('detail')
+                    ?? (is_array($error) ? ($error['message'] ?? null) : $error)
                     ?? "Python service returned status {$response->status()}";
 
                 Log::error('TranslationManager: Python document translation failed', [
@@ -250,8 +252,9 @@ class TranslationManager
             ]);
 
             if ($response->failed()) {
-                $errorMessage = $response->json('detail') 
-                    ?? $response->json('error') 
+                $error = $response->json('error');
+                $errorMessage = $response->json('detail')
+                    ?? (is_array($error) ? ($error['message'] ?? null) : $error)
                     ?? "Python service returned status {$response->status()}";
 
                 Log::error('TranslationManager: Python document regeneration failed', [

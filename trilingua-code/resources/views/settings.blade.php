@@ -8,6 +8,15 @@
 
 @section('content')
 <div class="settings-layout">
+    @if (session('success'))
+        <x-feedback type="success" :message="session('success')" />
+    @elseif (session('general_success'))
+        <x-feedback type="success" :message="session('general_success')" />
+    @elseif (session('password_success'))
+        <x-feedback type="success" :message="session('password_success')" />
+    @elseif (session('preferences_success'))
+        <x-feedback type="success" :message="session('preferences_success')" />
+    @endif
 
     {{-- Sidebar --}}
     <aside class="settings-sidebar">
@@ -167,7 +176,7 @@
 
             <div class="settings-card">
                 <h3 class="settings-card-title">General Preferences</h3>
-                <p class="settings-card-description">Customize the appearance of the application.</p>
+                <p class="settings-card-description">Choose defaults for new translations, dates, notifications, and accessibility.</p>
 
                 @if (session('general_success'))
                     <div class="alert alert-success">
@@ -196,6 +205,57 @@
                         @error('theme')
                             <p class="error-message">{{ $message }}</p>
                         @enderror
+                    </div>
+
+                    <div class="settings-preference-grid">
+                        <div class="form-field">
+                            <label for="source_language" class="form-label">Default source language</label>
+                            <select id="source_language" name="source_language" class="form-input">
+                                @foreach (['English', 'Cebuano', 'Filipino'] as $language)
+                                    <option value="{{ $language }}" @selected(old('source_language', $preferences['source_language']) === $language)>{{ $language }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="target_language" class="form-label">Default target language</label>
+                            <select id="target_language" name="target_language" class="form-input">
+                                @foreach (['English', 'Cebuano', 'Filipino'] as $language)
+                                    <option value="{{ $language }}" @selected(old('target_language', $preferences['target_language']) === $language)>{{ $language }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="translation_mode" class="form-label">Default translation mode</label>
+                            <select id="translation_mode" name="translation_mode" class="form-input">
+                                @foreach (['fast' => 'Fast', 'balanced' => 'Balanced', 'thorough' => 'Thorough'] as $mode => $label)
+                                    <option value="{{ $mode }}" @selected(old('translation_mode', $preferences['translation_mode']) === $mode)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="timezone" class="form-label">Time zone</label>
+                            <select id="timezone" name="timezone" class="form-input">
+                                @foreach (['Asia/Manila' => 'Asia/Manila (PHT)', 'UTC' => 'UTC'] as $zone => $label)
+                                    <option value="{{ $zone }}" @selected(old('timezone', $preferences['timezone']) === $zone)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="date_format" class="form-label">Date format</label>
+                            <select id="date_format" name="date_format" class="form-input">
+                                <option value="M j, Y g:i A T" @selected(old('date_format', $preferences['date_format']) === 'M j, Y g:i A T')>Sep 6, 2026 3:30 PM PHT</option>
+                                <option value="Y-m-d H:i T" @selected(old('date_format', $preferences['date_format']) === 'Y-m-d H:i T')>2026-09-06 15:30 PHT</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="notifications[translation_complete]" value="0">
+                    <input type="hidden" name="notifications[review_updates]" value="0">
+                    <div class="settings-preference-grid">
+                        <label class="settings-check"><input type="checkbox" name="notifications[translation_complete]" value="1" @checked(old('notifications.translation_complete', $preferences['notifications']['translation_complete']))><span>Translation updates<small>Tell me when a translation completes or fails.</small></span></label>
+                        <label class="settings-check"><input type="checkbox" name="notifications[review_updates]" value="1" @checked(old('notifications.review_updates', $preferences['notifications']['review_updates']))><span>Review updates<small>Tell me when an administrator completes a review.</small></span></label>
+                        <input type="hidden" name="reduced_motion" value="0">
+                        <label class="settings-check"><input type="checkbox" name="reduced_motion" value="1" @checked(old('reduced_motion', $preferences['reduced_motion']))><span>Reduce motion<small>Minimize non-essential interface animation.</small></span></label>
                     </div>
 
                     <div class="form-actions">

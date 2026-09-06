@@ -6,6 +6,7 @@ use App\Exceptions\TranslationException;
 use App\Models\TranslationBlock;
 use App\Models\TranslationEditLog;
 use App\Models\TranslationHistory;
+use App\Models\DocumentVersion;
 use App\Services\StorageService;
 use App\Services\Translation\TranslationManager;
 use App\Support\FlagReason;
@@ -427,7 +428,8 @@ class ReviewService
             pdfColumnMode: $sidecar['pdf_column_mode'] ?? 'auto',
         );
 
-        // ── 5. Upload the new version and update the history row.
+        // ── 5. Upload an immutable new version; prior artifacts remain
+        // selectable/downloadable through document_versions.
         $tempPath = storage_path('app/temp/' . Str::uuid() . '_' . $result['download_filename']);
         if (!is_dir(dirname($tempPath))) {
             mkdir(dirname($tempPath), 0755, true);
@@ -443,9 +445,22 @@ class ReviewService
             @unlink($tempPath);
         }
 
+        $nextVersion = ((int) $history->versions()->max('version')) + 1;
+        $version = DocumentVersion::create([
+            'translation_history_id' => $history->id,
+            'version' => $nextVersion,
+            'storage_path' => $storageResult['storage_path'],
+            'translated_filename' => $result['download_filename'],
+            'artifact_label' => 'Reviewed final',
+            'created_by' => $adminId,
+            'created_at' => now(),
+            'metadata' => ['edited_blocks' => $editedBlocks, 'regenerated' => true],
+        ]);
+
         $history->storage_path = $storageResult['storage_path'];
         $history->translated_filename = $result['download_filename'];
         $history->signed_url_expires_at = $storageResult['signed_url_expires_at'];
+        $history->current_version_id = $version->id;
         $history->save();
 
         return [
@@ -454,6 +469,7 @@ class ReviewService
             'download_filename' => $result['download_filename'],
             'signed_url' => $storageResult['signed_url'],
             'edited_blocks' => $editedBlocks,
+            'version' => $version->version,
         ];
     }
 

@@ -10,7 +10,7 @@
 <div class="stack">
 
     @if ($error)
-        <p class="error-message">Unable to load notifications. Please try again later.</p>
+        <x-async-state state="error" message="We could not load notifications." :retry-url="route('notifications.page')" />
     @else
 
     {{-- Page header --}}
@@ -37,7 +37,7 @@
     </div>
 
     @if ($notifications->isEmpty())
-        <p class="empty-state">No notifications yet. Notifications about your translations will appear here.</p>
+        <x-async-state state="empty" message="No notifications yet. Updates about your translations will appear here." />
     @else
 
     <div class="notif-list" id="notif-list-page">

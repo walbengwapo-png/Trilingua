@@ -3,21 +3,22 @@
 ])
 
 @php
-    if ($score === null || $score === '' || (int) $score < 0) {
+    $quality = \App\Support\TranslationPresentation::quality($score === null || $score === '' ? null : (int) $score);
+    if ($quality['score'] === null) {
         $cls = 'quality-badge--empty';
-        $label = '—';
-    } elseif ((int) $score >= 70) {
+        $label = 'Not scored';
+    } elseif ($quality['risk'] === 'low') {
         $cls = 'quality-badge--good';
-        $label = (string) (int) $score;
-    } elseif ((int) $score >= 40) {
+        $label = $quality['text'];
+    } elseif ($quality['risk'] === 'medium') {
         $cls = 'quality-badge--medium';
-        $label = (string) (int) $score;
+        $label = $quality['text'];
     } else {
         $cls = 'quality-badge--poor';
-        $label = (string) (int) $score;
+        $label = $quality['text'];
     }
 @endphp
 
-<span class="quality-badge {{ $cls }}">
+<span class="quality-badge {{ $cls }}" title="Quality confidence score from 0 to 100. Lower scores need more human review.">
     <span class="quality-badge__dot"></span>{{ $label }}
 </span>

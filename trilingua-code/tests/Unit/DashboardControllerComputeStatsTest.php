@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Http\Controllers\DashboardController;
 use App\Services\HistoryService;
 use Mockery;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -285,8 +286,8 @@ class DashboardControllerComputeStatsTest extends TestCase
      *
      * **Validates: Requirements 2.2**
      *
-     * @dataProvider recordArrayProvider
      */
+    #[DataProvider('recordArrayProvider')]
     public function test_property_stats_are_non_negative_and_bounded(array $records): void
     {
         $controller = $this->makeController();
@@ -310,8 +311,8 @@ class DashboardControllerComputeStatsTest extends TestCase
      *
      * **Validates: Requirements 2.2**
      *
-     * @dataProvider matchPctProvider
      */
+    #[DataProvider('matchPctProvider')]
     public function test_property_match_percentage_in_range_0_to_100(string $source, string $translated): void
     {
         $pct = $this->matchPct($source, $translated);

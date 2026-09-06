@@ -10,6 +10,7 @@ use App\Services\HistoryService;
 use App\Services\StorageService;
 use App\Services\Translation\TranslationManager;
 use App\Support\ReviewStatus;
+use App\Support\ApiError;
 use App\Services\Translation\DTO\TranslationRequest;
 use App\Services\Translation\DTO\TranslationResponse;
 use App\Services\TranslationService;
@@ -35,7 +36,7 @@ class TranslationController extends Controller
      */
     public function show(): View
     {
-        return view('translation');
+        return view('translation', ['preferences' => Auth::user()->resolvedPreferences()]);
     }
 
     /**
@@ -71,7 +72,7 @@ class TranslationController extends Controller
 
         if (!$hasText && !$hasDocument) {
             return response()->json([
-                'error' => 'Please enter text to translate or attach a document.',
+                'error' => ['code' => 'translation_input_required', 'message' => 'Please enter text to translate or attach a document.', 'retryable' => false],
                 'errors' => [
                     'text' => ['The text field is required when document is not present.'],
                 ]
@@ -174,6 +175,7 @@ class TranslationController extends Controller
                 text: $request->input('text'),
                 sourceLang: $sourceLang,
                 targetLang: $targetLang,
+                mode: $validated['mode'] ?? 'balanced',
             );
             $result = $this->translationManager->translateText($translationRequest);
 
@@ -189,6 +191,7 @@ class TranslationController extends Controller
                     'created_at'       => now()->toIso8601String(),
                     'status'           => 'completed',
                     'review_status'    => ReviewStatus::PENDING,
+                    'quality_score'    => $result->qualityScore,
                 ]);
 
                 if ($record !== null) {
@@ -202,7 +205,7 @@ class TranslationController extends Controller
                 ]);
             }
 
-            return response()->json(['translated' => $result->translatedText]);
+            return response()->json($result->toArray());
 
         } catch (TranslationException $e) {
             $message = $e->getMessage();
@@ -216,27 +219,18 @@ class TranslationController extends Controller
 
             // User-friendly error messages based on error type
             if (str_contains($message, 'timed out')) {
-                return response()->json([
-                    'error' => 'Translation timed out. The document may be too large or complex. Try a smaller file or simpler content, and we will try again.',
-                    'retryable' => true,
-                ], 504);
+                return ApiError::response('translation_timed_out', 'Translation timed out. Try a smaller file or simpler content.', 504, true);
             }
 
             if (str_contains($message, 'Could not connect')) {
-                return response()->json([
-                    'error' => 'The translation service is temporarily unavailable. Please try again in a moment or contact support if the issue persists.',
-                    'retryable' => true,
-                ], 503);
+                return ApiError::response('translation_service_unavailable', 'The translation service is temporarily unavailable. Please try again in a moment.', 503, true);
             }
 
             if ($code === 400) {
-                return response()->json(['error' => $message], 400);
+                return ApiError::response('translation_request_invalid', 'The translation request could not be processed. Check the selected languages and input, then try again.', 400, false);
             }
 
-            return response()->json([
-                'error' => $message ?: 'Translation failed. Please try again or contact support if the problem persists.',
-                'retryable' => true,
-            ], $code);
+            return ApiError::response('translation_failed', 'Translation failed. Please try again.', max(400, min(599, (int) $code ?: 500)), true);
         } catch (\Throwable $e) {
             Log::error('Unexpected error in translation controller', [
                 'exception' => $e->getMessage(),
@@ -244,10 +238,7 @@ class TranslationController extends Controller
                 'user_id' => Auth::id(),
             ]);
 
-            return response()->json([
-                'error' => 'An unexpected error occurred during translation. Please try again. If the problem continues, contact support.',
-                'retryable' => true,
-            ], 500);
+            return ApiError::response('translation_unexpected_error', 'An unexpected error occurred during translation. Please try again.', 500, true);
         }
     }
 
@@ -288,9 +279,7 @@ class TranslationController extends Controller
             return response()->json($result);
         }
 
-        return response()->json([
-            'error' => 'Translation job not found or you do not have access to it.',
-        ], 404);
+        return ApiError::response('translation_job_not_found', 'Translation job not found or you do not have access to it.', 404, false);
     }
 
     private function buildInlineDownloadPayload(string $outputPath, string $downloadFilename): array

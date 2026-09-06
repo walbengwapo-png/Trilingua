@@ -23,19 +23,20 @@ class TextReviewController extends Controller
     /**
      * POST /admin/review/{translation}/verify — mark a text translation verified.
      */
-    public function verify(TranslationHistory $translation): JsonResponse
+    public function verify(Request $request, TranslationHistory $translation): JsonResponse
     {
         try {
-            $this->review->verify($translation->id, Auth::id());
+            $validated = $request->validate(['note' => ['nullable', 'string', 'max:2000']]);
+            $this->review->verify($translation->id, Auth::id(), $validated['note'] ?? null);
         } catch (\Throwable $e) {
             Log::error('TextReviewController::verify failed', [
                 'id' => $translation->id,
                 'exception' => $e->getMessage(),
             ]);
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json(['error' => ['code' => 'review_update_failed', 'message' => 'The review could not be saved. Please try again.', 'retryable' => true]], 500);
         }
 
-        return response()->json(['success' => true, 'status' => 'verified']);
+        return response()->json(['success' => true, 'status' => 'verified', 'audit' => ['action' => 'verify', 'persisted' => true]]);
     }
 
     /**
@@ -60,10 +61,10 @@ class TextReviewController extends Controller
                 'id' => $translation->id,
                 'exception' => $e->getMessage(),
             ]);
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json(['error' => ['code' => 'review_update_failed', 'message' => 'The edit could not be saved. Please try again.', 'retryable' => true]], 500);
         }
 
-        return response()->json(['success' => true, 'status' => 'edited']);
+        return response()->json(['success' => true, 'status' => 'edited', 'audit' => ['action' => 'edit', 'persisted' => true]]);
     }
 
     /**
@@ -73,7 +74,7 @@ class TextReviewController extends Controller
     {
         $validated = $request->validate([
             'reason' => ['required', 'string', 'in:' . implode(',', \App\Support\FlagReason::ALL)],
-            'note' => ['nullable', 'string', 'max:2000'],
+            'note' => ['required', 'string', 'max:2000'],
         ]);
 
         try {
@@ -88,9 +89,9 @@ class TextReviewController extends Controller
                 'id' => $translation->id,
                 'exception' => $e->getMessage(),
             ]);
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json(['error' => ['code' => 'review_update_failed', 'message' => 'The flag could not be saved. Please try again.', 'retryable' => true]], 500);
         }
 
-        return response()->json(['success' => true, 'status' => 'flagged']);
+        return response()->json(['success' => true, 'status' => 'flagged', 'audit' => ['action' => 'flag', 'persisted' => true]]);
     }
 }

@@ -8,17 +8,21 @@
 
 @section('content')
 @php
+    $presentation = \App\Support\TranslationPresentation::for($record, auth()->user()->resolvedPreferences());
     $isDoc       = ($record['translation_type'] ?? 'document') === 'document';
-    $isOriginal  = empty($record['parent_document_id']);
-    $reviewStatus = $record['review_status'] ?? 'pending';
-    $status      = $record['status'] ?? 'completed';
+    $reviewStatus = $presentation['lifecycle']['review_status'];
+    $status      = $presentation['lifecycle']['status'];
     $score       = $record['quality_score'] ?? null;
     $scoreLevel  = $score === null ? '' : ($score < 60 ? 'low' : ($score < 80 ? 'medium' : 'high'));
-    $dateStr     = \Carbon\Carbon::parse($record['created_at'])->utc()->format('Y-m-d H:i') . ' UTC';
+    $dateStr     = $presentation['date'];
     $fileSize    = $record['file_size'] ?? null;
     $translatedExt = strtolower((string) pathinfo((string) ($record['translated_filename'] ?? ''), PATHINFO_EXTENSION));
     $originalExt   = strtolower((string) pathinfo((string) ($record['original_filename'] ?? ''), PATHINFO_EXTENSION));
-    $translatedUrl = $isDoc && !empty($record['storage_path']) ? route('history.file', $record['id']) : null;
+    $versions = collect($record['versions'] ?? []);
+    $selectedVersionId = request()->integer('version') ?: ($record['current_version_id'] ?? null);
+    $selectedVersion = $versions->firstWhere('id', $selectedVersionId) ?? $versions->last();
+    $selectedVersionId = $selectedVersion['id'] ?? $selectedVersionId;
+    $translatedUrl = $isDoc && (!empty($selectedVersion['storage_path']) || !empty($record['storage_path'])) ? route('history.file', ['id' => $record['id'], 'version' => $selectedVersionId]) : null;
     $originalUrl   = $isDoc && !empty($record['original_storage_path']) ? route('history.original-file', $record['id']) : null;
 @endphp
 
@@ -32,9 +36,9 @@
     <div class="review-detail-card">
         <div class="review-detail__header">
             <div>
-                <span class="status-badge status-badge--{{ $reviewStatus }}">{{ ucfirst($reviewStatus) }}</span>
+                <span class="status-badge status-badge--{{ $reviewStatus }}" title="{{ $presentation['lifecycle']['translation_label'] }}; {{ $presentation['lifecycle']['review_label'] }}">{{ $presentation['lifecycle']['label'] }}</span>
                 <h2 class="review-detail__title" style="font-size:1.15rem;font-weight:700;color:var(--text);margin:10px 0 0">
-                    {{ $isDoc ? ($record['translated_filename'] ?? $record['original_filename'] ?? 'Document') : 'Text Translation' }}
+                    {{ $presentation['title'] }}
                 </h2>
                 @if ($isDoc && !empty($record['original_filename']))
                     <p class="review-detail__subtitle" style="font-size:0.82rem;color:var(--muted);margin:4px 0 0">from: {{ $record['original_filename'] }}</p>
@@ -68,15 +72,15 @@
                         </div>
                         <div class="detail-modal__meta-item">
                             <span class="detail-modal__meta-label">Date & Time</span>
-                            <span class="detail-modal__meta-value">{{ $dateStr }}</span>
+                            <time class="detail-modal__meta-value" datetime="{{ $record['created_at'] ?? '' }}" title="{{ $dateStr['exact'] }}">{{ $dateStr['relative'] }}</time>
                         </div>
                         <div class="detail-modal__meta-item">
                             <span class="detail-modal__meta-label">Translation Status</span>
-                            <span class="detail-modal__meta-value">{{ ucfirst($status) }}</span>
+                            <span class="detail-modal__meta-value">{{ $presentation['lifecycle']['translation_label'] }}</span>
                         </div>
                         <div class="detail-modal__meta-item">
                             <span class="detail-modal__meta-label">Review Status</span>
-                            <span class="detail-modal__meta-value">{{ ucfirst($reviewStatus) }}</span>
+                            <span class="detail-modal__meta-value">{{ $presentation['lifecycle']['review_label'] }}</span>
                         </div>
                         @if ($isDoc)
                         <div class="detail-modal__meta-item">
@@ -95,11 +99,20 @@
                         <div class="detail-modal__meta-item">
                             <span class="detail-modal__meta-label">Quality Score</span>
                             <span class="detail-modal__meta-value">
-                                <span class="quality-score">
-                                    <span class="quality-score__dot quality-score__dot--{{ $scoreLevel }}" aria-hidden="true"></span>
-                                    {{ $score }}
-                                </span>
+                                <x-quality-badge :score="$score" />
                             </span>
+                        </div>
+                        @endif
+                        @if ($isDoc && $versions->isNotEmpty())
+                        <div class="detail-modal__meta-item">
+                            <span class="detail-modal__meta-label">Document version</span>
+                            <form method="GET" action="{{ route('history.view', $record['id']) }}">
+                                <select name="version" class="review-select" onchange="this.form.submit()" aria-label="Select document version">
+                                    @foreach ($versions as $version)
+                                        <option value="{{ $version['id'] }}" @selected((int) $selectedVersionId === (int) $version['id'])>v{{ $version['version'] }} · {{ $version['artifact_label'] }}</option>
+                                    @endforeach
+                                </select>
+                            </form>
                         </div>
                         @endif
                         <div class="detail-modal__meta-item">

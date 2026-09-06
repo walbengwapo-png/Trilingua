@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="{{ auth()->user()->theme ?? 'light' }}">
+<html lang="en" data-theme="{{ auth()->user()->theme ?? 'light' }}" data-timezone="{{ auth()->user()->resolvedPreferences()['timezone'] ?? config('app.timezone') }}" @if(auth()->user()->resolvedPreferences()['reduced_motion'] ?? false) data-reduced-motion="true" @endif>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -157,7 +157,7 @@
             </div>
             <div class="sidebar-user__info">
                 <div class="sidebar-user__name">{{ auth()->user()->name ?? 'User' }}</div>
-                <div class="sidebar-user__role">Member</div>
+                <div class="sidebar-user__role">{{ auth()->user()->roleLabel() }}</div>
             </div>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
@@ -258,27 +258,54 @@
 <script>
 // ── Global toast system ───────────────────────────────────────────────────
 window.showToast = function (type, title, message, duration) {
-    var icons = {
-        success: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
-        error:   '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
-        warning: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
-        info:    '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'
-    };
     var colors = { success: '#10b981', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6' };
     var t = type || 'success';
     var el = document.createElement('div');
     el.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 16px;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(15,23,42,0.14),0 2px 8px rgba(15,23,42,0.08);border-left:4px solid ' + (colors[t]||colors.info) + ';max-width:360px;pointer-events:all;animation:toast-in 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards';
     el.setAttribute('role', 'alert');
-    el.innerHTML =
-        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="' + (colors[t]||colors.info) + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0" aria-hidden="true">' + (icons[t]||icons.info) + '</svg>' +
-        '<div style="flex:1;min-width:0"><p style="margin:0 0 2px;font-size:0.875rem;font-weight:600;color:#111827">' + title + '</p>' + (message ? '<p style="margin:0;font-size:0.8125rem;color:#6b7280">' + message + '</p>' : '') + '</div>' +
-        '<button onclick="this.closest(\'[role=alert]\').remove()" style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:2px;border-radius:4px;display:flex;flex-shrink:0" aria-label="Dismiss"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
+    var body = document.createElement('div');
+    body.style.cssText = 'flex:1;min-width:0';
+    var heading = document.createElement('p');
+    heading.style.cssText = 'margin:0 0 2px;font-size:.875rem;font-weight:600;color:#111827';
+    heading.textContent = title || 'Update';
+    body.appendChild(heading);
+    if (message) { var detail = document.createElement('p'); detail.style.cssText = 'margin:0;font-size:.8125rem;color:#6b7280'; detail.textContent = message; body.appendChild(detail); }
+    var dismiss = document.createElement('button');
+    dismiss.type = 'button'; dismiss.setAttribute('aria-label', 'Dismiss'); dismiss.textContent = '×';
+    dismiss.style.cssText = 'background:none;border:none;cursor:pointer;color:#9ca3af;padding:2px 6px;border-radius:4px;font-size:1.25rem;line-height:1';
+    dismiss.addEventListener('click', function () { el.remove(); });
+    el.appendChild(body); el.appendChild(dismiss);
     var container = document.getElementById('toast-container');
     if (container) container.appendChild(el);
     setTimeout(function () {
         el.style.animation = 'toast-out 0.25s ease forwards';
         setTimeout(function () { el.remove(); }, 260);
     }, duration || 4000);
+};
+
+// One safe JSON boundary for all asynchronous page interactions. A malformed
+// proxy/server response never leaks raw HTML or an internal exception message.
+window.TrilinguaUI = {
+    request: function (url, options) {
+        return fetch(url, options).then(function (response) {
+            return response.text().then(function (raw) {
+                var data = null; try { data = JSON.parse(raw); } catch (e) {}
+                if (!response.ok) {
+                    var error = data && data.error && typeof data.error === 'object' ? data.error : {};
+                    var failure = new Error(error.message || 'We could not complete that request. Please try again.');
+                    failure.referenceId = error.reference_id || (data && data.reference_id) || null;
+                    failure.retryable = !!error.retryable;
+                    throw failure;
+                }
+                if (!data) throw new Error('The server returned an unexpected response. Please try again.');
+                return data;
+            });
+        });
+    },
+    message: function (error, fallback) {
+        var message = (error && error.message) || fallback || 'We could not complete that request.';
+        return error && error.referenceId ? message + ' Reference: ' + error.referenceId + '.' : message;
+    }
 };
 
 // ── Global error modal ────────────────────────────────────────────────────
@@ -378,66 +405,63 @@ window.showErrorModal = function (title, message) {
     }
     function toggle() { panel.classList.contains('open') ? close() : open(); }
 
+    var dataUrl = @json(route('notifications.index', ['limit' => 20]));
+    var readUrl = @json(route('notifications.read'));
+    var timezone = document.documentElement.getAttribute('data-timezone') || 'UTC';
+
+    function state(message, retry) {
+        list.replaceChildren();
+        var container = document.createElement('div');
+        container.className = 'notif-dropdown__empty';
+        var text = document.createElement('p'); text.textContent = message; container.appendChild(text);
+        if (retry) { var retryButton = document.createElement('button'); retryButton.type = 'button'; retryButton.className = 'notif-dropdown__markall'; retryButton.textContent = 'Try again'; retryButton.addEventListener('click', load); container.appendChild(retryButton); }
+        list.appendChild(container);
+    }
+
+    function safeUrl(value) {
+        try { var parsed = new URL(value || '#', window.location.origin); return parsed.origin === window.location.origin ? parsed.href : '#'; }
+        catch (e) { return '#'; }
+    }
+
+    function notificationTime(value) {
+        if (!value) return '';
+        try { return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: timezone }).format(new Date(value)); }
+        catch (e) { return ''; }
+    }
+
+    function render(items) {
+        list.replaceChildren();
+        if (!items.length) { state('No notifications'); return; }
+        items.forEach(function (n) {
+            var data = n.data || {}, isRead = !!n.read_at;
+            var item = document.createElement('a'); item.className = 'notif-item' + (isRead ? '' : ' notif-item--unread');
+            item.href = safeUrl(n.url); item.dataset.id = n.id || ''; item.dataset.url = item.href;
+            item.setAttribute('aria-label', (isRead ? 'Read' : 'Unread') + ' notification');
+            var icon = document.createElement('span'); icon.className = 'notif-item__icon notif-item__icon--' + ((n.type || '').indexOf('Failed') !== -1 ? 'error' : 'success'); icon.setAttribute('aria-hidden', 'true');
+            var body = document.createElement('div'); body.className = 'notif-item__body';
+            var title = document.createElement('p'); title.className = 'notif-item__title'; title.textContent = data.title || 'Notification'; body.appendChild(title);
+            var subtext = data.error ? 'Translation failed' : (data.source_language && data.target_language ? data.source_language + ' → ' + data.target_language : '');
+            if (subtext) { var sub = document.createElement('p'); sub.className = 'notif-item__sub'; sub.textContent = subtext; body.appendChild(sub); }
+            var time = notificationTime(n.created_at); if (time) { var date = document.createElement('time'); date.className = 'notif-item__time'; date.textContent = time; date.title = new Date(n.created_at).toISOString(); body.appendChild(date); }
+            item.appendChild(icon); item.appendChild(body); list.appendChild(item);
+            if (!isRead) item.addEventListener('click', function (event) { event.preventDefault(); markRead(item.dataset.id, item).finally(function () { if (item.dataset.url && item.dataset.url !== '#') window.location.assign(item.dataset.url); }); });
+        });
+    }
+
     function load() {
-        list.innerHTML = '<div class="notif-dropdown__empty">Loading…</div>';
-        fetch('/notifications/data?limit=20', { headers: { 'Accept': 'application/json' } })
-            .then(function (r) { return r.json(); })
-            .then(function (res) {
-                setUnread(res.unread_count || 0);
-                var items = res.notifications || [];
-                if (!items.length) {
-                    list.innerHTML = '<div class="notif-dropdown__empty">No notifications</div>';
-                    return;
-                }
-                var html = '';
-                items.forEach(function (n) {
-                    var d = n.data || {};
-                    var isRead = !!n.read_at;
-                    var cls = 'notif-item' + (isRead ? '' : ' notif-item--unread');
-                    var title = d.title || 'Notification';
-                    var sub;
-                    if (d.error) sub = 'Translation failed';
-                    else if (d.source_language && d.target_language) sub = d.source_language + ' → ' + d.target_language;
-                    else sub = '';
-                    var url = n.url || '#';
-                    var typeIcon = n.type && n.type.indexOf('Failed') !== -1 ? 'error' : 'success';
-                    html += '<a class="' + cls + '" href="' + url + '" data-url="' + url + '" data-id="' + n.id + '" aria-label="' + (isRead ? 'Read' : 'Unread') + ' notification">' +
-                        '<span class="notif-item__icon notif-item__icon--' + typeIcon + '" aria-hidden="true"></span>' +
-                        '<div class="notif-item__body"><p class="notif-item__title">' + title + '</p>' +
-                        (sub ? '<p class="notif-item__sub">' + sub + '</p>' : '') +
-                        '<p class="notif-item__time">' + (n.created_at ? new Date(n.created_at).toLocaleString() : '') + '</p></div></a>';
-                });
-                list.innerHTML = html;
-
-                function openNotification(el) {
-                    var url = el.getAttribute('data-url');
-                    if (url && url !== '#') {
-                        markRead(el.getAttribute('data-id'), el).finally(function () {
-                            window.location.href = url;
-                        });
-                    } else {
-                        markRead(el.getAttribute('data-id'), el);
-                    }
-                }
-
-                list.querySelectorAll('.notif-item--unread').forEach(function (el) {
-                    el.addEventListener('click', function (e) { e.preventDefault(); openNotification(el); });
-                    el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openNotification(el); } });
-                });
-            })
-            .catch(function () {
-                list.innerHTML = '<div class="notif-dropdown__empty">Failed to load notifications</div>';
-            });
+        state('Loading…');
+        window.TrilinguaUI.request(dataUrl, { headers: { 'Accept': 'application/json' } })
+            .then(function (res) { setUnread(res.unread_count || 0); render(Array.isArray(res.notifications) ? res.notifications : []); })
+            .catch(function () { state('Notifications are temporarily unavailable.', true); });
     }
 
     function markRead(id, el) {
         var payload = id ? JSON.stringify({ id: id }) : '{}';
-        return fetch('/notifications/read', {
+        return window.TrilinguaUI.request(readUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
             body: payload
         })
-            .then(function (r) { return r.json(); })
             .then(function (res) {
                 setUnread(res.unread_count || 0);
                 if (el) { el.classList.remove('notif-item--unread'); }
@@ -456,8 +480,7 @@ window.showErrorModal = function (title, message) {
     });
 
     setUnread(badge.textContent);
-    fetch('/notifications/data?limit=1', { headers: { 'Accept': 'application/json' } })
-        .then(function (r) { return r.json(); })
+    window.TrilinguaUI.request(@json(route('notifications.index', ['limit' => 1])), { headers: { 'Accept': 'application/json' } })
         .then(function (res) { setUnread(res.unread_count || 0); })
         .catch(function () {});
 })();

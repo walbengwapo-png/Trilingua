@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\TranslationHistory;
+use App\Models\DocumentVersion;
 use Illuminate\Support\Facades\DB;
 
 class HistoryService
@@ -21,7 +22,7 @@ class HistoryService
      */
     public function insertRecord(array $data): TranslationHistory
     {
-        return TranslationHistory::create([
+        $record = TranslationHistory::create([
             'user_id'               => $data['user_id'] ?? null,
             'translation_type'      => $data['translation_type'] ?? 'document',
             'original_filename'     => $data['original_filename'] ?? null,
@@ -39,6 +40,23 @@ class HistoryService
             'translated_text'       => $data['translated_text'] ?? null,
             'job_id'                => $data['job_id'] ?? null,
         ]);
+
+        if ($record->translation_type === 'document') {
+            $version = DocumentVersion::create([
+                'translation_history_id' => $record->id,
+                'version' => 1,
+                'storage_path' => $record->storage_path,
+                'translated_filename' => $record->translated_filename,
+                'artifact_label' => 'Translation output',
+                'created_by' => $record->user_id,
+                'created_at' => $record->created_at ?? now(),
+                'metadata' => ['created_from' => 'translation'],
+            ]);
+            $record->current_version_id = $version->id;
+            $record->save();
+        }
+
+        return $record;
     }
 
     /**
@@ -105,7 +123,7 @@ class HistoryService
      */
     public function getRecordWithTranslations(int $id): ?array
     {
-        $record = TranslationHistory::with('translations')->find($id);
+        $record = TranslationHistory::with(['translations', 'versions', 'currentVersion'])->find($id);
 
         if (!$record) {
             return null;

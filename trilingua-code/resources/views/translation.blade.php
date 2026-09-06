@@ -14,9 +14,9 @@
         <div class="lang-bar__select-wrap">
             <span class="lang-bar__label">From</span>
             <select id="source-lang" aria-label="Source language">
-                <option value="English" selected>English</option>
-                <option value="Cebuano">Cebuano</option>
-                <option value="Filipino">Filipino</option>
+                @foreach (['English', 'Cebuano', 'Filipino'] as $language)
+                    <option value="{{ $language }}" @selected(($preferences['source_language'] ?? 'English') === $language)>{{ $language }}</option>
+                @endforeach
             </select>
         </div>
 
@@ -30,18 +30,18 @@
         <div class="lang-bar__select-wrap">
             <span class="lang-bar__label">To</span>
             <select id="target-lang" aria-label="Target language">
-                <option value="English">English</option>
-                <option value="Cebuano" selected>Cebuano</option>
-                <option value="Filipino">Filipino</option>
+                @foreach (['English', 'Cebuano', 'Filipino'] as $language)
+                    <option value="{{ $language }}" @selected(($preferences['target_language'] ?? 'Cebuano') === $language)>{{ $language }}</option>
+                @endforeach
             </select>
         </div>
 
         <div class="lang-bar__mode-wrap">
             <label class="lang-bar__label" for="translation-mode">Mode</label>
             <select id="translation-mode" aria-label="Translation processing mode">
-                <option value="fast">Fast</option>
-                <option value="balanced" selected>Balanced</option>
-                <option value="thorough">Thorough</option>
+                @foreach (['fast' => 'Fast', 'balanced' => 'Balanced', 'thorough' => 'Thorough'] as $mode => $label)
+                    <option value="{{ $mode }}" @selected(($preferences['translation_mode'] ?? 'balanced') === $mode)>{{ $label }}</option>
+                @endforeach
             </select>
         </div>
     </div>
@@ -78,7 +78,7 @@
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                     Attach file
                 </button>
-                <input id="file-input" type="file" hidden accept=".docx,.pdf,.txt,.md,.rtf,.odt,.csv">
+                <input id="file-input" type="file" hidden accept=".docx,.pdf,.txt,.md,.rtf,.odt,.csv,.pptx,.xlsx">
 
                 {{-- PDF column mode --}}
                 <select id="pdf-column-mode" style="display:none" aria-label="PDF column mode">
@@ -188,9 +188,16 @@
     var clearBtn      = document.getElementById('clear-btn');
     var outputDownload = document.getElementById('output-download');
     var downloadLink   = document.getElementById('download-link');
+    var translateUrl    = @json(route('translate.submit'));
+    var statusUrl       = @json(url('/translate/status'));
 
     function showError(el, msg) { if (el) el.textContent = msg; }
     function clearError(el)     { if (el) el.textContent = ''; }
+    function apiMessage(data, fallback) {
+        var error = data && data.error;
+        if (error && typeof error === 'object') return error.message || fallback;
+        return error || (data && data.detail) || fallback;
+    }
 
     // ── Character counter ────────────────────────────────────────────────────
     var MAX_CHARS = 5000, WARN = 4500;
@@ -243,8 +250,8 @@
     });
 
     // ── File attachment ───────────────────────────────────────────────────────
-    var ALLOWED = ['.docx','.pdf','.txt','.md','.rtf','.odt','.csv'];
-    var MAX_SIZE = 10485760;
+    var ALLOWED = ['.docx','.pdf','.txt','.md','.rtf','.odt','.csv','.pptx','.xlsx'];
+    var MAX_SIZE = 52428800;
 
     attachBtn.addEventListener('click', function () { fileInput.click(); });
 
@@ -253,7 +260,7 @@
         if (!file) return;
         var ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
         if (ALLOWED.indexOf(ext) === -1) { showError(sourceError, 'Unsupported file type. Allowed: ' + ALLOWED.join(', ')); fileInput.value = ''; return; }
-        if (file.size > MAX_SIZE) { showError(sourceError, 'File too large. Maximum size is 10 MB.'); fileInput.value = ''; return; }
+        if (file.size > MAX_SIZE) { showError(sourceError, 'File too large. Maximum size is 50 MB.'); fileInput.value = ''; return; }
         clearError(sourceError);
         fileNameSpan.textContent = file.name;
         sourceText.style.display = 'none';
@@ -349,7 +356,7 @@
             formData.append('text', text);
         }
 
-        fetch('/translate', {
+        fetch(translateUrl, {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
             body: formData
@@ -394,7 +401,7 @@
                     showError(sourceError, data.error);
                 } else {
                     hideProgress();
-                    var errorMsg = (data && (data.error || data.detail)) || 'Translation failed. Please try again.';
+                    var errorMsg = apiMessage(data, 'Translation failed. Please try again.');
                     showError(outputError, errorMsg);
                 }
             });
@@ -416,7 +423,7 @@
                 return;
             }
 
-            fetch('/translate/status/' + jobId, {
+            fetch(statusUrl + '/' + encodeURIComponent(jobId), {
                 credentials: 'include',
                 headers: { 'Accept': 'application/json' }
             })
@@ -424,6 +431,13 @@
                 return res.text().then(function (raw) {
                     var data = null;
                     try { data = JSON.parse(raw); } catch (e) {}
+
+                    if (!res.ok) {
+                        clearInterval(interval);
+                        hideProgress();
+                        showError(outputError, apiMessage(data, 'We could not check translation progress. Please try again.'));
+                        return;
+                    }
 
                     if (data && data.status === 'completed') {
                         clearInterval(interval);
@@ -439,7 +453,7 @@
                     } else if (data && data.status === 'failed') {
                         clearInterval(interval);
                         hideProgress();
-                        showError(outputError, (data && data.error) || 'Translation failed. Please try again.');
+                        showError(outputError, apiMessage(data, 'Translation failed. Please try again.'));
                     } else if (attempts % 15 === 0) {
                         // Refresh the overlay stage every ~30 seconds while polling
                         setProgressStage('Still translating…');

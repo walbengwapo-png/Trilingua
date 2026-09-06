@@ -75,6 +75,7 @@ from dto.requests import LANGUAGES
 from dto.responses import TranslationResponse, HealthResponse
 from providers.mistral import MistralProvider
 from providers.gptoss import GPTOSSProvider
+from providers.fallback import FallbackTranslationProvider
 from providers.future_openai import OpenAIProvider
 from providers.future_gemini import GeminiProvider
 from providers.future_deepseek import DeepSeekProvider
@@ -87,6 +88,10 @@ from pipeline.document_pipeline import DocumentPipeline
 # Provider selection
 # ---------------------------------------------------------------------------
 TRANSLATION_PROVIDER = os.environ.get("TRANSLATION_PROVIDER", "gptoss").lower()
+TRANSLATION_FALLBACK_PROVIDER = os.environ.get(
+    "TRANSLATION_FALLBACK_PROVIDER",
+    "mistral" if TRANSLATION_PROVIDER == "gptoss" else "gptoss",
+).lower()
 
 # Initialize all available providers
 _mistral_provider = MistralProvider()
@@ -119,11 +124,15 @@ AVAILABLE_PROVIDERS = {
 
 def _get_active_provider():
     """Get the currently active provider based on environment configuration."""
-    provider = AVAILABLE_PROVIDERS.get(TRANSLATION_PROVIDER)
-    if provider is None:
+    primary = AVAILABLE_PROVIDERS.get(TRANSLATION_PROVIDER)
+    if primary is None:
         print(f"  WARNING: Unknown provider '{TRANSLATION_PROVIDER}', falling back to gptoss")
-        return _gptoss_provider
-    return provider
+        primary = _gptoss_provider
+
+    fallback = AVAILABLE_PROVIDERS.get(TRANSLATION_FALLBACK_PROVIDER)
+    if fallback is None or fallback is primary:
+        return primary
+    return FallbackTranslationProvider(primary, fallback)
 
 # Create pipelines with the active provider
 _active_provider = _get_active_provider()
@@ -250,7 +259,7 @@ def _warm_cold_start():
     # The health check above only does a GET /api/tags — it does NOT
     # load the model. This sends a real chat request to force Ollama
     # to spin up a GPU instance so the first translation is fast.
-    if _gptoss_provider.name == provider.name:
+    if _gptoss_provider.name in provider.name:
         try:
             print(f"    [WARMUP] Loading {_gptoss_provider.model_name} (may take 1-2 min)...")
             if _gptoss_provider.warmup():
@@ -359,6 +368,7 @@ class TextRequest(BaseModel):
     text: str
     source_lang: str
     target_lang: str
+    mode: str = "balanced"
 
 
 @app.post("/translate/text")
@@ -371,6 +381,14 @@ def translate_text(req: TextRequest):
         raise HTTPException(400, f"Unknown target language: {req.target_lang}")
     if req.source_lang == req.target_lang:
         raise HTTPException(400, "Source and target languages must differ.")
+    from config.processing_modes import VALID_MODES, get_mode
+    if req.mode not in VALID_MODES:
+        raise HTTPException(400, f"Unknown processing mode: {req.mode}")
+
+    # Text has no document complexity to analyze. Treat auto as the safe,
+    # quality-oriented default rather than exposing a mode whose behavior is
+    # ambiguous to callers.
+    selected_mode = get_mode("balanced" if req.mode == "auto" else req.mode)
 
     try:
         from dto.requests import TranslationRequest as TR
@@ -378,11 +396,51 @@ def translate_text(req: TextRequest):
             text=req.text.strip(),
             source_lang=req.source_lang,
             target_lang=req.target_lang,
+            document_type="general" if selected_mode.specialized_prompts else "",
         )
         result = _run_pipeline_guarded(lambda: _translation_pipeline.translate(request))
 
         if not result.success:
             raise HTTPException(500, result.error_message)
+
+        # Fast mode returns after deterministic provider safeguards. Balanced
+        # and thorough add a targeted review only after that initial result;
+        # a second translation is requested only when the review finds a
+        # meaningful issue. This keeps ordinary requests quick while giving
+        # Cebuano/Filipino grammar and tense problems a repair path.
+        review = None
+        reviewer = _document_pipeline._quality_reviewer
+        if selected_mode.ai_quality_review and reviewer is not None:
+            review = _run_pipeline_guarded(
+                lambda: reviewer.review(req.text, result.translated_text, "general")
+            )
+            if reviewer.needs_retranslation(review):
+                repair_request = TR(
+                    text=req.text.strip(),
+                    source_lang=req.source_lang,
+                    target_lang=req.target_lang,
+                    context_hint=(
+                        "Quality review found these issues in the previous output: "
+                        f"{review.summary}. Produce a complete, natural translation "
+                        "that fixes those issues. Preserve names, numbers, dates, and URLs."
+                    ),
+                    document_type="general",
+                )
+                repaired = _run_pipeline_guarded(
+                    lambda: _translation_pipeline._translate_with_echo_guard(
+                        text=repair_request.text,
+                        source_lang=repair_request.source_lang,
+                        target_lang=repair_request.target_lang,
+                        block_type=repair_request.block_type,
+                        context_hint=repair_request.context_hint,
+                        document_type=repair_request.document_type,
+                    )
+                )
+                if repaired.success:
+                    result = repaired
+                    review = _run_pipeline_guarded(
+                        lambda: reviewer.review(req.text, result.translated_text, "general")
+                    )
 
         return {
             "translated": result.translated_text,
@@ -390,6 +448,9 @@ def translate_text(req: TextRequest):
             "model": result.model,
             "token_usage": result.token_usage,
             "execution_time_ms": result.execution_time_ms,
+            "mode": selected_mode.name,
+            "quality_score": round(review.score) if review else None,
+            "quality_issues": [issue.category for issue in review.issues] if review else [],
         }
     except HTTPException:
         raise
