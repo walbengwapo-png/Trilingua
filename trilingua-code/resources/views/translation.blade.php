@@ -35,6 +35,15 @@
                 <option value="Filipino">Filipino</option>
             </select>
         </div>
+
+        <div class="lang-bar__mode-wrap">
+            <label class="lang-bar__label" for="translation-mode">Mode</label>
+            <select id="translation-mode" aria-label="Translation processing mode">
+                <option value="fast">Fast</option>
+                <option value="balanced" selected>Balanced</option>
+                <option value="thorough">Thorough</option>
+            </select>
+        </div>
     </div>
 
     {{-- Two panels --}}
@@ -162,6 +171,7 @@
     var charCounter   = document.getElementById('char-counter');
     var sourceLang    = document.getElementById('source-lang');
     var targetLang    = document.getElementById('target-lang');
+    var translationMode = document.getElementById('translation-mode');
     var swapBtn       = document.getElementById('swap-btn');
     var outputText    = document.getElementById('output-text');
     var attachBtn     = document.getElementById('attach-btn');
@@ -326,6 +336,9 @@
         var formData = new FormData();
         formData.append('source_lang', sourceLang.value);
         formData.append('target_lang', targetLang.value);
+        // Balanced uses context and targeted quality repair; document work can
+        // opt into Fast or Thorough without changing the API contract.
+        formData.append('mode', translationMode.value);
         formData.append('_token', csrfToken);
 
         if (file) {

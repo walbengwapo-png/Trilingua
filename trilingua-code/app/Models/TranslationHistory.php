@@ -38,6 +38,8 @@ class TranslationHistory extends Model
         'priority_at',
         'is_bookmarked',
         'bookmarked_at',
+        'job_id',
+        'document_word_count',
     ];
 
     protected $casts = [
@@ -51,6 +53,7 @@ class TranslationHistory extends Model
         'priority_at' => 'datetime',
         'is_bookmarked' => 'boolean',
         'bookmarked_at' => 'datetime',
+        'document_word_count' => 'integer',
     ];
 
     public function user()
@@ -96,5 +99,13 @@ class TranslationHistory extends Model
     public function editLog(): HasMany
     {
         return $this->hasMany(TranslationEditLog::class);
+    }
+
+    /**
+     * Engine metrics captured for this translation run.
+     */
+    public function metric(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(TranslationMetric::class, 'translation_history_id');
     }
 }

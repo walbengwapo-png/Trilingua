@@ -7,6 +7,7 @@ use App\Notifications\TranslationCompleted;
 use App\Notifications\TranslationFailed;
 use App\Services\BlockService;
 use App\Services\HistoryService;
+use App\Services\MetricsService;
 use App\Services\StorageService;
 use App\Services\Translation\TranslationManager;
 use App\Services\TranslationService;
@@ -14,16 +15,26 @@ use App\Support\AdminNotifier;
 use App\Support\ReviewStatus;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-class TranslateDocumentJob implements ShouldQueue
+class TranslateDocumentJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /**
+     * Hold the unique lock for the full maximum translation window (900s),
+     * matching the bumped DB_QUEUE_RETRY_AFTER and exceeding the Python
+     * service's 600s timeout. Prevents identical duplicate jobs from ever
+     * being queued while one is in flight.
+     */
+    public int $uniqueFor = 900;
 
     /**
      * The UUID for this job, set explicitly so the controller and cache key match.
@@ -59,19 +70,68 @@ class TranslateDocumentJob implements ShouldQueue
     }
 
     /**
+     * Dedup key: identical submissions by the same user (same filename, size,
+     * and language pair) map to the same unique id, so a double-click or
+     * retry cannot enqueue a second copy of a job that is still running.
+     */
+    public function uniqueId(): string
+    {
+        return self::dedupPayload(
+            $this->userId, $this->originalName, $this->fileSize,
+            $this->sourceLang, $this->targetLang,
+        );
+    }
+
+    /**
+     * Normalized payload shared by the unique lock and the controller's
+     * in-flight marker, so both dedup mechanisms agree on the same key.
+     */
+    public static function dedupPayload(
+        int $userId, string $originalName, int $fileSize,
+        string $sourceLang, string $targetLang
+    ): string {
+        return implode('|', [
+            (string) $userId,
+            $originalName,
+            (string) $fileSize,
+            $sourceLang,
+            $targetLang,
+        ]);
+    }
+
+    /**
+     * Cache key marking this exact submission as in-flight. The controller
+     * checks it before dispatching (to answer the user immediately instead of
+     * returning a job_id that will never resolve) and the job clears it when
+     * it finishes. The TTL is a safety net in case a job dies mid-flight.
+     */
+    public static function inflightKey(
+        int $userId, string $originalName, int $fileSize,
+        string $sourceLang, string $targetLang
+    ): string {
+        return 'translation_inflight:' . md5(
+            self::dedupPayload($userId, $originalName, $fileSize, $sourceLang, $targetLang)
+        );
+    }
+
+    /**
      * Execute the job.
      */
     public function handle(
         TranslationManager $translationManager,
         StorageService $storageService,
         HistoryService $historyService,
-        BlockService $blockService
+        BlockService $blockService,
+        MetricsService $metricsService
     ): void {
         // Store initial "processing" state in cache so frontend knows we're working
         $this->storeResult([
             'status' => 'processing',
             'message' => 'Document queued for translation. Processing will begin shortly.',
         ]);
+
+        // Refresh the in-flight marker (a worker crash / retry keeps it alive).
+        $this->setInflightMarker();
 
         try {
             @set_time_limit(0);
@@ -155,7 +215,7 @@ class TranslateDocumentJob implements ShouldQueue
                     ]);
 
                     // Persist per-block review data + roll up quality score.
-                    $this->persistDocumentBlocks($blockService, $history, $translationResult);
+                    $this->persistDocumentBlocks($blockService, $metricsService, $history, $translationResult);
                 } catch (\Throwable $e) {
                     Log::warning('Job: Failed to insert history record (non-fatal)', [
                         'exception' => $e->getMessage(),
@@ -165,6 +225,7 @@ class TranslateDocumentJob implements ShouldQueue
 
                 $this->notifyCompleted($history);
                 $this->notifyAdminsAwaitingReview($history);
+                $this->clearInflightMarker();
 
                 return;
             } catch (\Throwable $storageError) {
@@ -205,7 +266,7 @@ class TranslateDocumentJob implements ShouldQueue
                         ]);
 
                         // Persist per-block review data + roll up quality score.
-                        $this->persistDocumentBlocks($blockService, $history, $translationResult);
+                        $this->persistDocumentBlocks($blockService, $metricsService, $history, $translationResult);
                     } catch (\Throwable $e) {
                         Log::warning('Job: Failed to insert history record for inline download (non-fatal)', [
                             'exception' => $e->getMessage(),
@@ -214,6 +275,7 @@ class TranslateDocumentJob implements ShouldQueue
 
                     $this->notifyCompleted($history);
                     $this->notifyAdminsAwaitingReview($history);
+                    $this->clearInflightMarker();
 
                     return;
                 }
@@ -242,6 +304,7 @@ class TranslateDocumentJob implements ShouldQueue
             ]);
 
             $this->notifyFailed($this->originalName, $e->getMessage());
+            $this->clearInflightMarker();
 
             // Do NOT call $this->fail() — with sync queue, that would throw an
             // exception back to the controller causing a 500 error. Instead we
@@ -258,6 +321,7 @@ class TranslateDocumentJob implements ShouldQueue
      */
     private function persistDocumentBlocks(
         BlockService $blockService,
+        MetricsService $metricsService,
         ?\App\Models\TranslationHistory $history,
         array $translationResult
     ): void {
@@ -270,6 +334,12 @@ class TranslateDocumentJob implements ShouldQueue
                 $history,
                 $translationResult['blocks'] ?? [],
                 $translationResult['sidecar'] ?? null
+            );
+
+            // Persist the engine metrics returned by the Python service.
+            $metricsService->persistDocumentMetrics(
+                $history,
+                $translationResult['metrics'] ?? []
             );
         } catch (\Throwable $e) {
             Log::warning('Job: Failed to persist document blocks (non-fatal)', [
@@ -295,14 +365,45 @@ class TranslateDocumentJob implements ShouldQueue
 
     /**
      * Store the job result for polling.
+     *
+     * Every entry is stamped with the owning user id so the (auth-protected)
+     * status endpoint can verify ownership of an in-flight job before its
+     * history row exists.
      */
     protected function storeResult(array $result): void
     {
+        $result['user_id'] = $this->userId;
         cache()->put(
             'translation_job_' . $this->jobUuid,
             $result,
             now()->addHours(1)
         );
+    }
+
+    /**
+     * Mark this exact submission as in-flight (short TTL safety net).
+     */
+    protected function setInflightMarker(): void
+    {
+        Cache::put(
+            TranslateDocumentJob::inflightKey(
+                $this->userId, $this->originalName, $this->fileSize,
+                $this->sourceLang, $this->targetLang,
+            ),
+            true,
+            now()->addMinutes(20)
+        );
+    }
+
+    /**
+     * Clear the in-flight marker once the job has delivered or failed.
+     */
+    protected function clearInflightMarker(): void
+    {
+        Cache::forget(TranslateDocumentJob::inflightKey(
+            $this->userId, $this->originalName, $this->fileSize,
+            $this->sourceLang, $this->targetLang,
+        ));
     }
 
     /**

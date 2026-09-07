@@ -5,17 +5,20 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\BookmarksController;
 use App\Http\Controllers\DocumentsController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TranslationController;
 use App\Http\Controllers\Admin\ReviewController;
 use App\Http\Controllers\Admin\TextReviewController;
 use App\Http\Controllers\Admin\DocumentReviewController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 
 Route::get('/', function () {
@@ -37,6 +40,12 @@ Route::middleware('throttle:10,1')->group(function () {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
     Route::post('/login', [LoginController::class, 'login'])->name('login.attempt');
 
+    // Google OAuth — guest-only, rate limited alongside the other auth routes.
+    Route::middleware('guest')->group(function () {
+        Route::get('/auth/google', [GoogleController::class, 'redirect'])->name('auth.google.redirect');
+        Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('auth.google.callback');
+    });
+
     // Password reset
     Route::get('/forgot-password', [ForgotPasswordController::class, 'show'])->name('password.request');
     Route::post('/forgot-password', [ForgotPasswordController::class, 'send'])->name('password.email');
@@ -48,12 +57,17 @@ Route::post('/logout', [LoginController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
 
-// Status endpoint is outside auth middleware so long translations don't hit session expiry
-Route::get('/translate/status/{jobId}', [TranslationController::class, 'status'])->name('translate.status');
-
 // Protected routes
 Route::middleware(['auth', 'throttle:60,1'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Status endpoint sits behind auth + throttle: the job owner polls their
+    // own job_id only, so this is safe for long translations (session lifetime
+    // far exceeds the ~6 min polling window).
+    Route::get('/translate/status/{jobId}', [TranslationController::class, 'status'])
+        ->name('translate.status');
+
+    Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
 
     Route::get('/settings', [SettingsController::class, 'show'])->name('settings');
     Route::post('/settings/account', [SettingsController::class, 'updateAccount'])->name('settings.account');
@@ -87,12 +101,22 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
     Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
 
+        // Dashboard CSV exports
+        Route::get('/export/review-trends', [AdminDashboardController::class, 'exportReviewTrends'])->name('dashboard.export.review-trends');
+        Route::get('/export/flags', [AdminDashboardController::class, 'exportFlags'])->name('dashboard.export.flags');
+        Route::get('/export/users', [AdminDashboardController::class, 'exportUsers'])->name('dashboard.export.users');
+
         // Read-only review queue + detail
         Route::get('/review', [ReviewController::class, 'index'])->name('review.index');
         Route::get('/review/{translation}', [ReviewController::class, 'show'])->name('review.show');
 
         // Read-only audit trail viewer
         Route::get('/audit', [AuditLogController::class, 'index'])->name('audit');
+
+        // Read-only user directory
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show');
+        Route::get('/users/{user}/translations', [UserController::class, 'translations'])->name('users.translations');
 
         // ── Text review write actions ─────────────────────────────────────
         Route::post('/review/{translation}/verify', [TextReviewController::class, 'verify'])->name('review.text.verify');

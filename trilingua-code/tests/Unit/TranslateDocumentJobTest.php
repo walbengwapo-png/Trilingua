@@ -5,7 +5,8 @@ namespace Tests\Unit;
 use App\Jobs\TranslateDocumentJob;
 use App\Services\HistoryService;
 use App\Services\StorageService;
-use App\Services\TranslationService;
+use App\Services\BlockService;
+use App\Services\Translation\TranslationManager;
 use Illuminate\Support\Facades\Cache;
 use Mockery;
 use Tests\TestCase;
@@ -31,17 +32,20 @@ class TranslateDocumentJobTest extends TestCase
         $outputPath = $tempDir . '/translated.pdf';
         file_put_contents($outputPath, '');
 
-        $translationService = Mockery::mock(TranslationService::class);
-        $translationService->shouldReceive('translateDocument')
+        $translationManager = Mockery::mock(TranslationManager::class);
+        $translationManager->shouldReceive('translateDocument')
             ->once()
-            ->andReturn($outputPath);
-        $translationService->shouldNotReceive('getOriginalOutputName');
+            ->andReturn([
+                'download_filename' => 'translated.pdf',
+                'body' => '',
+            ]);
 
         $storageService = Mockery::mock(StorageService::class);
         $storageService->shouldNotReceive('uploadFile');
 
         $historyService = Mockery::mock(HistoryService::class);
         $historyService->shouldNotReceive('insertRecord');
+        $blockService = Mockery::mock(BlockService::class);
 
         $job = new TranslateDocumentJob(
             'input.pdf',
@@ -56,7 +60,7 @@ class TranslateDocumentJobTest extends TestCase
         );
 
         $job->uuid();
-        $job->handle($translationService, $storageService, $historyService);
+        $job->handle($translationManager, $storageService, $historyService, $blockService);
 
         $result = Cache::get('translation_job_' . $job->uuid());
 

@@ -63,6 +63,33 @@
     transition: border-color 0.15s, box-shadow 0.15s;
 }
 
+.lang-bar__mode-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg);
+    flex-shrink: 0;
+}
+
+.lang-bar__mode-wrap:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+.lang-bar__mode-wrap select {
+    appearance: none;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
 .lang-bar__select-wrap:focus-within {
     border-color: var(--primary);
     box-shadow: 0 0 0 4px var(--focus-ring);
@@ -266,17 +293,23 @@
 }
 
 #remove-file {
-    background: none;
-    border: none;
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border);
     cursor: pointer;
     color: var(--muted);
     font-size: 0.8rem;
-    padding: 3px 8px;
-    border-radius: 6px;
-    transition: color 0.15s, background 0.15s;
+    font-weight: 500;
+    padding: 3px 12px;
+    border-radius: 999px;
+    flex-shrink: 0;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
 
-#remove-file:hover { color: #ef4444; background: var(--error-bg); }
+#remove-file:hover {
+    color: #ef4444;
+    background: #fef2f2;
+    border-color: #fecaca;
+}
 
 /* Download area */
 #output-download {
@@ -492,6 +525,61 @@ button[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Non-modal translation progress overlay ─────────────────────────── */
+.translate-progress {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 18px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    box-shadow: 0 8px 30px rgba(15, 23, 42, 0.18);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none; /* non-modal: never blocks the page */
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    font-size: 14px;
+    color: var(--text);
+}
+
+.translate-progress.is-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.translate-progress__spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(59, 130, 246, 0.25);
+    border-top-color: var(--primary, #3b82f6);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
+.translate-progress__body {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    line-height: 1.2;
+}
+
+.translate-progress__stage {
+    font-weight: 600;
+}
+
+.translate-progress__timer {
+    font-size: 12px;
+    opacity: 0.7;
+    font-variant-numeric: tabular-nums;
+}
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {

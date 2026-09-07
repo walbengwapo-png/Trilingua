@@ -7,6 +7,7 @@ use App\Jobs\TranslateDocumentJob;
 use App\Models\TranslationHistory;
 use App\Notifications\TranslationCompleted;
 use App\Services\HistoryService;
+use App\Services\MetricsService;
 use App\Services\StorageService;
 use App\Services\Translation\TranslationManager;
 use App\Support\ReviewStatus;
@@ -28,6 +29,7 @@ class TranslationController extends Controller
         private TranslationManager $translationManager,
         private StorageService $storage,
         private HistoryService $history,
+        private MetricsService $metricsService,
     ) {}
 
     /**
@@ -194,6 +196,13 @@ class TranslationController extends Controller
                 if ($record !== null) {
                     Auth::user()->notify(new TranslationCompleted($record));
                     \App\Support\AdminNotifier::awaitingReview($record, Auth::user()->name);
+
+                    $this->metricsService->persistTextMetrics($record, [
+                        'provider' => $result->provider,
+                        'model' => $result->model,
+                        'token_usage' => $result->tokenUsage,
+                        'execution_time_ms' => $result->executionTimeMs,
+                    ]);
                 }
             } catch (\Throwable $e) {
                 Log::error('Failed to insert text translation history record', [

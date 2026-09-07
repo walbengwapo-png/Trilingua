@@ -40,6 +40,7 @@ class BlockService
         $count = DB::transaction(function () use ($history, $blocks, $sidecar) {
             $created = 0;
             $scores = [];
+            $totalWords = 0;
 
             foreach ($blocks as $index => $block) {
                 $sourceText = (string) ($block['source_text'] ?? $block['text'] ?? '');
@@ -65,6 +66,7 @@ class BlockService
                     'created_at'             => now(),
                 ]);
 
+                $totalWords += str_word_count($sourceText);
                 $created++;
             }
 
@@ -72,6 +74,11 @@ class BlockService
             if ($scores !== []) {
                 $average = (int) round(array_sum($scores) / count($scores));
                 $history->quality_score = $average;
+            }
+
+            // Store the real source word count (replaces the old 250/doc guess).
+            if ($totalWords > 0) {
+                $history->document_word_count = $totalWords;
             }
 
             if ($sidecar !== null) {

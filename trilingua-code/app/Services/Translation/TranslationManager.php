@@ -103,7 +103,7 @@ class TranslationManager
      *     "mime_type": "..."
      *   }
      *
-     * @return array{body: string, blocks: array, sidecar: ?array, download_filename: string, mime_type: string}
+     * @return array{body: string, blocks: array, sidecar: ?array, metrics: array, download_filename: string, mime_type: string}
      * @throws TranslationException
      */
     public function translateDocument(
@@ -180,6 +180,7 @@ class TranslationManager
                 'body' => $body,
                 'blocks' => $data['blocks'] ?? [],
                 'sidecar' => $data['sidecar'] ?? null,
+                'metrics' => $data['metrics'] ?? [],
                 'download_filename' => $downloadFilename,
                 'mime_type' => $data['mime_type'] ?? 'application/octet-stream',
             ];
