@@ -98,6 +98,12 @@ return [
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
             'options' => [
+                // Supabase's pooler (PgBouncer, transaction mode, port 6543) does
+                // not preserve server-side prepared statements across backend
+                // swaps, which causes "prepared statement ... does not exist"
+                // (SQLSTATE[26000]) errors with native prepares. Emulating
+                // prepared statements inlines parameter values instead, making
+                // the connection safe with transaction pooling.
                 PDO::ATTR_EMULATE_PREPARES => true,
             ],
         ],

@@ -9,8 +9,10 @@ start "Python Translation Server" cmd /c "cd /d %~dp0Model && python server.py"
 
 timeout /t 3 /nobreak >nul
 
-echo [2/4] Starting Laravel Queue Worker...
-start "Laravel Queue Worker" cmd /c "set PHPRC=C:\php82 && C:\php82\php.exe -c C:\php82\php.ini artisan queue:work --timeout=590 --sleep=2"
+echo [2/4] Starting Laravel Queue Workers (3 workers)...
+start "Laravel Queue Worker 1" cmd /c "set PHPRC=C:\php82 && C:\php82\php.exe -c C:\php82\php.ini artisan queue:work --timeout=590 --sleep=2"
+start "Laravel Queue Worker 2" cmd /c "set PHPRC=C:\php82 && C:\php82\php.exe -c C:\php82\php.ini artisan queue:work --timeout=590 --sleep=2"
+start "Laravel Queue Worker 3" cmd /c "set PHPRC=C:\php82 && C:\php82\php.exe -c C:\php82\php.ini artisan queue:work --timeout=590 --sleep=2"
 
 echo [3/4] Starting Laravel Web Server (port 8000)...
 echo.

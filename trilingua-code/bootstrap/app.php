@@ -11,6 +11,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Trust Cloudflare Tunnel / reverse proxy headers so HTTPS URLs are generated correctly
+        $middleware->trustProxies(at: '*');
+
         // Add session validation middleware to web group
         $middleware->web(append: [
             \App\Http\Middleware\ValidateSession::class,
