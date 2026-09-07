@@ -3,20 +3,27 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\TranslationBlock;
 use App\Models\TranslationEditLog;
 use App\Models\TranslationHistory;
+use App\Models\TranslationMetric;
 use App\Models\User;
 use App\Models\UserActivityLog;
+use App\Support\CsvExporter;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Read-only admin analytics dashboard.
+ * Admin analytics dashboard.
  *
- * All metrics are aggregated reads over translation_history, translation_blocks
- * and translation_edit_log. No state is written here.
+ * Surfaces trended, actionable KPIs over raw counts: review throughput,
+ * turnaround distribution (p50/p90), quality health, engine performance and
+ * the flag "root cause" report. All metrics are read-only aggregations over
+ * translation_history / translation_blocks / translation_edit_log /
+ * translation_metrics. Supports CSV export of the main panels.
  */
 class DashboardController extends Controller
 {
@@ -24,18 +31,23 @@ class DashboardController extends Controller
     {
         try {
             $data = [
-                'stats'                => $this->stats(),
-                'langPairFlags'        => $this->flaggedByLanguagePair(),
-                'typeBreakdown'        => $this->flaggedByType(),
-                'flagReasonBreakdown'  => $this->flagReasonBreakdown(),
-                'avgTurnaround'        => $this->averageTurnaround(),
-                'topReviewers'         => $this->topReviewers(),
-                'activityOverTime'     => $this->activityOverTime(
+                'stats'                 => $this->stats(),
+                'reviewSparkline'       => $this->reviewSparkline($request->query('from'), $request->query('to')),
+                'avgQuality'            => $this->averageQuality(),
+                'turnaround'            => $this->turnaroundDistribution(),
+                'langPairFlags'         => $this->flaggedByLanguagePair(),
+                'typeBreakdown'         => $this->flaggedByType(),
+                'flagReasonBreakdown'   => $this->flagReasonBreakdown(),
+                'avgTurnaround'         => $this->averageTurnaround(),
+                'topReviewers'          => $this->topReviewers(),
+                'activityOverTime'      => $this->activityOverTime(
                     $request->query('from'), $request->query('to')
                 ),
-                'recentActivity'       => $this->recentActivity(),
-                'systemHealth'         => $this->systemHealth(),
-                'userActivity'         => $this->userActivity(),
+                'recentActivity'        => $this->recentActivity(),
+                'systemHealth'          => $this->systemHealth(),
+                'engineHealth'          => $this->engineHealth(),
+                'healthScorecard'       => $this->healthScorecard(),
+                'userActivity'          => $this->userActivity(),
             ];
         } catch (\Throwable $e) {
             Log::error('Admin\DashboardController::index failed', [
@@ -45,7 +57,11 @@ class DashboardController extends Controller
                 'stats' => [
                     'total' => 0, 'pending' => 0, 'verified' => 0, 'edited' => 0,
                     'flagged' => 0, 'reviewed' => 0, 'verifiedWithoutEditPct' => 0,
+                    'completionRate' => 0, 'pendingDelta' => 0,
                 ],
+                'reviewSparkline' => [],
+                'avgQuality' => null,
+                'turnaround' => null,
                 'langPairFlags' => [],
                 'typeBreakdown' => [],
                 'flagReasonBreakdown' => [],
@@ -59,6 +75,22 @@ class DashboardController extends Controller
                     'db_ok' => false,
                     'storage_ok' => false,
                 ],
+                'engineHealth' => [
+                    'samples' => 0,
+                    'avg_latency_ms' => null,
+                    'avg_llm_calls' => null,
+                    'cache_hit_rate' => null,
+                    'retranslation_rate' => null,
+                    'active_provider' => null,
+                    'active_model' => null,
+                ],
+                'healthScorecard' => [
+                    'scored' => 0,
+                    'below_threshold' => 0,
+                    'below_pct' => 0,
+                    'dominant_issue' => null,
+                    'issue_distribution' => [],
+                ],
                 'userActivity' => [],
             ];
         }
@@ -67,7 +99,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * % verified without edit + core review counts.
+     * Review throughput + trend + completion rate.
      */
     private function stats(): array
     {
@@ -80,6 +112,15 @@ class DashboardController extends Controller
         $reviewed = $verified + $edited + $flagged;
         $verifiedWithoutEditPct = $reviewed > 0 ? round($verified / $reviewed * 100, 1) : 0;
 
+        // Completion rate: of all submitted items, how many have been reviewed.
+        $completionRate = $total > 0 ? round($reviewed / $total * 100, 1) : 0;
+
+        // Pending submissions delta: new entrants last 7 days vs previous 7.
+        $now = now();
+        $recent7 = TranslationHistory::whereBetween('created_at', [$now->copy()->subDays(7)->startOfDay(), $now])->count();
+        $prev7 = TranslationHistory::whereBetween('created_at', [$now->copy()->subDays(14)->startOfDay(), $now->copy()->subDays(7)->endOfDay()])->count();
+        $pendingDelta = $prev7 > 0 ? round(($recent7 - $prev7) / $prev7 * 100) : 0;
+
         return [
             'total' => $total,
             'pending' => $pending,
@@ -88,6 +129,80 @@ class DashboardController extends Controller
             'flagged' => $flagged,
             'reviewed' => $reviewed,
             'verifiedWithoutEditPct' => $verifiedWithoutEditPct,
+            'completionRate' => $completionRate,
+            'pendingDelta' => $pendingDelta,
+        ];
+    }
+
+    /**
+     * Per-day pending-pushed-to-reviewed / newly-pending counts for a sparkline.
+     * Shows how many items entered the queue (were submitted) per day over the
+     * window, so admins can spot submission volume.
+     */
+    private function reviewSparkline(?string $from, ?string $to): array
+    {
+        $days = 30;
+        $start = $from ? \Carbon\Carbon::parse($from)->startOfDay() : now()->subDays($days - 1)->startOfDay();
+        $end = $to ? \Carbon\Carbon::parse($to)->endOfDay() : now();
+
+        $rows = TranslationHistory::whereBetween('created_at', [$start, $end])
+            ->get(['created_at']);
+
+        $series = [];
+        $cursor = $start->copy();
+        while ($cursor <= $end) {
+            $date = $cursor->toDateString();
+            $series[$date] = ['date' => $date, 'count' => 0];
+            $cursor->addDay();
+        }
+
+        foreach ($rows as $row) {
+            $date = $row->created_at->toDateString();
+            if (isset($series[$date])) {
+                $series[$date]['count']++;
+            }
+        }
+
+        return array_values($series);
+    }
+
+    /**
+     * Overall average AI quality score across scored translations.
+     */
+    private function averageQuality(): ?float
+    {
+        $score = TranslationHistory::whereNotNull('quality_score')
+            ->avg('quality_score');
+
+        return $score === null ? null : round((float) $score, 1);
+    }
+
+    /**
+     * Turnaround distribution: p50 / p90 / mean in hours.
+     */
+    private function turnaroundDistribution(): ?array
+    {
+        $hours = TranslationHistory::whereNotNull('reviewed_at')
+            ->whereNotNull('created_at')
+            ->get(['created_at', 'reviewed_at'])
+            ->map(fn ($row) => max(0.0, $row->created_at->diffInSeconds($row->reviewed_at) / 3600))
+            ->sort()
+            ->values();
+
+        if ($hours->isEmpty()) {
+            return null;
+        }
+
+        $count = $hours->count();
+        $p50 = $hours[ (int) floor(0.50 * ($count - 1)) ];
+        $p90 = $hours[ (int) floor(0.90 * ($count - 1)) ];
+        $mean = $hours->avg();
+
+        return [
+            'p50' => round((float) $p50, 1),
+            'p90' => round((float) $p90, 1),
+            'mean' => round((float) $mean, 1),
+            'sample' => $count,
         ];
     }
 
@@ -317,11 +432,110 @@ class DashboardController extends Controller
     }
 
     /**
+     * AI engine performance metrics surfaced from the Python service and
+     * persisted in translation_metrics.
+     */
+    private function engineHealth(): array
+    {
+        $base = TranslationMetric::query();
+
+        $count = (clone $base)->count();
+        if ($count === 0) {
+            return [
+                'samples' => 0,
+                'avg_latency_ms' => null,
+                'avg_llm_calls' => null,
+                'cache_hit_rate' => null,
+                'retranslation_rate' => null,
+                'active_provider' => null,
+                'active_model' => null,
+            ];
+        }
+
+        $avgLatency = (clone $base)->avg('total_time_ms');
+        $avgLlmCalls = (clone $base)->avg('llm_calls');
+
+        // Cache hit rate = hits ÷ (hits + misses) across document runs.
+        $cacheHits = (clone $base)->sum('cache_hits');
+        $cacheMisses = (clone $base)->sum('cache_misses');
+        $cacheTotal = $cacheHits + $cacheMisses;
+        $cacheHitRate = $cacheTotal > 0 ? round($cacheHits / $cacheTotal * 100, 1) : null;
+
+        // Retranslation rate = retranslated ÷ total translated blocks.
+        $translated = (clone $base)->sum('blocks_translated');
+        $retranslated = (clone $base)->sum('retranslated_chunks');
+        $retranslationRate = $translated > 0 ? round($retranslated / $translated * 100, 1) : null;
+
+        // Most recent provider/model actually used.
+        $latest = (clone $base)->orderByDesc('id')->first();
+
+        return [
+            'samples' => $count,
+            'avg_latency_ms' => $avgLatency === null ? null : (int) round((float) $avgLatency),
+            'avg_llm_calls' => $avgLlmCalls === null ? null : round((float) $avgLlmCalls, 1),
+            'cache_hit_rate' => $cacheHitRate,
+            'retranslation_rate' => $retranslationRate,
+            'active_provider' => $latest?->provider,
+            'active_model' => $latest?->model,
+        ];
+    }
+
+    /**
+     * Translation health scorecard: share of documents below the quality
+     * threshold plus the dominant quality issue category across document blocks.
+     */
+    private function healthScorecard(): array
+    {
+        $totalScored = TranslationHistory::whereNotNull('quality_score')->count();
+        $belowThreshold = TranslationHistory::whereNotNull('quality_score')
+            ->where('quality_score', '<', 70)
+            ->count();
+
+        // Dominant issue category from block-level quality_issues JSON.
+        $categories = [];
+        TranslationBlock::whereNotNull('quality_issues')
+            ->pluck('quality_issues')
+            ->each(function ($issues) use (&$categories) {
+                foreach ((array) $issues as $issue) {
+                    $cat = $issue['category'] ?? null;
+                    if ($cat) {
+                        $categories[$cat] = ($categories[$cat] ?? 0) + 1;
+                    }
+                }
+            });
+        arsort($categories);
+        $dominantIssue = array_key_first($categories) ? [
+            'category' => array_key_first($categories),
+            'count' => reset($categories),
+        ] : null;
+
+        // Total tracked issue count for the percentage context.
+        $totalIssues = array_sum($categories) ?: 1;
+
+        $issueDistribution = [];
+        foreach ($categories as $cat => $count) {
+            $issueDistribution[] = [
+                'category' => $cat,
+                'count' => $count,
+                'pct' => round($count / $totalIssues * 100, 1),
+            ];
+        }
+
+        return [
+            'scored' => $totalScored,
+            'below_threshold' => $belowThreshold,
+            'below_pct' => $totalScored > 0 ? round($belowThreshold / $totalScored * 100, 1) : 0,
+            'dominant_issue' => $dominantIssue,
+            'issue_distribution' => $issueDistribution,
+        ];
+    }
+
+    /**
      * Top active users by number of translations created in the last 30 days.
      */
     private function userActivity(int $limit = 10): array
     {
-        return TranslationHistory::where('created_at', '>=', now()->subDays(30))
+        return TranslationHistory::where('translation_history.created_at', '>=', now()->subDays(30))
             ->join('users', 'users.id', '=', 'translation_history.user_id')
             ->selectRaw('
                 translation_history.user_id,
@@ -346,5 +560,56 @@ class DashboardController extends Controller
                 'last_active'        => $r->last_active,
             ])
             ->all();
+    }
+
+    /**
+     * GET /admin/export/review-trends  — CSV of review activity by day.
+     */
+    public function exportReviewTrends(Request $request)
+    {
+        $rows = $this->activityOverTime(
+            $request->query('from'), $request->query('to')
+        )->map(fn ($r) => $r)->all();
+
+        return CsvExporter::download('review-trends.csv', $rows, [
+            'date' => 'Date',
+            'verify' => 'Verify',
+            'edit' => 'Edit',
+            'flag' => 'Flag',
+            'total' => 'Total',
+        ]);
+    }
+
+    /**
+     * GET /admin/export/flags  — CSV of flag reasons, pairs and types.
+     */
+    public function exportFlags(): Response
+    {
+        $reasons = $this->flagReasonBreakdown();
+        $reasonRows = [];
+        foreach ($reasons as $label => $count) {
+            $reasonRows[] = ['reason' => $label, 'count' => $count];
+        }
+
+        return CsvExporter::download('flag-report.csv', $reasonRows, [
+            'reason' => 'Flag Reason',
+            'count' => 'Count',
+        ]);
+    }
+
+    /**
+     * GET /admin/export/users  — CSV of user activity (last 30 days).
+     */
+    public function exportUsers(): Response
+    {
+        return CsvExporter::download('user-activity.csv', $this->userActivity(), [
+            'user_id' => 'User ID',
+            'name' => 'Name',
+            'email' => 'Email',
+            'translation_count' => 'Translations',
+            'doc_count' => 'Documents',
+            'text_count' => 'Text',
+            'last_active' => 'Last Active',
+        ]);
     }
 }

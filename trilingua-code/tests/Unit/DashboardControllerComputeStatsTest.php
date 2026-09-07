@@ -89,7 +89,13 @@ class DashboardControllerComputeStatsTest extends TestCase
         $result = $controller->computeStats([]);
 
         $this->assertSame(
-            ['totalDocs' => 0, 'translationsThisMonth' => 0, 'wordsTranslated' => 0],
+            [
+                'totalDocs' => 0,
+                'totalTexts' => 0,
+                'translationsThisMonth' => 0,
+                'wordsTranslated' => 0,
+                'topLangPair' => '—',
+            ],
             $result,
             'computeStats([]) must return all-zero stats.'
         );
@@ -139,15 +145,17 @@ class DashboardControllerComputeStatsTest extends TestCase
     }
 
     /**
-     * Mixed document/text records: wordsTranslated = str_word_count(source) for text + 250 per doc.
+     * Mixed document/text records: wordsTranslated = real document_word_count
+     * for docs (falling back to 0 when source text is unavailable) +
+     * str_word_count(source) for text.
      */
     public function test_mixed_records_words_translated_sums_correctly(): void
     {
         $controller = $this->makeController();
 
+        // Doc records carry no persisted source_word_count here → contribute 0.
         // "hello world" → str_word_count = 2
         // "one two three four" → str_word_count = 4
-        // 2 document records → 2 × 250 = 500
         $records = [
             $this->docRecord(),
             $this->docRecord(),
@@ -157,9 +165,9 @@ class DashboardControllerComputeStatsTest extends TestCase
 
         $result = $controller->computeStats($records);
 
-        $expectedWords = 500 + str_word_count('hello world') + str_word_count('one two three four');
+        $expectedWords = str_word_count('hello world') + str_word_count('one two three four');
         $this->assertSame($expectedWords, $result['wordsTranslated'],
-            'wordsTranslated must be 250 per document + str_word_count(source_text) per text record.');
+            'wordsTranslated must use real document_word_count (not a flat 250) plus str_word_count for text.');
     }
 
     /**
@@ -183,9 +191,9 @@ class DashboardControllerComputeStatsTest extends TestCase
     }
 
     /**
-     * Only document records: wordsTranslated = 250 × count.
+     * Only document records without persisted word counts: wordsTranslated = 0.
      */
-    public function test_only_document_records_words_translated_is_250_per_doc(): void
+    public function test_only_document_records_words_translated_uses_stored_word_count(): void
     {
         $controller = $this->makeController();
 
@@ -197,8 +205,8 @@ class DashboardControllerComputeStatsTest extends TestCase
 
         $result = $controller->computeStats($records);
 
-        $this->assertSame(750, $result['wordsTranslated'],
-            'wordsTranslated must be 250 × number of document records when there are no text records.');
+        $this->assertSame(0, $result['wordsTranslated'],
+            'wordsTranslated must be 0 for documents without a stored document_word_count.');
         $this->assertSame(3, $result['totalDocs']);
     }
 
@@ -221,6 +229,24 @@ class DashboardControllerComputeStatsTest extends TestCase
 
         $expectedWords = str_word_count('hello world') + str_word_count('one two three');
         $this->assertSame($expectedWords, $result['wordsTranslated']);
+    }
+
+    /**
+     * Document records use their stored document_word_count (real words).
+     */
+    public function test_document_records_use_stored_word_count(): void
+    {
+        $controller = $this->makeController();
+
+        $records = [
+            ['translation_type' => 'document', 'document_word_count' => 320, 'created_at' => date('Y-m') . '-01T00:00:00Z'],
+            ['translation_type' => 'document', 'document_word_count' => 480, 'created_at' => date('Y-m') . '-01T00:00:00Z'],
+        ];
+
+        $result = $controller->computeStats($records);
+
+        $this->assertSame(800, $result['wordsTranslated'],
+            'wordsTranslated must sum the stored document_word_count for document records.');
     }
 
     /**

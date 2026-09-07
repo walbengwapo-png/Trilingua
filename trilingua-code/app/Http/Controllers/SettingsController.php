@@ -14,12 +14,23 @@ class SettingsController extends Controller
 {
     /**
      * Display the settings page.
+     *
+     * Supports an optional ?section=account query param (used by the Profile
+     * link in the header dropdown) which is remembered in the session so the
+     * settings view opens on that section.
      */
-    public function show(): View
+    public function show(Request $request): View
     {
         $user = Auth::user();
+        $scrollToAccount = false;
 
-        return view('settings', compact('user'));
+        if ($request->has('section')) {
+            $request->validate(['section' => 'string|in:account,general']);
+            session(['_settings_section' => $request->query('section')]);
+            $scrollToAccount = $request->query('section') === 'account';
+        }
+
+        return view('settings', compact('user', 'scrollToAccount'));
     }
 
     /**

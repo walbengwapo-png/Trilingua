@@ -388,6 +388,19 @@
     box-shadow: 0 0 0 4px rgba(59,130,246,0.15);
 }
 
+/* Google button — full-width labelled variant */
+.btn-social--google {
+    flex: 1;
+    gap: 10px;
+    padding: 0 16px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: #0f172a;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.btn-social--google svg { flex-shrink: 0; }
+
 /* ── Footer ────────────────────────────────────────────────────────────── */
 .auth-footer {
     text-align: center;

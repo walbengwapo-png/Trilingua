@@ -59,6 +59,8 @@ class AuditLogController extends Controller
                                 : ('#' . $log->translation_history_id)),
                             'note'         => $log->note ?? '',
                             'created_at'   => $log->created_at,
+                            'ip_address'   => null,  // Explicitly set for consistency
+                            'admin_id'     => $log->admin_id,
                         ];
                     });
 
@@ -73,6 +75,8 @@ class AuditLogController extends Controller
                             'target'     => $log->ip_address ?: '—',
                             'note'       => $log->note ?? '',
                             'created_at' => $log->created_at,
+                            'ip_address' => $log->ip_address,  // Keep for reference
+                            'admin_id'   => null,  // Explicitly set for consistency
                         ];
                     });
 

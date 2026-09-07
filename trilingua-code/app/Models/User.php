@@ -25,6 +25,7 @@ class User extends Authenticatable
         'password',
         'theme',
         'is_admin',
+        'google_id',
     ];
 
     /**
@@ -49,6 +50,14 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_admin' => 'boolean',
         ];
+    }
+
+    /**
+     * Translations this user submitted.
+     */
+    public function translations()
+    {
+        return $this->hasMany(TranslationHistory::class);
     }
 
     /**

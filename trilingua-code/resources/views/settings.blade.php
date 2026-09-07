@@ -247,6 +247,19 @@
                 target.style.display = 'block';
             }
         }
+
+        // When arriving via the Profile dropdown link, draw attention to the
+        // Account Information card and focus its first input.
+        @if ($scrollToAccount)
+        var accountCard = document.querySelector('#section-account .settings-card');
+        if (accountCard) {
+            accountCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            var nameInput = document.getElementById('name');
+            if (nameInput) {
+                nameInput.focus({ preventScroll: true });
+            }
+        }
+        @endif
     })();
 </script>
 @endsection
