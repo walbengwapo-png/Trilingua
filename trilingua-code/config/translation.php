@@ -10,7 +10,7 @@ return [
     | These settings only control how Laravel communicates with the Python AI Engine.
     |
     */
-    
+
     'python_service' => [
         'url' => env('PYTHON_SERVICE_URL', 'http://127.0.0.1:5000'),
         'timeout' => env('PYTHON_SERVICE_TIMEOUT', 600),
@@ -18,7 +18,7 @@ return [
         // python service can reject non-app callers. Deploy both sides together.
         'token' => env('PYTHON_SERVICE_TOKEN'),
     ],
-    
+
     /*
     |--------------------------------------------------------------------------
     | Upload Protection
@@ -32,7 +32,7 @@ return [
         'max_daily_files' => (int) env('TRANSLATION_MAX_DAILY_FILES', 25),
         'max_daily_bytes' => (int) env('TRANSLATION_MAX_DAILY_BYTES', 262144000),
     ],
-    
+
     /*
     |--------------------------------------------------------------------------
     | Supported Languages
@@ -43,7 +43,22 @@ return [
     |
     */
     'languages' => ['English', 'Cebuano', 'Filipino'],
-    
+
+    /*
+    |--------------------------------------------------------------------------
+    | Translation capability contract
+    |--------------------------------------------------------------------------
+    |
+    | These values are consumed by both request validation and the translation
+    | page. Keeping them here prevents the browser from advertising a different
+    | limit, mode, or file type than the server will accept.
+    |
+    */
+    'text_max_chars' => (int) env('TRANSLATION_TEXT_MAX_CHARS', 8000),
+    'max_upload_kb' => (int) env('TRANSLATION_MAX_UPLOAD_KB', 51200),
+    'modes' => ['fast', 'balanced', 'thorough', 'auto'],
+    'pdf_column_modes' => ['auto', 'single', 'left', 'right'],
+
     /*
     |--------------------------------------------------------------------------
     | Supported Document Formats
@@ -53,7 +68,7 @@ return [
     |
     */
     'supported_formats' => ['docx', 'pdf', 'txt', 'md', 'rtf', 'odt', 'csv', 'pptx', 'xlsx'],
-    
+
     /*
     |--------------------------------------------------------------------------
     | Extension Map
@@ -65,12 +80,12 @@ return [
     */
     'extension_map' => [
         'docx' => 'docx',
-        'pdf'  => 'pdf',
-        'txt'  => 'txt',
-        'md'   => 'md',
-        'csv'  => 'csv',
-        'rtf'  => 'docx',
-        'odt'  => 'docx',
+        'pdf' => 'pdf',
+        'txt' => 'txt',
+        'md' => 'md',
+        'csv' => 'csv',
+        'rtf' => 'docx',
+        'odt' => 'docx',
         'pptx' => 'pptx',
         'xlsx' => 'xlsx',
     ],

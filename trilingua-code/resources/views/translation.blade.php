@@ -14,9 +14,9 @@
         <div class="lang-bar__select-wrap">
             <span class="lang-bar__label">From</span>
             <select id="source-lang" aria-label="Source language">
-                <option value="English" selected>English</option>
-                <option value="Cebuano">Cebuano</option>
-                <option value="Filipino">Filipino</option>
+                @foreach ($capabilities['languages'] as $language)
+                    <option value="{{ $language }}" @selected($language === 'English')>{{ $language }}</option>
+                @endforeach
             </select>
         </div>
 
@@ -30,18 +30,18 @@
         <div class="lang-bar__select-wrap">
             <span class="lang-bar__label">To</span>
             <select id="target-lang" aria-label="Target language">
-                <option value="English">English</option>
-                <option value="Cebuano" selected>Cebuano</option>
-                <option value="Filipino">Filipino</option>
+                @foreach ($capabilities['languages'] as $language)
+                    <option value="{{ $language }}" @selected($language === 'Cebuano')>{{ $language }}</option>
+                @endforeach
             </select>
         </div>
 
         <div class="lang-bar__mode-wrap">
             <label class="lang-bar__label" for="translation-mode">Mode</label>
             <select id="translation-mode" aria-label="Translation processing mode">
-                <option value="fast">Fast</option>
-                <option value="balanced" selected>Balanced</option>
-                <option value="thorough">Thorough</option>
+                @foreach ($capabilities['modes'] as $mode)
+                    <option value="{{ $mode }}" @selected($mode === 'balanced')>{{ ucfirst($mode) }}</option>
+                @endforeach
             </select>
         </div>
     </div>
@@ -53,7 +53,7 @@
         <div class="translation-panel translation-panel--source">
             <div class="translation-panel__label">Source text</div>
             <div class="translation-panel__body">
-                <textarea id="source-text" maxlength="5000" placeholder="Enter text to translate…" aria-label="Source text"></textarea>
+                <textarea id="source-text" maxlength="{{ $capabilities['text_max_chars'] }}" placeholder="Enter text to translate…" aria-label="Source text"></textarea>
 
                 {{-- File attached state --}}
                 <div class="translation-panel__file-info" id="file-info" style="display:none">
@@ -78,17 +78,16 @@
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                     Attach file
                 </button>
-                <input id="file-input" type="file" hidden accept=".docx,.pdf,.txt,.md,.rtf,.odt,.csv">
+                <input id="file-input" type="file" hidden accept="{{ $capabilities['accept'] }}">
 
                 {{-- PDF column mode --}}
                 <select id="pdf-column-mode" style="display:none" aria-label="PDF column mode">
-                    <option value="auto" selected>Auto columns</option>
-                    <option value="single">Single column</option>
-                    <option value="left">Left column</option>
-                    <option value="right">Right column</option>
+                    @foreach ($capabilities['pdf_column_modes'] as $columnMode)
+                        <option value="{{ $columnMode }}" @selected($columnMode === 'auto')>{{ ucfirst($columnMode) }} columns</option>
+                    @endforeach
                 </select>
 
-                <span id="char-counter" aria-live="polite">0/5000</span>
+                <span id="char-counter" aria-live="polite">0/{{ $capabilities['text_max_chars'] }}</span>
 
                 {{-- Clear --}}
                 <button id="clear-btn" type="button" class="clear-btn" title="Clear source text" aria-label="Clear source text">
@@ -109,7 +108,7 @@
                 <div id="output-download" hidden>
                     <a id="download-link" href="#" class="download-btn">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        Download translated file
+                        <span id="download-label">Download translated file</span>
                     </a>
                 </div>
             </div>
@@ -167,6 +166,8 @@
 (function () {
     'use strict';
 
+    var CAPABILITIES = @json($capabilities);
+
     var sourceText    = document.getElementById('source-text');
     var charCounter   = document.getElementById('char-counter');
     var sourceLang    = document.getElementById('source-lang');
@@ -188,12 +189,14 @@
     var clearBtn      = document.getElementById('clear-btn');
     var outputDownload = document.getElementById('output-download');
     var downloadLink   = document.getElementById('download-link');
+    var downloadLabel  = document.getElementById('download-label');
 
     function showError(el, msg) { if (el) el.textContent = msg; }
     function clearError(el)     { if (el) el.textContent = ''; }
 
     // ── Character counter ────────────────────────────────────────────────────
-    var MAX_CHARS = 5000, WARN = 4500;
+    var MAX_CHARS = CAPABILITIES.text_max_chars;
+    var WARN = Math.floor(MAX_CHARS * 0.9);
 
     function updateCounter() {
         var len = sourceText.value.length;
@@ -243,8 +246,8 @@
     });
 
     // ── File attachment ───────────────────────────────────────────────────────
-    var ALLOWED = ['.docx','.pdf','.txt','.md','.rtf','.odt','.csv'];
-    var MAX_SIZE = 10485760;
+    var ALLOWED = CAPABILITIES.formats.map(function (format) { return '.' + format; });
+    var MAX_SIZE = CAPABILITIES.max_upload_bytes;
 
     attachBtn.addEventListener('click', function () { fileInput.click(); });
 
@@ -253,7 +256,7 @@
         if (!file) return;
         var ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
         if (ALLOWED.indexOf(ext) === -1) { showError(sourceError, 'Unsupported file type. Allowed: ' + ALLOWED.join(', ')); fileInput.value = ''; return; }
-        if (file.size > MAX_SIZE) { showError(sourceError, 'File too large. Maximum size is 10 MB.'); fileInput.value = ''; return; }
+        if (file.size > MAX_SIZE) { showError(sourceError, 'File too large. Maximum size is ' + Math.floor(MAX_SIZE / 1048576) + ' MB.'); fileInput.value = ''; return; }
         clearError(sourceError);
         fileNameSpan.textContent = file.name;
         sourceText.style.display = 'none';
@@ -375,7 +378,7 @@
                     outputDownload.removeAttribute('hidden');
                     downloadLink.href = data.download_data || data.download_url;
                     downloadLink.download = data.download_filename || 'translated_document';
-                    downloadLink.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download: ' + (data.download_filename || 'translated_document');
+                    downloadLabel.textContent = 'Download: ' + (data.download_filename || 'translated_document');
                     copyBtn.setAttribute('aria-disabled', 'true');
                     saveBtn.setAttribute('aria-disabled', 'true');
                     if (window.showToast) showToast('success', 'Document translated!', 'Your file is ready to download.');
@@ -407,7 +410,7 @@
 
     // Poll for document translation status
     function pollJobStatus(jobId) {
-        var maxAttempts = 180; // 6 minutes max (180 * 2s)
+        var maxAttempts = 300; // 10 minutes max (300 * 2s), matching the service timeout.
         var attempts = 0;
         var interval = setInterval(function () {
             attempts++;
@@ -434,7 +437,7 @@
                         outputDownload.removeAttribute('hidden');
                         downloadLink.href = data.download_data || data.download_url;
                         downloadLink.download = data.download_filename || 'translated_document';
-                        downloadLink.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download: ' + (data.download_filename || 'translated_document');
+                        downloadLabel.textContent = 'Download: ' + (data.download_filename || 'translated_document');
                         copyBtn.setAttribute('aria-disabled', 'true');
                         saveBtn.setAttribute('aria-disabled', 'true');
                         if (window.showToast) showToast('success', 'Document translated!', 'Your file is ready to download.');

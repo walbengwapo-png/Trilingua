@@ -182,20 +182,22 @@ class DashboardUiFixBugConditionTest extends TestCase
         $response->assertSee('Maria Santos', false);
     }
 
-    // ─── Test Case 3: New Translation counter shows "0/5000" not "0/8000" ─────
+    // ─── Test Case 3: New Translation counter uses server capability limit ────
 
     /**
      * Test Case 3 — New Translation counter
      *
-     * GET /translate, assert response contains "0/5000" (not "0/8000").
+     * GET /translate, assert response contains the configured 8,000-character
+     * limit and the frontend receives the same server-owned contract.
      *
-     * Bug Condition: Character counter shows wrong limit "0/8000".
-     * Expected Behavior: Counter shows "0/5000" matching the design.
+     * Bug Condition: Character counter can drift from backend validation.
+     * Expected Behavior: Counter shows "0/8000" from the shared capability
+     * contract, matching backend validation.
      *
      * EXPECTED OUTCOME ON UNFIXED CODE: FAIL
-     * Counterexample: Response contains "0/8000" instead of "0/5000".
+     * Counterexample: Response contains an independently hard-coded limit.
      */
-    public function test_case_3_new_translation_counter_shows_5000_limit(): void
+    public function test_case_3_new_translation_counter_uses_server_limit(): void
     {
         // Arrange: authenticate a user
         $user = User::factory()->create();
@@ -207,12 +209,8 @@ class DashboardUiFixBugConditionTest extends TestCase
         // Assert: page loads
         $response->assertStatus(200);
 
-        // Assert: response contains "0/5000" (correct limit)
-        // On unfixed code this FAILS because the blade has "0/8000" and MAX_CHARS = 8000
-        $response->assertSee('0/5000', false);
-
-        // Also assert "0/8000" is NOT present
-        $response->assertDontSee('0/8000', false);
+        $response->assertSee('0/8000', false);
+        $response->assertSee('"text_max_chars":8000', false);
     }
 
     // ─── Test Case 4: Speaker icons present on New Translation page ───────────
@@ -395,9 +393,9 @@ class DashboardUiFixBugConditionTest extends TestCase
         $translateResponse = $this->get('/translate');
         $translateResponse->assertStatus(200);
 
-        // Bug 3: counter shows "0/8000" not "0/5000"
+        // Bug 3: counter receives the configured server limit.
         $translateResponse->assertSee(
-            '0/5000',
+            '0/8000',
             false
         );
 

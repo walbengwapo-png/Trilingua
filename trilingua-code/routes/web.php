@@ -1,26 +1,26 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\DocumentReviewController;
+use App\Http\Controllers\Admin\JobController;
+use App\Http\Controllers\Admin\ReviewController;
+use App\Http\Controllers\Admin\TextReviewController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
-use App\Http\Controllers\Auth\ResetPasswordController;
-use App\Http\Controllers\Auth\RegisterController;
-use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\GoogleController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\BookmarksController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentsController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TranslationController;
-use App\Http\Controllers\Admin\ReviewController;
-use App\Http\Controllers\Admin\TextReviewController;
-use App\Http\Controllers\Admin\DocumentReviewController;
-use App\Http\Controllers\Admin\AuditLogController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\JobController;
-use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -29,8 +29,8 @@ Route::get('/', function () {
 // Clears stale session cookies from previous config (safe to remove after first use)
 Route::get('/clear-session', function () {
     return response('Cookies cleared. <a href="/login">Go to login</a>')
-        ->withCookie(\Cookie::forget('laravel_session'))
-        ->withCookie(\Cookie::forget('XSRF-TOKEN'));
+        ->withCookie(Cookie::forget('laravel_session'))
+        ->withCookie(Cookie::forget('XSRF-TOKEN'));
 });
 
 // Auth routes with rate limiting
@@ -76,6 +76,7 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
     Route::post('/settings/general', [SettingsController::class, 'updateGeneral'])->name('settings.general');
 
     Route::get('/translate', [TranslationController::class, 'show'])->name('translate');
+    Route::get('/translate/capabilities', [TranslationController::class, 'capabilities'])->name('translate.capabilities');
     Route::post('/translate', [TranslationController::class, 'translate'])->name('translate.submit');
 
     Route::get('/documents', [DocumentsController::class, 'index'])->name('documents');

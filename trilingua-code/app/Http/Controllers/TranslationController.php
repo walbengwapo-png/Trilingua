@@ -10,9 +10,9 @@ use App\Notifications\TranslationCompleted;
 use App\Services\HistoryService;
 use App\Services\MetricsService;
 use App\Services\StorageService;
-use App\Services\Translation\TranslationManager;
 use App\Services\Translation\DTO\TranslationRequest;
-use App\Services\Translation\DTO\TranslationResponse;
+use App\Services\Translation\TranslationManager;
+use App\Support\AdminNotifier;
 use App\Support\ReviewStatus;
 use App\Support\SafeFileNames;
 use Illuminate\Contracts\View\View;
@@ -39,7 +39,16 @@ class TranslationController extends Controller
      */
     public function show(): View
     {
-        return view('translation');
+        return view('translation', ['capabilities' => $this->capabilityContract()]);
+    }
+
+    /**
+     * GET /translate/capabilities — authenticated clients can refresh the
+     * server-owned translation contract without duplicating validation rules.
+     */
+    public function capabilities(): JsonResponse
+    {
+        return response()->json($this->capabilityContract());
     }
 
     /**
@@ -56,16 +65,16 @@ class TranslationController extends Controller
 
         // Validate basic fields
         $validated = $request->validate([
-            'source_lang' => ['required', Rule::in(['English', 'Cebuano', 'Filipino'])],
+            'source_lang' => ['required', Rule::in(config('translation.languages', []))],
             'target_lang' => [
                 'required',
-                Rule::in(['English', 'Cebuano', 'Filipino']),
+                Rule::in(config('translation.languages', [])),
                 Rule::notIn([$sourceLang]),
             ],
-            'text'     => ['nullable', 'string', 'max:8000'],
-            'document' => ['nullable', 'file', 'mimes:docx,pdf,txt,md,rtf,odt,csv,pptx,xlsx', 'max:51200'],
-            'pdf_column_mode' => ['nullable', Rule::in(['auto', 'single', 'left', 'right'])],
-            'mode' => ['nullable', Rule::in(['fast', 'balanced', 'thorough', 'auto'])],
+            'text' => ['nullable', 'string', 'max:'.(int) config('translation.text_max_chars', 8000)],
+            'document' => ['nullable', 'file', 'mimes:'.implode(',', config('translation.supported_formats', [])), 'max:'.(int) config('translation.max_upload_kb', 51200)],
+            'pdf_column_mode' => ['nullable', Rule::in(config('translation.pdf_column_modes', []))],
+            'mode' => ['nullable', Rule::in(config('translation.modes', []))],
         ], [
             'target_lang.not_in' => 'The source language and target language must be different.',
         ]);
@@ -74,15 +83,15 @@ class TranslationController extends Controller
         $pdfColumnMode = $validated['pdf_column_mode'] ?? 'auto';
 
         // Manual validation: ensure either text or document is provided
-        $hasText = !empty($validated['text']);
+        $hasText = ! empty($validated['text']);
         $hasDocument = $request->hasFile('document');
 
-        if (!$hasText && !$hasDocument) {
+        if (! $hasText && ! $hasDocument) {
             return response()->json([
                 'error' => 'Please enter text to translate or attach a document.',
                 'errors' => [
                     'text' => ['The text field is required when document is not present.'],
-                ]
+                ],
             ], 422);
         }
 
@@ -103,20 +112,20 @@ class TranslationController extends Controller
             // Log text translation to history (non-blocking)
             try {
                 $record = $this->history->insertRecord([
-                    'user_id'          => Auth::id(),
+                    'user_id' => Auth::id(),
                     'translation_type' => 'text',
-                    'source_text'      => $request->input('text'),
-                    'translated_text'  => $result->translatedText,
-                    'source_language'  => $sourceLang,
-                    'target_language'  => $targetLang,
-                    'created_at'       => now()->toIso8601String(),
-                    'status'           => 'completed',
-                    'review_status'    => ReviewStatus::PENDING,
+                    'source_text' => $request->input('text'),
+                    'translated_text' => $result->translatedText,
+                    'source_language' => $sourceLang,
+                    'target_language' => $targetLang,
+                    'created_at' => now()->toIso8601String(),
+                    'status' => 'completed',
+                    'review_status' => ReviewStatus::PENDING,
                 ]);
 
                 if ($record !== null) {
                     Auth::user()->notify(new TranslationCompleted($record));
-                    \App\Support\AdminNotifier::awaitingReview($record, Auth::user()->name);
+                    AdminNotifier::awaitingReview($record, Auth::user()->name);
 
                     $this->metricsService->persistTextMetrics($record, [
                         'provider' => $result->provider,
@@ -127,8 +136,8 @@ class TranslationController extends Controller
                 }
             } catch (\Throwable $e) {
                 Log::error('Failed to insert text translation history record', [
-                    'exception'  => $e->getMessage(),
-                    'user_id'    => Auth::id(),
+                    'exception' => $e->getMessage(),
+                    'user_id' => Auth::id(),
                 ]);
             }
 
@@ -195,7 +204,7 @@ class TranslationController extends Controller
         $userId = Auth::id();
 
         $originalName = SafeFileNames::scrubDisplayName($uploadedFile->getClientOriginalName());
-        $originalExt = '.' . strtolower((string) pathinfo($originalName, PATHINFO_EXTENSION));
+        $originalExt = '.'.strtolower((string) pathinfo($originalName, PATHINFO_EXTENSION));
         $fileSize = (int) $uploadedFile->getSize();
         $mode = $validated['mode'] ?? 'balanced';
 
@@ -206,11 +215,11 @@ class TranslationController extends Controller
         // 1. Persist the uploaded file so the queue worker can read it later
         //    (PHP deletes the temp file when this request ends). The on-disk
         //    leaf is server-generated and opaque.
-        $persistDir = storage_path('app/uploads/' . Str::uuid());
-        if (!is_dir($persistDir)) {
+        $persistDir = storage_path('app/uploads/'.Str::uuid());
+        if (! is_dir($persistDir)) {
             mkdir($persistDir, 0755, true);
         }
-        $persistentPath = $persistDir . DIRECTORY_SEPARATOR . 'source' . $originalExt;
+        $persistentPath = $persistDir.DIRECTORY_SEPARATOR.'source'.$originalExt;
         try {
             $uploadedFile->move($persistDir, basename($persistentPath));
         } catch (\Throwable $e) {
@@ -225,8 +234,9 @@ class TranslationController extends Controller
 
         // 2. Sniff content so a spoofed extension cannot smuggle executable/binary
         //    uploads through the mime filter.
-        if (!$this->contentsMatchExtension($originalExt, $persistentPath)) {
+        if (! $this->contentsMatchExtension($originalExt, $persistentPath)) {
             $this->cleanupUploadDir($persistDir);
+
             return response()->json([
                 'error' => 'The uploaded file does not match its file type. Please re-export it from your app and try again.',
             ], 422);
@@ -257,6 +267,7 @@ class TranslationController extends Controller
 
             if ($payload !== null) {
                 $payload['reused'] = true;
+
                 return response()->json($payload);
             }
         }
@@ -265,6 +276,7 @@ class TranslationController extends Controller
         $existingActive = $this->findActiveJob($userId, $payloadHash);
         if ($existingActive !== null) {
             $this->cleanupUploadDir($persistDir);
+
             return response()->json([
                 'status' => 'processing',
                 'duplicate' => true,
@@ -292,19 +304,19 @@ class TranslationController extends Controller
         // 5. Create the durable state-machine row; the partial unique index is
         //    the final guard against a race between two identical submissions.
         $jobRow = TranslationJob::create([
-            'user_id'          => $userId,
-            'payload_hash'     => $payloadHash,
-            'original_name'    => $originalName,
-            'original_ext'     => $originalExt,
-            'source_lang'      => $sourceLang,
-            'target_lang'      => $targetLang,
-            'pdf_column_mode'  => $pdfColumnMode,
-            'mode'             => $mode,
-            'file_size'        => $fileSize,
+            'user_id' => $userId,
+            'payload_hash' => $payloadHash,
+            'original_name' => $originalName,
+            'original_ext' => $originalExt,
+            'source_lang' => $sourceLang,
+            'target_lang' => $targetLang,
+            'pdf_column_mode' => $pdfColumnMode,
+            'mode' => $mode,
+            'file_size' => $fileSize,
             'original_storage_path' => $originalStoragePath,
             'original_storage_backend' => $originalStorageBackend,
             'parent_document_id' => null,
-            'status'           => TranslationJob::STATUS_CREATED,
+            'status' => TranslationJob::STATUS_CREATED,
         ]);
 
         try {
@@ -336,7 +348,7 @@ class TranslationController extends Controller
             // A cache marker keeps very short polling windows working without
             // hammering translation_jobs; the DB row is authoritative.
             cache()->put(
-                'translation_job_' . $jobId,
+                'translation_job_'.$jobId,
                 [
                     'status' => 'queued',
                     'progress' => 5,
@@ -399,6 +411,7 @@ class TranslationController extends Controller
                 if ($payload !== null) {
                     return response()->json($payload);
                 }
+
                 return response()->json([
                     'status' => 'processing',
                     'message' => 'Translation is still in progress...',
@@ -408,15 +421,15 @@ class TranslationController extends Controller
             if ($job->status === TranslationJob::STATUS_FAILED) {
                 return response()->json([
                     'status' => 'failed',
-                    'error'  => $job->error ?: 'Translation failed. Please try again.',
+                    'error' => $job->error ?: 'Translation failed. Please try again.',
                 ]);
             }
 
             // created / queued / processing
             return response()->json([
-                'status'   => 'processing',
+                'status' => 'processing',
                 'progress' => $job->progress ?? 0,
-                'message'  => 'Translation is still in progress...',
+                'message' => 'Translation is still in progress...',
             ]);
         }
 
@@ -426,7 +439,7 @@ class TranslationController extends Controller
             ->exists();
 
         if ($owned) {
-            $result = Cache::get('translation_job_' . $jobId);
+            $result = Cache::get('translation_job_'.$jobId);
 
             if ($result && isset($result['status']) && $result['status'] !== 'processing') {
                 return response()->json($result);
@@ -446,7 +459,7 @@ class TranslationController extends Controller
             if ($history) {
                 return response()->json([
                     'status' => 'completed',
-                    'download_url' => '/history/' . $history->id . '/file',
+                    'download_url' => '/history/'.$history->id.'/file',
                     'download_filename' => $history->translated_filename,
                 ]);
             }
@@ -458,7 +471,7 @@ class TranslationController extends Controller
         }
 
         // 3. No DB row yet — in-flight legacy job or unknown.
-        $result = Cache::get('translation_job_' . $jobId);
+        $result = Cache::get('translation_job_'.$jobId);
 
         if (is_array($result) && isset($result['user_id']) && (int) $result['user_id'] === $userId) {
             return response()->json($result);
@@ -476,6 +489,28 @@ class TranslationController extends Controller
             ->whereIn('status', TranslationJob::ACTIVE_STATUSES)
             ->orderByDesc('id')
             ->first();
+    }
+
+    /**
+     * @return array{languages: array<int, string>, text_max_chars: int,
+     *   max_upload_kb: int, max_upload_bytes: int, formats: array<int, string>,
+     *   accept: string, modes: array<int, string>, pdf_column_modes: array<int, string>}
+     */
+    private function capabilityContract(): array
+    {
+        $formats = array_values(config('translation.supported_formats', []));
+        $maxUploadKb = (int) config('translation.max_upload_kb', 51200);
+
+        return [
+            'languages' => array_values(config('translation.languages', [])),
+            'text_max_chars' => (int) config('translation.text_max_chars', 8000),
+            'max_upload_kb' => $maxUploadKb,
+            'max_upload_bytes' => $maxUploadKb * 1024,
+            'formats' => $formats,
+            'accept' => implode(',', array_map(static fn (string $format): string => '.'.$format, $formats)),
+            'modes' => array_values(config('translation.modes', [])),
+            'pdf_column_modes' => array_values(config('translation.pdf_column_modes', [])),
+        ];
     }
 
     private function buildCompletedPayload(TranslationJob $job): ?array
@@ -523,7 +558,7 @@ class TranslationController extends Controller
     }
 
     /**
-     * @return array{error: string}|null  Response body if the quota is exceeded.
+     * @return array{error: string}|null Response body if the quota is exceeded.
      */
     private function exceedsUploadQuota(int $userId, int $newFileSize): ?array
     {
@@ -577,7 +612,7 @@ class TranslationController extends Controller
         }
 
         // text-like formats must not contain NUL bytes (executable/binary check)
-        return !str_contains(substr($head, 0, 4096), "\x00");
+        return ! str_contains(substr($head, 0, 4096), "\x00");
     }
 
     private function cleanupUploadDir(string $dir): void
@@ -588,7 +623,7 @@ class TranslationController extends Controller
                     if ($entry === '.' || $entry === '..') {
                         continue;
                     }
-                    @unlink($dir . DIRECTORY_SEPARATOR . $entry);
+                    @unlink($dir.DIRECTORY_SEPARATOR.$entry);
                 }
                 @rmdir($dir);
             }

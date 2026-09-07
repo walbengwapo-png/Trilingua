@@ -3,13 +3,10 @@
 namespace Tests\Feature;
 
 use App\Jobs\TranslateDocumentJob;
+use App\Models\TranslationHistory;
 use App\Models\TranslationJob;
 use App\Models\User;
-use App\Services\BlockService;
-use App\Services\HistoryService;
-use App\Services\MetricsService;
 use App\Services\StorageService;
-use App\Services\Translation\TranslationManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +16,27 @@ use Tests\TestCase;
 class TranslationControllerTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_capabilities_endpoint_and_page_share_the_server_contract(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->getJson('/translate/capabilities');
+
+        $response->assertOk()
+            ->assertJsonPath('text_max_chars', 8000)
+            ->assertJsonPath('max_upload_kb', 51200)
+            ->assertJsonPath('max_upload_bytes', 52428800)
+            ->assertJsonPath('formats.7', 'pptx')
+            ->assertJsonPath('formats.8', 'xlsx')
+            ->assertJsonPath('modes.3', 'auto');
+
+        $page = $this->actingAs($user)->get('/translate');
+        $page->assertOk()
+            ->assertSee('maxlength="8000"', false)
+            ->assertSee('accept=".docx,.pdf,.txt,.md,.rtf,.odt,.csv,.pptx,.xlsx"', false)
+            ->assertSee('"max_upload_bytes":52428800', false);
+    }
 
     public function test_document_translation_creates_durable_job_and_returns_job_id(): void
     {
@@ -39,7 +57,7 @@ class TranslationControllerTest extends TestCase
 
         $file = UploadedFile::fake()->createWithContent(
             'sample.docx',
-            'PK' . random_bytes(256)
+            'PK'.random_bytes(256)
         );
 
         $response = $this->actingAs($user)->post('/translate', [
@@ -75,7 +93,7 @@ class TranslationControllerTest extends TestCase
         // NUL bytes = binary without DOCX zip magic; claim .docx → must 422.
         $file = UploadedFile::fake()->createWithContent(
             'malware.docx',
-            "\x00\x00MZ\x90\x00" . random_bytes(64)
+            "\x00\x00MZ\x90\x00".random_bytes(64)
         );
 
         $response = $this->actingAs($user)->post('/translate', [
@@ -96,16 +114,16 @@ class TranslationControllerTest extends TestCase
         $user = User::factory()->create();
 
         // One document already counted today.
-        \App\Models\TranslationHistory::create([
-            'user_id'          => $user->id,
+        TranslationHistory::create([
+            'user_id' => $user->id,
             'translation_type' => 'document',
-            'source_language'  => 'English',
-            'target_language'  => 'Cebuano',
-            'created_at'       => now()->subMinute()->toIso8601String(),
-            'status'           => 'completed',
+            'source_language' => 'English',
+            'target_language' => 'Cebuano',
+            'created_at' => now()->subMinute()->toIso8601String(),
+            'status' => 'completed',
         ]);
 
-        $file = UploadedFile::fake()->createWithContent('e.docx', 'PK' . random_bytes(64));
+        $file = UploadedFile::fake()->createWithContent('e.docx', 'PK'.random_bytes(64));
 
         $response = $this->actingAs($user)->post('/translate', [
             'source_lang' => 'English',
