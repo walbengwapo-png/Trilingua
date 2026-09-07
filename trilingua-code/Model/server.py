@@ -27,6 +27,7 @@ import base64
 import shutil
 import tempfile
 import io
+import threading
 import uvicorn
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
@@ -38,6 +39,7 @@ from pydantic import BaseModel
 # ---------------------------------------------------------------------------
 def _load_env_file():
     """Read the Laravel .env file and load relevant variables."""
+    from config.environment import load_engine_environment
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(script_dir)
     env_path = os.path.join(project_root, ".env")
@@ -47,21 +49,7 @@ def _load_env_file():
         return
 
     print(f"  [INFO] Loading environment from: {env_path}")
-    with open(env_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" in line:
-                key, _, value = line.partition("=")
-                key = key.strip()
-                value = value.strip()
-                if key in ("MISTRAL_API_KEY", "MISTRAL_MODEL",
-                           "TRANSLATION_PROVIDER", "OLLAMA_CLOUD_URL",
-                           "OLLAMA_CLOUD_MODEL"):
-                    if value and not os.environ.get(key):
-                        os.environ[key] = value
-                        print(f"  [INFO] Loaded {key} from .env file")
+    load_engine_environment(env_path)
 
 _load_env_file()
 
@@ -79,6 +67,7 @@ from providers.future_gemini import GeminiProvider
 from providers.future_deepseek import DeepSeekProvider
 from ai.mistral_provider import MistralAnalysisProvider
 from ai.ollama_provider import OllamaAnalysisProvider
+from ai.fallback_provider import FallbackAnalysisProvider
 from pipeline.translation_pipeline import TranslationPipeline
 from pipeline.document_pipeline import DocumentPipeline
 
@@ -92,10 +81,13 @@ _mistral_provider = MistralProvider()
 _gptoss_provider = GPTOSSProvider()
 
 # Analysis provider (separate from translation providers)
-# Uses Mistral AI for independent, unbiased analysis.
-# Falls back to Ollama if Mistral API key is not set.
+# Prefers Mistral AI for document analysis.
+# Fail over immediately on API errors, then allow Mistral to recover after
+# cooldown. Do not spend three near-identical requests on a rate-limited key.
 _analysis_provider = (
-    MistralAnalysisProvider()
+    FallbackAnalysisProvider(
+        MistralAnalysisProvider(max_attempts=1), OllamaAnalysisProvider()
+    )
     if os.environ.get("MISTRAL_API_KEY")
     else OllamaAnalysisProvider()
 )
@@ -136,6 +128,45 @@ print(f"  [OK] Active translation provider: {_active_provider.name} ({_active_pr
 print(f"  [OK] Analysis provider: {_analysis_provider.name} ({_analysis_provider.model_name})")
 print(f"  [OK] Supported languages: {list(LANGUAGES.keys())}")
 print(f"  [OK] Available providers: {list(AVAILABLE_PROVIDERS.keys())}")
+
+# ---------------------------------------------------------------------------
+# Concurrency control
+# ---------------------------------------------------------------------------
+# Sync `def` endpoints run on FastAPI's default threadpool. We bound that
+# pool explicitly so a burst of document jobs cannot spawn unbounded worker
+# threads, and we cap concurrent pipeline executions so outbound AI calls are
+# serialized enough to avoid tripping provider rate limits (429s). The
+# providers themselves already retry 429s with exponential backoff + jitter;
+# this guard stops the pile-up from happening in the first place.
+#
+#   TRANSLATION_THREADPOOL_SIZE  default 8  (matches provider HTTP pool sizes)
+#   TRANSLATION_MAX_CONCURRENT   default 3  (simultaneous pipeline executions)
+# ---------------------------------------------------------------------------
+_THREADPOOL_SIZE = max(1, int(os.environ.get("TRANSLATION_THREADPOOL_SIZE", "8")))
+_MAX_CONCURRENT = max(1, int(os.environ.get("TRANSLATION_MAX_CONCURRENT", "3")))
+
+_translation_semaphore = threading.BoundedSemaphore(_MAX_CONCURRENT)
+
+
+def _run_pipeline_guarded(pipeline_call):
+    """Run a pipeline call under the concurrency guard.
+
+    Rejects immediately (503) instead of queueing so a flood of simultaneous
+    translations cannot pile up behind the provider rate limit.
+    """
+    if not _translation_semaphore.acquire(blocking=False):
+        raise HTTPException(
+            503,
+            f"Server is busy processing other translations "
+            f"(max {_MAX_CONCURRENT} concurrent). Please retry in a moment.",
+        )
+    try:
+        return pipeline_call()
+    finally:
+        _translation_semaphore.release()
+
+
+print(f"  [OK] Concurrent translations limited to {_MAX_CONCURRENT}")
 
 # ---------------------------------------------------------------------------
 # COLD START PRE-WARMING
@@ -226,7 +257,28 @@ def _warm_cold_start():
 # Run pre-warming immediately at startup
 _warm_cold_start()
 
-app = FastAPI(title="TriLingua Translation Service v5")
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def _runtime_lifespan(app: FastAPI):
+    """Bound the anyio threadpool used for sync endpoints.
+
+    Must run at startup (not import time): the default thread limiter only
+    exists once an async event loop is running, which is exactly when uvicorn
+    starts serving. Without this, FastAPI would default to 40 worker threads
+    and a burst of document jobs could spawn unbounded concurrent executions.
+    """
+    try:
+        from anyio.to_thread import current_default_thread_limiter
+        current_default_thread_limiter().total_tokens = _THREADPOOL_SIZE
+        print(f"  [OK] Threadpool limited to {_THREADPOOL_SIZE} worker threads")
+    except Exception as e:
+        print(f"  [WARN] Could not configure threadpool limiter: {e}")
+    yield
+
+
+app = FastAPI(title="TriLingua Translation Service v5", lifespan=_runtime_lifespan)
 
 VALID_PDF_COLUMN_MODES = {"auto", "single", "left", "right"}
 
@@ -270,6 +322,7 @@ def health():
         "languages": list(LANGUAGES.keys()),
         "formats": sorted(SUPPORTED_EXTENSIONS),
         "provider_status": provider_health,
+        "analysis_status": _analysis_provider.health(),
     }
 
 
@@ -318,7 +371,7 @@ def translate_text(req: TextRequest):
             source_lang=req.source_lang,
             target_lang=req.target_lang,
         )
-        result = _translation_pipeline.translate(request)
+        result = _run_pipeline_guarded(lambda: _translation_pipeline.translate(request))
 
         if not result.success:
             raise HTTPException(500, result.error_message)
@@ -341,9 +394,15 @@ def translate_text(req: TextRequest):
 # POST /translate/document  (multipart/form-data)
 # Fields: file (UploadFile), source_lang, target_lang
 # Returns: the translated file as a download
+#
+# NOTE: These endpoints are declared as plain `def` (NOT `async def`) on
+# purpose. The pipeline performs blocking file I/O and synchronous AI HTTP
+# calls; running it on the event loop would freeze every other request
+# (including /health) while a translation is in flight. FastAPI executes
+# sync endpoints on the bounded threadpool configured above.
 # ---------------------------------------------------------------------------
 @app.post("/translate/document")
-async def translate_document(
+def translate_document(
     file: UploadFile = File(...),
     source_lang: str = Form(...),
     target_lang: str = Form(...),
@@ -375,8 +434,8 @@ async def translate_document(
         input_path = os.path.join(tmp_dir, f"input{ext}")
         output_path = os.path.join(tmp_dir, f"translated{out_ext}")
 
-        # Save the uploaded file
-        contents = await file.read()
+        # Save the uploaded file (sync read — we are on a worker thread)
+        contents = file.file.read()
         with open(input_path, "wb") as f:
             f.write(contents)
 
@@ -392,7 +451,7 @@ async def translate_document(
             pdf_column_mode=pdf_column_mode,
             mode=mode,
         )
-        result = _document_pipeline.translate(request)
+        result = _run_pipeline_guarded(lambda: _document_pipeline.translate(request))
 
         if not result.success:
             raise HTTPException(500, result.error_message)
@@ -423,6 +482,7 @@ async def translate_document(
             "sidecar": getattr(result, "sidecar", None),
             "download_filename": download_name,
             "mime_type": _content_type_for_ext(out_ext),
+            "metrics": result.metrics or {},
         }
     except HTTPException:
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -440,7 +500,7 @@ async def translate_document(
 # No extraction, analysis, prepass, memory, or AI translation runs here.
 # ---------------------------------------------------------------------------
 @app.post("/translate/document/regenerate")
-async def translate_document_regenerate(
+def translate_document_regenerate(
     file: UploadFile = File(...),
     sidecar: str = Form(...),
     blocks: str = Form(""),
@@ -453,7 +513,7 @@ async def translate_document_regenerate(
     tmp_dir = tempfile.mkdtemp()
     try:
         input_path = os.path.join(tmp_dir, f"original{os.path.splitext(file.filename)[1].lower()}")
-        contents = await file.read()
+        contents = file.file.read()
         with open(input_path, "wb") as f:
             f.write(contents)
 
@@ -479,7 +539,7 @@ async def translate_document_regenerate(
         output_path = os.path.join(tmp_dir, f"regenerated{out_ext}")
 
         from document.regenerator import reconstruct_from_sidecar
-        reconstruct_from_sidecar(
+        _run_pipeline_guarded(lambda: reconstruct_from_sidecar(
             decoded,
             overrides=overrides_dict,
             original_file=input_path,
@@ -487,7 +547,7 @@ async def translate_document_regenerate(
             source_lang=source_lang or decoded.get("source_lang", ""),
             target_lang=target_lang or decoded.get("target_lang", ""),
             pdf_column_mode=pdf_column_mode or decoded.get("pdf_column_mode", "auto"),
-        )
+        ))
 
         if not os.path.exists(output_path):
             raise HTTPException(500, "Regeneration produced no output file.")

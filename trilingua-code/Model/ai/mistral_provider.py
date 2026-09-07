@@ -18,6 +18,9 @@ Model/providers/mistral.py.
 import os
 import json
 import time as _time
+import re
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 import requests
 from typing import Any
 
@@ -25,6 +28,28 @@ from .base import AIAnalysisProvider
 
 MISTRAL_CHAT_URL = "https://api.mistral.ai/v1/chat/completions"
 MISTRAL_MODELS_URL = "https://api.mistral.ai/v1/models"
+
+
+class MistralAnalysisError(RuntimeError):
+    """Actionable API failure, including the provider's retry window."""
+
+    def __init__(self, message, retry_after=0):
+        super().__init__(message)
+        self.retry_after = retry_after
+
+
+def _retry_after_seconds(response, default):
+    value = response.headers.get("Retry-After", "")
+    try:
+        return max(0.0, float(value))
+    except (TypeError, ValueError):
+        try:
+            date = parsedate_to_datetime(value)
+            if date.tzinfo is None:
+                date = date.replace(tzinfo=timezone.utc)
+            return max(0.0, (date - datetime.now(timezone.utc)).total_seconds())
+        except (TypeError, ValueError, OverflowError):
+            return default
 
 
 class MistralAnalysisProvider(AIAnalysisProvider):
@@ -36,7 +61,8 @@ class MistralAnalysisProvider(AIAnalysisProvider):
     (MISTRAL_API_KEY).
     """
 
-    def __init__(self, api_key: str = "", model: str = ""):
+    def __init__(self, api_key: str = "", model: str = "", max_attempts: int = 3):
+        self._max_attempts = max(1, max_attempts)
         self._api_key = api_key or os.environ.get("MISTRAL_API_KEY", "")
         self._model = model or os.environ.get(
             "MISTRAL_ANALYSIS_MODEL", "mistral-small-latest"
@@ -67,9 +93,9 @@ class MistralAnalysisProvider(AIAnalysisProvider):
             RuntimeError: If response is empty, non-JSON, or analysis fails.
             ConnectionError: If Mistral API is unreachable.
         """
-        start_time = _time.time()
+        if not self._api_key:
+            raise MistralAnalysisError("MISTRAL_API_KEY is not set")
 
-        # Build the request
         payload = {
             "model": self._model,
             "messages": [
@@ -79,107 +105,102 @@ class MistralAnalysisProvider(AIAnalysisProvider):
             "temperature": 0.1,
             "max_tokens": 8192,
             "stream": False,
+            "response_format": {"type": "json_object"},
         }
-
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self._api_key}",
         }
 
-        last_error = ""
-
-        for attempt in range(3):
+        for attempt in range(self._max_attempts):
+            delay = 2 ** attempt
             try:
                 resp = requests.post(
-                    MISTRAL_CHAT_URL,
-                    headers=headers,
-                    json=payload,
-                    timeout=120,
+                    MISTRAL_CHAT_URL, headers=headers, json=payload,
+                    timeout=(10, 120),
                 )
-
-                if resp.status_code == 429:
-                    wait = 2 ** attempt
-                    print(f"  [MistralAnalysis] Rate limited, retrying in {wait}s...")
-                    _time.sleep(wait)
+                if resp.status_code >= 400:
+                    message = self._http_error(resp)
+                    transient = resp.status_code in (408, 429, 500, 502, 503, 504)
+                    delay = _retry_after_seconds(
+                        resp, 30 * (2 ** attempt) if resp.status_code == 429 else delay
+                    )
+                    if not transient or attempt == self._max_attempts - 1 or delay > 60:
+                        raise MistralAnalysisError(message, retry_after=delay if transient else 0)
+                    print(f"  [MistralAnalysis] {message}; retrying in {delay:g}s "
+                          f"(attempt {attempt + 2}/{self._max_attempts})")
+                    _time.sleep(delay)
                     continue
 
-                resp.raise_for_status()
                 data = resp.json()
-
-                # Extract content from the chat completion response
                 choices = data.get("choices", [])
                 if not choices:
                     raise RuntimeError("Empty choices in Mistral analysis response")
-                content = choices[0].get("message", {}).get("content", "").strip()
-                if not content:
-                    raise RuntimeError("Empty response from Mistral analysis model")
+                choice = choices[0]
+                if choice.get("finish_reason") == "length":
+                    raise RuntimeError("Mistral analysis JSON was truncated at the output token limit")
+                content = choice.get("message", {}).get("content")
+                if not isinstance(content, str) or not content.strip():
+                    raise RuntimeError("Empty or unsupported Mistral analysis content")
 
-                # Try to parse as JSON
-                # First, try direct parse
-                try:
-                    result = json.loads(content)
-                    return result
-                except json.JSONDecodeError:
-                    pass
-
-                # Try extracting JSON from markdown code block
-                import re
-                json_match = re.search(
-                    r'```(?:json)?\s*\n(.*?)\n```', content, re.DOTALL
-                )
-                if json_match:
+                # Retain compatibility with older models that wrap JSON in prose.
+                content = content.strip()
+                candidates = [content]
+                fenced = re.search(r'```(?:json)?\s*\n(.*?)\n```', content, re.DOTALL)
+                if fenced:
+                    candidates.append(fenced.group(1))
+                embedded = re.search(r'(\{.*\})', content, re.DOTALL)
+                if embedded:
+                    candidates.append(embedded.group(1))
+                for candidate in candidates:
                     try:
-                        result = json.loads(json_match.group(1))
-                        return result
+                        result = json.loads(candidate)
                     except json.JSONDecodeError:
-                        pass
-
-                # Try finding a JSON object anywhere in the response
-                json_match = re.search(r'(\{.*\})', content, re.DOTALL)
-                if json_match:
-                    try:
-                        result = json.loads(json_match.group(1))
+                        continue
+                    if isinstance(result, dict):
                         return result
-                    except json.JSONDecodeError:
-                        pass
+                raise RuntimeError("Mistral analysis did not return a JSON object")
 
-                raise RuntimeError(
-                    f"Mistral analysis did not return valid JSON. "
-                    f"Response preview: {content[:200]}"
-                )
+            except MistralAnalysisError:
+                raise
+            except (requests.exceptions.RequestException, RuntimeError,
+                    ValueError, TypeError, AttributeError) as exc:
+                if isinstance(exc, requests.exceptions.Timeout):
+                    message = "Mistral analysis request timed out"
+                elif isinstance(exc, requests.exceptions.ConnectionError):
+                    message = "Cannot connect to the Mistral API; check network connectivity"
+                else:
+                    message = str(exc).replace(self._api_key, "[REDACTED]")
+                if attempt == self._max_attempts - 1:
+                    raise MistralAnalysisError(
+                        f"Mistral analysis failed after {self._max_attempts} "
+                        f"attempt(s): {message}"
+                    ) from exc
+                print(f"  [MistralAnalysis] {message}; retrying in {delay:g}s "
+                      f"(attempt {attempt + 2}/{self._max_attempts})")
+                _time.sleep(delay)
 
-            except requests.exceptions.ConnectionError:
-                last_error = (
-                    f"Cannot connect to Mistral API at {MISTRAL_CHAT_URL}. "
-                    f"Check network and API key."
-                )
-                if attempt < 2:
-                    print(f"  [MistralAnalysis] Connection error, retrying ({attempt + 1}/3)...")
-                    _time.sleep(2)
-                    continue
-                raise ConnectionError(last_error)
-
-            except requests.exceptions.Timeout:
-                last_error = "Mistral analysis request timed out"
-                if attempt < 2:
-                    print(f"  [MistralAnalysis] Timeout, retrying ({attempt + 1}/3)...")
-                    _time.sleep(2)
-                    continue
-                raise RuntimeError(last_error)
-
-            except (requests.exceptions.RequestException, RuntimeError) as e:
-                last_error = str(e)
-                if attempt < 2:
-                    print(f"  [MistralAnalysis] Error: {e}, retrying ({attempt + 1}/3)...")
-                    _time.sleep(1)
-                    continue
-                raise RuntimeError(
-                    f"Mistral analysis failed after 3 attempts: {last_error}"
-                )
-
-        raise RuntimeError(
-            f"Mistral analysis failed after 3 attempts: {last_error}"
-        )
+    def _http_error(self, response):
+        # Keep the status/code and provider message, never authorization headers
+        # or document content. Mistral can return an HTML error via a proxy.
+        detail = ""
+        try:
+            data = response.json()
+            if isinstance(data, dict):
+                detail = str(data.get("message", ""))
+                if data.get("code") is not None:
+                    detail += f" (code {data['code']})"
+        except ValueError:
+            pass
+        detail = detail.replace(self._api_key, "[REDACTED]")[:500]
+        guidance = {
+            401: "Check MISTRAL_API_KEY.",
+            402: "Check Mistral workspace billing.",
+            403: "Check Mistral workspace/model access.",
+            404: "Check MISTRAL_ANALYSIS_MODEL.",
+            429: "Check Mistral workspace rate limits and quota; retry after cooldown.",
+        }.get(response.status_code, "")
+        return f"Mistral analysis HTTP {response.status_code}: {detail}. {guidance}".strip()
 
     def health(self) -> dict[str, Any]:
         """Check if Mistral API is accessible and the configured model is available."""

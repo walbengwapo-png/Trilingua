@@ -31,6 +31,7 @@ from config.processing_modes import MODES, VALID_MODES, get_mode
 from dto.requests import DocumentTranslationRequest, LANGUAGES
 from dto.responses import DocumentTranslationResponse
 from document.extractor import analyze_document
+from pipeline.translation_pipeline import _is_echo_output
 from document.regenerator import (
     finalize_sidecar,
     rich_block_entry,
@@ -54,6 +55,7 @@ from cache.sqlite_cache import SQLiteTranslationCache
 from validators.translation_validator import LayoutValidator, BLEUReporter
 from validators.ai_quality_reviewer import AIQualityReviewer
 from pipeline.translation_pipeline import TranslationPipeline
+from pipeline.coherence_polish import CoherencePolishPass
 from pipeline.document_context import DocumentContext
 from pipeline.phase_profiler import phase_profile, llm_call_profile
 from prompts.prepass import (
@@ -86,6 +88,38 @@ _TRANSLATION_ANALYZER_MODE = os.environ.get(
     "TRANSLATION_ANALYZER_MODE", "merged"
 ).lower()
 _VALID_ANALYZER_MODES = {"sequential", "merged", "concurrent"}
+
+# OPTIMIZATION: Document-level coherence polish (Phase 4, opt-in).
+# Only meaningful for Cebuano/Filipino targets; disabled by default.
+_TRANSLATION_COHERENCE_POLISH = os.environ.get(
+    "TRANSLATION_COHERENCE_POLISH", "false"
+).lower() == "true"
+
+
+def _engine_metrics(ctx: DocumentContext) -> dict:
+    """Flatten the actionable engine metrics for Laravel.
+
+    Pulls the fields Laravel surfaces on its admin dashboard (latency, LLM
+    call counts, cache efficiency, retranslation rate and which model handled
+    the run) directly from the document context's summary.
+    """
+    s = ctx.summary()
+    return {
+        "provider": ctx.provider_name or s.get("provider", ""),
+        "model": ctx.provider_model or s.get("model", ""),
+        "mode": s.get("mode", ""),
+        "total_time_ms": s.get("total_time_ms", 0),
+        "llm_calls": s.get("llm_calls", 0),
+        "llm_total_time_ms": s.get("llm_total_time_ms", 0),
+        "total_blocks": s.get("total_blocks", 0),
+        "blocks_translated": s.get("blocks_translated", 0),
+        "blocks_cached": s.get("blocks_cached", 0),
+        "blocks_passthrough": s.get("blocks_passthrough", 0),
+        "retranslated_chunks": s.get("retranslated_chunks", 0),
+        "cache_hits": s.get("cache_hits", 0),
+        "cache_misses": s.get("cache_misses", 0),
+        "document_type": s.get("document_type", ""),
+    }
 
 
 class DocumentPipeline:
@@ -124,6 +158,31 @@ class DocumentPipeline:
                 enabled=_TRANSLATION_CACHE_ENABLED,
             )
         return self._shared_cache
+
+    def _coherence_polish_blocks(self, source_blocks, translated_blocks,
+                                 request, ctx) -> list:
+        """Apply the opt-in document-level coherence polish pass.
+
+        No-op unless TRANSLATION_COHERENCE_POLISH=true and the target
+        language is Cebuano or Filipino. Never changes block count or order;
+        fails open (returns the input) on any error.
+        """
+        if not _TRANSLATION_COHERENCE_POLISH:
+            return translated_blocks
+        if request.target_lang.lower() not in ("cebuano", "filipino"):
+            return translated_blocks
+
+        polish = CoherencePolishPass(
+            self.translation_pipeline.provider,
+            quality_reviewer=self._quality_reviewer,
+        )
+        with phase_profile("coherence_polish", ctx):
+            return polish.polish_blocks(
+                source_blocks, translated_blocks,
+                request.source_lang, request.target_lang,
+                document_type=ctx.document_profile.document_type
+                if ctx.document_profile else "",
+            )
 
     def translate(self, request: DocumentTranslationRequest) -> DocumentTranslationResponse:
         """Translate a document through the full pipeline.
@@ -401,6 +460,11 @@ class DocumentPipeline:
         for w in layout_warnings:
             ctx.add_warning(f"Layout: {w}")
 
+        # ── Phase 4b: Document-level coherence polish (opt-in) ────────────
+        translated_blocks = self._coherence_polish_blocks(
+            blocks, translated_blocks, request, ctx
+        )
+
         # ── Phase 8: AI Layout Planning (PDF only) ───────────────────────
         if ctx.mode.layout_planner and self._layout_planner and ext == ".pdf":
             print("[LAYOUT] Planning layout adjustments...")
@@ -461,6 +525,7 @@ class DocumentPipeline:
             document_type=ctx.document_profile.document_type if ctx.document_profile else "",
             sidecar=sidecar,
             blocks=sidecar_entries,
+            metrics=_engine_metrics(ctx),
         )
 
     # ── In-place Translation ────────────────────────────────────────────────
@@ -527,6 +592,11 @@ class DocumentPipeline:
             ctx=ctx,
         )
 
+        # ── Phase 4b: Document-level coherence polish (opt-in) ────────────
+        translated_blocks = self._coherence_polish_blocks(
+            blocks, translated_blocks, request, ctx
+        )
+
         # Admin review support: capture per-element block data with a stable
         # block_index = walk/call order, so an edit can be replayed in-place.
         lookup: dict[int, str] = {}
@@ -558,6 +628,7 @@ class DocumentPipeline:
             mode=ctx.mode.name,
             sidecar=sidecar,
             blocks=_captured_blocks,
+            metrics=_engine_metrics(ctx),
         )
 
     # ── CSV Translation ─────────────────────────────────────────────────────
@@ -613,6 +684,7 @@ class DocumentPipeline:
             mode=ctx.mode.name,
             sidecar=sidecar,
             blocks=cell_blocks,
+            metrics=_engine_metrics(ctx),
         )
 
     # ── Single Block Translation Helper ─────────────────────────────────────
@@ -677,7 +749,8 @@ class DocumentPipeline:
         translation_cache = self._get_cache()
         if translation_cache:
             cached = translation_cache.get(
-                text, target_lang, self.translation_pipeline.provider.name
+                text, target_lang, self.translation_pipeline.provider.name,
+                source_lang=source_lang,
             )
             if cached is not None:
                 if ctx:
@@ -716,10 +789,11 @@ class DocumentPipeline:
         translated = response.translated_text
 
         # Cache the result
-        if translation_cache:
+        if translation_cache and not _is_echo_output(text, translated):
             translation_cache.put(
                 text, target_lang,
                 self.translation_pipeline.provider.name, translated,
+                source_lang=source_lang,
             )
 
         if ctx:

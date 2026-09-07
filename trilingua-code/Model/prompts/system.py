@@ -50,6 +50,11 @@ def build_system_prompt(target_lang: str = "") -> str:
             "15. For English passive voice, use active voice in Cebuano when more natural\n"
             "16. Example: 'I will go to the market tomorrow.' → 'Moadto ko sa merkado ugma.' "
             "(natural Cebuano, not 'Ako moadto sa merkado ugma' which is overly literal)\n"
+            "17. Keep the text coherent across the whole document: use the SAME "
+            "translation for the same name or repeated term everywhere, keep pronouns "
+            "and referents consistent between paragraphs, and choose verb-focus forms "
+            "that flow from the surrounding sentences rather than isolated word-for-word "
+            "equivalents\n"
         )
     elif target_lang.lower() == "filipino":
         base += (
@@ -62,6 +67,11 @@ def build_system_prompt(target_lang: str = "") -> str:
             "15. For English passive voice, use active voice in Filipino when more natural\n"
             "16. Example: 'I will go to the market tomorrow.' → 'Pupunta ako sa palengke bukas.' "
             "(natural Filipino, not 'Ako ay pupunta sa palengke bukas' which is overly formal)\n"
+            "17. Keep the text coherent across the whole document: use the SAME "
+            "translation for the same name or repeated term everywhere, keep pronouns "
+            "and referents consistent between paragraphs, and choose verb-focus forms "
+            "that flow from the surrounding sentences rather than isolated word-for-word "
+            "equivalents\n"
         )
 
     return base

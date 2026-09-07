@@ -44,6 +44,11 @@ def build_translation_prompt(text: str, source_lang: str, target_lang: str,
     # Add few-shot examples for Cebuano and Filipino
     if target_lang.lower() in ("cebuano", "filipino"):
         user_msg += f"\nExamples:\n"
+        user_msg += (
+            "  Coherence: translate the whole paragraph as flowing text. Keep names, "
+            "places, and repeated terms consistent with the rest of the text and use "
+            "the same translation for the same term every time.\n"
+        )
         if target_lang.lower() == "cebuano":
             user_msg += (
                 "  EN: I am going to the market. → CEB: Moadto ko sa merkado.\n"

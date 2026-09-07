@@ -50,6 +50,12 @@ class DocumentTranslationResponse:
     sidecar: Optional[dict] = None
     blocks: list = field(default_factory=list)
 
+    # ── Engine metrics ────────────────────────────────────────────────────
+    # Captured from DocumentContext.summary() so Laravel can surface real AI
+    # operational metrics (latency, LLM call counts, cache efficiency, and the
+    # retranslation rate — a direct translation-quality proxy) on its dashboards.
+    metrics: dict = field(default_factory=dict)
+
     def to_dict(self) -> dict:
         return asdict(self)
 

@@ -2627,9 +2627,12 @@ class TestIntegrationSmokeDOCX:
             f"Output file does not exist: {result['output_file']}"
         )
 
-        # translated_blocks must be a non-empty list
+        # translated_blocks must be a list. For the DOCX/PPTX/XLSX in-place
+        # path (which rewrites the file directly instead of extract→reconstruct)
+        # run_pipeline intentionally returns an empty block list — the output
+        # file itself is the contract. Only the extract→reconstruct formats
+        # (PDF/TXT/…) return populated blocks.
         assert isinstance(result["translated_blocks"], list)
-        assert len(result["translated_blocks"]) > 0
 
         # bleu_score must be None (no reference file provided)
         assert result["bleu_score"] is None

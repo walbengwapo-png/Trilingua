@@ -3,7 +3,9 @@
 Persistent SQLite-backed translation cache.
 
 Replaces the in-memory TranslationCache for cross-session persistence.
-Cache key is SHA-256(source_text + target_lang + provider_name).
+Cache key is SHA-256(source_text + source_lang + target_lang + provider_name),
+versioned with a "v2|" prefix so pre-fix entries (which omitted source_lang and
+could collide across source languages) are never served.
 
 Architecture:
   ┌──────────────────────┐
@@ -31,6 +33,30 @@ CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_DB_PATH = os.path.join(CACHE_DIR, "translations.db")
 
 
+class _CacheStats:
+    """Per-thread in-memory doc cache + counters.
+
+    A document translation runs on ONE worker thread per HTTP request (its
+    own nested pool aside), so scoping the in-memory cache and its counters to
+    the thread keeps concurrent jobs from clearing each other's fast layer and
+    makes every counter increment race-free without a lock.
+
+    The registry lives on the cache instance so clear_document_cache() can
+    wipe all threads' caches at once after a job completes.
+    """
+
+    __slots__ = ("doc_cache", "doc_hits", "doc_misses",
+                 "persistent_hits", "persistent_misses", "puts")
+
+    def __init__(self):
+        self.doc_cache: dict[str, str] = {}
+        self.doc_hits: int = 0
+        self.doc_misses: int = 0
+        self.persistent_hits: int = 0
+        self.persistent_misses: int = 0
+        self.puts: int = 0
+
+
 class SQLiteTranslationCache:
     """Persistent, SQLite-backed translation cache.
 
@@ -47,7 +73,8 @@ class SQLiteTranslationCache:
     """
 
     def __init__(self, db_path: str = DEFAULT_DB_PATH,
-                 ttl_days: int = 30, enabled: bool = True):
+                 ttl_days: int = 30, enabled: bool = True,
+                 namespace: str = ""):
         """Initialize the cache.
 
         Args:
@@ -58,6 +85,8 @@ class SQLiteTranslationCache:
         self._db_path = db_path
         self._ttl_seconds = ttl_days * 86400
         self._enabled = enabled
+        # Isolate entries when a provider, model, or prompt policy changes.
+        self._namespace = namespace
 
         # Writes are serialized with this lock (SQLite allows a single writer).
         # Reads are LOCK-FREE: WAL mode permits concurrent readers, and each
@@ -67,16 +96,11 @@ class SQLiteTranslationCache:
         self._pending: list[tuple] = []          # batched writes awaiting flush
         self._WRITE_BATCH_SIZE = 100
 
-        # In-memory document-level cache (faster than SQLite per-document)
-        # Key: cache_key (str) -> translated_text (str)
-        self._doc_cache: dict[str, str] = {}
-        self._doc_cache_hits: int = 0
-        self._doc_cache_misses: int = 0
-
-        # Stats
-        self._persistent_hits: int = 0
-        self._persistent_misses: int = 0
-        self._puts: int = 0
+        # In-memory document-level cache (faster than SQLite per-document).
+        # Scoped per THREAD so concurrent document jobs never clear each
+        # other's fast layer; the registry allows a global clear at job end.
+        self._stats_local = threading.local()
+        self._stats_registry: list[_CacheStats] = []
 
         if self._enabled:
             self._init_db()
@@ -84,7 +108,7 @@ class SQLiteTranslationCache:
     # ── Public API ─────────────────────────────────────────────────────────
 
     def get(self, source_text: str, target_lang: str,
-            provider_name: str = "") -> str | None:
+            provider_name: str = "", source_lang: str = "") -> str | None:
         """Get a cached translation if available.
 
         Checks in-memory cache first, then persistent SQLite cache.
@@ -94,6 +118,9 @@ class SQLiteTranslationCache:
             source_text: The source text to look up.
             target_lang: The target language.
             provider_name: The provider name (included in cache key).
+            source_lang: The source language (included in cache key; the
+                text/word can mean different things in different source
+                languages, so it must be part of the key).
 
         Returns:
             Cached translated text, or None if not found.
@@ -101,19 +128,21 @@ class SQLiteTranslationCache:
         if not self._enabled:
             return None
 
-        cache_key = self._make_key(source_text, target_lang, provider_name)
+        cache_key = self._make_key(source_text, target_lang, provider_name, source_lang, self._namespace)
+        stats = self._stats()
 
-        # 1. Check in-memory cache first (fast path)
-        doc_result = self._doc_cache.get(cache_key)
+        # 1. Check this thread's in-memory cache first (fast path)
+        doc_result = stats.doc_cache.get(cache_key)
         if doc_result is not None:
-            self._doc_cache_hits += 1
+            stats.doc_hits += 1
             return doc_result
-        self._doc_cache_misses += 1
+        stats.doc_misses += 1
 
-        # 2. Check persistent cache (lock-free read via per-thread connection).
-        #    Batched writes are only flushed at the batch threshold or at
-        #    clear_document_cache()/flush() — same-process reads are always
-        #    served from the in-memory _doc_cache layer above.
+        # 2. Check persistent cache. A local miss may be because a *different*
+        #    thread (e.g. a parallel document worker) wrote the entry but its
+        #    batched write is still pending — flush first so that write is
+        #    visible here instead of re-translating.
+        self._maybe_flush()
         try:
             conn = self._read_conn()
             row = conn.execute(
@@ -123,19 +152,20 @@ class SQLiteTranslationCache:
             ).fetchone()
             if row is not None:
                 translated_text, created_at = row
-                # Store in document cache for faster subsequent access
-                self._doc_cache[cache_key] = translated_text
-                self._persistent_hits += 1
+                # Store in this thread's doc cache for faster subsequent access
+                stats.doc_cache[cache_key] = translated_text
+                stats.persistent_hits += 1
                 return translated_text
         except sqlite3.Error as e:
             # OPTIMIZATION: If cache read fails, just log and continue
             print(f"  [Cache] SQLite read error: {e}")
 
-        self._persistent_misses += 1
+        stats.persistent_misses += 1
         return None
 
     def put(self, source_text: str, target_lang: str,
-            provider_name: str, translated_text: str) -> None:
+            provider_name: str, translated_text: str,
+            source_lang: str = "") -> None:
         """Store a translation in both in-memory and persistent cache.
 
         Args:
@@ -143,16 +173,18 @@ class SQLiteTranslationCache:
             target_lang: The target language.
             provider_name: The provider name.
             translated_text: The translated text to cache.
+            source_lang: The source language (included in cache key).
         """
         if not self._enabled:
             return
 
-        cache_key = self._make_key(source_text, target_lang, provider_name)
+        cache_key = self._make_key(source_text, target_lang, provider_name, source_lang, self._namespace)
         now = time.time()
 
-        # Store in-memory
-        self._doc_cache[cache_key] = translated_text
-        self._puts += 1
+        # Store in this thread's in-memory cache
+        stats = self._stats()
+        stats.doc_cache[cache_key] = translated_text
+        stats.puts += 1
 
         # Batch the write; flush lazily on a read, at the batch threshold,
         # or when flush()/clear_document_cache() runs. Batching turns N
@@ -171,19 +203,23 @@ class SQLiteTranslationCache:
                 self._flush_pending_locked()
 
     def has(self, source_text: str, target_lang: str,
-            provider_name: str = "") -> bool:
+            provider_name: str = "", source_lang: str = "") -> bool:
         """Check if a translation is cached."""
-        return self.get(source_text, target_lang, provider_name) is not None
+        return self.get(source_text, target_lang, provider_name, source_lang) is not None
 
     def clear_document_cache(self) -> None:
-        """Clear the in-memory document cache only.
-        Called at the start/end of each document translation.
-        Flushes batched writes first so per-document entries persist.
+        """Clear the in-memory document caches for ALL threads.
+
+        Called at the start/end of each document translation. Flushes batched
+        writes first so per-document entries persist, then wipes every thread's
+        fast cache so one job's leftovers never serve another job.
         """
         self.flush()
-        self._doc_cache.clear()
-        self._doc_cache_hits = 0
-        self._doc_cache_misses = 0
+        with self._lock:
+            for stats in self._stats_registry:
+                stats.doc_cache.clear()
+                stats.doc_hits = 0
+                stats.doc_misses = 0
 
     def clear_all(self) -> dict[str, Any]:
         """Clear ALL cached translations (both in-memory and persistent).
@@ -191,9 +227,11 @@ class SQLiteTranslationCache:
         Returns:
             Stats about what was cleared.
         """
-        self._doc_cache.clear()
-        self._doc_cache_hits = 0
-        self._doc_cache_misses = 0
+        with self._lock:
+            for stats in self._stats_registry:
+                stats.doc_cache.clear()
+                stats.doc_hits = 0
+                stats.doc_misses = 0
 
         deleted = 0
         if self._enabled:
@@ -244,12 +282,30 @@ class SQLiteTranslationCache:
             return 0
 
     def stats(self) -> dict[str, Any]:
-        """Return cache statistics."""
-        total_calls = (self._persistent_hits + self._persistent_misses +
-                       self._doc_cache_hits + self._doc_cache_misses)
-        persistent_total = self._persistent_hits + self._persistent_misses
+        """Return cache statistics, aggregated across all worker threads."""
+        total_calls = 0
+        persistent_hits = 0
+        persistent_misses = 0
+        doc_hits = 0
+        doc_misses = 0
+        doc_size = 0
+        puts = 0
+        seen: set[int] = set()
+        with self._lock:
+            for stats in self._stats_registry:
+                if id(stats) in seen:
+                    continue
+                seen.add(id(stats))
+                persistent_hits += stats.persistent_hits
+                persistent_misses += stats.persistent_misses
+                doc_hits += stats.doc_hits
+                doc_misses += stats.doc_misses
+                doc_size += len(stats.doc_cache)
+                puts += stats.puts
+        total_calls = persistent_hits + persistent_misses + doc_hits + doc_misses
+        persistent_total = persistent_hits + persistent_misses
         persistent_hit_rate = (
-            (self._persistent_hits / persistent_total * 100)
+            (persistent_hits / persistent_total * 100)
             if persistent_total > 0 else 0.0
         )
 
@@ -276,13 +332,13 @@ class SQLiteTranslationCache:
             "db_path": self._db_path,
             "db_size_bytes": db_size,
             "db_entry_count": entry_count,
-            "persistent_hits": self._persistent_hits,
-            "persistent_misses": self._persistent_misses,
+            "persistent_hits": persistent_hits,
+            "persistent_misses": persistent_misses,
             "persistent_hit_rate": f"{persistent_hit_rate:.1f}%",
-            "doc_cache_hits": self._doc_cache_hits,
-            "doc_cache_misses": self._doc_cache_misses,
-            "doc_cache_size": len(self._doc_cache),
-            "puts": self._puts,
+            "doc_cache_hits": doc_hits,
+            "doc_cache_misses": doc_misses,
+            "doc_cache_size": doc_size,
+            "puts": puts,
             "ttl_seconds": self._ttl_seconds,
         }
 
@@ -338,6 +394,20 @@ class SQLiteTranslationCache:
             self._local.conn = conn
         return conn
 
+    def _stats(self) -> _CacheStats:
+        """Return this thread's _CacheStats, registering it on first use.
+
+        Thread-local, so increments are race-free. The registry entry lets
+        clear_document_cache()/clear_all() wipe every thread's fast cache.
+        """
+        stats = getattr(self._stats_local, "stats", None)
+        if stats is None:
+            stats = _CacheStats()
+            self._stats_local.stats = stats
+            with self._lock:
+                self._stats_registry.append(stats)
+        return stats
+
     def _init_db(self) -> None:
         """Create the database and table if they don't exist."""
         try:
@@ -382,19 +452,28 @@ class SQLiteTranslationCache:
 
     @staticmethod
     def _make_key(source_text: str, target_lang: str,
-                  provider_name: str = "") -> str:
+                  provider_name: str = "", source_lang: str = "",
+                  namespace: str = "") -> str:
         """Create a deterministic SHA-256 hash key.
 
-        Key = SHA-256(source_text + target_lang + provider_name)
+        Key = SHA-256(v3|namespace + source_text + source_lang + target_lang + provider)
+
+        The ``v2|`` prefix distinguishes this scheme from the pre-fix
+        ``v1`` scheme that omitted ``source_lang`` (which could return the
+        wrong translation when identical text came from different source
+        languages, e.g. Cebuano vs Filipino). Old v1 entries are simply never
+        matched and expire naturally via their existing TTL.
 
         Args:
             source_text: The source text.
             target_lang: The target language.
             provider_name: The provider name.
+            source_lang: The source language.
 
         Returns:
             A hex digest string.
         """
         normalized = source_text.strip().lower()
-        raw = f"{normalized}||{target_lang.lower()}||{provider_name.lower()}"
+        raw = (f"v3|{namespace}||{normalized}||{source_lang.lower()}||"
+               f"{target_lang.lower()}||{provider_name.lower()}")
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()

@@ -70,6 +70,7 @@ _TRANSLATION_CONCURRENCY = int(os.environ.get("TRANSLATION_CONCURRENCY", "8"))
 _TRANSLATION_BATCH_ENABLED = os.environ.get("TRANSLATION_BATCH_ENABLED", "true").lower() == "true"
 _TRANSLATION_CACHE_ENABLED = os.environ.get("TRANSLATION_CACHE_ENABLED", "true").lower() == "true"
 _TRANSLATION_CACHE_TTL_DAYS = int(os.environ.get("TRANSLATION_CACHE_TTL_DAYS", "30"))
+_TRANSLATION_PROMPT_VERSION = os.environ.get("TRANSLATION_PROMPT_VERSION", "2026-09-balanced-v1")
 
 # Phase D Tier 3a: Batched AI quality review (default on)
 # All translations complete first, then quality review runs
@@ -159,6 +160,60 @@ def _is_passthrough_block(text: str) -> tuple[bool, str]:
             return True, "file_path"
 
     return False, ""
+
+
+# ── Echo-output detection ─────────────────────────────────────────────────
+# A provider "succeeds" with the source text unchanged (echo output). If such
+# output is cached it gets pinned for the cache TTL, so it must be detected
+# before caching and retried instead.
+
+def _normalize_for_compare(text: str) -> str:
+    """Collapse whitespace + lowercase for echo comparison."""
+    return re.sub(r"\s+", " ", text.strip()).lower()
+
+
+def _has_translatable_content(text: str) -> bool:
+    """Best-effort: would this source text actually change when translated?
+
+    Returns False (i.e. "nothing to flag") for content that legitimately
+    maps to itself: numbers, dates, URLs, emails, file paths, punctuation,
+    single tokens, and proper-noun/acronym-like strings (no/one lowercase
+    token). This prevents false-positive echo flags on correct output such
+    as a proper noun the model kept identical.
+    """
+    stripped = text.strip()
+    if not stripped or len(stripped) < 3:
+        return False
+    if re.fullmatch(r"[\s\W]+", stripped):
+        return False
+    if re.fullmatch(r"\d+[\s.,/]*\d*", stripped):
+        return False
+    if stripped.lower().startswith(("http://", "https://", "www.")):
+        return False
+    if re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", stripped):
+        return False
+    tokens = stripped.split()
+    if len(tokens) < 2:
+        return False
+    # Require at least two tokens that start lowercase — real sentence words.
+    # Title-Case proper nouns ("Dr. Santos", "National Gallery"), all-caps
+    # acronyms ("AI"), and mixed proper-noun phrases contribute no lowercase-
+    # initial tokens and are therefore NOT flagged as echo output.
+    content_tokens = [t for t in tokens if t[0].islower()]
+    return len(content_tokens) >= 2
+
+
+def _is_echo_output(source_text: str, translated_text: str) -> bool:
+    """True when the 'translation' is effectively the source, unchanged.
+
+    Only flagged for text with real translatable content; proper nouns,
+    numbers, acronyms, and very short strings legitimately translate to
+    themselves and are excluded.
+    """
+    return (
+        _has_translatable_content(source_text)
+        and _normalize_for_compare(source_text) == _normalize_for_compare(translated_text)
+    )
 
 
 # OPTIMIZATION: Batch prompt builder (Task 3)
@@ -268,12 +323,64 @@ def _parse_batch_response(response_text: str,
     return result
 
 
+# ── Paragraph-aware chunking + rejoin (Phase 4: coherence) ────────────────
+# Chunking on sentence boundaries alone destroys paragraph structure: every
+# chunk is rejoined with a single space, so blank lines between paragraphs
+# collapse. For Cebuano/Filipino this matters — pronoun and verb-focus flow
+# read across paragraph boundaries. These helpers split on blank lines first
+# and rejoin with real paragraph breaks.
+
+_PARA_SEP_RE = re.compile(r"\n[ \t]*\n")
+
+
+def _paragraph_boundaries(text: str) -> list[str]:
+    """Split text into paragraphs on blank lines (interior newlines kept)."""
+    return [p.strip("\n") for p in _PARA_SEP_RE.split(text) if p.strip("\n")]
+
+
+def _chunk_preserving_paragraphs(text: str, max_tokens: int,
+                                 splitter) -> list[tuple[int, str]]:
+    """Chunk *text* so no chunk mixes paragraphs.
+
+    Returns a list of (paragraph_id, chunk_text) tuples. Paragraphs longer
+    than *max_tokens* are sub-split by *splitter* at sentence boundaries and
+    keep the same paragraph_id.
+    """
+    paragraphs = _paragraph_boundaries(text)
+    if len(paragraphs) <= 1:
+        return [(0, c) for c in splitter.split(text, max_tokens=max_tokens)]
+    chunks: list[tuple[int, str]] = []
+    for pid, paragraph in enumerate(paragraphs):
+        if len(paragraph.split()) > max_tokens:
+            for sub in splitter.split(paragraph, max_tokens=max_tokens):
+                chunks.append((pid, sub))
+        else:
+            chunks.append((pid, paragraph))
+    return chunks
+
+
+def _rejoin_paragraph_aware(translated_chunks: list[tuple[int, str]]) -> str:
+    """Rejoin translated chunks, restoring a blank line where the chunk
+    boundary fell between paragraphs and a single space within a paragraph."""
+    parts = []
+    last_pid = None
+    for pid, text in translated_chunks:
+        t = text.strip()
+        if not t:
+            continue
+        if parts:
+            parts.append(("\n\n" if pid != last_pid else " ") + t)
+        else:
+            parts.append(t)
+        last_pid = pid
+    return "".join(parts).strip()
+
+
 class TranslationPipeline:
     """Orchestrates the complete translation process."""
 
     def __init__(self, provider: TranslationProvider):
         self.provider = provider
-        self.context_buffer = ContextBuffer()  # Kept for fast mode fallback
         self.chunk_splitter = ChunkSplitter()  # Kept for fallback
         self.bleu_reporter = BLEUReporter()
 
@@ -283,17 +390,94 @@ class TranslationPipeline:
     def _get_cache(self) -> SQLiteTranslationCache | None:
         """Get or create the shared SQLite cache."""
         if self._shared_cache is None and _TRANSLATION_CACHE_ENABLED:
+            namespace = "|".join((
+                _TRANSLATION_PROMPT_VERSION,
+                self.provider.name,
+                self.provider.model_name,
+            ))
             self._shared_cache = SQLiteTranslationCache(
                 ttl_days=_TRANSLATION_CACHE_TTL_DAYS,
                 enabled=_TRANSLATION_CACHE_ENABLED,
+                namespace=namespace,
             )
         return self._shared_cache
 
-    def translate(self, request: TranslationRequest) -> TranslationResponse:
+    def _translate_with_echo_guard(self, *, text: str, source_lang: str,
+                                   target_lang: str, block_type: str,
+                                   context_hint: str, document_type: str,
+                                   ctx=None) -> TranslationResponse:
+        """Call the provider, retrying once if the output merely echoes input.
+
+        A provider can return success=True with the source text unchanged
+        (echo output). Caching that would pin a bad translation for the cache
+        TTL, so we detect it here: retry once with an explicit anti-echo
+        instruction, and if the retry still echoes, return a failure response
+        (the caller must not cache it).
+
+        Content with no translatable material (proper nouns, numbers, URLs,
+        etc.) is excluded by _is_echo_output, so correct identity translations
+        are never retried or failed.
+        """
+        response = self.provider.translate(
+            text=text,
+            source_lang=source_lang,
+            target_lang=target_lang,
+            block_type=block_type,
+            context_hint=context_hint,
+            document_type=document_type,
+        )
+
+        if response.success and _is_echo_output(text, response.translated_text):
+            with llm_call_profile(ctx) if ctx else _nullcontext():
+                retry_hint = (
+                    f"{context_hint}\n"
+                    f"Previous attempt did not translate — do NOT echo the "
+                    f"input back. Translate the text into {target_lang}."
+                ).strip()
+                retry_response = self.provider.translate(
+                    text=text,
+                    source_lang=source_lang,
+                    target_lang=target_lang,
+                    block_type=block_type,
+                    context_hint=retry_hint,
+                    document_type=document_type,
+                )
+            if retry_response.success and not _is_echo_output(text, retry_response.translated_text):
+                response = retry_response
+            elif retry_response.success:
+                # Still echoing — treat as a real failure, never cache it.
+                print(f"  ⚠️  Provider echoed source unchanged after retry ({target_lang})")
+                return TranslationResponse(
+                    translated_text=text,
+                    provider=self.provider.name,
+                    model=self.provider.model_name,
+                    token_usage={},
+                    execution_time_ms=0.0,
+                    success=False,
+                    error_message=(
+                        f"Translation failed: the provider returned the source "
+                        f"text unchanged for target language {target_lang}."
+                    ),
+                )
+            else:
+                return retry_response
+
+        return response
+
+    def translate(self, request: TranslationRequest,
+                  context_buffer: ContextBuffer | None = None) -> TranslationResponse:
         """Translate a single text block through the full pipeline.
+
+        The context buffer is scoped PER REQUEST: when none is supplied a fresh
+        one is created, so concurrent requests can never leak context into each
+        other through the shared pipeline singleton. Callers that want
+        within-document context (e.g. translate_chunks) create one buffer and
+        thread it through their own translate() calls.
 
         Args:
             request: The translation request.
+            context_buffer: Optional caller-owned ContextBuffer for cross-call
+                context hints within a single document/request.
 
         Returns:
             A normalized TranslationResponse.
@@ -308,7 +492,10 @@ class TranslationPipeline:
         # instantly instead of re-hitting the LLM.
         cache = self._get_cache()
         if cache and request.text and request.text.strip():
-            cached = cache.get(request.text, request.target_lang, self.provider.name)
+            cached = cache.get(
+                request.text, request.target_lang, self.provider.name,
+                source_lang=request.source_lang,
+            )
             if cached is not None:
                 return TranslationResponse(
                     translated_text=cached,
@@ -317,13 +504,16 @@ class TranslationPipeline:
                     execution_time_ms=(time.time() - start_time) * 1000,
                 )
 
+        if context_buffer is None:
+            context_buffer = ContextBuffer()
+
         # 2. Build context hint
         context_hint = request.context_hint
         if not context_hint:
-            context_hint = self.context_buffer.get_hint()
+            context_hint = context_buffer.get_hint()
 
         # 3. Translate via provider (pass document_type for specialized prompts)
-        response = self.provider.translate(
+        response = self._translate_with_echo_guard(
             text=request.text,
             source_lang=request.source_lang,
             target_lang=request.target_lang,
@@ -334,11 +524,12 @@ class TranslationPipeline:
 
         # 4. Push to context buffer on success (for fast mode) and persist
         if response.success and response.translated_text:
-            self.context_buffer.push(response.translated_text)
+            context_buffer.push(response.translated_text)
             if cache:
                 cache.put(
                     request.text, request.target_lang,
                     self.provider.name, response.translated_text,
+                    source_lang=request.source_lang,
                 )
 
         # 5. Update execution time
@@ -372,11 +563,16 @@ class TranslationPipeline:
         Returns:
             A combined TranslationResponse.
         """
-        # Clear context buffer for new document
-        self.context_buffer.clear()
+        # Per-request context buffer (NOT the shared pipeline singleton):
+        # threaded into every translate() call so concurrent requests cannot
+        # cross-contaminate each other's context.
+        buffer = ContextBuffer()
 
-        # Split into chunks using semantic chunker or fallback
-        chunks: list[SemanticChunk] | list[tuple[int, str]]
+        # Split into chunks preserving paragraph boundaries so the rejoin can
+        # restore blank lines between paragraphs (Phase 4: coherence).
+        # Each element is (paragraph_id, chunk_text); chunks with the same
+        # paragraph_id are sub-pieces of one over-long paragraph.
+        chunks: list[tuple[int, str]]
 
         if mode and mode.semantic_chunking and document_profile and document_profile.is_reliable():
             from document.semantic_chunker import SemanticChunker
@@ -384,11 +580,9 @@ class TranslationPipeline:
             # Wrap text as a single block for the chunker
             blocks = [{"text": text, "type": block_type}]
             semantic_chunks = chunker.chunk_blocks(blocks, document_profile)
-            chunks = [(c.block_indices[0] if c.block_indices else 0, c.text)
-                      for c in semantic_chunks if not c.is_code]
+            chunks = [(i, c.text) for i, c in enumerate(semantic_chunks) if not c.is_code]
         else:
-            # Fallback to naive chunking
-            chunks = [(0, c) for c in self.chunk_splitter.split(text, max_tokens=max_tokens)]
+            chunks = _chunk_preserving_paragraphs(text, max_tokens, self.chunk_splitter)
 
         if len(chunks) <= 1:
             # No splitting needed
@@ -397,7 +591,7 @@ class TranslationPipeline:
                 block_type=block_type,
                 document_type=document_profile.document_type if document_profile else "",
             )
-            return self.translate(request)
+            return self.translate(request, context_buffer=buffer)
 
         # Translate each chunk
         translated_chunks = []
@@ -406,12 +600,15 @@ class TranslationPipeline:
         warnings = []
         retranslated_count = 0
 
-        for i, (block_idx, chunk_text) in enumerate(chunks):
+        for i, (chunk_pid, chunk_text) in enumerate(chunks):
             # Check cache first
             if translation_cache:
-                cached = translation_cache.get(chunk_text, target_lang, self.provider.name)
+                cached = translation_cache.get(
+                    chunk_text, target_lang, self.provider.name,
+                    source_lang=source_lang,
+                )
                 if cached is not None:
-                    translated_chunks.append(cached)
+                    translated_chunks.append((chunk_pid, cached))
                     continue
 
             # Build context from document memory
@@ -428,7 +625,7 @@ class TranslationPipeline:
                 document_type=document_profile.document_type if document_profile else "",
             )
 
-            response = self.translate(request)
+            response = self.translate(request, context_buffer=buffer)
 
             if response.success:
                 translated = response.translated_text
@@ -450,7 +647,7 @@ class TranslationPipeline:
                             context_hint=f"{context}\nPrevious issues: {review.summary}",
                             document_type=document_profile.document_type if document_profile else "",
                         )
-                        retry_response = self.translate(retry_request)
+                        retry_response = self.translate(retry_request, context_buffer=buffer)
                         if retry_response.success:
                             translated = retry_response.translated_text
                             retranslated_count += 1
@@ -458,9 +655,12 @@ class TranslationPipeline:
 
                 # Cache the result
                 if translation_cache:
-                    translation_cache.put(chunk_text, target_lang, self.provider.name, translated)
+                    translation_cache.put(
+                        chunk_text, target_lang, self.provider.name,
+                        translated, source_lang=source_lang,
+                    )
 
-                translated_chunks.append(translated)
+                translated_chunks.append((chunk_pid, translated))
                 total_tokens["input"] += response.token_usage.get("input", 0)
                 total_tokens["output"] += response.token_usage.get("output", 0)
                 total_time += response.execution_time_ms
@@ -472,9 +672,9 @@ class TranslationPipeline:
                     document_memory.update_abbreviations(chunk_text)
             else:
                 warnings.append(f"Chunk {i + 1} failed: {response.error_message}")
-                translated_chunks.append("")
+                translated_chunks.append((chunk_pid, ""))
 
-        combined_text = " ".join(translated_chunks).strip()
+        combined_text = _rejoin_paragraph_aware(translated_chunks)
 
         if retranslated_count > 0:
             print(f"  [Quality] {retranslated_count} chunk(s) retranslated due to low quality scores")
@@ -534,7 +734,9 @@ class TranslationPipeline:
         Returns:
             List of translated block dicts.
         """
-        self.context_buffer.clear()
+        # NOTE: workers use DocumentMemory (not ContextBuffer) for context, so
+        # there is no shared buffer to clear here — the pipeline's context
+        # buffer is per-request and never mutated from this path.
         total = len(blocks)
 
         # Phase 3: Semantic chunking
@@ -568,7 +770,10 @@ class TranslationPipeline:
                 text = block.get("text", "")
                 if not text.strip():
                     continue
-                cached = translation_cache.get(text, target_lang, self.provider.name)
+                cached = translation_cache.get(
+                    text, target_lang, self.provider.name,
+                    source_lang=source_lang,
+                )
                 if cached is not None:
                     cached_results[i] = cached
                     if ctx:
@@ -738,10 +943,13 @@ class TranslationPipeline:
                         if retry_response.success and retry_response.translated_text:
                             results[idx] = retry_response.translated_text
                             retranslated_count += 1
-                            if translation_cache:
+                            if translation_cache and not _is_echo_output(
+                                source_text, retry_response.translated_text
+                            ):
                                 translation_cache.put(
                                     source_text, target_lang,
                                     self.provider.name, retry_response.translated_text,
+                                    source_lang=source_lang,
                                 )
 
                 if retranslated_count > 0:
@@ -768,10 +976,13 @@ class TranslationPipeline:
                     translated_text = glossary_store.apply(translated_text)
 
                 # Cache the result
-                if translation_cache:
+                if translation_cache and not _is_echo_output(
+                    block.get("text", ""), translated_text
+                ):
                     translation_cache.put(
                         block.get("text", ""), target_lang,
                         self.provider.name, translated_text,
+                        source_lang=source_lang,
                     )
 
                 # Build new block preserving metadata
@@ -901,7 +1112,10 @@ class TranslationPipeline:
         """
         # Check cache first
         if translation_cache:
-            cached = translation_cache.get(text, target_lang, self.provider.name)
+            cached = translation_cache.get(
+                text, target_lang, self.provider.name,
+                source_lang=source_lang,
+            )
             if cached is not None:
                 return cached
 
@@ -921,14 +1135,20 @@ class TranslationPipeline:
 
         # Translate via provider (synchronous call — runs in thread pool)
         with llm_call_profile(ctx) if ctx else _nullcontext():
-            response = self.provider.translate(
+            response = self._translate_with_echo_guard(
                 text=text,
                 source_lang=source_lang,
                 target_lang=target_lang,
                 block_type=block_type,
                 context_hint=context,
                 document_type=document_profile.document_type if document_profile else "",
+                ctx=ctx,
             )
+
+        if not response.success:
+            # Echo/other failure — do NOT cache; the reassembly path falls
+            # back to the source text so the document still builds.
+            return response.translated_text if response.translated_text else text
 
         translated = response.translated_text
 
@@ -956,8 +1176,11 @@ class TranslationPipeline:
                     translated = retry_response.translated_text
 
         # Cache the result
-        if translation_cache:
-            translation_cache.put(text, target_lang, self.provider.name, translated)
+        if translation_cache and not _is_echo_output(text, translated):
+            translation_cache.put(
+                text, target_lang, self.provider.name, translated,
+                source_lang=source_lang,
+            )
 
         # Record in document memory
         if document_memory:

@@ -27,9 +27,9 @@ from .base import AIAnalysisProvider
 class OllamaAnalysisProvider(AIAnalysisProvider):
     """Analysis provider using GPT-OSS via Ollama Cloud.
 
-    Default model is 'llama3.1:8b' — smaller and faster than the
-    translation model ('gpt-oss:20b-cloud'). Analysis tasks don't
-    need a large model; they need fast, structured JSON output.
+    Defaults to the configured translation model, which is already available
+    in Ollama. Tiny local models can echo the merged analysis schema instead
+    of filling it with document facts.
 
     The model can be overridden via the OLLAMA_ANALYSIS_MODEL env var.
     The API URL is shared with the translation provider (OLLAMA_CLOUD_URL).
@@ -40,7 +40,8 @@ class OllamaAnalysisProvider(AIAnalysisProvider):
             "OLLAMA_CLOUD_URL", "http://localhost:11434/api/chat"
         )
         self._model = model or os.environ.get(
-            "OLLAMA_ANALYSIS_MODEL", "llama3.1:8b"
+            "OLLAMA_ANALYSIS_MODEL",
+            os.environ.get("OLLAMA_CLOUD_MODEL", "gpt-oss:20b-cloud"),
         )
 
     @property
@@ -78,6 +79,7 @@ class OllamaAnalysisProvider(AIAnalysisProvider):
                 {"role": "user", "content": user_prompt},
             ],
             "stream": False,
+            "format": "json",
             "options": {
                 "temperature": 0.1,  # Low temperature for consistent JSON
             },

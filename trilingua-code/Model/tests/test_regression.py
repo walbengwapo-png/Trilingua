@@ -865,3 +865,649 @@ def test_run_level_emission_no_midword_splits(pdf_fixture_exam_path):
         for p in (src_path, out_path):
             if os.path.exists(p):
                 os.remove(p)
+
+
+# ===========================================================================
+# Cache key includes source_lang (bug: identical text from different source
+# languages collided to one cache entry, serving wrong/untranslated output)
+# ===========================================================================
+
+from cache.sqlite_cache import SQLiteTranslationCache  # noqa: E402
+
+
+def test_cache_key_includes_source_lang():
+    """Same source text with different source_lang must hash to different keys."""
+    key_ceb = SQLiteTranslationCache._make_key(
+        "Kumusta ka", "English", "mock", source_lang="Cebuano"
+    )
+    key_fil = SQLiteTranslationCache._make_key(
+        "Kumusta ka", "English", "mock", source_lang="Filipino"
+    )
+    assert key_ceb != key_fil, "Cebuano vs Filipino source texts collided in cache key"
+
+    # Same source text + same source lang + same target => identical key (idempotent)
+    key_dup = SQLiteTranslationCache._make_key(
+        "Kumusta ka", "English", "mock", source_lang="Cebuano"
+    )
+    assert key_dup == key_ceb
+
+    # Key is versioned so it can never collide with the old pre-fix scheme.
+    old_style = SQLiteTranslationCache._make_key("Kumusta ka", "English", "mock")
+    assert key_ceb != old_style
+
+
+def test_cache_get_put_respect_source_lang(tmp_path):
+    """get/put must not return a Cebuano->English entry for a Filipino->English lookup."""
+    cache = SQLiteTranslationCache(
+        db_path=str(tmp_path / "t.db"), ttl_days=30, enabled=True
+    )
+    try:
+        cache.put("Kumusta ka", "English", "mock", "How are you (ceb).", source_lang="Cebuano")
+        got_fil = cache.get("Kumusta ka", "English", "mock", source_lang="Filipino")
+        assert got_fil is None, "Filipino lookup returned the Cebuano cache entry"
+        got_ceb = cache.get("Kumusta ka", "English", "mock", source_lang="Cebuano")
+        assert got_ceb == "How are you (ceb)."
+    finally:
+        cache.clear_all()
+
+
+# ===========================================================================
+# Echo-output guard (provider echoes the source unchanged; must not be cached,
+# must retry once, and must fail rather than pin a bad result)
+# ===========================================================================
+
+from pipeline.translation_pipeline import (  # noqa: E402
+    _is_echo_output,
+    _has_translatable_content,
+    TranslationPipeline,
+)
+from dto.requests import TranslationRequest  # noqa: E402
+from dto.responses import TranslationResponse  # noqa: E402
+
+
+class _EchoThenTranslateProvider:
+    """Echoes the input on the first call, translates on the second."""
+
+    name = "mock_echo_then_translate"
+    model_name = "mock_model_v1"
+
+    def __init__(self):
+        self.calls = 0
+
+    def translate(self, text, source_lang="", target_lang="", block_type="paragraph",
+                  context_hint="", document_type=""):
+        self.calls += 1
+        if self.calls == 1:
+            return TranslationResponse(
+                translated_text=text, provider=self.name, model=self.model_name, success=True,
+            )
+        return TranslationResponse(
+            translated_text=f"[CEB] {text} (translated)", provider=self.name,
+            model=self.model_name, success=True,
+        )
+
+    def health(self):
+        return {"status": "ok", "provider": self.name, "model": self.model_name}
+
+    def estimate_tokens(self, text):
+        return len(text.split())
+
+
+class _AlwaysEchoProvider:
+    """Always echoes the input unchanged."""
+
+    name = "mock_always_echo"
+    model_name = "mock_model_v2"
+
+    def translate(self, text, source_lang="", target_lang="", block_type="paragraph",
+                  context_hint="", document_type=""):
+        return TranslationResponse(
+            translated_text=text, provider=self.name, model=self.model_name, success=True,
+        )
+
+    def health(self):
+        return {"status": "ok", "provider": self.name, "model": self.model_name}
+
+    def estimate_tokens(self, text):
+        return len(text.split())
+
+
+def test_echo_output_retries_once_then_succeeds():
+    """Echo on first attempt is retried and the second (real) output is used."""
+    provider = _EchoThenTranslateProvider()
+    pipeline = TranslationPipeline(provider)
+    result = pipeline.translate(TranslationRequest(
+        text="The cat sat on the mat.", source_lang="English", target_lang="Cebuano",
+    ))
+    assert provider.calls == 2, f"expected 2 provider calls, got {provider.calls}"
+    assert result.success
+    assert result.translated_text == "[CEB] The cat sat on the mat. (translated)"
+
+
+def test_echo_output_never_cached(tmp_path):
+    """An always-echoing provider must not write anything to the cache."""
+    provider = _AlwaysEchoProvider()
+    pipeline = TranslationPipeline(provider)
+    cache = SQLiteTranslationCache(
+        db_path=str(tmp_path / "t2.db"), ttl_days=30, enabled=True
+    )
+    pipeline._shared_cache = cache
+    try:
+        result = pipeline.translate(TranslationRequest(
+            text="Please translate this sentence into Cebuano properly.",
+            source_lang="English", target_lang="Cebuano",
+        ))
+        assert result.success is False, "echo output must be reported as a failure"
+        cached = cache.get(
+            "Please translate this sentence into Cebuano properly.",
+            "Cebuano", provider.name, source_lang="English",
+        )
+        assert cached is None, "echo output was cached"
+    finally:
+        cache.clear_all()
+
+
+def test_echo_output_retry_still_echoes_fails(tmp_path):
+    """If the retry also echoes, the result is a failure and nothing is cached."""
+    provider = _AlwaysEchoProvider()
+    pipeline = TranslationPipeline(provider)
+    cache = SQLiteTranslationCache(
+        db_path=str(tmp_path / "t3.db"), ttl_days=30, enabled=True
+    )
+    pipeline._shared_cache = cache
+    try:
+        result = pipeline.translate(TranslationRequest(
+            text="The quick brown fox jumps over the lazy dog.",
+            source_lang="English", target_lang="Filipino",
+        ))
+        assert result.success is False
+        assert "unchanged" in result.error_message.lower()
+        assert cache.get(
+            "The quick brown fox jumps over the lazy dog.",
+            "Filipino", provider.name, source_lang="English",
+        ) is None
+    finally:
+        cache.clear_all()
+
+
+def test_proper_noun_identity_is_not_flagged_as_echo():
+    """Legitimately-identical translations (proper nouns etc.) are NOT echoes."""
+    assert _is_echo_output("Dr. Santos", "Dr. Santos") is False
+    assert _is_echo_output("Manila", "Manila") is False
+    assert _is_echo_output("123 Main Street", "123 Main Street") is False
+    assert _is_echo_output("AI", "AI") is False
+    assert _is_echo_output("Hello", "Hello") is False
+    assert _has_translatable_content("Dr. Santos") is False
+    assert _has_translatable_content("123 Main Street") is False
+
+
+def test_real_sentence_echo_is_flagged():
+    """A full sentence echoed back unchanged IS flagged as an echo."""
+    assert _is_echo_output(
+        "The quick brown fox jumps over the lazy dog.",
+        "The quick brown fox jumps over the lazy dog.",
+    ) is True
+    # Whitespace/case differences still count as an echo.
+    assert _is_echo_output(
+        "Hello World, this is a test.",
+        "  hello   world, this is a test.  ",
+    ) is True
+    # A genuine translation with different words is NOT an echo.
+    assert _is_echo_output(
+        "The cat sat on the mat.",
+        "Ang iring milingkod sa banig.",
+    ) is False
+
+
+# ---------------------------------------------------------------------------
+# Phase 2B — event-loop / concurrency guard
+# ---------------------------------------------------------------------------
+def _load_server_module():
+    import server  # noqa: E402  (heavy import; runs warmup once)
+    return server
+
+
+def test_run_pipeline_guarded_invokes_callable():
+    server = _load_server_module()
+    marker = []
+
+    def _work():
+        marker.append(True)
+        return 42
+
+    assert server._run_pipeline_guarded(_work) == 42
+    assert marker == [True]
+
+
+def test_run_pipeline_guarded_rejects_when_saturated():
+    server = _load_server_module()
+    sem = server._translation_semaphore
+
+    # Saturate the semaphore one slot at a time until exhausted.
+    held = []
+    try:
+        while sem.acquire(blocking=False):
+            held.append(True)
+
+        with pytest.raises(Exception) as excinfo:
+            server._run_pipeline_guarded(lambda: 1)
+        assert excinfo.value.status_code == 503
+        assert "busy" in str(excinfo.value.detail).lower()
+    finally:
+        for _ in held:
+            sem.release()
+
+
+def test_run_pipeline_guarded_releases_slot_after_failure():
+    server = _load_server_module()
+    sem = server._translation_semaphore
+
+    before = sem._value
+
+    def _boom():
+        raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError):
+        server._run_pipeline_guarded(_boom)
+
+    assert sem._value == before
+
+
+# ---------------------------------------------------------------------------
+# Phase 2C — shared-state isolation (context buffer + doc cache)
+# ---------------------------------------------------------------------------
+class _RecordingProvider:
+    """Mock provider that records every context_hint it is given."""
+
+    name = "recording_provider"
+    model_name = "recording_model"
+
+    def __init__(self):
+        self.hints = []
+
+    def translate(self, text, source_lang="", target_lang="", block_type="paragraph",
+                  context_hint="", document_type=""):
+        self.hints.append(context_hint or "")
+        return TranslationResponse(
+            translated_text=f"[rec] {text[::-1]}",
+            provider=self.name,
+            model=self.model_name,
+            token_usage={"input": 1, "output": 1},
+            success=True,
+        )
+
+    def health(self):
+        return {"status": "ok", "provider": self.name, "model": self.model_name}
+
+    def estimate_tokens(self, text):
+        return len(text.split())
+
+
+@pytest.fixture
+def _no_cache_pipeline():
+    import pipeline.translation_pipeline as tp
+    original = tp._TRANSLATION_CACHE_ENABLED
+    tp._TRANSLATION_CACHE_ENABLED = False
+    provider = _RecordingProvider()
+    pipe = tp.TranslationPipeline(provider)
+    try:
+        yield pipe, provider
+    finally:
+        tp._TRANSLATION_CACHE_ENABLED = original
+
+
+def test_context_buffer_is_per_request(_no_cache_pipeline):
+    """translate() must not leak context from one request into the next.
+
+    Both calls pass no context_hint, so with a shared buffer the second call
+    would receive the first call's output as a hint. It must see an empty hint.
+    """
+    pipe, provider = _no_cache_pipeline
+
+    pipe.translate(TranslationRequest(
+        text="The committee approved the proposal.",
+        source_lang="English", target_lang="Cebuano",
+    ))
+    pipe.translate(TranslationRequest(
+        text="The mayor endorsed the new budget.",
+        source_lang="English", target_lang="Cebuano",
+    ))
+
+    assert len(provider.hints) == 2
+    assert provider.hints[0] == ""
+    assert provider.hints[1] == "", "second request leaked context from the first"
+
+
+def test_translate_chunks_keeps_context_within_request(_no_cache_pipeline):
+    """Within one translate_chunks call, later chunks see earlier output."""
+    pipe, provider = _no_cache_pipeline
+
+    text = (
+        "The board voted to expand operations. "
+        "Funding was secured from the regional office. "
+        "The director signed the final agreement."
+    )
+    pipe.translate_chunks(
+        text, "English", "Cebuano", max_tokens=8,
+    )
+
+    assert len(provider.hints) == 2, "expected 2 chunks -> 2 provider calls"
+    assert provider.hints[0] == "", "first chunk has no prior context"
+    assert "[rec]" in provider.hints[1], (
+        "second chunk should carry the first chunk's translation as context"
+    )
+
+
+def test_doc_cache_is_thread_local_and_clear_crosses_threads(tmp_path):
+    from cache.sqlite_cache import SQLiteTranslationCache
+
+    db = tmp_path / "local.db"
+    cache = SQLiteTranslationCache(db_path=str(db), ttl_days=30, enabled=True)
+    src = "thread local isolation test sentence"
+    key = "target|provider"
+
+    results: dict[str, object] = {}
+
+    def worker_a():
+        cache.put(src, key, "prov", "A-translation", source_lang="English")
+        results["a_first"] = cache.get(src, key, "prov", source_lang="English")
+        results["a_has_local"] = src_hash in cache._stats().doc_cache
+
+    src_hash = cache._make_key(src, key, "prov", "English")
+
+    import threading as _threading
+    ta = _threading.Thread(target=worker_a)
+    ta.start()
+    ta.join()
+
+    # Thread A sees its own entry from its local fast cache.
+    assert results["a_first"] == "A-translation"
+    assert results["a_has_local"] is True
+
+    # A different thread (simulating another concurrent job) must NOT see
+    # thread A's local fast-cache entry until it is flushed to SQLite; once
+    # flushed, it resolves via the persistent layer.
+    def worker_b():
+        results["b_local_before"] = src_hash in cache._stats().doc_cache
+        cache.flush()
+        results["b_persistent"] = cache.get(src, key, "prov", source_lang="English")
+        results["b_has_local_after"] = src_hash in cache._stats().doc_cache
+
+    tb = _threading.Thread(target=worker_b)
+    tb.start()
+    tb.join()
+
+    assert results["b_local_before"] is False, \
+        "thread B must not reuse thread A's local cache"
+    assert results["b_persistent"] == "A-translation", "flushed write must be visible cross-thread"
+    assert results["b_has_local_after"] is True, \
+        "a persistent hit populates B's own local cache for the rest of the job"
+
+    # clear_document_cache() wipes the fast cache of EVERY thread.
+    def worker_c():
+        results["c_has_local_after_clear"] = src_hash in cache._stats().doc_cache
+
+    cache.clear_document_cache()
+    tc = _threading.Thread(target=worker_c)
+    tc.start()
+    tc.join()
+    assert results["c_has_local_after_clear"] is False
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — Cebuano/Filipino coherence (paragraph rejoin + polish pass)
+# ---------------------------------------------------------------------------
+from pipeline.translation_pipeline import (  # noqa: E402
+    _chunk_preserving_paragraphs,
+    _paragraph_boundaries,
+)
+from pipeline.coherence_polish import (  # noqa: E402
+    CoherencePolishPass,
+    coherence_polish_enabled,
+)
+from prompts.system import build_system_prompt  # noqa: E402
+from prompts.translation import build_translation_prompt  # noqa: E402
+from document.chunker import ChunkSplitter  # noqa: E402
+
+
+def test_paragraph_boundaries_split_on_blank_lines():
+    text = "First paragraph.\nSecond line of it.\n\nThird paragraph.\n\nFourth."
+    paras = _paragraph_boundaries(text)
+    assert paras == [
+        "First paragraph.\nSecond line of it.",
+        "Third paragraph.",
+        "Fourth.",
+    ]
+
+
+def test_chunk_preserving_paragraphs_never_mixes_paragraphs():
+    text = (
+        "The cat sat on the mat. It was very tired. "
+        "The cat fell asleep. She dreamed of fish. "
+        "The fish were swimming in the sea. They looked delicious.\n\n"
+        "The dog barked at the moon. The moon was bright. "
+        "The dog howled and howled. The neighbors were annoyed.\n\n"
+        "The bird sang in the morning. The song was beautiful. "
+        "The bird sang every single morning. The people loved it."
+    )
+    chunks = _chunk_preserving_paragraphs(text, max_tokens=50,
+                                          splitter=ChunkSplitter())
+    # Every chunk belongs to exactly one paragraph and carries no blank line.
+    for pid, chunk_text in chunks:
+        assert pid in (0, 1, 2)
+        assert "\n\n" not in chunk_text
+    # All three paragraphs are represented.
+    assert {pid for pid, _ in chunks} == {0, 1, 2}
+
+
+def test_translate_chunks_rejoins_paragraph_breaks(_no_cache_pipeline):
+    pipe, provider = _no_cache_pipeline
+    text = (
+        "The cat sat on the mat. It was tired. "
+        "The cat fell asleep. She dreamed of fish.\n\n"
+        "The dog barked at the moon. The moon was bright. "
+        "The dog howled and howled."
+    )
+    result = pipe.translate_chunks(text, "English", "Cebuano", max_tokens=20)
+
+    assert provider.hints[0] == "", "first chunk has no prior context"
+    assert "\n\n" in result.translated_text, \
+        "blank line between paragraphs must survive the rejoin"
+    assert result.translated_text.count("\n\n") == 1
+    assert "  " not in result.translated_text, "no double-space artifacts"
+
+
+def test_translate_chunks_single_paragraph_stays_space_joined(_no_cache_pipeline):
+    pipe, provider = _no_cache_pipeline
+    text = (
+        "The cat sat on the mat. It was tired. "
+        "The cat fell asleep. She dreamed of fish. "
+        "The fish were swimming in the sea."
+    )
+    result = pipe.translate_chunks(text, "English", "Cebuano", max_tokens=10)
+
+    assert "\n\n" not in result.translated_text, \
+        "a single paragraph must not gain paragraph breaks"
+
+
+class _PolishProvider:
+    """Mock provider that returns a canned JSON polish response."""
+
+    name = "polish_provider"
+    model_name = "polish_model"
+
+    def __init__(self, response_text):
+        self.response_text = response_text
+        self.calls = 0
+
+    def translate(self, text, source_lang="", target_lang="", block_type="paragraph",
+                  context_hint="", document_type=""):
+        self.calls += 1
+        return TranslationResponse(
+            translated_text=self.response_text,
+            provider=self.name,
+            model=self.model_name,
+            token_usage={"input": 1, "output": 1},
+            success=True,
+        )
+
+    def estimate_tokens(self, text):
+        return len(text.split())
+
+
+def _flagged_reviewer(flagged_indices):
+    from validators.ai_quality_reviewer import QualityReview
+
+    class _Reviewer:
+        def batch_review(self, entries, document_type=""):
+            reviews = {}
+            for idx, _, _ in entries:
+                if idx in flagged_indices:
+                    reviews[idx] = QualityReview(
+                        score=30.0, retry_required=True, summary="flagged"
+                    )
+                else:
+                    reviews[idx] = QualityReview(
+                        score=100.0, retry_required=False, summary="ok"
+                    )
+            return reviews
+
+        def needs_retranslation(self, review):
+            return review.retry_required
+
+    return _Reviewer()
+
+
+def test_coherence_polish_flag_defaults_off():
+    assert coherence_polish_enabled() is False, \
+        "TRANSLATION_COHERENCE_POLISH must default to off"
+
+
+def test_coherence_polish_rewrites_only_flagged_entries():
+    provider = _PolishProvider(response_text='{"1": "[polished] Sa gabii mibarkada ang iro."}')
+    source = [
+        {"text": "The cat sat on the mat."},
+        {"text": "The dog barked at the moon."},
+        {"text": "A very long sentence that expands into a huge over-long "
+                 "translation with many words and phrases."},
+    ]
+    translated = [
+        {"text": "Lingkod ang iring sa banig.", "position": "p1"},
+        {"text": "The dog barked at the moon.", "position": "p2"},  # echo → flagged
+        {"text": "Taas kaayo nga hubad nga daghan kaayo ug pulong nga wala sa "
+                 "tinubdan nga teksto sa tanang paagi nga mahimo.", "position": "p3"},
+    ]
+    polish = CoherencePolishPass(provider, quality_reviewer=_flagged_reviewer({2}))
+
+    result = polish.polish_blocks(
+        source, translated, "English", "Cebuano", document_type=""
+    )
+
+    assert provider.calls == 1, "one polish LLM call for the flagged set"
+    assert len(result) == 3, "block count must never change"
+    assert result[0]["text"] == "Lingkod ang iring sa banig.", \
+        "unflagged block must be untouched"
+    assert result[0]["position"] == "p1", "metadata must be preserved"
+    assert "[polished]" in result[1]["text"], "flagged block must be rewritten"
+    assert result[1]["position"] == "p2", "metadata on rewritten block preserved"
+    assert result[2]["text"] == translated[2]["text"], \
+        "reviewer-passed block must be untouched"
+
+
+def test_coherence_polish_skips_llm_when_nothing_flagged():
+    provider = _PolishProvider(response_text="{}")
+    source = [
+        {"text": "The cat sat on the mat."},
+        {"text": "The dog barked at the moon."},
+    ]
+    translated = [
+        {"text": "Lingkod ang iring sa banig."},
+        {"text": "Mibarkada ang iro sa bulan."},
+    ]
+    polish = CoherencePolishPass(provider, quality_reviewer=_flagged_reviewer(set()))
+
+    result = polish.polish_blocks(source, translated, "English", "Cebuano")
+
+    assert provider.calls == 0, "no LLM call when nothing is flagged"
+    assert result is translated, "input list returned as-is"
+
+
+def test_coherence_polish_fails_open_on_provider_error():
+    class _BoomProvider:
+        name = "boom"
+        model_name = "boom"
+
+        def translate(self, **kwargs):
+            raise RuntimeError("provider down")
+
+    provider = _BoomProvider()
+    source = [
+        {"text": "The dog barked at the moon."},
+    ]
+    translated = [
+        {"text": "The dog barked at the moon."},  # echo → flagged
+    ]
+    polish = CoherencePolishPass(provider)
+
+    result = polish.polish_blocks(source, translated, "English", "Cebuano")
+
+    assert result is translated, "pass must fail open (return input unchanged)"
+
+
+def test_coherence_polish_gated_by_flag_and_target(monkeypatch):
+    from pipeline import document_pipeline as dp
+    from pipeline.translation_pipeline import TranslationPipeline
+    from pipeline.document_context import DocumentContext
+
+    provider = _PolishProvider(response_text="{}")
+    pipe = TranslationPipeline(provider)
+    dpipeline = dp.DocumentPipeline(pipe, ai_analysis_provider=None)
+
+    source = [{"text": "The dog barked at the moon."}]
+    translated = [{"text": "The dog barked at the moon."}]
+
+    class _Req:
+        source_lang = "English"
+        target_lang = "Cebuano"
+
+    def _ctx():
+        ctx = DocumentContext()
+        ctx.document_profile = type("_Profile", (), {"document_type": "story"})()
+        return ctx
+
+    # 1. Flag OFF → never invokes the provider.
+    monkeypatch.setattr(dp, "_TRANSLATION_COHERENCE_POLISH", False)
+    out = dpipeline._coherence_polish_blocks(source, translated, _Req(), _ctx())
+    assert out is translated
+    assert provider.calls == 0
+
+    # 2. Flag ON but target not Cebuano/Filipino → still no-op.
+    monkeypatch.setattr(dp, "_TRANSLATION_COHERENCE_POLISH", True)
+    english_req = _Req()
+    english_req.target_lang = "English"
+    out = dpipeline._coherence_polish_blocks(source, translated, english_req, _ctx())
+    assert out is translated
+    assert provider.calls == 0
+
+    # 3. Flag ON + Cebuano target → pass runs (echo block gets flagged).
+    out = dpipeline._coherence_polish_blocks(source, translated, _Req(), _ctx())
+    assert provider.calls == 1, "polish LLM call must run for Cebuano when enabled"
+    assert out is translated, "no usable rewrites → input returned unchanged"
+
+    # Restore flag for later tests.
+    monkeypatch.setattr(dp, "_TRANSLATION_COHERENCE_POLISH", False)
+
+
+def test_system_prompt_has_coherence_rules():
+    for lang in ("Cebuano", "Filipino"):
+        prompt = build_system_prompt(lang)
+        assert "coherent across the whole document" in prompt, \
+            f"system prompt for {lang} must demand document coherence"
+        assert "SAME translation for the same name" in prompt
+
+
+def test_translation_prompt_has_coherence_note():
+    for lang in ("Cebuano", "Filipino"):
+        prompt = build_translation_prompt("hello", "English", lang)
+        assert "Coherence:" in prompt, \
+            f"translation prompt for {lang} must carry the coherence note"
