@@ -8,11 +8,11 @@ class TranslationReconciliationScheduleTest extends TestCase
 {
     public function test_stale_translation_reconciliation_is_scheduled_with_terminal_updates_enabled(): void
     {
-        $routes = file_get_contents(base_path('routes/console.php'));
+        $bootstrap = file_get_contents(base_path('bootstrap/app.php'));
 
-        $this->assertIsString($routes);
-        $this->assertStringContainsString("translations:reconcile --fail", $routes);
-        $this->assertStringContainsString('everyFiveMinutes()', $routes);
-        $this->assertStringContainsString('withoutOverlapping()', $routes);
+        $this->assertIsString($bootstrap);
+        $this->assertStringContainsString("translations:reconcile --fail", $bootstrap);
+        $this->assertStringContainsString('everyFiveMinutes()', $bootstrap);
+        $this->assertStringContainsString('withoutOverlapping()', $bootstrap);
     }
 }

@@ -64,8 +64,8 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withSchedule(function (Schedule $schedule): void {
         // Reconcile the durable job state machine and flag stuck workers.
-        $schedule->command('translations:reconcile')
-            ->everyFifteenMinutes()
+        $schedule->command('translations:reconcile --fail')
+            ->everyFiveMinutes()
             ->withoutOverlapping();
 
         // Surface queue jobs whose lease expired without completing.

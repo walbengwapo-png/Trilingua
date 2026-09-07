@@ -35,23 +35,23 @@ Route::get('/clear-session', function () {
 
 // Auth routes with rate limiting
 Route::middleware('throttle:10,1')->group(function () {
-    Route::get('/register', [RegisterController::class, 'show'])->name('register');
-    Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
-
-    Route::get('/login', [LoginController::class, 'show'])->name('login');
-    Route::post('/login', [LoginController::class, 'login'])->name('login.attempt');
-
-    // Google OAuth — guest-only, rate limited alongside the other auth routes.
     Route::middleware('guest')->group(function () {
+        Route::get('/register', [RegisterController::class, 'show'])->name('register');
+        Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
+
+        Route::get('/login', [LoginController::class, 'show'])->name('login');
+        Route::post('/login', [LoginController::class, 'login'])->name('login.attempt');
+
+        // Google OAuth is guest-only and rate limited alongside other auth routes.
         Route::get('/auth/google', [GoogleController::class, 'redirect'])->name('auth.google.redirect');
         Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('auth.google.callback');
-    });
 
-    // Password reset
-    Route::get('/forgot-password', [ForgotPasswordController::class, 'show'])->name('password.request');
-    Route::post('/forgot-password', [ForgotPasswordController::class, 'send'])->name('password.email');
-    Route::get('/reset-password/{token}', [ResetPasswordController::class, 'show'])->name('password.reset');
-    Route::post('/reset-password', [ResetPasswordController::class, 'reset'])->name('password.update');
+        // Password reset
+        Route::get('/forgot-password', [ForgotPasswordController::class, 'show'])->name('password.request');
+        Route::post('/forgot-password', [ForgotPasswordController::class, 'send'])->name('password.email');
+        Route::get('/reset-password/{token}', [ResetPasswordController::class, 'show'])->name('password.reset');
+        Route::post('/reset-password', [ResetPasswordController::class, 'reset'])->name('password.update');
+    });
 });
 
 Route::post('/logout', [LoginController::class, 'logout'])
