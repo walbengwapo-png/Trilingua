@@ -39,6 +39,32 @@ class TranslationManager
     }
 
     /**
+     * Headers applied to every python-service request. A shared token lets the
+     * python service reject callers that are not this application.
+     *
+     * @return array<string, string>
+     */
+    private function authHeaders(): array
+    {
+        $token = config('translation.python_service.token');
+        if ($token === null || $token === '') {
+            return [];
+        }
+
+        return ['X-Service-Token' => (string) $token];
+    }
+
+    /**
+     * Add the service token to an Http client if one is configured.
+     */
+    private function withToken($http)
+    {
+        return count($this->authHeaders()) > 0
+            ? $http->withHeaders($this->authHeaders())
+            : $http;
+    }
+
+    /**
      * Translate a text string via the Python AI Engine.
      *
      * @throws TranslationException
@@ -48,7 +74,7 @@ class TranslationManager
         $startTime = microtime(true);
 
         try {
-            $response = Http::timeout($this->timeout)
+            $response = $this->withToken(Http::timeout($this->timeout))
                 ->post("{$this->pythonUrl}/translate/text", $request->toArray());
 
             if ($response->failed()) {
@@ -119,7 +145,7 @@ class TranslationManager
         $startTime = microtime(true);
 
         try {
-            $response = Http::timeout($this->timeout)
+            $response = $this->withToken(Http::timeout($this->timeout))
                 ->attach(
                     'file',
                     file_get_contents($file->getRealPath()),
@@ -224,7 +250,7 @@ class TranslationManager
         $startTime = microtime(true);
 
         try {
-            $http = Http::timeout($this->timeout);
+            $http = $this->withToken(Http::timeout($this->timeout));
 
             if ($originalBytes !== null && $originalBytes !== '') {
                 $http->attach(

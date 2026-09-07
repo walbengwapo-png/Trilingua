@@ -2,64 +2,124 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\TranslationController;
+use App\Jobs\TranslateDocumentJob;
+use App\Models\TranslationJob;
+use App\Models\User;
+use App\Services\BlockService;
 use App\Services\HistoryService;
+use App\Services\MetricsService;
 use App\Services\StorageService;
-use App\Services\TranslationService;
+use App\Services\Translation\TranslationManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Mockery;
 use Tests\TestCase;
 
 class TranslationControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_document_translation_returns_inline_download_payload_when_storage_fails(): void
+    public function test_document_translation_creates_durable_job_and_returns_job_id(): void
     {
-        $user = \App\Models\User::factory()->create();
+        config(['queue.default' => 'database']);
 
-        $tempPath = storage_path('app/testing/fallback-translated.docx');
-        if (!is_dir(dirname($tempPath))) {
-            mkdir(dirname($tempPath), 0755, true);
-        }
-        file_put_contents($tempPath, 'fake translated content');
+        $user = User::factory()->create();
 
-        $service = $this->createMock(TranslationService::class);
-        $service->method('translateDocument')->willReturn($tempPath);
-        $service->method('getOriginalOutputName')->willReturn('sample_translated.docx');
-
-        $storage = $this->createMock(StorageService::class);
-        $storage->expects($this->exactly(2))
-            ->method('uploadFile')
-            ->willReturnOnConsecutiveCalls(
-                ['storage_path' => 'user/originals/test.docx', 'signed_url' => 'https://example.test/original', 'signed_url_expires_at' => now()->toIso8601String()],
-                $this->throwException(new \RuntimeException('storage unavailable'))
-            );
-
-        $history = $this->createMock(HistoryService::class);
-        $history->method('insertRecord')->willReturn(new \App\Models\TranslationHistory());
-
-        $this->app->instance(TranslationService::class, $service);
-        $this->app->instance(StorageService::class, $storage);
-        $this->app->instance(HistoryService::class, $history);
-
-        $file = UploadedFile::fake()->create('sample.docx', 1024, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-
-        $response = $this->actingAs($user)
-            ->postJson('/translate', [
-                'source_lang' => 'English',
-                'target_lang' => 'Cebuano',
-                'document' => $file,
+        $storage = Mockery::mock(StorageService::class);
+        $storage->shouldReceive('uploadWithFallback')
+            ->once()
+            ->andReturn([
+                'backend' => 'supabase',
+                'storage_path' => 'user/originals/abc.docx',
+                'signed_url' => 'https://example.test/original',
+                'signed_url_expires_at' => now()->toIso8601String(),
             ]);
+        $this->app->instance(StorageService::class, $storage);
+
+        $file = UploadedFile::fake()->createWithContent(
+            'sample.docx',
+            'PK' . random_bytes(256)
+        );
+
+        $response = $this->actingAs($user)->post('/translate', [
+            'source_lang' => 'English',
+            'target_lang' => 'Cebuano',
+            'document' => $file,
+        ], ['Accept' => 'application/json']);
 
         $response->assertOk();
-        $response->assertJsonFragment([
-            'download_filename' => 'sample_translated.docx',
-        ]);
-        $response->assertJsonPath('download_mode', 'inline');
-        $this->assertNotEmpty($response->json('download_data'));
+        $response->assertJsonPath('status', 'processing');
+        $response->assertJsonStructure(['job_id', 'original_filename']);
 
-        @unlink($tempPath);
+        // Durable row created with canonical content hash + opaque storage key.
+        $jobRow = TranslationJob::where('user_id', $user->id)->firstOrFail();
+        $this->assertSame(64, strlen((string) $jobRow->payload_hash));
+        $this->assertSame(TranslationJob::STATUS_QUEUED, $jobRow->status);
+        $this->assertSame('user/originals/abc.docx', $jobRow->original_storage_path);
+
+        // A single queued database job exists.
+        $this->assertSame(1, DB::table('jobs')->count());
+        $queued = DB::table('jobs')->first();
+        $payload = json_decode($queued->payload, true);
+        /** @var TranslateDocumentJob $queuedJob */
+        $queuedJob = unserialize($payload['data']['command']);
+        $this->assertInstanceOf(TranslateDocumentJob::class, $queuedJob);
+        $this->assertSame((int) $jobRow->id, $queuedJob->translationJobId);
+    }
+
+    public function test_document_extension_spoof_is_rejected_before_processing(): void
+    {
+        $user = User::factory()->create();
+
+        // NUL bytes = binary without DOCX zip magic; claim .docx → must 422.
+        $file = UploadedFile::fake()->createWithContent(
+            'malware.docx',
+            "\x00\x00MZ\x90\x00" . random_bytes(64)
+        );
+
+        $response = $this->actingAs($user)->post('/translate', [
+            'source_lang' => 'English',
+            'target_lang' => 'Cebuano',
+            'document' => $file,
+        ], ['Accept' => 'application/json']);
+
+        $response->assertStatus(422);
+        $this->assertSame(0, TranslationJob::count());
+        $this->assertSame(0, DB::table('jobs')->count());
+    }
+
+    public function test_upload_quota_blocks_excessive_daily_documents(): void
+    {
+        config(['translation.upload.max_daily_files' => 1]);
+
+        $user = User::factory()->create();
+
+        // One document already counted today.
+        \App\Models\TranslationHistory::create([
+            'user_id'          => $user->id,
+            'translation_type' => 'document',
+            'source_language'  => 'English',
+            'target_language'  => 'Cebuano',
+            'created_at'       => now()->subMinute()->toIso8601String(),
+            'status'           => 'completed',
+        ]);
+
+        $file = UploadedFile::fake()->createWithContent('e.docx', 'PK' . random_bytes(64));
+
+        $response = $this->actingAs($user)->post('/translate', [
+            'source_lang' => 'English',
+            'target_lang' => 'Cebuano',
+            'document' => $file,
+        ], ['Accept' => 'application/json']);
+
+        $response->assertStatus(429);
+        $this->assertSame(0, TranslationJob::count());
+    }
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
     }
 }

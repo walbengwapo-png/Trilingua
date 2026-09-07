@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\TextReviewController;
 use App\Http\Controllers\Admin\DocumentReviewController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\JobController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 
 Route::get('/', function () {
@@ -112,6 +113,10 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
 
         // Read-only audit trail viewer
         Route::get('/audit', [AuditLogController::class, 'index'])->name('audit');
+
+        // Translation/queue ops
+        Route::get('/jobs', [JobController::class, 'index'])->name('jobs.index');
+        Route::post('/jobs/retry/{failedJobId}', [JobController::class, 'retry'])->name('jobs.retry');
 
         // Read-only user directory
         Route::get('/users', [UserController::class, 'index'])->name('users.index');

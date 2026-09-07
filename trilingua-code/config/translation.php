@@ -14,6 +14,23 @@ return [
     'python_service' => [
         'url' => env('PYTHON_SERVICE_URL', 'http://127.0.0.1:5000'),
         'timeout' => env('PYTHON_SERVICE_TIMEOUT', 600),
+        // Shared secret the Laravel client presents as X-Service-Token so the
+        // python service can reject non-app callers. Deploy both sides together.
+        'token' => env('PYTHON_SERVICE_TOKEN'),
+    ],
+    
+    /*
+    |--------------------------------------------------------------------------
+    | Upload Protection
+    |--------------------------------------------------------------------------
+    |
+    | Per-user per-day document upload limits (count + total bytes) and file
+    | content-sniffing. These gate abusive usage of the python engine.
+    |
+    */
+    'upload' => [
+        'max_daily_files' => (int) env('TRANSLATION_MAX_DAILY_FILES', 25),
+        'max_daily_bytes' => (int) env('TRANSLATION_MAX_DAILY_BYTES', 262144000),
     ],
     
     /*

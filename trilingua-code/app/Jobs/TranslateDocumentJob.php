@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Exceptions\TranslationException;
+use App\Models\TranslationJob;
 use App\Models\User;
 use App\Notifications\TranslationCompleted;
 use App\Notifications\TranslationFailed;
@@ -10,39 +12,50 @@ use App\Services\HistoryService;
 use App\Services\MetricsService;
 use App\Services\StorageService;
 use App\Services\Translation\TranslationManager;
-use App\Services\TranslationService;
 use App\Support\AdminNotifier;
 use App\Support\ReviewStatus;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-class TranslateDocumentJob implements ShouldQueue, ShouldBeUnique
+class TranslateDocumentJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
-     * Hold the unique lock for the full maximum translation window (900s),
-     * matching the bumped DB_QUEUE_RETRY_AFTER and exceeding the Python
-     * service's 600s timeout. Prevents identical duplicate jobs from ever
-     * being queued while one is in flight.
+     * Maximum attempts per job. Queued jobs that keep faulting before upload
+     * will retry with exponential backoff, then land in the failed_jobs table
+     * where an admin can inspect and replay them.
      */
-    public int $uniqueFor = 900;
+    public int $tries = 3;
 
     /**
-     * The UUID for this job, set explicitly so the controller and cache key match.
+     * Backoff (seconds) per eventual attempt: 30s then 120s.
+     */
+    public array $backoff = [30, 120];
+
+    /**
+     * Timeout must exceed the python service's 600s limit plus upload margins.
+     */
+    public int $timeout = 650;
+
+    /**
+     * The UUID for this job; surfaced as job_id to the frontend and used as the
+     * shared key between translation_jobs and translation_history.job_id.
      */
     private ?string $jobUuid = null;
 
     /**
      * Create a new job instance.
+     *
+     * @param  int|null  $translationJobId  Primary key of the translation_jobs
+     *                                      row created by the controller. Always
+     *                                      set for jobs produced by the app.
      */
     public function __construct(
         public string $originalName,
@@ -55,7 +68,9 @@ class TranslateDocumentJob implements ShouldQueue, ShouldBeUnique
         public int $userId,
         public ?string $originalStoragePath = null,
         public string $mode = 'balanced',
-        public ?int $parentDocumentId = null
+        public ?int $parentDocumentId = null,
+        public ?string $originalStorageBackend = 'supabase',
+        public ?int $translationJobId = null,
     ) {}
 
     /**
@@ -70,52 +85,8 @@ class TranslateDocumentJob implements ShouldQueue, ShouldBeUnique
     }
 
     /**
-     * Dedup key: identical submissions by the same user (same filename, size,
-     * and language pair) map to the same unique id, so a double-click or
-     * retry cannot enqueue a second copy of a job that is still running.
-     */
-    public function uniqueId(): string
-    {
-        return self::dedupPayload(
-            $this->userId, $this->originalName, $this->fileSize,
-            $this->sourceLang, $this->targetLang,
-        );
-    }
-
-    /**
-     * Normalized payload shared by the unique lock and the controller's
-     * in-flight marker, so both dedup mechanisms agree on the same key.
-     */
-    public static function dedupPayload(
-        int $userId, string $originalName, int $fileSize,
-        string $sourceLang, string $targetLang
-    ): string {
-        return implode('|', [
-            (string) $userId,
-            $originalName,
-            (string) $fileSize,
-            $sourceLang,
-            $targetLang,
-        ]);
-    }
-
-    /**
-     * Cache key marking this exact submission as in-flight. The controller
-     * checks it before dispatching (to answer the user immediately instead of
-     * returning a job_id that will never resolve) and the job clears it when
-     * it finishes. The TTL is a safety net in case a job dies mid-flight.
-     */
-    public static function inflightKey(
-        int $userId, string $originalName, int $fileSize,
-        string $sourceLang, string $targetLang
-    ): string {
-        return 'translation_inflight:' . md5(
-            self::dedupPayload($userId, $originalName, $fileSize, $sourceLang, $targetLang)
-        );
-    }
-
-    /**
-     * Execute the job.
+     * Execute the job. The translation_jobs row is the durable state machine;
+     * the cache entry is only a fast path for the polling endpoint.
      */
     public function handle(
         TranslationManager $translationManager,
@@ -124,21 +95,23 @@ class TranslateDocumentJob implements ShouldQueue, ShouldBeUnique
         BlockService $blockService,
         MetricsService $metricsService
     ): void {
-        // Store initial "processing" state in cache so frontend knows we're working
-        $this->storeResult([
-            'status' => 'processing',
-            'message' => 'Document queued for translation. Processing will begin shortly.',
-        ]);
+        @set_time_limit(0);
 
-        // Refresh the in-flight marker (a worker crash / retry keeps it alive).
-        $this->setInflightMarker();
+        $job = $this->resolveJob();
+        $job?->markProcessing();
+
+        $this->storeProgress(10, 'Document queued for translation. Processing will begin shortly.');
 
         try {
-            @set_time_limit(0);
-
-            // Create a temporary UploadedFile from the temp path
             if (!file_exists($this->tempPath)) {
                 throw new \RuntimeException('Uploaded file not found at: ' . $this->tempPath);
+            }
+
+            // Ensure the ORIGINAL file is stored durably (used by re-translation
+            // and the review workspace). If the initial upload failed but the
+            // durable fallback exists, backfill it now from the worker's copy.
+            if ($this->originalStoragePath === null) {
+                $this->backfillOriginalStorage($storageService);
             }
 
             $uploadedFile = new UploadedFile(
@@ -148,6 +121,9 @@ class TranslateDocumentJob implements ShouldQueue, ShouldBeUnique
                 null,
                 true
             );
+
+            $job?->noteProgress(15);
+            $this->storeProgress(15, 'Translating document...');
 
             // 1. Translate the document via TranslationManager
             $translationResult = $translationManager->translateDocument(
@@ -160,7 +136,10 @@ class TranslateDocumentJob implements ShouldQueue, ShouldBeUnique
 
             $downloadFilename = $translationResult['download_filename'];
 
-            // Save the translated file to a temp path for storage/fallback
+            $job?->noteProgress(70);
+            $this->storeProgress(70, 'Saving translated file...');
+
+            // 2. Write the translated file to worker-local scratch.
             $outputPath = storage_path('app/temp/' . Str::uuid() . '_' . $downloadFilename);
             if (!is_dir(dirname($outputPath))) {
                 mkdir(dirname($outputPath), 0755, true);
@@ -176,148 +155,209 @@ class TranslateDocumentJob implements ShouldQueue, ShouldBeUnique
                 throw new \RuntimeException('Translation output file was empty or unreadable: ' . $outputPath);
             }
 
-            // 2. Try Supabase upload first
-            $translatedStoragePath = $this->userId . '/' . basename($outputPath);
+            // 3. Store the translated file durably (primary with retries, then
+            //    the encrypted persistent fallback backend). There is NO inline
+            //    base64 fallback: output is never parked on the worker alone.
+            $translatedStoragePath = $this->userId . '/translations/' . (string) Str::uuid() . $this->normalizedOutputExt($downloadFilename);
 
+            $job?->noteProgress(80);
+            $this->storeProgress(80, 'Uploading translated file...');
+
+            $upload = $storageService->uploadWithFallback($outputPath, $translatedStoragePath);
+
+            $job?->noteProgress(95);
+
+            // 4. Record the translation in history (source of truth for the UI).
+            $history = null;
             try {
-                $storageResult = $storageService->uploadFile($outputPath, $translatedStoragePath);
-                
-                // Upload succeeded — clean up temp file
-                $this->cleanupFile($outputPath);
-                $this->cleanupFile($this->tempPath);
-
-                // Store result with signed URL
-                $this->storeResult([
-                    'status' => 'completed',
-                    'download_url' => $storageResult['signed_url'],
-                    'download_filename' => $downloadFilename,
-                    'signed_url_expires_at' => $storageResult['signed_url_expires_at'],
+                $history = $historyService->insertRecord([
+                    'user_id'                  => $this->userId,
+                    'original_filename'        => $this->originalName,
+                    'translated_filename'      => $downloadFilename,
+                    'source_language'          => $this->sourceLang,
+                    'target_language'          => $this->targetLang,
+                    'created_at'               => now()->toIso8601String(),
+                    'storage_path'             => $upload['storage_path'],
+                    'storage_backend'          => $upload['backend'],
+                    'original_storage_path'    => $this->originalStoragePath,
+                    'original_storage_backend' => $this->originalStorageBackend,
+                    'parent_document_id'       => $this->parentDocumentId,
+                    'file_size'                => $this->fileSize,
+                    'status'                   => 'completed',
+                    'review_status'            => ReviewStatus::PENDING,
+                    'signed_url_expires_at'    => $upload['signed_url_expires_at'],
+                    'job_id'                   => $this->uuid(),
                 ]);
 
-                // Create history record (non-blocking)
-                $history = null;
-                try {
-                    $history = $historyService->insertRecord([
-                        'user_id'               => $this->userId,
-                        'original_filename'     => $this->originalName,
-                        'translated_filename'   => $downloadFilename,
-                        'source_language'       => $this->sourceLang,
-                        'target_language'       => $this->targetLang,
-                        'created_at'            => now()->toIso8601String(),
-                        'storage_path'          => $translatedStoragePath,
-                        'original_storage_path' => $this->originalStoragePath,
-                        'file_size'             => $this->fileSize,
-                        'status'                => 'completed',
-                        'review_status'         => ReviewStatus::PENDING,
-                        'signed_url_expires_at' => $storageResult['signed_url_expires_at'],
-                        'job_id'                => $this->jobUuid,
-                        'parent_document_id'    => $this->parentDocumentId,
-                    ]);
-
-                    // Persist per-block review data + roll up quality score.
-                    $this->persistDocumentBlocks($blockService, $metricsService, $history, $translationResult);
-                } catch (\Throwable $e) {
-                    Log::warning('Job: Failed to insert history record (non-fatal)', [
-                        'exception' => $e->getMessage(),
-                        'user_id' => $this->userId,
-                    ]);
-                }
-
-                $this->notifyCompleted($history);
-                $this->notifyAdminsAwaitingReview($history);
-                $this->clearInflightMarker();
-
-                return;
-            } catch (\Throwable $storageError) {
-                // Supabase upload failed — try inline download as fallback
-                Log::warning('Job: Supabase upload failed, trying inline download fallback', [
-                    'exception' => $storageError->getMessage(),
-                    'user_id' => $this->userId,
+                // Persist per-block review data + roll up quality score.
+                $this->persistDocumentBlocks($blockService, $metricsService, $history, $translationResult);
+            } catch (\Throwable $e) {
+                Log::error('Job: Failed to insert history record (non-fatal)', [
+                    'exception' => $e->getMessage(),
+                    'user_id'   => $this->userId,
                 ]);
-
-                $inlineDownload = $this->buildInlineDownloadPayload($outputPath, $downloadFilename);
-                $this->cleanupFile($outputPath);
-                $this->cleanupFile($this->tempPath);
-
-                if (!empty($inlineDownload['download_data'])) {
-                    $this->storeResult([
-                        'status' => 'completed',
-                        'download_mode' => 'inline',
-                        'download_data' => $inlineDownload['download_data'],
-                        'download_filename' => $downloadFilename,
-                        'download_mime' => $inlineDownload['download_mime'],
-                    ]);
-
-                    // Create history record for inline download
-                    $history = null;
-                    try {
-                        $history = $historyService->insertRecord([
-                            'user_id'               => $this->userId,
-                            'original_filename'     => $this->originalName,
-                            'translated_filename'   => $downloadFilename,
-                            'source_language'       => $this->sourceLang,
-                            'target_language'       => $this->targetLang,
-                            'created_at'            => now()->toIso8601String(),
-                            'file_size'             => $this->fileSize,
-                            'status'                => 'completed',
-                            'review_status'         => ReviewStatus::PENDING,
-                            'job_id'                => $this->jobUuid,
-                            'parent_document_id'    => $this->parentDocumentId,
-                        ]);
-
-                        // Persist per-block review data + roll up quality score.
-                        $this->persistDocumentBlocks($blockService, $metricsService, $history, $translationResult);
-                    } catch (\Throwable $e) {
-                        Log::warning('Job: Failed to insert history record for inline download (non-fatal)', [
-                            'exception' => $e->getMessage(),
-                        ]);
-                    }
-
-                    $this->notifyCompleted($history);
-                    $this->notifyAdminsAwaitingReview($history);
-                    $this->clearInflightMarker();
-
-                    return;
-                }
-
-                // Both upload and inline failed
-                throw new \RuntimeException(
-                    'Failed to deliver translated file: ' . $storageError->getMessage()
-                );
             }
 
+            // 5. Finalize the state machine: mark complete + publish download URL.
+            $downloadUrl = $this->downloadUrlFor($history, $upload);
+
+            $job?->markCompleted($upload['backend'], $upload['storage_path'], $history?->id);
+
+            $this->storeResult([
+                'status' => 'completed',
+                'download_url' => $downloadUrl,
+                'download_filename' => $downloadFilename,
+                'signed_url_expires_at' => $upload['signed_url_expires_at'],
+            ]);
+
+            $this->notifyCompleted($history);
+            $this->notifyAdminsAwaitingReview($history);
+
+            return;
         } catch (\Throwable $e) {
             Log::error('Job: Translation failed', [
                 'exception' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $this->userId,
-                'file' => $this->originalName,
+                'trace'     => $e->getTraceAsString(),
+                'user_id'   => $this->userId,
+                'file'      => $this->originalName,
+                'job_id'    => $this->uuid(),
             ]);
 
-            // Clean up temp files
+            // Clean up worker-local scratch.
             $this->cleanupFile($this->tempPath);
 
-            // ALWAYS store the failure result so frontend polling can detect it
+            $job?->noteProgress(max(0, (int) ($job->progress ?? 0)));
+            $job?->noteError($e);
+
+            if ($this->isRetryable($e) && $this->attempts() + 1 < $this->tries) {
+                // Return the job to the queue; the worker will retry with backoff.
+                $job?->markQueued();
+                $this->storeResult([
+                    'status' => 'processing',
+                    'message' => 'A temporary error occurred. Retrying...',
+                ]);
+                $this->release(($this->backoff[$this->attempts()] ?? 120));
+                return;
+            }
+
+            // Terminal failure: surface it to the frontend AND to failed_jobs
+            // so operators can inspect and replay. This is the fix for the
+            // finding that failures were being swallowed by cache-only results.
             $this->storeResult([
                 'status' => 'failed',
-                'error' => $e->getMessage(),
+                'error'  => $e->getMessage(),
             ]);
 
             $this->notifyFailed($this->originalName, $e->getMessage());
-            $this->clearInflightMarker();
 
-            // Do NOT call $this->fail() — with sync queue, that would throw an
-            // exception back to the controller causing a 500 error. Instead we
-            // store the failure in cache for the frontend to poll.
+            // Restore Laravel failed_jobs visibility (the audit finding). Only
+            // tolerate callers that invoke handle() without a bound queue job
+            // (e.g. unit tests); the worker always has one.
+            try {
+                $this->fail($e);
+            } catch (\Throwable $failError) {
+                Log::warning('Job: could not record failed_jobs entry (no bound job)', [
+                    'exception' => $failError->getMessage(),
+                    'job_id'    => $this->uuid(),
+                ]);
+            }
         }
     }
 
     /**
+     * If the original file was never durably stored at upload time, persist it
+     * now from the worker's persisted copy using the fallback/primary storage.
+     */
+    private function backfillOriginalStorage(StorageService $storageService): void
+    {
+        if (!file_exists($this->tempPath)) {
+            return;
+        }
+        try {
+            $storagePath = $this->userId . '/originals/' . (string) Str::uuid() . $this->originalExt;
+            $upload = $storageService->uploadWithFallback($this->tempPath, $storagePath);
+            $this->originalStoragePath = $upload['storage_path'];
+            $this->originalStorageBackend = $upload['backend'];
+        } catch (\Throwable $e) {
+            Log::warning('Job: failed to backfill original storage (non-fatal)', [
+                'exception' => $e->getMessage(),
+                'user_id'   => $this->userId,
+            ]);
+        }
+    }
+
+    private function downloadUrlFor(?\App\Models\TranslationHistory $history, array $upload): ?string
+    {
+        // Durable-fallback files are served by the app's auth-protected route.
+        if ($upload['backend'] === StorageService::BACKEND_LOCAL && $history !== null) {
+            return route('history.file', ['id' => $history->id]);
+        }
+
+        return $upload['signed_url'] ?? null;
+    }
+
+    private function normalizedOutputExt(string $filename): string
+    {
+        $ext = strtolower((string) pathinfo($filename, PATHINFO_EXTENSION));
+        return $ext === '' || strlen($ext) > 10 ? '.bin' : '.' . $ext;
+    }
+
+    private function isRetryable(\Throwable $e): bool
+    {
+        if ($e instanceof TranslationException) {
+            $code = $e->getCode();
+            if (in_array($code, [503, 504], true)) {
+                return true;
+            }
+            return str_contains((string) $e->getMessage(), 'Could not connect');
+        }
+        return str_contains((string) $e->getMessage(), 'timed out');
+    }
+
+    /**
+     * Load the durable state-machine row for this job, tolerating a missing
+     * row (jobs dispatched before the migration ran, or a dropped DB).
+     */
+    private function resolveJob(): ?TranslationJob
+    {
+        if ($this->translationJobId === null) {
+            return null;
+        }
+        try {
+            return TranslationJob::find($this->translationJobId);
+        } catch (\Throwable $e) {
+            Log::warning('Job: translation_jobs row unavailable (continuing anyway)', [
+                'job_id' => $this->translationJobId,
+                'exception' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Persist a per-milestone result entry for the polling endpoint.
+     */
+    protected function storeResult(array $result): void
+    {
+        $result['user_id'] = $this->userId;
+        cache()->put(
+            'translation_job_' . $this->uuid(),
+            $result,
+            now()->addHours(1)
+        );
+    }
+
+    protected function storeProgress(int $progress, string $message): void
+    {
+        $this->storeResult([
+            'status' => 'processing',
+            'progress' => $progress,
+            'message' => $message,
+        ]);
+    }
+
+    /**
      * Persist per-block review data and the sidecar onto the history row.
-     *
-     * Blocks only exist for document translations and are never persisted for
-     * text translations. This is a best-effort post-processing step — a failure
-     * here must not fail an otherwise-successful translation delivery.
      */
     private function persistDocumentBlocks(
         BlockService $blockService,
@@ -364,49 +404,6 @@ class TranslateDocumentJob implements ShouldQueue, ShouldBeUnique
     }
 
     /**
-     * Store the job result for polling.
-     *
-     * Every entry is stamped with the owning user id so the (auth-protected)
-     * status endpoint can verify ownership of an in-flight job before its
-     * history row exists.
-     */
-    protected function storeResult(array $result): void
-    {
-        $result['user_id'] = $this->userId;
-        cache()->put(
-            'translation_job_' . $this->jobUuid,
-            $result,
-            now()->addHours(1)
-        );
-    }
-
-    /**
-     * Mark this exact submission as in-flight (short TTL safety net).
-     */
-    protected function setInflightMarker(): void
-    {
-        Cache::put(
-            TranslateDocumentJob::inflightKey(
-                $this->userId, $this->originalName, $this->fileSize,
-                $this->sourceLang, $this->targetLang,
-            ),
-            true,
-            now()->addMinutes(20)
-        );
-    }
-
-    /**
-     * Clear the in-flight marker once the job has delivered or failed.
-     */
-    protected function clearInflightMarker(): void
-    {
-        Cache::forget(TranslateDocumentJob::inflightKey(
-            $this->userId, $this->originalName, $this->fileSize,
-            $this->sourceLang, $this->targetLang,
-        ));
-    }
-
-    /**
      * Push a "translation completed" database notification to the owner.
      */
     private function notifyCompleted(?\App\Models\TranslationHistory $history): void
@@ -448,33 +445,5 @@ class TranslateDocumentJob implements ShouldQueue, ShouldBeUnique
             return;
         }
         AdminNotifier::awaitingReview($history, User::find($this->userId)?->name);
-    }
-
-    /**
-     * Build inline download payload for fallback.
-     */
-    protected function buildInlineDownloadPayload(string $outputPath, string $downloadFilename): array
-    {
-        try {
-            if (!file_exists($outputPath)) {
-                return ['download_filename' => $downloadFilename, 'download_data' => '', 'download_mime' => 'application/octet-stream'];
-            }
-
-            $contents = file_get_contents($outputPath);
-            $mimeType = mime_content_type($outputPath) ?: 'application/octet-stream';
-
-            if ($contents === false || $contents === '') {
-                return ['download_filename' => $downloadFilename, 'download_data' => '', 'download_mime' => $mimeType];
-            }
-
-            return [
-                'download_filename' => $downloadFilename,
-                'download_data'     => 'data:' . $mimeType . ';base64,' . base64_encode($contents),
-                'download_mime'     => $mimeType,
-            ];
-        } catch (\Throwable $e) {
-            Log::warning('Job: buildInlineDownloadPayload failed', ['exception' => $e->getMessage()]);
-            return ['download_filename' => $downloadFilename, 'download_data' => '', 'download_mime' => 'application/octet-stream'];
-        }
     }
 }

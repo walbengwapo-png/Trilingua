@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Console\Scheduling\Schedule;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -30,4 +31,16 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
-    })->create();
+    })
+    ->withSchedule(function (Schedule $schedule): void {
+        // Reconcile the durable job state machine and flag stuck workers.
+        $schedule->command('translations:reconcile')
+            ->everyFifteenMinutes()
+            ->withoutOverlapping();
+
+        // Surface queue jobs whose lease expired without completing.
+        $schedule->command('queue:check-stale --threshold=900')
+            ->everyFifteenMinutes()
+            ->withoutOverlapping();
+    })
+    ->create();

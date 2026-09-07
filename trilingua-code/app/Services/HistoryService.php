@@ -30,7 +30,9 @@ class HistoryService
             'target_language'       => $data['target_language'] ?? null,
             'created_at'            => $data['created_at'] ?? now(),
             'storage_path'          => $data['storage_path'] ?? null,
+            'storage_backend'       => $data['storage_backend'] ?? 'supabase',
             'original_storage_path' => $data['original_storage_path'] ?? null,
+            'original_storage_backend' => $data['original_storage_backend'] ?? 'supabase',
             'parent_document_id'    => $data['parent_document_id'] ?? null,
             'file_size'             => $data['file_size'] ?? null,
             'status'                => $data['status'] ?? 'completed',
@@ -163,49 +165,52 @@ class HistoryService
 
     /**
      * Delete a history record and its child translations.
-     * Also returns storage paths so the caller can delete files from Supabase.
+     * Also returns storage entries so the caller can delete files from their
+     * respective backends (each entry carries its own backend).
      *
      * @param  int $id      The record ID.
      * @param  int $userId  The authenticated user's ID (ownership check).
-     * @return array{deleted: bool, storage_paths: string[], original_storage_paths: string[]}
+     * @return array{deleted: bool, storage_entries: array<int, array{backend: string, path: string}>}
      */
     public function deleteRecord(int $id, int $userId): array
     {
         $record = TranslationHistory::find($id);
 
         if (!$record || (int) $record->user_id !== $userId) {
-            return ['deleted' => false, 'storage_paths' => [], 'original_storage_paths' => []];
+            return ['deleted' => false, 'storage_entries' => []];
         }
 
-        $storagePaths = [];
-        $originalStoragePaths = [];
+        $storageEntries = [];
 
-        // Collect child translations' storage paths
+        // Collect child translations' storage entries
         $children = TranslationHistory::where('parent_document_id', $id)->get();
         foreach ($children as $child) {
-            if ($child->storage_path) {
-                $storagePaths[] = $child->storage_path;
-            }
-            if ($child->original_storage_path) {
-                $originalStoragePaths[] = $child->original_storage_path;
+            foreach ([
+                ['backend' => $child->storage_backend ?: 'supabase', 'path' => $child->storage_path],
+                ['backend' => $child->original_storage_backend ?: 'supabase', 'path' => $child->original_storage_path],
+            ] as $entry) {
+                if (!empty($entry['path'])) {
+                    $storageEntries[] = $entry;
+                }
             }
             $child->delete();
         }
 
-        // Collect this record's own storage paths
-        if ($record->storage_path) {
-            $storagePaths[] = $record->storage_path;
-        }
-        if ($record->original_storage_path) {
-            $originalStoragePaths[] = $record->original_storage_path;
+        // Collect this record's own storage entries
+        foreach ([
+            ['backend' => $record->storage_backend ?: 'supabase', 'path' => $record->storage_path],
+            ['backend' => $record->original_storage_backend ?: 'supabase', 'path' => $record->original_storage_path],
+        ] as $entry) {
+            if (!empty($entry['path'])) {
+                $storageEntries[] = $entry;
+            }
         }
 
         $record->delete();
 
         return [
             'deleted' => true,
-            'storage_paths' => $storagePaths,
-            'original_storage_paths' => $originalStoragePaths,
+            'storage_entries' => $storageEntries,
         ];
     }
 

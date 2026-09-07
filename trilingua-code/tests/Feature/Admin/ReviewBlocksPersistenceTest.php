@@ -75,11 +75,13 @@ class ReviewBlocksPersistenceTest extends TestCase
 
         $translationManager = app(\App\Services\Translation\TranslationManager::class);
         $storageService = \Mockery::mock(\App\Services\StorageService::class);
-        $storageService->shouldReceive('uploadFile')->once()->andReturn([
+        $storageService->shouldReceive('uploadWithFallback')->once()->andReturn([
+            'backend' => 'supabase',
             'storage_path' => '5/output.txt',
             'signed_url' => 'https://example.test/output',
             'signed_url_expires_at' => now()->toIso8601String(),
         ]);
+        $metricsService = \Mockery::mock(\App\Services\MetricsService::class);
 
         $job = new TranslateDocumentJob(
             'sample.txt',
@@ -98,6 +100,7 @@ class ReviewBlocksPersistenceTest extends TestCase
             $storageService,
             app(HistoryService::class),
             app(BlockService::class),
+            $metricsService,
         );
 
         // ── Proof: blocks persisted with correct owners and values.

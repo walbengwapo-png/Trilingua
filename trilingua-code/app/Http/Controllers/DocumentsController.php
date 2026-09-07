@@ -114,32 +114,107 @@ class DocumentsController extends Controller
 
         try {
             // Download the original file so the job can process it from disk.
-            $originalBytes = $this->storage->downloadFile($record->original_storage_path);
+            $originalBytes = $this->storage->read(
+                $record->original_storage_backend ?: 'supabase',
+                $record->original_storage_path,
+            );
 
             $persistDir = storage_path('app/uploads/' . Str::uuid());
             if (!is_dir($persistDir)) {
                 mkdir($persistDir, 0755, true);
             }
             $originalName = $record->original_filename ?? 'document.' . pathinfo($record->original_storage_path, PATHINFO_EXTENSION);
-            $persistentPath = $persistDir . DIRECTORY_SEPARATOR . $originalName;
+            $persistentPath = $persistDir . DIRECTORY_SEPARATOR . 'source.' . strtolower((string) pathinfo($originalName, PATHINFO_EXTENSION));
             file_put_contents($persistentPath, $originalBytes);
 
             $originalExt = strtolower('.' . pathinfo($originalName, PATHINFO_EXTENSION));
+            $fileSize = (int) ((int) $record->file_size ?: strlen((string) $originalBytes));
+
+            // Durable dedup: identical re-translation attempts collapse to the
+            // existing active or completed result.
+            $contentHash = hash_file('sha256', $persistentPath);
+            $payloadHash = \App\Models\TranslationJob::payloadHash(
+                (int) Auth::id(),
+                $contentHash,
+                (string) ($record->source_language ?? ''),
+                (string) $validated['target_lang'],
+                'balanced',
+                $record->sidecar['pdf_column_mode'] ?? 'auto',
+                (int) $record->id,
+            );
+
+            $completed = \App\Models\TranslationJob::where('user_id', Auth::id())
+                ->where('payload_hash', $payloadHash)
+                ->where('status', \App\Models\TranslationJob::STATUS_COMPLETED)
+                ->orderByDesc('id')
+                ->first();
+
+            if ($completed !== null) {
+                $history = \App\Models\TranslationHistory::find($completed->translation_history_id);
+                if ($history !== null) {
+                    return response()->json([
+                        'job_id' => $completed->uuid,
+                        'status' => 'completed',
+                        'download_url' => $this->historyDownloadUrl($history),
+                        'download_filename' => $history->translated_filename,
+                        'reused' => true,
+                    ]);
+                }
+            }
+
+            $existingActive = \App\Models\TranslationJob::where('user_id', Auth::id())
+                ->where('payload_hash', $payloadHash)
+                ->whereIn('status', \App\Models\TranslationJob::ACTIVE_STATUSES)
+                ->orderByDesc('id')
+                ->first();
+
+            if ($existingActive !== null) {
+                return response()->json([
+                    'job_id' => $existingActive->uuid,
+                    'status' => 'processing',
+                    'duplicate' => true,
+                    'message' => 'This re-translation is already in progress.',
+                ]);
+            }
+
+            $jobRow = \App\Models\TranslationJob::create([
+                'user_id'                => Auth::id(),
+                'payload_hash'           => $payloadHash,
+                'original_name'          => $originalName,
+                'original_ext'           => $originalExt,
+                'source_lang'            => (string) ($record->source_language ?? ''),
+                'target_lang'            => (string) $validated['target_lang'],
+                'pdf_column_mode'        => $record->sidecar['pdf_column_mode'] ?? 'auto',
+                'mode'                   => 'balanced',
+                'file_size'              => $fileSize,
+                'original_storage_path'  => $record->original_storage_path,
+                'original_storage_backend' => $record->original_storage_backend ?: 'supabase',
+                'parent_document_id'     => (int) $record->id,
+                'status'                 => \App\Models\TranslationJob::STATUS_CREATED,
+            ]);
 
             $job = new TranslateDocumentJob(
                 $originalName,
                 $originalExt,
-                (int) $record->file_size ?? strlen((string) $originalBytes),
-                $record->source_language ?? '',
-                $validated['target_lang'],
+                $fileSize,
+                (string) ($record->source_language ?? ''),
+                (string) $validated['target_lang'],
                 $record->sidecar['pdf_column_mode'] ?? 'auto',
                 $persistentPath,
                 Auth::id(),
                 $record->original_storage_path,
                 'balanced',
-                $record->id,
+                (int) $record->id,
+                $record->original_storage_backend ?: 'supabase',
+                (int) $jobRow->id,
             );
             $jobId = $job->uuid();
+
+            $jobRow->uuid = $jobId;
+            $jobRow->status = \App\Models\TranslationJob::STATUS_QUEUED;
+            $jobRow->progress = 5;
+            $jobRow->last_heartbeat_at = now();
+            $jobRow->save();
 
             dispatch($job);
 
@@ -157,6 +232,22 @@ class DocumentsController extends Controller
             return response()->json([
                 'error' => 'Unable to re-translate the document. Please try again later.',
             ], 500);
+        }
+    }
+
+    /**
+     * Build a user-facing download URL honoring the record's storage backend.
+     */
+    private function historyDownloadUrl(\App\Models\TranslationHistory $history): string
+    {
+        if (($history->storage_backend ?: 'supabase') === 'local') {
+            return (string) route('history.file', ['id' => $history->id]);
+        }
+
+        try {
+            return (string) $this->storage->generateSignedUrl($history->storage_path)['signed_url'];
+        } catch (\Throwable $e) {
+            return (string) route('history.file', ['id' => $history->id]);
         }
     }
 }

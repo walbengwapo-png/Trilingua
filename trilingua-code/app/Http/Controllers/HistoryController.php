@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\TranslationHistory;
 use App\Services\HistoryService;
 use App\Services\StorageService;
+use App\Support\SafeFileNames;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -104,12 +105,14 @@ class HistoryController extends Controller
 
         $filename = $record['translated_filename'] ?: 'translation.pdf';
         $ext      = strtolower((string) pathinfo((string) $filename, PATHINFO_EXTENSION));
+        $backend  = $record['storage_backend'] ?? StorageService::BACKEND_SUPABASE;
 
         try {
-            $bytes = $this->storage->downloadFile($record['storage_path']);
+            $bytes = $this->storage->read($backend, $record['storage_path']);
         } catch (\Throwable $e) {
             Log::error('HistoryController::showFile failed', [
                 'storage_path' => $record['storage_path'],
+                'backend'      => $backend,
                 'exception'    => $e->getMessage(),
             ]);
             abort(404, 'Translated file not found.');
@@ -139,12 +142,14 @@ class HistoryController extends Controller
 
         $filename = $record['original_filename'] ?: 'original.pdf';
         $ext      = strtolower((string) pathinfo((string) $filename, PATHINFO_EXTENSION));
+        $backend  = $record['original_storage_backend'] ?? StorageService::BACKEND_SUPABASE;
 
         try {
-            $bytes = $this->storage->downloadFile($record['original_storage_path']);
+            $bytes = $this->storage->read($backend, $record['original_storage_path']);
         } catch (\Throwable $e) {
             Log::error('HistoryController::showOriginalFile failed', [
                 'storage_path' => $record['original_storage_path'],
+                'backend'      => $backend,
                 'exception'    => $e->getMessage(),
             ]);
             abort(404, 'Original file not found.');
@@ -171,7 +176,7 @@ class HistoryController extends Controller
             echo $bytes;
         }, 200, [
             'Content-Type'        => $mime,
-            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            'Content-Disposition' => SafeFileNames::contentDisposition($filename),
             'Cache-Control'       => 'private, max-age=60',
         ]);
     }
@@ -258,7 +263,16 @@ class HistoryController extends Controller
             );
         }
 
-        // 3. Generate a new signed URL via StorageService
+        // 3. Durable-fallback files are served by the app's streaming route.
+        $backend = $record['storage_backend'] ?? StorageService::BACKEND_SUPABASE;
+        if ($backend === StorageService::BACKEND_LOCAL) {
+            return response()->json([
+                'download_url'      => route('history.file', ['id' => $id]),
+                'download_filename' => $record['translated_filename'],
+            ], 200);
+        }
+
+        // 4. Generate a new signed URL via StorageService
         try {
             $storageResult = $this->storage->generateSignedUrl($record['storage_path']);
         } catch (\Throwable $e) {
@@ -327,6 +341,14 @@ class HistoryController extends Controller
 
         if (empty($record['original_storage_path'])) {
             return response()->json(['error' => 'Original document is not available.'], 404);
+        }
+
+        $backend = $record['original_storage_backend'] ?? StorageService::BACKEND_SUPABASE;
+        if ($backend === StorageService::BACKEND_LOCAL) {
+            return response()->json([
+                'download_url'      => route('history.original-file', ['id' => $id]),
+                'download_filename' => $record['original_filename'],
+            ], 200);
         }
 
         try {
@@ -499,19 +521,15 @@ class HistoryController extends Controller
             return response()->json(['error' => 'Record not found or access denied.'], 404);
         }
 
-        // Delete files from Supabase Storage (best-effort, non-blocking)
-        $allPaths = array_merge(
-            $result['storage_paths'],
-            $result['original_storage_paths']
-        );
-
-        foreach ($allPaths as $path) {
+        // Delete files from their respective backends (best-effort, non-blocking)
+        foreach ($result['storage_entries'] as $entry) {
             try {
-                $this->storage->deleteFile($path);
+                $this->storage->delete($entry['backend'], $entry['path']);
             } catch (\Throwable $e) {
                 Log::warning('HistoryController::destroy failed to delete file from storage', [
-                    'storage_path' => $path,
-                    'exception' => $e->getMessage(),
+                    'storage_path' => $entry['path'],
+                    'backend'      => $entry['backend'],
+                    'exception'    => $e->getMessage(),
                 ]);
             }
         }
