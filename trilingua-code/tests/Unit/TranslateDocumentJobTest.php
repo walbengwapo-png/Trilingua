@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Jobs\TranslateDocumentJob;
+use App\Exceptions\TranslationException;
 use App\Models\TranslationJob;
 use App\Services\HistoryService;
 use App\Services\StorageService;
@@ -158,6 +159,39 @@ class TranslateDocumentJobTest extends TestCase
 
         $result = Cache::get('translation_job_' . $job->uuid());
         $this->assertSame('completed', $result['status'] ?? null);
+        $this->assertFileDoesNotExist($originalPath, 'Worker scratch should be released after durable completion.');
+
+        @rmdir($tempDir);
+    }
+
+    public function test_retryable_failure_keeps_original_upload_for_the_next_attempt(): void
+    {
+        Cache::flush();
+
+        $tempDir = sys_get_temp_dir().'/trilingua-job-'.uniqid('', true);
+        mkdir($tempDir, 0777, true);
+        $originalPath = $tempDir.'/input.pdf';
+        file_put_contents($originalPath, '%PDF-1.4 original');
+
+        $translationManager = Mockery::mock(TranslationManager::class);
+        $translationManager->shouldReceive('translateDocument')
+            ->once()
+            ->andThrow(new TranslationException('Translation service timed out.', 504));
+
+        $storage = Mockery::mock(StorageService::class);
+        $history = Mockery::mock(HistoryService::class);
+        $blocks = Mockery::mock(BlockService::class);
+        $metrics = Mockery::mock(MetricsService::class);
+
+        $job = new TranslateDocumentJob(
+            'input.pdf', '.pdf', 16, 'English', 'Cebuano', 'auto',
+            $originalPath, 42, '42/originals/input.pdf'
+        );
+        $job->uuid();
+        $job->handle($translationManager, $storage, $history, $blocks, $metrics);
+
+        $this->assertFileExists($originalPath, 'A retry must retain the source upload.');
+        $this->assertSame('processing', Cache::get('translation_job_'.$job->uuid())['status'] ?? null);
 
         @unlink($originalPath);
         @rmdir($tempDir);

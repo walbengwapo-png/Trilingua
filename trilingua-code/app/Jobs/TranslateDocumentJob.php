@@ -99,6 +99,7 @@ class TranslateDocumentJob implements ShouldQueue
 
         $job = $this->resolveJob();
         $job?->markProcessing();
+        $outputPath = null;
 
         $this->storeProgress(10, 'Document queued for translation. Processing will begin shortly.');
 
@@ -213,6 +214,12 @@ class TranslateDocumentJob implements ShouldQueue
             $this->notifyCompleted($history);
             $this->notifyAdminsAwaitingReview($history);
 
+            // StorageService deliberately never removes caller-owned files.
+            // These are worker-local scratch copies and are safe to release
+            // only after the durable history/storage write has completed.
+            $this->cleanupFile($outputPath);
+            $this->cleanupFile($this->tempPath);
+
             return;
         } catch (\Throwable $e) {
             Log::error('Job: Translation failed', [
@@ -223,14 +230,13 @@ class TranslateDocumentJob implements ShouldQueue
                 'job_id'    => $this->uuid(),
             ]);
 
-            // Clean up worker-local scratch.
-            $this->cleanupFile($this->tempPath);
-
             $job?->noteProgress(max(0, (int) ($job->progress ?? 0)));
             $job?->noteError($e);
 
             if ($this->isRetryable($e) && $this->attempts() + 1 < $this->tries) {
-                // Return the job to the queue; the worker will retry with backoff.
+                // Return the job to the queue with its original upload intact;
+                // deleting tempPath here would guarantee the retry fails.
+                $this->cleanupFile($outputPath);
                 $job?->markQueued();
                 $this->storeResult([
                     'status' => 'processing',
@@ -243,6 +249,8 @@ class TranslateDocumentJob implements ShouldQueue
             // Terminal failure: surface it to the frontend AND to failed_jobs
             // so operators can inspect and replay. This is the fix for the
             // finding that failures were being swallowed by cache-only results.
+            $this->cleanupFile($this->tempPath);
+            $this->cleanupFile($outputPath);
             $this->storeResult([
                 'status' => 'failed',
                 'error'  => $e->getMessage(),
@@ -392,7 +400,7 @@ class TranslateDocumentJob implements ShouldQueue
     /**
      * Safely delete a file if it exists.
      */
-    private function cleanupFile(string $path): void
+    private function cleanupFile(?string $path): void
     {
         try {
             if ($path && file_exists($path)) {

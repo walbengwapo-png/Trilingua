@@ -105,8 +105,8 @@ class StorageService
             throw new \RuntimeException('Durable fallback copy failed for: ' . $storagePath);
         }
 
-        // Best-effort cleanup of the source scratch file.
-        $this->deleteScratch($localPath);
+        // The caller owns $localPath. It may be the original upload still
+        // needed by a queued worker, so storage operations must never delete it.
     }
 
     /**
@@ -383,8 +383,6 @@ class StorageService
         // Upload succeeded — generate and return the signed URL
         $signedResult = $this->generateSignedUrl($storagePath);
 
-        $this->deleteScratch($localPath);
-
         return [
             'storage_path'          => $storagePath,
             'signed_url'            => $signedResult['signed_url'],
@@ -397,14 +395,4 @@ class StorageService
         return (bool) config('storage.fallback.enabled', false);
     }
 
-    private function deleteScratch(string $path): void
-    {
-        try {
-            if ($path !== '' && file_exists($path)) {
-                @unlink($path);
-            }
-        } catch (\Throwable) {
-            // best-effort
-        }
-    }
 }
