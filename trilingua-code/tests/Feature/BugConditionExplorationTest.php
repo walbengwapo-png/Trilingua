@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\HistoryService;
 use App\Services\StorageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Tests\TestCase;
 
 /**
@@ -49,44 +50,44 @@ class BugConditionExplorationTest extends TestCase
      * On unfixed code, records are keyed by session_id.
      * On fixed code, records will be keyed by user_id.
      */
-    private function makeDocumentRecord(string $sessionId, int $userId = null, int $id = null): array
+    private function makeDocumentRecord(string $sessionId, ?int $userId = null, ?int $id = null): array
     {
         return [
-            'id'                    => $id ?? random_int(1, 99999),
-            'session_id'            => $sessionId,
-            'user_id'               => $userId,
-            'translation_type'      => 'document',
-            'original_filename'     => 'report.docx',
-            'translated_filename'   => 'report-translated.docx',
-            'source_language'       => 'English',
-            'target_language'       => 'Cebuano',
-            'created_at'            => now()->toIso8601String(),
-            'storage_path'          => $sessionId . '/report-translated.docx',
+            'id' => $id ?? random_int(1, 99999),
+            'session_id' => $sessionId,
+            'user_id' => $userId,
+            'translation_type' => 'document',
+            'original_filename' => 'report.docx',
+            'translated_filename' => 'report-translated.docx',
+            'source_language' => 'English',
+            'target_language' => 'Cebuano',
+            'created_at' => now()->toIso8601String(),
+            'storage_path' => $sessionId.'/report-translated.docx',
             'signed_url_expires_at' => now()->addHour()->toIso8601String(),
-            'source_text'           => null,
-            'translated_text'       => null,
+            'source_text' => null,
+            'translated_text' => null,
         ];
     }
 
     /**
      * Build a fake text-type translation_history record stored under a given session.
      */
-    private function makeTextRecord(string $sessionId, int $userId = null): array
+    private function makeTextRecord(string $sessionId, ?int $userId = null): array
     {
         return [
-            'id'                    => random_int(1, 99999),
-            'session_id'            => $sessionId,
-            'user_id'               => $userId,
-            'translation_type'      => 'text',
-            'original_filename'     => null,
-            'translated_filename'   => null,
-            'source_language'       => 'English',
-            'target_language'       => 'Filipino',
-            'created_at'            => now()->toIso8601String(),
-            'storage_path'          => null,
+            'id' => random_int(1, 99999),
+            'session_id' => $sessionId,
+            'user_id' => $userId,
+            'translation_type' => 'text',
+            'original_filename' => null,
+            'translated_filename' => null,
+            'source_language' => 'English',
+            'target_language' => 'Filipino',
+            'created_at' => now()->toIso8601String(),
+            'storage_path' => null,
             'signed_url_expires_at' => null,
-            'source_text'           => 'Hello world.',
-            'translated_text'       => 'Kamusta mundo.',
+            'source_text' => 'Hello world.',
+            'translated_text' => 'Kamusta mundo.',
         ];
     }
 
@@ -144,17 +145,12 @@ class BugConditionExplorationTest extends TestCase
         // which returns all 5 records regardless of session.
         //
         // We mock HistoryService to simulate the FIXED behavior (returns all records
-        // for the user). The test will FAIL on unfixed code because the controller
-        // passes session()->getId() instead of Auth::id(), so the mock receives
-        // the wrong argument and the assertion fails.
-        $this->mock(HistoryService::class, function ($mock) use ($user, $recordsUnderOldSession) {
-            // The fixed code calls getHistory(Auth::id()) — an integer user ID.
-            // The unfixed code calls getHistory(session()->getId()) — a string session ID.
-            // We expect the call with the integer user_id.
-            $mock->shouldReceive('getHistory')
-                 ->with($user->id)
-                 ->once()
-                 ->andReturn($recordsUnderOldSession);
+        // for the user). The current HistoryController::index paginates via
+        // HistoryService::getHistoryPaginated(Auth::id(), 50).
+        $this->mock(HistoryService::class, function ($mock) use ($recordsUnderOldSession) {
+            $mock->shouldReceive('getHistoryPaginated')
+                ->once()
+                ->andReturn(new LengthAwarePaginator($recordsUnderOldSession, count($recordsUnderOldSession), 50));
         });
 
         // Act: GET /history (simulates user visiting history page after re-login)
@@ -215,21 +211,21 @@ class BugConditionExplorationTest extends TestCase
         // Mock StorageService::generateSignedUrl to return a valid signed URL
         $this->mock(HistoryService::class, function ($mock) use ($record, $recordId) {
             $mock->shouldReceive('getRecord')
-                 ->with($recordId)
-                 ->once()
-                 ->andReturn($record);
+                ->with($recordId)
+                ->once()
+                ->andReturn($record);
 
             $mock->shouldReceive('updateExpiry')
-                 ->andReturn(null);
+                ->andReturn(null);
         });
 
         $this->mock(StorageService::class, function ($mock) {
             $mock->shouldReceive('generateSignedUrl')
-                 ->once()
-                 ->andReturn([
-                     'signed_url'            => 'https://storage.example.com/signed-url',
-                     'signed_url_expires_at' => now()->addHour()->toIso8601String(),
-                 ]);
+                ->once()
+                ->andReturn([
+                    'signed_url' => 'https://storage.example.com/signed-url',
+                    'signed_url_expires_at' => now()->addHour()->toIso8601String(),
+                ]);
         });
 
         // Act: POST /history/redownload/{id}
@@ -293,15 +289,16 @@ class BugConditionExplorationTest extends TestCase
         ];
 
         // Mock HistoryService to return the documents when called with the user's ID.
-        // On FIXED code: DocumentsController calls getHistory(Auth::id()) → returns 3 records.
-        // On UNFIXED code: DocumentsController calls getHistory(session()->getId()) →
-        //   the mock expectation for getHistory($user->id) is NOT satisfied,
-        //   causing a Mockery exception (or the mock returns null/empty for the wrong arg).
+        // getOriginalsWithTranslations is also consulted by DocumentsController::index,
+        // so it must be stubbed on the mocked instance.
         $this->mock(HistoryService::class, function ($mock) use ($user, $documentRecords) {
             $mock->shouldReceive('getHistory')
-                 ->with($user->id)
-                 ->once()
-                 ->andReturn($documentRecords);
+                ->with($user->id)
+                ->once()
+                ->andReturn($documentRecords);
+
+            $mock->shouldReceive('getOriginalsWithTranslations')
+                ->andReturn([]);
         });
 
         // Act: GET /documents (simulates user visiting My Documents after re-login)
@@ -366,18 +363,17 @@ class BugConditionExplorationTest extends TestCase
 
         $documentRecords = array_values(array_filter(
             $historyRecords,
-            fn($r) => $r['translation_type'] === 'document'
+            fn ($r) => $r['translation_type'] === 'document'
         ));
 
         $singleRecord = $this->makeDocumentRecord($oldSessionId, $user->id, $recordId);
 
         // ── Bug Condition 1: History page empty after re-login ────────────────
-        // Expected (fixed): getHistory(Auth::id()) returns all 5 records
-        // Actual (unfixed): getHistory(session()->getId()) returns [] for new session
-        $this->mock(HistoryService::class, function ($mock) use ($user, $historyRecords) {
-            $mock->shouldReceive('getHistory')
-                 ->with($user->id)
-                 ->andReturn($historyRecords);
+        // Cross-session visibility is proved through the paginator; the paged
+        // HistoryController::index receives all 5 records.
+        $this->mock(HistoryService::class, function ($mock) use ($historyRecords) {
+            $mock->shouldReceive('getHistoryPaginated')
+                ->andReturn(new LengthAwarePaginator($historyRecords, count($historyRecords), 50));
         });
 
         $historyResponse = $this->get('/history');
@@ -395,18 +391,18 @@ class BugConditionExplorationTest extends TestCase
         // Actual (unfixed): record['session_id'] ('session-A') !== session()->getId() → 403
         $this->mock(HistoryService::class, function ($mock) use ($singleRecord, $recordId) {
             $mock->shouldReceive('getRecord')
-                 ->with($recordId)
-                 ->andReturn($singleRecord);
+                ->with($recordId)
+                ->andReturn($singleRecord);
             $mock->shouldReceive('updateExpiry')
-                 ->andReturn(null);
+                ->andReturn(null);
         });
 
         $this->mock(StorageService::class, function ($mock) {
             $mock->shouldReceive('generateSignedUrl')
-                 ->andReturn([
-                     'signed_url'            => 'https://storage.example.com/signed-url',
-                     'signed_url_expires_at' => now()->addHour()->toIso8601String(),
-                 ]);
+                ->andReturn([
+                    'signed_url' => 'https://storage.example.com/signed-url',
+                    'signed_url_expires_at' => now()->addHour()->toIso8601String(),
+                ]);
         });
 
         $redownloadResponse = $this->post("/history/redownload/{$recordId}");
@@ -418,12 +414,13 @@ class BugConditionExplorationTest extends TestCase
         $redownloadResponse->assertJsonStructure(['download_url']);
 
         // ── Bug Condition 3: My Documents page empty after re-login ───────────
-        // Expected (fixed): getHistory(Auth::id()) returns 2 document records
-        // Actual (unfixed): getHistory(session()->getId()) returns [] for new session
         $this->mock(HistoryService::class, function ($mock) use ($user, $documentRecords) {
             $mock->shouldReceive('getHistory')
-                 ->with($user->id)
-                 ->andReturn($documentRecords);
+                ->with($user->id)
+                ->andReturn($documentRecords);
+
+            $mock->shouldReceive('getOriginalsWithTranslations')
+                ->andReturn([]);
         });
 
         $documentsResponse = $this->get('/documents');

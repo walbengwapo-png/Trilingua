@@ -18,6 +18,7 @@ The server listens on http://127.0.0.1:5000 by default.
 
 import sys
 import os
+import hmac
 import time as _time
 
 # Ensure the Model directory is on the path
@@ -30,7 +31,7 @@ import io
 import threading
 import uvicorn
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Header, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -280,6 +281,29 @@ async def _runtime_lifespan(app: FastAPI):
 
 app = FastAPI(title="TriLingua Translation Service v5", lifespan=_runtime_lifespan)
 
+
+# ---------------------------------------------------------------------------
+# Service-token enforcement
+# The server binds to loopback, but any local process could otherwise call it.
+# When MODEL_SERVICE_TOKEN is set, the mutation/translation endpoints require
+# the X-Service-Token header to match it (compared in constant time). Laravel
+# sends this header automatically when translation.python_service.token is set;
+# the /health endpoint stays open for monitoring.
+# ---------------------------------------------------------------------------
+def _model_service_token() -> str:
+    return os.environ.get("MODEL_SERVICE_TOKEN", "")
+
+
+async def require_service_token(
+    x_service_token: str = Header(default=None),
+):
+    configured = _model_service_token()
+    # Token auth is opt-in: if no token is configured, server behaves as before.
+    if not configured:
+        return
+    if not x_service_token or not hmac.compare_digest(x_service_token, configured):
+        raise HTTPException(401, "Invalid or missing service token.")
+
 VALID_PDF_COLUMN_MODES = {"auto", "single", "left", "right"}
 
 SUPPORTED_EXTENSIONS = {
@@ -353,7 +377,7 @@ class TextRequest(BaseModel):
     target_lang: str
 
 
-@app.post("/translate/text")
+@app.post("/translate/text", dependencies=[Depends(require_service_token)])
 def translate_text(req: TextRequest):
     if not req.text or not req.text.strip():
         raise HTTPException(400, "Text must not be empty.")
@@ -401,7 +425,7 @@ def translate_text(req: TextRequest):
 # (including /health) while a translation is in flight. FastAPI executes
 # sync endpoints on the bounded threadpool configured above.
 # ---------------------------------------------------------------------------
-@app.post("/translate/document")
+@app.post("/translate/document", dependencies=[Depends(require_service_token)])
 def translate_document(
     file: UploadFile = File(...),
     source_lang: str = Form(...),
@@ -499,7 +523,7 @@ def translate_document(
 # ORIGINAL source file (needed for PDF and in-place DOCX/PPTX/XLSX replay).
 # No extraction, analysis, prepass, memory, or AI translation runs here.
 # ---------------------------------------------------------------------------
-@app.post("/translate/document/regenerate")
+@app.post("/translate/document/regenerate", dependencies=[Depends(require_service_token)])
 def translate_document_regenerate(
     file: UploadFile = File(...),
     sidecar: str = Form(...),
@@ -577,7 +601,7 @@ def translate_document_regenerate(
 # Cache management
 # DELETE /cache/clear — clears the persistent SQLite translation cache
 # ---------------------------------------------------------------------------
-@app.delete("/cache/clear")
+@app.delete("/cache/clear", dependencies=[Depends(require_service_token)])
 def clear_cache():
     """Clear all cached translations from the persistent SQLite cache.
 
@@ -609,11 +633,22 @@ def clear_cache():
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("TRANSLATION_PORT", 5000))
+
+    # File-watch reload is a developer convenience only. Default it to "auto":
+    # enabled for local/development APP_ENV, disabled everywhere else
+    # (staging/production). Force it explicitly with MODEL_SERVICE_RELOAD=true|false.
+    _reload_setting = os.environ.get("MODEL_SERVICE_RELOAD", "auto").lower()
+    if _reload_setting == "auto":
+        _app_env = os.environ.get("APP_ENV", "local").lower()
+        _reload = _app_env in ("local", "development", "dev", "testing")
+    else:
+        _reload = _reload_setting == "true"
+
     uvicorn.run(
         "server:app",
         host="127.0.0.1",
         port=port,
         log_level="info",
-        reload=True,
+        reload=_reload,
         reload_dirs=[os.path.dirname(os.path.abspath(__file__))],
     )

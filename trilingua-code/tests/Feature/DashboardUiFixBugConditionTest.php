@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Services\HistoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Tests\TestCase;
 
 /**
@@ -43,42 +44,42 @@ class DashboardUiFixBugConditionTest extends TestCase
     /**
      * Build a fake document-type translation_history record for a given session.
      */
-    private function makeDocumentRecord(string $sessionId, string $createdAt = null): array
+    private function makeDocumentRecord(string $sessionId, ?string $createdAt = null): array
     {
         return [
-            'id'                    => random_int(1, 99999),
-            'session_id'            => $sessionId,
-            'translation_type'      => 'document',
-            'original_filename'     => 'test-doc.docx',
-            'translated_filename'   => 'test-doc-translated.docx',
-            'source_language'       => 'English',
-            'target_language'       => 'Cebuano',
-            'created_at'            => $createdAt ?? now()->toIso8601String(),
-            'storage_path'          => 'documents/test-doc-translated.docx',
+            'id' => random_int(1, 99999),
+            'session_id' => $sessionId,
+            'translation_type' => 'document',
+            'original_filename' => 'test-doc.docx',
+            'translated_filename' => 'test-doc-translated.docx',
+            'source_language' => 'English',
+            'target_language' => 'Cebuano',
+            'created_at' => $createdAt ?? now()->toIso8601String(),
+            'storage_path' => 'documents/test-doc-translated.docx',
             'signed_url_expires_at' => now()->addHour()->toIso8601String(),
-            'source_text'           => null,
-            'translated_text'       => null,
+            'source_text' => null,
+            'translated_text' => null,
         ];
     }
 
     /**
      * Build a fake text-type translation_history record for a given session.
      */
-    private function makeTextRecord(string $sessionId, string $sourceLang = 'English', string $targetLang = 'Cebuano', string $createdAt = null): array
+    private function makeTextRecord(string $sessionId, string $sourceLang = 'English', string $targetLang = 'Cebuano', ?string $createdAt = null): array
     {
         return [
-            'id'                    => random_int(1, 99999),
-            'session_id'            => $sessionId,
-            'translation_type'      => 'text',
-            'original_filename'     => null,
-            'translated_filename'   => null,
-            'source_language'       => $sourceLang,
-            'target_language'       => $targetLang,
-            'created_at'            => $createdAt ?? now()->toIso8601String(),
-            'storage_path'          => null,
+            'id' => random_int(1, 99999),
+            'session_id' => $sessionId,
+            'translation_type' => 'text',
+            'original_filename' => null,
+            'translated_filename' => null,
+            'source_language' => $sourceLang,
+            'target_language' => $targetLang,
+            'created_at' => $createdAt ?? now()->toIso8601String(),
+            'storage_path' => null,
             'signed_url_expires_at' => null,
-            'source_text'           => 'Hello world this is a test sentence.',
-            'translated_text'       => 'Kumusta kalibutan kini usa ka pagsulay nga tudling.',
+            'source_text' => 'Hello world this is a test sentence.',
+            'translated_text' => 'Kumusta kalibutan kini usa ka pagsulay nga tudling.',
         ];
     }
 
@@ -113,8 +114,8 @@ class DashboardUiFixBugConditionTest extends TestCase
         // Mock HistoryService to return exactly 3 document records
         $this->mock(HistoryService::class, function ($mock) use ($records) {
             $mock->shouldReceive('getHistory')
-                 ->once()
-                 ->andReturn($records);
+                ->once()
+                ->andReturn($records);
         });
 
         // Act: GET /dashboard
@@ -130,8 +131,8 @@ class DashboardUiFixBugConditionTest extends TestCase
         $this->assertStringContainsString(
             '>3<',
             $content,
-            'COUNTEREXAMPLE: Dashboard stat card shows hardcoded "24" instead of real count "3". ' .
-            'The dashboard route renders the view directly without querying HistoryService, ' .
+            'COUNTEREXAMPLE: Dashboard stat card shows hardcoded "24" instead of real count "3". '.
+            'The dashboard route renders the view directly without querying HistoryService, '.
             'so the stat card always shows the hardcoded value regardless of actual records.'
         );
 
@@ -167,7 +168,7 @@ class DashboardUiFixBugConditionTest extends TestCase
         // Mock HistoryService to return empty records (we only care about the greeting)
         $this->mock(HistoryService::class, function ($mock) {
             $mock->shouldReceive('getHistory')
-                 ->andReturn([]);
+                ->andReturn([]);
         });
 
         // Act: GET /dashboard
@@ -272,8 +273,12 @@ class DashboardUiFixBugConditionTest extends TestCase
 
         $this->mock(HistoryService::class, function ($mock) use ($records) {
             $mock->shouldReceive('getHistory')
-                 ->once()
-                 ->andReturn($records);
+                ->once()
+                ->andReturn($records);
+
+            // DocumentsController::index also queries originals on the same instance.
+            $mock->shouldReceive('getOriginalsWithTranslations')
+                ->andReturn([]);
         });
 
         // Act: GET /documents
@@ -314,10 +319,11 @@ class DashboardUiFixBugConditionTest extends TestCase
             $this->makeTextRecord($sessionId, 'Cebuano', 'English'),
         ];
 
+        // HistoryController::index paginates via getHistoryPaginated.
         $this->mock(HistoryService::class, function ($mock) use ($records) {
-            $mock->shouldReceive('getHistory')
-                 ->once()
-                 ->andReturn($records);
+            $mock->shouldReceive('getHistoryPaginated')
+                ->once()
+                ->andReturn(new LengthAwarePaginator($records, count($records), 50));
         });
 
         // Act: GET /history
@@ -362,7 +368,7 @@ class DashboardUiFixBugConditionTest extends TestCase
         // ── Bug 1 & 2: Dashboard ─────────────────────────────────────────────
         $this->mock(HistoryService::class, function ($mock) use ($docRecords) {
             $mock->shouldReceive('getHistory')
-                 ->andReturn($docRecords);
+                ->andReturn($docRecords);
         });
 
         $dashResponse = $this->get('/dashboard');
@@ -373,7 +379,7 @@ class DashboardUiFixBugConditionTest extends TestCase
         $this->assertStringContainsString(
             '>3<',
             $dashContent,
-            'BUG 1 CONFIRMED: Dashboard stat card shows hardcoded "24" instead of real count "3". ' .
+            'BUG 1 CONFIRMED: Dashboard stat card shows hardcoded "24" instead of real count "3". '.
             'Root cause: GET /dashboard route renders view directly without querying HistoryService.'
         );
 
@@ -381,7 +387,7 @@ class DashboardUiFixBugConditionTest extends TestCase
         $this->assertStringContainsString(
             'Maria Santos',
             $dashContent,
-            'BUG 2 CONFIRMED: Dashboard greeting does not contain real user name "Maria Santos". ' .
+            'BUG 2 CONFIRMED: Dashboard greeting does not contain real user name "Maria Santos". '.
             'Root cause: dashboard.blade.php has no greeting with auth()->user()->name.'
         );
 
@@ -404,7 +410,7 @@ class DashboardUiFixBugConditionTest extends TestCase
         // ── Bug 5: My Documents ──────────────────────────────────────────────
         $this->mock(HistoryService::class, function ($mock) use ($docRecords) {
             $mock->shouldReceive('getHistory')
-                 ->andReturn($docRecords);
+                ->andReturn($docRecords);
         });
 
         $docsResponse = $this->get('/documents');
@@ -416,7 +422,7 @@ class DashboardUiFixBugConditionTest extends TestCase
         // ── Bug 6: History ───────────────────────────────────────────────────
         $this->mock(HistoryService::class, function ($mock) use ($textRecords) {
             $mock->shouldReceive('getHistory')
-                 ->andReturn($textRecords);
+                ->andReturn($textRecords);
         });
 
         $historyResponse = $this->get('/history');

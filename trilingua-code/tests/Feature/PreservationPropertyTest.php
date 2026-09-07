@@ -2,11 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Models\TranslationJob;
 use App\Models\User;
 use App\Services\HistoryService;
 use App\Services\StorageService;
-use App\Services\TranslationService;
+use App\Services\Translation\DTO\TranslationResponse;
+use App\Services\Translation\TranslationManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Tests\TestCase;
@@ -44,22 +49,22 @@ class PreservationPropertyTest extends TestCase
      * Build a fake document-type translation_history record owned by a given session.
      * On unfixed code, records are keyed by session_id.
      */
-    private function makeDocumentRecord(string $sessionId, int $userId = null, int $id = null, string $createdAt = null): array
+    private function makeDocumentRecord(string $sessionId, ?int $userId = null, ?int $id = null, ?string $createdAt = null): array
     {
         return [
-            'id'                    => $id ?? random_int(1, 99999),
-            'session_id'            => $sessionId,
-            'user_id'               => $userId,
-            'translation_type'      => 'document',
-            'original_filename'     => 'report.docx',
-            'translated_filename'   => 'report-translated.docx',
-            'source_language'       => 'English',
-            'target_language'       => 'Cebuano',
-            'created_at'            => $createdAt ?? now()->toIso8601String(),
-            'storage_path'          => $sessionId . '/report-translated.docx',
+            'id' => $id ?? random_int(1, 99999),
+            'session_id' => $sessionId,
+            'user_id' => $userId,
+            'translation_type' => 'document',
+            'original_filename' => 'report.docx',
+            'translated_filename' => 'report-translated.docx',
+            'source_language' => 'English',
+            'target_language' => 'Cebuano',
+            'created_at' => $createdAt ?? now()->toIso8601String(),
+            'storage_path' => $sessionId.'/report-translated.docx',
             'signed_url_expires_at' => now()->addHour()->toIso8601String(),
-            'source_text'           => null,
-            'translated_text'       => null,
+            'source_text' => null,
+            'translated_text' => null,
         ];
     }
 
@@ -111,8 +116,8 @@ class PreservationPropertyTest extends TestCase
 
         $this->mock(HistoryService::class, function ($mock) use ($record, $recordId) {
             $mock->shouldReceive('getRecord')
-                 ->with($recordId)
-                 ->andReturn($record);
+                ->with($recordId)
+                ->andReturn($record);
         });
 
         // Act: POST /history/redownload/{id} as the requesting user
@@ -120,7 +125,7 @@ class PreservationPropertyTest extends TestCase
 
         // Assert: 403 Forbidden — the record belongs to a different user
         $response->assertStatus(403,
-            'Preservation 3.1: redownload of a record owned by a different session must return 403. ' .
+            'Preservation 3.1: redownload of a record owned by a different session must return 403. '.
             'This behavior must be unchanged by the fix.'
         );
 
@@ -152,8 +157,8 @@ class PreservationPropertyTest extends TestCase
 
         $this->mock(HistoryService::class, function ($mock) use ($record, $recordId) {
             $mock->shouldReceive('getRecord')
-                 ->with($recordId)
-                 ->andReturn($record);
+                ->with($recordId)
+                ->andReturn($record);
         });
 
         $response = $this->postJson("/history/redownload/{$recordId}");
@@ -196,8 +201,8 @@ class PreservationPropertyTest extends TestCase
         // Mock HistoryService to return null (record does not exist)
         $this->mock(HistoryService::class, function ($mock) use ($nonExistentId) {
             $mock->shouldReceive('getRecord')
-                 ->with($nonExistentId)
-                 ->andReturn(null); // record does not exist
+                ->with($nonExistentId)
+                ->andReturn(null); // record does not exist
         });
 
         // Act: POST /history/redownload/{id}
@@ -205,7 +210,7 @@ class PreservationPropertyTest extends TestCase
 
         // Assert: 404 Not Found — the record does not exist
         $response->assertStatus(404,
-            'Preservation 3.2: redownload of non-existent record ID must return 404. ' .
+            'Preservation 3.2: redownload of non-existent record ID must return 404. '.
             'This behavior must be unchanged by the fix.'
         );
 
@@ -231,8 +236,8 @@ class PreservationPropertyTest extends TestCase
         // Test a small non-existent ID
         $this->mock(HistoryService::class, function ($mock) {
             $mock->shouldReceive('getRecord')
-                 ->with(1)
-                 ->andReturn(null);
+                ->with(1)
+                ->andReturn(null);
         });
 
         $response = $this->postJson('/history/redownload/1');
@@ -268,38 +273,38 @@ class PreservationPropertyTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
 
-        // Mock TranslationService to return a translated string
-        $this->mock(TranslationService::class, function ($mock) {
+        // Mock TranslationManager to return a translated result
+        $this->mock(TranslationManager::class, function ($mock) {
             $mock->shouldReceive('translateText')
-                 ->once()
-                 ->andReturn('Kumusta kalibutan.');
+                ->once()
+                ->andReturn(new TranslationResponse(translatedText: 'Kumusta kalibutan.'));
         });
 
         // Mock HistoryService to throw an exception on insertRecord
         $this->mock(HistoryService::class, function ($mock) {
             $mock->shouldReceive('insertRecord')
-                 ->once()
-                 ->andThrow(new RuntimeException('Supabase DB insert failed: connection refused'));
+                ->once()
+                ->andThrow(new RuntimeException('Supabase DB insert failed: connection refused'));
         });
 
         // Spy on the Log facade to confirm the error is logged
         Log::shouldReceive('error')
-           ->once()
-           ->withArgs(function ($message, $context) {
-               return str_contains($message, 'Failed to insert') &&
-                      isset($context['exception']);
-           });
+            ->once()
+            ->withArgs(function ($message, $context) {
+                return str_contains($message, 'Failed to insert') &&
+                       isset($context['exception']);
+            });
 
         // Act: POST /translate with text input
         $response = $this->postJson('/translate', [
             'source_lang' => 'English',
             'target_lang' => 'Cebuano',
-            'text'        => 'Hello world',
+            'text' => 'Hello world',
         ]);
 
         // Assert: HTTP 200 — translation is returned despite the DB failure
         $response->assertStatus(200,
-            'Preservation 3.3: A failed insertRecord during text translation must NOT block ' .
+            'Preservation 3.3: A failed insertRecord during text translation must NOT block '.
             'the translation response. HTTP 200 must still be returned.'
         );
 
@@ -311,90 +316,68 @@ class PreservationPropertyTest extends TestCase
     }
 
     /**
-     * Preservation Test 3b — Failed insertRecord during document translation logs error
-     * and still returns the download URL
+     * Preservation Test 3b — Document submission is non-blocking and returns
+     * a job_id immediately; history is recorded later in the durable worker.
      *
      * **Validates: Requirements 3.3**
      *
-     * Observed behavior (unfixed code): When insertRecord throws an exception during
-     * a document translation, the controller catches it, logs the error, and still
-     * returns the download URL to the user (non-blocking error handling).
+     * Current contract: POST /translate with a document uploads the original,
+     * creates a durable translation_jobs row and returns HTTP 200 with job_id.
+     * The download URL is produced by the worker and surfaced through
+     * /translate/status/{jobId}. History-insert failures inside the worker are
+     * logged and never block the submission request.
      *
-     * EXPECTED OUTCOME: PASS on unfixed code (baseline behavior confirmed).
+     * EXPECTED OUTCOME: PASS
      */
-    public function test_preservation_3_3b_failed_insert_during_document_translation_logs_error_and_returns_download_url(): void
+    public function test_preservation_3_3b_document_submission_is_non_blocking_and_returns_job_id(): void
     {
         // Arrange: create and authenticate a user
         $user = User::factory()->create();
         $this->actingAs($user);
 
-        // Create a fake output file for the translation service to return
-        $fakeOutputPath = tempnam(sys_get_temp_dir(), 'translated_') . '.docx';
-        file_put_contents($fakeOutputPath, 'fake translated content');
+        // Queue the job (never execute synchronously) so the request path only
+        // uploads the original and returns the job_id.
+        config(['queue.default' => 'database']);
 
-        // Mock TranslationService to return a fake output path
-        $this->mock(TranslationService::class, function ($mock) use ($fakeOutputPath) {
-            $mock->shouldReceive('translateDocument')
-                 ->once()
-                 ->andReturn($fakeOutputPath);
-            $mock->shouldReceive('getOriginalOutputName')
-                 ->once()
-                 ->andReturn('report_translated.docx');
-        });
-
-        // Mock StorageService to return a fake signed URL (upload succeeds)
+        // Mock StorageService so the original upload never hits Supabase
         $this->mock(StorageService::class, function ($mock) {
-            $mock->shouldReceive('uploadFile')
-                 ->once()
-                 ->andReturn([
-                     'storage_path'          => 'session123/report_translated.docx',
-                     'signed_url'            => 'https://storage.example.com/signed-url',
-                     'signed_url_expires_at' => now()->addHour()->toIso8601String(),
-                 ]);
+            $mock->shouldReceive('uploadWithFallback')
+                ->once()
+                ->andReturn([
+                    'backend' => 'supabase',
+                    'storage_path' => 'user/originals/report.docx',
+                    'signed_url' => 'https://storage.example.com/original',
+                    'signed_url_expires_at' => now()->addHour()->toIso8601String(),
+                ]);
         });
 
-        // Mock HistoryService to throw an exception on insertRecord
-        $this->mock(HistoryService::class, function ($mock) {
-            $mock->shouldReceive('insertRecord')
-                 ->once()
-                 ->andThrow(new RuntimeException('Supabase DB insert failed: timeout'));
-        });
-
-        // Spy on the Log facade to confirm the error is logged
-        Log::shouldReceive('error')
-           ->once()
-           ->withArgs(function ($message, $context) {
-               return str_contains($message, 'Failed to insert') &&
-                      isset($context['exception']);
-           });
-
-        // Act: POST /translate with a document file
-        $file = \Illuminate\Http\UploadedFile::fake()->create('report.docx', 100,
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        // Act: POST /translate with a real DOCX (PK zip magic so the sniff passes)
+        $file = UploadedFile::fake()->createWithContent(
+            'report.docx',
+            'PK'.random_bytes(256)
         );
 
         $response = $this->post('/translate', [
             'source_lang' => 'English',
             'target_lang' => 'Cebuano',
-            'document'    => $file,
+            'document' => $file,
         ], ['Accept' => 'application/json']);
 
-        // Assert: HTTP 200 — download URL is returned despite the DB failure
+        // Assert: HTTP 200 — the submission is never blocked
         $response->assertStatus(200,
-            'Preservation 3.3: A failed insertRecord during document translation must NOT block ' .
-            'the translation response. HTTP 200 with download_url must still be returned.'
+            'Preservation 3.3: A document translation submission must return HTTP 200.'
         );
 
-        // Assert: the download URL is present in the response
-        $response->assertJsonStructure(['download_url']);
-        $this->assertNotEmpty($response->json('download_url'),
-            'Preservation 3.3: The download_url must be returned even when insertRecord fails.'
+        // Assert: the async contract returns a job_id (history is written later
+        // by the worker, so a failed insert can never block the request).
+        $response->assertJsonStructure(['job_id', 'original_filename']);
+        $this->assertNotEmpty($response->json('job_id'),
+            'Preservation 3.3: A document submission must return a non-empty job_id.'
         );
 
-        // Clean up
-        if (file_exists($fakeOutputPath)) {
-            @unlink($fakeOutputPath);
-        }
+        // Assert: exactly one durable job row and one queued job exist.
+        $this->assertSame(1, TranslationJob::where('user_id', $user->id)->count());
+        $this->assertSame(1, DB::table('jobs')->count());
     }
 
     // ─── Requirement 3.4: getHistory returns records ordered desc, capped at 200
@@ -427,7 +410,7 @@ class PreservationPropertyTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
 
-        $sessionId = 'session-test-' . uniqid();
+        $sessionId = 'session-test-'.uniqid();
 
         // Build exactly 200 records with descending created_at timestamps
         // (newest first, as Supabase would return them with order=created_at.desc)
@@ -438,14 +421,12 @@ class PreservationPropertyTest extends TestCase
             $records[] = $this->makeDocumentRecord($sessionId, $user->id, $i + 1, $createdAt);
         }
 
-        // Mock HistoryService to return exactly 200 records (simulating the Supabase cap)
-        // On unfixed code: getHistory is called with session()->getId() (a string)
-        // On fixed code: getHistory is called with Auth::id() (an integer)
-        // We use shouldReceive without argument constraint so it works on both.
+        // Mock HistoryService to return a paginator of exactly 200 records
+        // (simulating the 200-record supabase cap paginated at 50 per page)
         $this->mock(HistoryService::class, function ($mock) use ($records) {
-            $mock->shouldReceive('getHistory')
-                 ->once()
-                 ->andReturn($records);
+            $mock->shouldReceive('getHistoryPaginated')
+                ->once()
+                ->andReturn(new LengthAwarePaginator($records, count($records), 50));
         });
 
         // Act: GET /history
@@ -454,20 +435,22 @@ class PreservationPropertyTest extends TestCase
         // Assert: HTTP 200
         $response->assertStatus(200);
 
-        // Assert: the view receives exactly 200 records
-        $response->assertViewHas('records', function ($viewRecords) use ($records) {
-            return count($viewRecords) === 200;
-        }, 'Preservation 3.4: getHistory must return exactly 200 records (the cap) when 200+ exist.');
+        // Assert: the paginator's total is exactly 200 (the cap)
+        $response->assertViewHas('records', function ($viewRecords) {
+            return $viewRecords->total() === 200;
+        }, 'Preservation 3.4: getHistory must report exactly 200 records (the cap) when 200+ exist.');
 
         // Assert: records are in descending order by created_at (newest first)
         $response->assertViewHas('records', function ($viewRecords) {
-            for ($i = 0; $i < count($viewRecords) - 1; $i++) {
-                $current = strtotime($viewRecords[$i]['created_at']);
-                $next    = strtotime($viewRecords[$i + 1]['created_at']);
+            $page = $viewRecords->items();
+            for ($i = 0; $i < count($page) - 1; $i++) {
+                $current = strtotime($page[$i]['created_at']);
+                $next = strtotime($page[$i + 1]['created_at']);
                 if ($current < $next) {
                     return false; // not in descending order
                 }
             }
+
             return true;
         }, 'Preservation 3.4: getHistory records must be ordered by created_at descending (newest first).');
 
@@ -494,7 +477,7 @@ class PreservationPropertyTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
 
-        $sessionId = 'session-cap-test-' . uniqid();
+        $sessionId = 'session-cap-test-'.uniqid();
 
         // The service enforces the 200-record cap via Supabase limit=200.
         // We simulate the service returning exactly 200 records (the maximum it can return).
@@ -504,9 +487,9 @@ class PreservationPropertyTest extends TestCase
         }
 
         $this->mock(HistoryService::class, function ($mock) use ($records) {
-            $mock->shouldReceive('getHistory')
-                 ->once()
-                 ->andReturn($records);
+            $mock->shouldReceive('getHistoryPaginated')
+                ->once()
+                ->andReturn(new LengthAwarePaginator($records, count($records), 50));
         });
 
         // Act: GET /history
@@ -517,7 +500,7 @@ class PreservationPropertyTest extends TestCase
 
         // Assert: the view receives at most 200 records
         $response->assertViewHas('records', function ($viewRecords) {
-            return count($viewRecords) <= 200;
+            return $viewRecords->total() <= 200 && count($viewRecords->items()) <= 200;
         }, 'Preservation 3.4: The history page must never display more than 200 records.');
     }
 
@@ -553,39 +536,39 @@ class PreservationPropertyTest extends TestCase
         // check passes on fixed code: (int) $record['user_id'] === Auth::id().
         $this->mock(HistoryService::class, function ($mock) use ($user, $recordId, $newExpiry) {
             $mock->shouldReceive('getRecord')
-                 ->with($recordId)
-                 ->once()
-                 ->andReturnUsing(function () use ($user, $recordId) {
-                     // Return a record owned by the current user (ownership check passes)
-                     return [
-                         'id'                    => $recordId,
-                         'user_id'               => $user->id,
-                         'translation_type'      => 'document',
-                         'original_filename'     => 'contract.docx',
-                         'translated_filename'   => 'contract-translated.docx',
-                         'source_language'       => 'English',
-                         'target_language'       => 'Filipino',
-                         'created_at'            => now()->toIso8601String(),
-                         'storage_path'          => $user->id . '/contract-translated.docx',
-                         'signed_url_expires_at' => now()->addHour()->toIso8601String(),
-                     ];
-                 });
+                ->with($recordId)
+                ->once()
+                ->andReturnUsing(function () use ($user, $recordId) {
+                    // Return a record owned by the current user (ownership check passes)
+                    return [
+                        'id' => $recordId,
+                        'user_id' => $user->id,
+                        'translation_type' => 'document',
+                        'original_filename' => 'contract.docx',
+                        'translated_filename' => 'contract-translated.docx',
+                        'source_language' => 'English',
+                        'target_language' => 'Filipino',
+                        'created_at' => now()->toIso8601String(),
+                        'storage_path' => $user->id.'/contract-translated.docx',
+                        'signed_url_expires_at' => now()->addHour()->toIso8601String(),
+                    ];
+                });
 
             // Assert: updateExpiry is called with the correct record ID and new expiry
             $mock->shouldReceive('updateExpiry')
-                 ->once()
-                 ->with($recordId, $newExpiry)
-                 ->andReturn(null);
+                ->once()
+                ->with($recordId, $newExpiry)
+                ->andReturn(null);
         });
 
         // Mock StorageService to return a new signed URL with the expected expiry
         $this->mock(StorageService::class, function ($mock) use ($newExpiry) {
             $mock->shouldReceive('generateSignedUrl')
-                 ->once()
-                 ->andReturn([
-                     'signed_url'            => 'https://storage.example.com/new-signed-url',
-                     'signed_url_expires_at' => $newExpiry,
-                 ]);
+                ->once()
+                ->andReturn([
+                    'signed_url' => 'https://storage.example.com/new-signed-url',
+                    'signed_url_expires_at' => $newExpiry,
+                ]);
         });
 
         // Act: POST /history/redownload/{id}
@@ -625,52 +608,52 @@ class PreservationPropertyTest extends TestCase
 
         $this->mock(HistoryService::class, function ($mock) use ($user, $recordId) {
             $mock->shouldReceive('getRecord')
-                 ->with($recordId)
-                 ->once()
-                 ->andReturnUsing(function () use ($user, $recordId) {
-                     return [
-                         'id'                    => $recordId,
-                         'user_id'               => $user->id,
-                         'translation_type'      => 'document',
-                         'original_filename'     => 'slides.docx',
-                         'translated_filename'   => 'slides-translated.docx',
-                         'source_language'       => 'English',
-                         'target_language'       => 'Cebuano',
-                         'created_at'            => now()->toIso8601String(),
-                         'storage_path'          => $user->id . '/slides-translated.docx',
-                         'signed_url_expires_at' => now()->addHour()->toIso8601String(),
-                     ];
-                 });
+                ->with($recordId)
+                ->once()
+                ->andReturnUsing(function () use ($user, $recordId) {
+                    return [
+                        'id' => $recordId,
+                        'user_id' => $user->id,
+                        'translation_type' => 'document',
+                        'original_filename' => 'slides.docx',
+                        'translated_filename' => 'slides-translated.docx',
+                        'source_language' => 'English',
+                        'target_language' => 'Cebuano',
+                        'created_at' => now()->toIso8601String(),
+                        'storage_path' => $user->id.'/slides-translated.docx',
+                        'signed_url_expires_at' => now()->addHour()->toIso8601String(),
+                    ];
+                });
 
             // updateExpiry throws — should be caught and logged, not propagated
             $mock->shouldReceive('updateExpiry')
-                 ->once()
-                 ->andThrow(new RuntimeException('Supabase DB update failed: timeout'));
+                ->once()
+                ->andThrow(new RuntimeException('Supabase DB update failed: timeout'));
         });
 
         $this->mock(StorageService::class, function ($mock) {
             $mock->shouldReceive('generateSignedUrl')
-                 ->once()
-                 ->andReturn([
-                     'signed_url'            => 'https://storage.example.com/signed-url-2',
-                     'signed_url_expires_at' => now()->addDays(7)->toIso8601String(),
-                 ]);
+                ->once()
+                ->andReturn([
+                    'signed_url' => 'https://storage.example.com/signed-url-2',
+                    'signed_url_expires_at' => now()->addDays(7)->toIso8601String(),
+                ]);
         });
 
         // Spy on Log::error to confirm the updateExpiry failure is logged
         Log::shouldReceive('error')
-           ->once()
-           ->withArgs(function ($message, $context) {
-               return str_contains($message, 'failed to update expiry') &&
-                      isset($context['exception']);
-           });
+            ->once()
+            ->withArgs(function ($message, $context) {
+                return str_contains($message, 'failed to update expiry') &&
+                       isset($context['exception']);
+            });
 
         // Act: POST /history/redownload/{id}
         $response = $this->postJson("/history/redownload/{$recordId}");
 
         // Assert: HTTP 200 — the download URL is still returned despite updateExpiry failing
         $response->assertStatus(200,
-            'Preservation 3.5: A failed updateExpiry must NOT block the redownload response. ' .
+            'Preservation 3.5: A failed updateExpiry must NOT block the redownload response. '.
             'HTTP 200 with download_url must still be returned.'
         );
 

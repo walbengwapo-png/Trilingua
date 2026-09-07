@@ -169,7 +169,10 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // Fall back to secure cookies when APP_ENV=production so the flag cannot be
+    // silently disabled by a missing env var; local/test envs keep non-secure
+    // cookies. (env() is safe here; the container is not yet bound at load time.)
+    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV') === 'production'),
 
     /*
     |--------------------------------------------------------------------------

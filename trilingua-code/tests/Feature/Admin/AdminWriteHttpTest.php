@@ -6,6 +6,8 @@ use App\Models\TranslationBlock;
 use App\Models\TranslationEditLog;
 use App\Models\TranslationHistory;
 use App\Models\User;
+use App\Services\StorageService;
+use App\Services\Translation\TranslationManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -226,7 +228,7 @@ class AdminWriteHttpTest extends TestCase
         $history = $this->makeDocRecord($this->makeUser());
 
         // Mock the storage + translation manager so no real Supabase/Python call.
-        $storage = \Mockery::mock(\App\Services\StorageService::class);
+        $storage = \Mockery::mock(StorageService::class);
         $storage->shouldReceive('downloadFile')->once()->andReturn('original-bytes');
         $storage->shouldReceive('uploadFile')->once()->andReturn([
             'storage_path' => '1/regenerated.pdf',
@@ -237,9 +239,9 @@ class AdminWriteHttpTest extends TestCase
             'signed_url' => 'https://supabase.test/original',
             'signed_url_expires_at' => now()->toIso8601String(),
         ]);
-        $this->app->instance(\App\Services\StorageService::class, $storage);
+        $this->app->instance(StorageService::class, $storage);
 
-        $translationManager = \Mockery::mock(\App\Services\Translation\TranslationManager::class);
+        $translationManager = \Mockery::mock(TranslationManager::class);
         $translationManager->shouldReceive('regenerateDocument')
             ->once()
             ->andReturn([
@@ -247,7 +249,7 @@ class AdminWriteHttpTest extends TestCase
                 'download_filename' => 'contract_regenerated.pdf',
                 'mime_type' => 'application/pdf',
             ]);
-        $this->app->instance(\App\Services\Translation\TranslationManager::class, $translationManager);
+        $this->app->instance(TranslationManager::class, $translationManager);
 
         Http::fake();
 
@@ -267,7 +269,7 @@ class AdminWriteHttpTest extends TestCase
         $history = $this->makeDocRecord($this->makeUser());
         $block = $history->blocks->first();
 
-        $storage = \Mockery::mock(\App\Services\StorageService::class);
+        $storage = \Mockery::mock(StorageService::class);
         $storage->shouldReceive('downloadFile')->once()->andReturn('original-bytes');
         $storage->shouldReceive('uploadFile')->once()->andReturn([
             'storage_path' => '1/regenerated.pdf',
@@ -278,11 +280,11 @@ class AdminWriteHttpTest extends TestCase
             'signed_url' => 'https://supabase.test/original',
             'signed_url_expires_at' => now()->toIso8601String(),
         ]);
-        $this->app->instance(\App\Services\StorageService::class, $storage);
+        $this->app->instance(StorageService::class, $storage);
 
         // The regeneration must be driven by the posted edit, proving unsaved
         // textarea changes make it into the reconstructed document.
-        $translationManager = \Mockery::mock(\App\Services\Translation\TranslationManager::class);
+        $translationManager = \Mockery::mock(TranslationManager::class);
         $translationManager->shouldReceive('regenerateDocument')
             ->once()
             ->withArgs(function ($originalBytes, $originalName, $sidecar, $overrides) {
@@ -293,7 +295,7 @@ class AdminWriteHttpTest extends TestCase
                 'download_filename' => 'contract_regenerated.pdf',
                 'mime_type' => 'application/pdf',
             ]);
-        $this->app->instance(\App\Services\Translation\TranslationManager::class, $translationManager);
+        $this->app->instance(TranslationManager::class, $translationManager);
 
         Http::fake();
 
@@ -330,7 +332,7 @@ class AdminWriteHttpTest extends TestCase
             ->get('/admin')
             ->assertOk()
             ->assertSee('Admin Dashboard')
-            ->assertSee('Mistranslation')
-            ->assertSee('Verified');
+            ->assertSee('Flagged Translations')
+            ->assertSee('mistranslation');
     }
 }
