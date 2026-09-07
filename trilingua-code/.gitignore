@@ -3,6 +3,8 @@
 .env
 .env.backup
 .env.production
+.env.demo
+.env.tunnel.example
 .phpactor.json
 .phpunit.result.cache
 /.fleet
@@ -24,6 +26,15 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Generated/compiled artifacts and runtime caches must never be committed.
+bootstrap/cache/*.php
+review_render_out/
+Model/cache/*.db
+Model/cache/*.db-wal
+Model/cache/*.db-shm
+storage/demo/
+.migration_translation.blade.php
 
 # Python
 __pycache__/

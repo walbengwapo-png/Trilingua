@@ -22,15 +22,15 @@ class SupabaseServiceProvider extends ServiceProvider
         }
 
         $required = [
-            'SUPABASE_URL',
-            'SUPABASE_ANON_KEY',
-            'SUPABASE_SERVICE_ROLE_KEY',
-            'SUPABASE_BUCKET',
+            'url' => 'SUPABASE_URL',
+            'anon_key' => 'SUPABASE_ANON_KEY',
+            'service_role_key' => 'SUPABASE_SERVICE_ROLE_KEY',
+            'bucket' => 'SUPABASE_BUCKET',
         ];
 
         $missing = [];
-        foreach ($required as $var) {
-            if (empty(env($var))) {
+        foreach ($required as $configKey => $var) {
+            if (empty(config("supabase.{$configKey}"))) {
                 $missing[] = $var;
             }
         }
