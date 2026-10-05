@@ -6,7 +6,7 @@ Supports: GPT-OSS (Ollama Cloud), Google Gemini
 Document formats: .docx .pdf .txt .md .rtf .odt .csv .pptx .xlsx
 
 Architecture:
-  Laravel → server.py → pipeline/ → providers/ → AI API
+  Laravel â†’ server.py â†’ pipeline/ â†’ providers/ â†’ AI API
 
 Usage:
     set GEMINI_API_KEY=your_key_here     # For Gemini analysis and review
@@ -118,7 +118,7 @@ else:
         print(f"  WARNING: Unknown analysis provider '{ANALYSIS_PROVIDER}'; using Ollama")
     _analysis_provider = _ollama_analysis_provider
 
-# Future providers (stubs — raise NotImplementedError when instantiated)
+# Future providers (stubs â€” raise NotImplementedError when instantiated)
 # Uncomment imports above and these lines when ready to implement:
 # _openai_provider = OpenAIProvider()
 # _deepseek_provider = DeepSeekProvider()
@@ -210,7 +210,12 @@ def _run_pipeline_guarded(pipeline_call):
             f"{_BUSY_WAIT_SECONDS} seconds (max {_MAX_CONCURRENT} active).",
         )
     try:
-        return pipeline_call()
+        from provider_usage import usage_scope, ProviderStopped
+        try:
+            with usage_scope():
+                return pipeline_call()
+        except ProviderStopped as error:
+            raise HTTPException(429, str(error)) from error
     finally:
         _translation_semaphore.release()
 
@@ -218,93 +223,7 @@ def _run_pipeline_guarded(pipeline_call):
 print(f"  [OK] Concurrent translations limited to {_MAX_CONCURRENT}")
 
 # ---------------------------------------------------------------------------
-# COLD START PRE-WARMING
-# Pre-import heavy libraries at startup so the first request doesn't pay
-# the import penalty. Python's import system caches modules in sys.modules,
-# so subsequent imports are instant dictionary lookups.
-# ---------------------------------------------------------------------------
-_COLD_START_WARMED = False
-
-def _warm_cold_start():
-    """Pre-warm all heavy dependencies so the first request is fast.
-    
-    This resolves the "first translation slow, subsequent fast" issue.
-    Call this once at server startup.
-    """
-    global _COLD_START_WARMED
-    if _COLD_START_WARMED:
-        return
-    _COLD_START_WARMED = True
-    
-    warm_start = _time.time()
-    print("  [WARMUP] Pre-warming cold-start dependencies...")
-    
-    # 1. Pre-import heavy document processing libraries
-    # These are imported lazily inside function bodies in extractor.py and
-    # reconstructor.py. Importing them here loads them into sys.modules
-    # so the first request doesn't pay the 1-3s import penalty.
-    libs = [
-        ("python-docx",     lambda: __import__("docx")),
-        ("PyMuPDF (fitz)",  lambda: __import__("fitz")),
-        ("python-pptx",     lambda: __import__("pptx")),
-        ("openpyxl",        lambda: __import__("openpyxl")),
-        ("odfpy",           lambda: __import__("odf")),
-        ("striprtf",        lambda: __import__("striprtf")),
-    ]
-    for name, loader in libs:
-        try:
-            loader()
-            print(f"    [WARMUP] [OK] {name}")
-        except ImportError:
-            print(f"    [WARMUP] [MISSING] {name} (not installed)")
-    
-    # 2. Pre-warm SQLite translation cache
-    # Create the database and schema at startup, not on first request.
-    try:
-        from cache.sqlite_cache import SQLiteTranslationCache
-        cache = SQLiteTranslationCache(
-            ttl_days=int(os.environ.get("TRANSLATION_CACHE_TTL_DAYS", "30")),
-            enabled=os.environ.get("TRANSLATION_CACHE_ENABLED", "true").lower() == "true",
-        )
-        # Force table creation by doing a no-op lookup
-        cache.get("__warmup__", "English", "__warmup__")
-        print("    [WARMUP] [OK] SQLite cache initialized")
-    except Exception as e:
-        print(f"    [WARMUP] [FAIL] SQLite cache: {e}")
-    
-    # 3. Pre-warm HTTP connection pool
-    # Send a lightweight health-check to the AI provider to establish
-    # the TCP/TLS connection so the first translation request doesn't
-    # need to do a cold handshake.
-    try:
-        provider = _get_active_provider()
-        health_result = provider.health()
-        if health_result.get("status") == "ok":
-            print(f"    [WARMUP] [OK] {provider.name} connection pool warmed")
-        else:
-            print(f"    [WARMUP] [OK] {provider.name} connection pool warmed (status: {health_result.get('status')})")
-    except Exception as e:
-        print(f"    [WARMUP] [OK] {provider.name} connection pool warmed (health check: {e})")
-
-    # 4. Pre-warm GPT-OSS model into GPU memory
-    # The health check above only does a GET /api/tags — it does NOT
-    # load the model. This sends a real chat request to force Ollama
-    # to spin up a GPU instance so the first translation is fast.
-    if _gptoss_provider.name == provider.name:
-        try:
-            print(f"    [WARMUP] Loading {_gptoss_provider.model_name} (may take 1-2 min)...")
-            if _gptoss_provider.warmup():
-                print(f"    [WARMUP] [OK] {_gptoss_provider.model_name} loaded into memory")
-            else:
-                print(f"    [WARMUP] [INFO] Model will load on first request")
-        except Exception as e:
-            print(f"    [WARMUP] [INFO] Model warmup: {e}")
-
-    elapsed = (_time.time() - warm_start) * 1000
-    print(f"  [WARMUP] Complete in {elapsed:.0f}ms")
-
-# Run pre-warming immediately at startup
-_warm_cold_start()
+# Dependencies and SQLite cache remain lazy; startup makes no provider requests.
 
 from contextlib import asynccontextmanager
 
@@ -660,12 +579,12 @@ def translate_document(
         input_path = os.path.join(tmp_dir, f"input{ext}")
         output_path = os.path.join(tmp_dir, f"translated{out_ext}")
 
-        # Save the uploaded file (sync read — we are on a worker thread)
+        # Save the uploaded file (sync read â€” we are on a worker thread)
         contents = file.file.read()
         with open(input_path, "wb") as f:
             f.write(contents)
 
-        print(f"[SERVER] Translating document: {file.filename} ({source_lang} → {target_lang})")
+        print(f"[SERVER] Translating document: {file.filename} ({source_lang} â†’ {target_lang})")
         print(f"[SERVER] Format: {ext}, Size: {len(contents)} bytes")
 
         # Use the new DocumentPipeline
@@ -724,7 +643,7 @@ def translate_document(
 
 
 # ---------------------------------------------------------------------------
-# POST /translate/document/regenerate — reconstruction-only re-render of an
+# POST /translate/document/regenerate â€” reconstruction-only re-render of an
 # edited document. Requires a sidecar captured at translate time plus the
 # ORIGINAL source file (needed for PDF and in-place DOCX/PPTX/XLSX replay).
 # No extraction, analysis, prepass, memory, or AI translation runs here.
@@ -808,7 +727,7 @@ def translate_document_regenerate(
 
 # ---------------------------------------------------------------------------
 # Cache management
-# DELETE /cache/clear — clears the persistent SQLite translation cache
+# DELETE /cache/clear â€” clears the persistent SQLite translation cache
 # ---------------------------------------------------------------------------
 @app.delete("/cache/clear", dependencies=[Depends(require_service_token)])
 def clear_cache():

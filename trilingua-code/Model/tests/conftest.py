@@ -421,3 +421,16 @@ def block_list_factory():
         return blocks
     
     return _create_blocks
+
+
+@pytest.fixture(autouse=True)
+def isolate_provider_run_stop_between_tests():
+    """Each offline test is a separate run; production has no automatic latch reset."""
+    import sys
+    module = sys.modules.get('provider_usage')
+    if module is not None:
+        module._run_stop_reason = None
+    yield
+    module = sys.modules.get('provider_usage')
+    if module is not None:
+        module._run_stop_reason = None

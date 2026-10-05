@@ -1,5 +1,6 @@
 """Translation-provider failover for temporary cloud API failures."""
 
+from provider_usage import ProviderStopped, ollama_post, ollama_headers
 import os
 import threading
 import time
@@ -118,6 +119,8 @@ class FallbackTranslationProvider(TranslationProvider):
         if use_primary:
             try:
                 response = self._primary.translate(*args, **kwargs)
+            except ProviderStopped:
+                raise
             except Exception as error:  # provider boundary must fail open
                 response = None
                 primary_error = str(error)
@@ -178,6 +181,8 @@ class FallbackTranslationProvider(TranslationProvider):
                         ),
                     )
                 response = self._fallback.translate(*args, **kwargs)
+        except ProviderStopped:
+            raise
         except Exception as error:
             response = TranslationResponse(
                 translated_text="", provider=self._fallback.name,

@@ -1116,7 +1116,7 @@ class TestGPTOSSTranslateMany:
         assert ctx.provider_failures.get("invalid_response") == 3
 
     def test_systemic_rate_limit_raises_and_records(self, monkeypatch):
-        from providers.gptoss import GPTOSSProviderError
+        from provider_usage import ProviderStopped
         from pipeline.document_context import DocumentContext
         from config.processing_modes import get_mode
         provider = _gptoss_provider(monkeypatch)
@@ -1127,12 +1127,14 @@ class TestGPTOSSTranslateMany:
             return FakeChatResponse(status=429, text="rate limited")
 
         monkeypatch.setattr(provider._session, "post", fake_post)
-        with pytest.raises(GPTOSSProviderError, match="rate limit"):
+        with pytest.raises(ProviderStopped, match="HTTP 429") as stopped:
             provider.translate_many(
                 _units(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"]),
                 "English", "Cebuano", ctx=ctx,
             )
+        assert stopped.value.status_code == 429
         assert ctx.provider_failures.get("rate_limit") == 1
+        assert ctx.provider_retries == 0
 
     def test_systemic_connection_failure_raises(self, monkeypatch):
         from dto.responses import TranslationResponse

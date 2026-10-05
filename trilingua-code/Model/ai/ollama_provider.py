@@ -15,6 +15,7 @@ This is NOT a translation provider. Translation is handled by
 Model/providers/gptoss.py and Model/providers/gemini.py.
 """
 
+from provider_usage import ProviderStopped, ollama_post, ollama_headers
 import os
 import json
 import time as _time
@@ -87,11 +88,11 @@ class OllamaAnalysisProvider(AIAnalysisProvider):
 
         last_error = ""
 
-        for attempt in range(3):
+        for attempt in range(max(1, int(os.environ.get("OLLAMA_ANALYSIS_MAX_ATTEMPTS", "3")))):
             try:
-                resp = requests.post(
+                resp = ollama_post(requests.post,
                     self._api_url,
-                    headers={"Content-Type": "application/json"},
+                    headers=ollama_headers(self._api_url),
                     json=payload,
                     timeout=120,  # Analysis can take longer for large docs
                 )
@@ -205,6 +206,8 @@ class OllamaAnalysisProvider(AIAnalysisProvider):
                 "error": f"Ollama returned status {resp.status_code}",
             }
 
+        except ProviderStopped:
+            raise
         except Exception as e:
             return {
                 "status": "unavailable",

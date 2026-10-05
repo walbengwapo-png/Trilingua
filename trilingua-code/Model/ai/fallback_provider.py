@@ -1,5 +1,6 @@
 """Keep analysis available during a primary provider outage or rate limit."""
 
+from provider_usage import ProviderStopped, ollama_post, ollama_headers
 import os
 import threading
 import time
@@ -55,6 +56,8 @@ class FallbackAnalysisProvider(AIAnalysisProvider):
                     self._local.model = self._primary.model_name
                     self._failure = (0.0, "")
                     return result
+                except ProviderStopped:
+                    raise
                 except (RuntimeError, ConnectionError) as exc:
                     retry_at = time.monotonic() + max(
                         self._cooldown_seconds, getattr(exc, "retry_after", 0)
@@ -75,6 +78,8 @@ class FallbackAnalysisProvider(AIAnalysisProvider):
 
         try:
             result = self._fallback.analyze(system_prompt, user_prompt)
+        except ProviderStopped:
+            raise
         except (RuntimeError, ConnectionError) as exc:
             raise RuntimeError(
                 f"Primary analysis unavailable: {primary_error}. "
