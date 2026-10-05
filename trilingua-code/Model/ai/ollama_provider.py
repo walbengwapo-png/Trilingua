@@ -91,7 +91,7 @@ class OllamaAnalysisProvider(AIAnalysisProvider):
         for attempt in range(max(1, int(os.environ.get("OLLAMA_ANALYSIS_MAX_ATTEMPTS", "3")))):
             try:
                 resp = ollama_post(requests.post,
-                    self._api_url,
+                    self._api_url, provider=self.name, purpose="analysis",
                     headers=ollama_headers(self._api_url),
                     json=payload,
                     timeout=120,  # Analysis can take longer for large docs

@@ -8,13 +8,12 @@ Returns only assistant.message.content.
 Never exposes reasoning or provider-specific JSON.
 """
 
-from provider_usage import ProviderStopped, ollama_post, ollama_headers
+from provider_usage import ProviderStopped, ollama_post, ollama_headers, reported_tokens
 import os
 import json
 import re
 import time as _time
 import requests
-from urllib.parse import urlsplit
 from dto.responses import TranslationResponse
 from dto.pipeline import ProviderCapabilities, TranslationUnitResult
 from .base import TranslationProvider
@@ -250,14 +249,8 @@ class GPTOSSProvider(TranslationProvider):
                         _time.sleep(1)
                         continue
 
-                # Estimate token usage from response
-                token_usage = {}
-                if "eval_count" in data:
-                    token_usage["output"] = data["eval_count"]
-                if "prompt_eval_count" in data:
-                    token_usage["input"] = data["prompt_eval_count"]
-                if not token_usage:
-                    token_usage = {"input": len(text.split()), "output": len(result.split())}
+                reported = reported_tokens(data)
+                token_usage = {key: value for key, value in reported.items() if value is not None}
 
                 elapsed_ms = (_time.time() - start_time) * 1000
                 return TranslationResponse(
@@ -731,7 +724,7 @@ class GPTOSSProvider(TranslationProvider):
             return False
         try:
             resp = ollama_post(self._session.post,
-                self._api_url,
+                self._api_url, purpose="warmup",
                 headers=self._headers,
                 json={
                     "model": self._model,

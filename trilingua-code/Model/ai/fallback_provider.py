@@ -1,6 +1,6 @@
 """Keep analysis available during a primary provider outage or rate limit."""
 
-from provider_usage import ProviderStopped, ollama_post, ollama_headers
+from provider_usage import ProviderStopped
 import os
 import threading
 import time

@@ -196,6 +196,12 @@ _BUSY_WAIT_SECONDS = max(
 _translation_semaphore = threading.BoundedSemaphore(_MAX_CONCURRENT)
 
 
+class UsageHTTPException(HTTPException):
+    def __init__(self, status_code, detail, provider_usage):
+        super().__init__(status_code, detail)
+        self.provider_usage = provider_usage
+
+
 def _run_pipeline_guarded(pipeline_call):
     """Run a pipeline call under the concurrency guard.
 
@@ -211,11 +217,25 @@ def _run_pipeline_guarded(pipeline_call):
         )
     try:
         from provider_usage import usage_scope, ProviderStopped
+        usage = None
         try:
-            with usage_scope():
-                return pipeline_call()
+            with usage_scope() as usage:
+                result = pipeline_call()
+                usage.check()
+                summary = usage.summary()
+                response = result[0] if isinstance(result, tuple) else result
+                if hasattr(response, 'token_usage'):
+                    response.provider_usage = summary
+                    response.token_usage = {'input': summary['input_tokens'], 'output': summary['output_tokens']}
+                if hasattr(response, 'metrics'):
+                    response.metrics.update(provider_usage=summary, llm_calls=summary['request_count'],
+                                            input_tokens=summary['input_tokens'], output_tokens=summary['output_tokens'])
+                return result
         except ProviderStopped as error:
-            raise HTTPException(429, str(error)) from error
+            raise UsageHTTPException(429, str(error), usage.summary() if usage else None) from error
+        except Exception as error:
+            error.provider_usage = usage.summary() if usage else None
+            raise
     finally:
         _translation_semaphore.release()
 
@@ -252,6 +272,13 @@ async def _runtime_lifespan(app: FastAPI):
 
 
 app = FastAPI(title="TriLingua Translation Service v5", lifespan=_runtime_lifespan)
+
+
+@app.exception_handler(UsageHTTPException)
+async def usage_error_response(request, error):
+    from fastapi.responses import JSONResponse
+    return JSONResponse(status_code=error.status_code,
+                        content={'detail': error.detail, 'provider_usage': error.provider_usage})
 
 
 @app.middleware("http")
@@ -468,7 +495,8 @@ def translate_text(req: TextRequest):
             if not _text_quality_reviewer.needs_retranslation(review):
                 return initial, review, warnings
 
-            repaired = _translation_pipeline._translate_with_echo_guard(
+            from provider_usage import call_with_purpose
+            repaired = call_with_purpose("repair", _translation_pipeline._translate_with_echo_guard,
                 text=source_text,
                 source_lang=req.source_lang,
                 target_lang=req.target_lang,
@@ -503,7 +531,7 @@ def translate_text(req: TextRequest):
         result, review, warnings = _run_pipeline_guarded(_translate_and_review)
 
         if not result.success:
-            raise HTTPException(500, result.error_message)
+            raise UsageHTTPException(500, result.error_message, getattr(result, "provider_usage", None))
 
         if review is not None and not review.available:
             warnings.append("AI quality review unavailable; translation was retained without a review score.")
@@ -525,13 +553,14 @@ def translate_text(req: TextRequest):
             ],
             "warnings": warnings,
             "token_usage": result.token_usage,
+            "provider_usage": getattr(result, "provider_usage", None),
             "execution_time_ms": result.execution_time_ms,
         }
     except HTTPException:
         raise
     except Exception as e:
         logging.getLogger("uvicorn.error").exception("Text translation failed")
-        raise HTTPException(500, str(e))
+        raise UsageHTTPException(500, str(e), getattr(e, "provider_usage", None))
 
 
 # ---------------------------------------------------------------------------
@@ -599,7 +628,7 @@ def translate_document(
         result = _run_pipeline_guarded(lambda: _document_pipeline.translate(request))
 
         if not result.success:
-            raise HTTPException(500, result.error_message)
+            raise UsageHTTPException(500, result.error_message, getattr(result, "provider_usage", None))
 
         actual_output = result.output_path
         if not os.path.exists(actual_output):
@@ -639,7 +668,7 @@ def translate_document(
     except Exception as e:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         print(f"[SERVER] Exception during translation: {str(e)}")
-        raise HTTPException(500, f"Translation error: {str(e)}")
+        raise UsageHTTPException(500, f"Translation error: {str(e)}", getattr(e, "provider_usage", None))
 
 
 # ---------------------------------------------------------------------------

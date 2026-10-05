@@ -9,6 +9,7 @@ capacity rather than one starving the other.
 from __future__ import annotations
 
 import os
+from contextvars import copy_context
 import threading
 import time
 from collections import deque
@@ -39,6 +40,9 @@ class FairDocumentBatchScheduler:
             ).start()
 
     def submit(self, document_id: str, callback: Callable[[], T]) -> Future:
+        context = copy_context()
+        original_callback = callback
+        callback = lambda: context.run(original_callback)
         future: Future = Future()
         task = _Task(future=future, submitted_at=time.monotonic(), callback=callback)
         with self._condition:

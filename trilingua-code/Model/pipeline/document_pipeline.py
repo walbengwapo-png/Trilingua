@@ -64,6 +64,7 @@ from prompts.prepass import (
     build_prepass_injection,
 )
 
+from provider_usage import submit_with_usage
 from concurrent.futures import ThreadPoolExecutor
 
 # OPTIMIZATION: Env var for prepass (Task 5)
@@ -352,12 +353,12 @@ class DocumentPipeline:
                     with phase_profile("document_analyzer", ctx):
                         return self._document_analyzer.analyze(blocks)
         
-                analyzer_future = pool.submit(_run_analyzer)
+                analyzer_future = submit_with_usage(pool, _run_analyzer)
         
                 prepass_future = None
                 if (_TRANSLATION_PREPASS_ENABLED and ctx.mode.prepass and
                         self._ai_provider):
-                    prepass_future = pool.submit(
+                    prepass_future = submit_with_usage(pool,
                         self._execute_prepass_concurrent, blocks, request, ctx
                     )
         
@@ -621,10 +622,10 @@ class DocumentPipeline:
             if analyzer_mode == "concurrent":
                 print("[ANALYZER] Running AI document analysis (concurrent)...")
                 with ThreadPoolExecutor(max_workers=2) as pool:
-                    analyzer = pool.submit(self._document_analyzer.analyze, blocks)
+                    analyzer = submit_with_usage(pool, self._document_analyzer.analyze, blocks)
                     prepass = None
                     if _TRANSLATION_PREPASS_ENABLED and ctx.mode.prepass and self._ai_provider:
-                        prepass = pool.submit(self._execute_prepass_concurrent, blocks, request, ctx)
+                        prepass = submit_with_usage(pool, self._execute_prepass_concurrent, blocks, request, ctx)
                     ctx.document_profile = analyzer.result()
                     if prepass:
                         prepass.result()

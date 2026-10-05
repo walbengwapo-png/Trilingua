@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Google Gemini translation provider."""
 
+from provider_usage import provider_post, reported_tokens
 import os
 import re
 import time
@@ -203,8 +204,8 @@ class GeminiProvider(TranslationProvider):
         max_attempts = max(1, int(os.environ.get("GEMINI_MAX_ATTEMPTS", "1")))
         for attempt in range(max_attempts):
             try:
-                response = self._session.post(
-                    url, headers=headers, json=payload,
+                response = provider_post(self._session.post,
+                    url, provider=self.name, model=self._model, purpose="translation", headers=headers, json=payload,
                     timeout=(10, int(os.environ.get("GEMINI_REQUEST_TIMEOUT_SECONDS", "30"))),
                 )
                 if response.status_code == 429:
@@ -265,7 +266,7 @@ class GeminiProvider(TranslationProvider):
                     raise RuntimeError(f"Gemini returned empty translation for: {text[:60]}...")
                 return TranslationResponse(
                     translated_text=result, provider=self.name, model=self._model,
-                    token_usage={"input": estimated_input_tokens, "output": len(result.split())},
+                    token_usage={key: value for key, value in reported_tokens(data).items() if value is not None},
                     execution_time_ms=(time.time() - start_time) * 1000,
                 )
             except requests.exceptions.Timeout:

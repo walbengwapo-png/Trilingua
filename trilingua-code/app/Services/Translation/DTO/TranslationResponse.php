@@ -22,6 +22,7 @@ class TranslationResponse
         public readonly array $warnings = [],
         public readonly bool $success = true,
         public readonly string $errorMessage = '',
+        public readonly ?array $providerUsage = null,
     ) {}
 
     /**
@@ -34,6 +35,7 @@ class TranslationResponse
             provider: $data['provider'] ?? '',
             model: $data['model'] ?? '',
             tokenUsage: $data['token_usage'] ?? [],
+            providerUsage: $data['provider_usage'] ?? null,
             executionTimeMs: $data['execution_time_ms'] ?? 0.0,
             mode: $data['mode'] ?? 'balanced',
             qualityScore: isset($data['quality_score'])
@@ -56,6 +58,7 @@ class TranslationResponse
             'provider' => $this->provider,
             'model' => $this->model,
             'token_usage' => $this->tokenUsage,
+            'provider_usage' => $this->providerUsage,
             'execution_time_ms' => $this->executionTimeMs,
             'mode' => $this->mode,
             'quality_score' => $this->qualityScore,

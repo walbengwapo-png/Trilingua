@@ -168,6 +168,7 @@ class TranslationController extends Controller
                         'provider' => $result->provider,
                         'model' => $result->model,
                         'token_usage' => $result->tokenUsage,
+                        'provider_usage' => $result->providerUsage,
                         'execution_time_ms' => $result->executionTimeMs,
                         'mode' => $result->mode,
                         'quality_score' => $result->qualityScore,

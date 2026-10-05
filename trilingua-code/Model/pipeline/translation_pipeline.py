@@ -35,6 +35,7 @@ import os
 import re
 import time
 from contextlib import contextmanager
+from provider_usage import submit_with_usage
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable
 
@@ -1087,7 +1088,7 @@ class TranslationPipeline:
                     )
                     future = (
                         document_batch_scheduler.submit(str(id(ctx)), callback)
-                        if use_fair_scheduler else executor.submit(callback)
+                        if use_fair_scheduler else submit_with_usage(executor, callback)
                     )
                     future_to_batch[future] = batch_idx
 
