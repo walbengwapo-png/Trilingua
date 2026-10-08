@@ -30,7 +30,7 @@ class ValidateDeploymentTimeouts extends Command
         $effective = config('timeouts');
 
         $stages = [
-            'python_service'  => 'Python engine HTTP limit',
+            'python_service'  => 'Python engine processing budget (short polling requests on Cloud)',
             'job'             => 'Illuminate job $timeout',
             'worker'          => 'queue worker --timeout',
             'retry_after'     => 'database queue lease (retry_after)',
@@ -48,7 +48,7 @@ class ValidateDeploymentTimeouts extends Command
         );
 
         $pairwise = [
-            ['job', 'python_service', 'job $timeout must exceed the Python engine HTTP limit'],
+            ['job', 'python_service', 'job $timeout must exceed the Python engine processing budget'],
             ['worker', 'job', 'worker --timeout must exceed the job $timeout'],
             ['retry_after', 'worker', 'database retry_after must exceed the worker --timeout so a live job is never re-leased'],
             ['reconcile_processing', 'retry_after', 'reconcile processing timeout must exceed retry_after so the reconciler never kills a live job'],

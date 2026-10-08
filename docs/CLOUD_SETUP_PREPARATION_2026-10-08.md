@@ -1,5 +1,7 @@
 # TriLingua Cloud setup preparation — 2026-10-08
 
+> Historical preparation log. The 2026-10-09 update below supersedes earlier authorization, secret, backup, bucket and implementation status. Earlier completed checks remain evidence for their stated scope only.
+
 The user chose **preparation only; do not start paid compute**. No deployment was started, compute upgraded, live AI request made, or credential copied to Cloud in this work.
 
 ## Prepared and verified
@@ -38,5 +40,16 @@ The user subsequently requested a functional deployed version and clarified the 
 The user declined moving to Render and wants to retain the two separate Cloud applications. Separating Laravel and Python is valid, but it does not eliminate Cloud billing or its HTTP timeout. The remaining included credit balance and spending controls must be verified before starting compute. Cloud spending limits allow in-flight work to finish and may have a small overage; they are not an absolute zero-charge guarantee. No new compute was started. The free Render tier is not evidence of reliable continuous production operation.
 
 Current sources: [Cloud pricing](https://laravel.com/cloud/docs/pricing), [Cloud trial](https://laravel.com/cloud/docs/free-trial), [Render free limits](https://render.com/docs/free), [Ollama pricing and free usage](https://ollama.com/pricing).
+
+## Update — 2026-10-09
+
+- The user approved durable Python document jobs/polling and existing Supabase secrets on both Cloud applications. The implementation uses the existing database and `trailingua` bucket, short HTTP polls, durable engine UUIDs, fenced leases and terminal provider stops; no new paid resource is required.
+- Saved Laravel-only `DB_PASSWORD` and `SUPABASE_ANON_KEY`. Saved `SUPABASE_SERVICE_ROLE_KEY` for both production applications. Tested the supplied Ollama key before integration: authentication HTTP 200 reported Free; one minimal request each to GPT-OSS 20B and Gemma 4 31B returned HTTP 200 with completed output. Saved `OLLAMA_API_KEY` for Python only. No key values are retained in source or this log.
+- Verified the organization $5 spending limit uses **Stop compute at the limit**. Approximately $0.01 usage was shown at verification. The existing $5 Starter subscription is billed separately, and Cloud allows small in-flight overage; the usage cap does not guarantee an absolutely zero card charge. No compute/deployment was started in this update.
+- Made the existing bucket private through the Storage API. Preserved all 59 objects; signed download returned 200, unsigned and anonymous downloads returned 400.
+- Created a Windows CurrentUser DPAPI-encrypted public-schema/data backup under `C:\Users\walbe\.codex\backups\trilingua\public-before-document-jobs-20261009-003238.dump.dpapi`. Successfully restored it to a disposable local PostgreSQL database: 1 user, 15 history records, 33 migrations. Storage file contents and non-public schemas are excluded; no production Laravel migration has been run.
+- The Laravel full suite passed 504 tests, then 23 affected tests after follow-up changes. Python's offline CI profile passed 419 tests (35 excluded), with outbound networking blocked and zero attempted outbound connections. Actual local PostgreSQL 17.11 queue assertions passed, including distinct claims from two concurrent transactions. The initial all-socket network guard incorrectly blocked Windows asyncio's loopback sockets; allowing loopback corrected the verification harness without a product change.
+- Prepared a `PYTHON_SERVICE_TOKEN` secret form scoped to both applications. The initial credential requires the user to paste and save it under browser security policy. The shared secret, final service URL/configuration, schema rollout and deployed acceptance remain pending. SMTP/Google configuration and live delivery/sign-in are not yet verified.
+- Long document transport is implemented; text and regeneration remain synchronous and subject to Cloud's 60-second ceiling. Peak memory for representative large documents, Cloud operation and human translation quality remain unverified. Failed/unacknowledged engine files require operator cleanup before bucket quota becomes tight.
 
 Sources: [Cloud Python deployment](https://laravel.com/cloud/docs/deploy-guides/python), [Cloud pricing](https://laravel.com/cloud/docs/pricing), [Render request duration](https://render.com/docs/render-vs-heroku-comparison), [Render pricing](https://render.com/pricing), [private Supabase buckets](https://supabase.com/docs/guides/storage/buckets/fundamentals), [PyMuPDF font assets](https://pymupdf.readthedocs.io/en/latest/font.html).

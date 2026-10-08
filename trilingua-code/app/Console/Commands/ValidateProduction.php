@@ -24,6 +24,8 @@ class ValidateProduction extends Command
             'CACHE_STORE must be database or redis.' => in_array(config('cache.default'), ['database', 'redis'], true),
             'QUEUE_CONNECTION must remain database for transactional document dispatch.' => config('queue.default') === 'database',
             'PYTHON_SERVICE_URL must be the remote HTTPS translation service.' => $this->isRemoteHttps(config('translation.python_service.url')),
+            'Cloud Python requires PYTHON_DOCUMENT_JOBS=true for long documents.' => ! str_ends_with((string) parse_url(config('translation.python_service.url'), PHP_URL_HOST), '.laravel.cloud') || config('translation.python_service.document_jobs') === true,
+            'Durable Python document jobs require PostgreSQL.' => ! config('translation.python_service.document_jobs') || config('database.default') === 'pgsql',
             'PYTHON_SERVICE_TOKEN must contain at least 32 characters.' => strlen((string) config('translation.python_service.token')) >= 32,
             'SUPABASE_URL must use HTTPS.' => $this->isRemoteHttps(config('supabase.url')),
             'SUPABASE_SERVICE_ROLE_KEY and SUPABASE_BUCKET must be set.' => filled(config('supabase.service_role_key')) && filled(config('supabase.bucket')),

@@ -34,6 +34,17 @@ class ProductionConfigurationTest extends TestCase
         $this->artisan('deployment:validate-production')->assertSuccessful();
     }
 
+    public function test_cloud_python_requires_durable_jobs_on_postgres(): void
+    {
+        config(['translation.python_service.url' => 'https://engine.laravel.cloud',
+            'translation.python_service.document_jobs' => false]);
+        $this->artisan('deployment:validate-production')->assertFailed();
+        config(['translation.python_service.document_jobs' => true]);
+        $this->artisan('deployment:validate-production')->assertSuccessful();
+        config(['database.default' => 'mysql']);
+        $this->artisan('deployment:validate-production')->assertFailed();
+    }
+
     #[DataProvider('unsafeSettings')]
     public function test_unsafe_configuration_is_rejected(string $key, mixed $value): void
     {

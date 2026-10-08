@@ -108,7 +108,9 @@ class TranslateDocumentJob implements ShouldQueue
         @set_time_limit(0);
 
         $job = $this->resolveJob();
-        $job?->markProcessing();
+        if ($job !== null && ! $job->markProcessing()) {
+            return;
+        }
         $outputPath = null;
 
         $this->storeProgress(10, 'Document queued for translation. Processing will begin shortly.');
@@ -140,13 +142,17 @@ class TranslateDocumentJob implements ShouldQueue
             $this->storeProgress(15, 'Translating document...');
 
             // 1. Translate the document via TranslationManager
-            $translationResult = $translationManager->translateDocument(
-                $uploadedFile,
-                $this->sourceLang,
-                $this->targetLang,
-                $this->pdfColumnMode,
-                $this->mode
-            );
+            $arguments = [$uploadedFile, $this->sourceLang, $this->targetLang, $this->pdfColumnMode, $this->mode];
+            if (config('translation.python_service.document_jobs')) {
+                if ($job !== null && empty($job->engine_job_uuid)) {
+                    TranslationJob::whereKey($job->getKey())->whereNull('engine_job_uuid')
+                        ->update(['engine_job_uuid' => (string) Str::uuid()]);
+                    $job->refresh();
+                }
+                $arguments[] = $job?->engine_job_uuid ?? $this->uuid();
+                $arguments[] = fn () => $job?->noteProgress(15);
+            }
+            $translationResult = $translationManager->translateDocument(...$arguments);
 
             $downloadFilename = $translationResult['download_filename'];
 
@@ -302,6 +308,10 @@ class TranslateDocumentJob implements ShouldQueue
 
             $this->notifyCompleted($history);
             $this->notifyAdminsAwaitingReview($history);
+
+            if (config('translation.python_service.document_jobs')) {
+                $translationManager->acknowledgeDocumentJob($job?->engine_job_uuid ?? $this->uuid());
+            }
 
             // StorageService deliberately never removes caller-owned files.
             // These are worker-local scratch copies and are safe to release

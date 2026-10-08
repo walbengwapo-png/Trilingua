@@ -21,6 +21,7 @@ import os
 import hmac
 import logging
 import time as _time
+from uuid import UUID
 
 # Ensure the Model directory is on the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -268,7 +269,21 @@ async def _runtime_lifespan(app: FastAPI):
         print(f"  [OK] Threadpool limited to {_THREADPOOL_SIZE} worker threads")
     except Exception as e:
         print(f"  [WARN] Could not configure threadpool limiter: {e}")
-    yield
+    worker = None
+    if os.environ.get("DOCUMENT_JOBS_ENABLED", "false").lower() == "true":
+        from document_jobs import DocumentJobStore, DocumentJobWorker
+        from anyio import to_thread
+        store = DocumentJobStore()
+        await to_thread.run_sync(store.verify)
+        worker = DocumentJobWorker(store, translate_document)
+        app.state.document_jobs = worker
+        worker.thread.start()
+    try:
+        yield
+    finally:
+        if worker:
+            worker.stop.set()
+            worker.wake.set()
 
 
 app = FastAPI(title="TriLingua Translation Service v5", lifespan=_runtime_lifespan)
@@ -583,6 +598,53 @@ def translate_document(
     pdf_column_mode: str = Form("auto"),
     mode: str = Form("balanced"),
 ):
+    ext = validate_document_request(file.filename, source_lang, target_lang, pdf_column_mode)
+
+    out_ext = EXTENSION_MAP[ext]
+    tmp_dir = tempfile.mkdtemp()
+    output_path = None
+
+    try:
+        input_path = os.path.join(tmp_dir, f"input{ext}")
+        output_path = os.path.join(tmp_dir, f"translated{out_ext}")
+
+        # Save the uploaded file (sync read — we are on a worker thread)
+        contents = file.file.read()
+        with open(input_path, "wb") as f:
+            f.write(contents)
+
+        from dto.requests import DocumentTranslationRequest as DTR
+        request = DTR(file_path=input_path, source_lang=source_lang,
+                      target_lang=target_lang, pdf_column_mode=pdf_column_mode, mode=mode)
+        result = _run_pipeline_guarded(lambda: _document_pipeline.translate(request))
+
+        if not result.success:
+            raise UsageHTTPException(500, result.error_message, getattr(result, "provider_usage", None))
+        actual_output = result.output_path
+        if not os.path.exists(actual_output):
+            raise HTTPException(500, "Translation produced no output file.")
+        with open(actual_output, "rb") as f:
+            file_contents = f.read()
+        return {
+            "file_base64": base64.b64encode(file_contents).decode("ascii"),
+            "blocks": getattr(result, "blocks", None) or [],
+            "sidecar": getattr(result, "sidecar", None),
+            "download_filename": f"{os.path.splitext(file.filename)[0]}_translated{out_ext}",
+            "mime_type": _content_type_for_ext(out_ext),
+            "metrics": result.metrics or {},
+            "validation": getattr(result, "output_validation", {}) or {},
+        }
+    except PDFValidationError as e:
+        raise HTTPException(422, {"message": str(e), "validation": e.report})
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise UsageHTTPException(500, f"Translation error: {str(e)}", getattr(e, "provider_usage", None))
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def validate_document_request(filename, source_lang, target_lang, pdf_column_mode):
     if pdf_column_mode not in VALID_PDF_COLUMN_MODES:
         raise HTTPException(
             400,
@@ -596,79 +658,70 @@ def translate_document(
     if source_lang == target_lang:
         raise HTTPException(400, "Source and target languages must differ.")
 
-    ext = os.path.splitext(file.filename)[1].lower()
+    ext = os.path.splitext(filename)[1].lower()
     if ext not in EXTENSION_MAP:
         raise HTTPException(400, f"Unsupported file type: {ext}. Supported: {sorted(SUPPORTED_EXTENSIONS)}")
 
-    out_ext = EXTENSION_MAP[ext]
-    tmp_dir = tempfile.mkdtemp()
-    output_path = None
+    return ext
 
-    try:
-        input_path = os.path.join(tmp_dir, f"input{ext}")
-        output_path = os.path.join(tmp_dir, f"translated{out_ext}")
 
-        # Save the uploaded file (sync read â€” we are on a worker thread)
-        contents = file.file.read()
-        with open(input_path, "wb") as f:
-            f.write(contents)
+def document_job_worker():
+    worker = getattr(app.state, "document_jobs", None)
+    if worker is None:
+        raise HTTPException(503, "Durable document jobs are not configured")
+    return worker
 
-        print(f"[SERVER] Translating document: {file.filename} ({source_lang} â†’ {target_lang})")
-        print(f"[SERVER] Format: {ext}, Size: {len(contents)} bytes")
 
-        # Use the new DocumentPipeline
-        from dto.requests import DocumentTranslationRequest as DTR
-        request = DTR(
-            file_path=input_path,
-            source_lang=source_lang,
-            target_lang=target_lang,
-            pdf_column_mode=pdf_column_mode,
-            mode=mode,
-        )
-        result = _run_pipeline_guarded(lambda: _document_pipeline.translate(request))
+@app.post("/translate/document/jobs", status_code=202, dependencies=[Depends(require_service_token)])
+def submit_document_job(
+    job_id: UUID = Form(...), file: UploadFile = File(...),
+    source_lang: str = Form(...), target_lang: str = Form(...),
+    pdf_column_mode: str = Form("auto"), mode: str = Form("balanced"),
+):
+    from document_jobs import MAX_INPUT_BYTES, public_status
+    validate_document_request(file.filename, source_lang, target_lang, pdf_column_mode)
+    if mode not in VALID_MODES:
+        raise HTTPException(400, "Invalid processing mode")
+    contents = file.file.read(MAX_INPUT_BYTES + 1)
+    if not contents or len(contents) > MAX_INPUT_BYTES:
+        raise HTTPException(413, "Document must contain between 1 byte and 50 MiB")
+    worker = document_job_worker()
+    row = worker.store.submit(job_id, os.path.basename(file.filename), contents,
+                              {"source_lang": source_lang, "target_lang": target_lang,
+                               "pdf_column_mode": pdf_column_mode, "mode": mode})
+    worker.wake.set()
+    return public_status(row)
 
-        if not result.success:
-            raise UsageHTTPException(500, result.error_message, getattr(result, "provider_usage", None))
 
-        actual_output = result.output_path
-        if not os.path.exists(actual_output):
-            raise HTTPException(500, "Translation produced no output file.")
+@app.get("/translate/document/jobs/{job_id}", dependencies=[Depends(require_service_token)])
+def document_job_status(job_id: UUID):
+    from document_jobs import public_status
+    row = document_job_worker().store.get(str(job_id))
+    if row is None:
+        raise HTTPException(404, "Document job not found")
+    return public_status(row)
 
-        original_stem = os.path.splitext(file.filename)[0]
-        download_name = f"{original_stem}_translated{out_ext}"
 
-        print(f"[SERVER] Translation complete. Output file ready at: {actual_output}")
-        print(f"[SERVER] Provider: {result.provider}, Model: {result.model}")
-        print(f"[SERVER] Execution time: {result.total_execution_time_ms:.0f}ms")
+@app.get("/translate/document/jobs/{job_id}/result", dependencies=[Depends(require_service_token)])
+def document_job_result(job_id: UUID):
+    from fastapi.responses import Response
+    store = document_job_worker().store
+    row = store.get(str(job_id))
+    if row is None:
+        raise HTTPException(404, "Document job not found")
+    if row["status"] != "completed" or row.get("acknowledged"):
+        raise HTTPException(409, "Document job result is not available")
+    return Response(store.read_object(row["result_path"]), media_type="application/json")
 
-        # Read the file into memory and clean up immediately
-        with open(actual_output, "rb") as f:
-            file_contents = f.read()
 
-        # Clean up the temporary directory
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-
-        # Return the JSON envelope: base64 file bytes + per-block review data.
-        # Laravel decodes file_base64 and persists `blocks` for admin review.
-        return {
-            "file_base64": base64.b64encode(file_contents).decode("ascii"),
-            "blocks": getattr(result, "blocks", None) or [],
-            "sidecar": getattr(result, "sidecar", None),
-            "download_filename": download_name,
-            "mime_type": _content_type_for_ext(out_ext),
-            "metrics": result.metrics or {},
-            "validation": getattr(result, "output_validation", {}) or {},
-        }
-    except PDFValidationError as e:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-        raise HTTPException(422, {"message": str(e), "validation": e.report})
-    except HTTPException:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-        raise
-    except Exception as e:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-        print(f"[SERVER] Exception during translation: {str(e)}")
-        raise UsageHTTPException(500, f"Translation error: {str(e)}", getattr(e, "provider_usage", None))
+@app.delete("/translate/document/jobs/{job_id}", dependencies=[Depends(require_service_token)])
+def acknowledge_document_job(job_id: UUID):
+    store = document_job_worker().store
+    row = store.get(str(job_id))
+    if row is None:
+        raise HTTPException(404, "Document job not found")
+    store.acknowledge(row)
+    return {"acknowledged": True}
 
 
 # ---------------------------------------------------------------------------

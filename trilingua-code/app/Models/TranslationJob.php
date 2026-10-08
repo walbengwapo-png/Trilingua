@@ -109,6 +109,7 @@ class TranslationJob extends Model
                 'completed_at'      => null,
                 'terminal_failed_at' => null,
                 'last_heartbeat_at' => now(),
+                ...($recovered ? ['engine_job_uuid' => null] : []),
             ]);
 
         if ($updated) {

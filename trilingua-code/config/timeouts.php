@@ -13,7 +13,7 @@
 |   python_service (1200)  <  job (1300)  <  worker (1500)  <
 |     retry_after (1800)  <  reconcile/check-stale (2100)
 |
-|   - python_service : HTTP timeout the Laravel side allows the Python engine.
+|   - python_service : Total engine budget; Cloud document polls each use <=45s.
 |   - job            : Illuminate job `$timeout` (CPU timeout for one attempt).
 |   - worker         : queue:listen/queue:work `--timeout` (kill window).
 |   - retry_after    : database queue lease; must exceed the worker timeout so a
