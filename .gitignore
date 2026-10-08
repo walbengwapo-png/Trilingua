@@ -8,3 +8,13 @@ translated_*
 # Raw security evidence is never committed (see security/evidence/manifest.md).
 security/evidence/evidence_raw/
 evidence/
+
+# Local outputs and caches are not deployment source.
+.pytest_cache/
+.hypothesis/
+.venv/
+*.log
+/output/
+/tmp/
+/.tmp_google_classroom_tests/
+trilingua-code/Model/tests/concurrency_report.json

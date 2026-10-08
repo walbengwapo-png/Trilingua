@@ -5,12 +5,14 @@
 > **Capstone Project** - A multilingual document translation system for English, Filipino, and Cebuano languages
 
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=flat&logo=laravel)](https://laravel.com)
-[![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=flat&logo=python)](https://python.org)
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat&logo=python)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ## 📖 About This Project
 
-**TriLingua** is a capstone project that provides seamless translation between three Philippine languages: **Cebuano**, **Filipino (Tagalog)**, and **English**. Built with modern web technologies and powered by the NLLB-200 AI model, TriLingua enables both text and document-level translations with high accuracy.
+**TriLingua** is a capstone project for translation between **Cebuano**, **Filipino (Tagalog)**, and **English**. Laravel handles accounts, history, storage and review; a Python/FastAPI service handles translation and document reconstruction. The current default uses GPT-OSS through Ollama Cloud with Gemini fallback and quality review. Translation quality still requires bilingual human validation.
+
+For production, follow the [Laravel Cloud deployment guide](docs/LARAVEL_CLOUD_DEPLOYMENT.md). Deploy both applications from `main`; application roots are `trilingua-code` and `trilingua-code/Model`. The $5 Starter subscription is usage-based, and the current database queue needs an awake worker.
 
 ### 🎯 Project Goals
 
@@ -22,7 +24,7 @@
 ## ✨ Features
 
 - **🔄 3-Way Translation**: Translate between Cebuano, Filipino, and English in any direction
-- **📄 Document Support**: Upload and translate DOCX, PDF, TXT, MD, CSV, RTF, and ODT files
+- **📄 Document Support**: Upload and translate DOCX, PDF, TXT, MD, CSV, RTF, ODT, PPTX, and XLSX files
 - **💬 Text Translation**: Quick translation for short texts and phrases
 - **📊 Translation History**: Track and manage all your translations
 - **🎨 Modern UI**: Clean, responsive interface with dark/light theme support
@@ -41,14 +43,14 @@
 - **Laravel 12** - PHP web framework
 - **PHP 8.2+** - Server-side language
 - **SQLite** - Local database
-- **Supabase** - Cloud storage (optional)
+- **Supabase** - PostgreSQL and private document storage in the hosted configuration
 
 ### AI/ML
-- **Python 3.8+** - ML runtime
+- **Python 3.11** - Translation runtime
 - **FastAPI** - Translation API server
-- **NLLB-200 (600M)** - Facebook's multilingual translation model
-- **PyTorch** - Deep learning framework
-- **Transformers** - Hugging Face library
+- **GPT-OSS / Gemini** - Cloud translation and analysis providers
+- **NLLB-200** - Optional local provider, outside the small hosted configuration
+- **Transformers** - Only required by the optional local NLLB provider
 
 ## 📋 Prerequisites
 
@@ -56,8 +58,8 @@ Before installation, ensure you have:
 
 - **PHP 8.2+** with extensions: `fileinfo`, `zip`, `pdo_sqlite`, `sqlite3`
 - **Composer** - PHP dependency manager
-- **Node.js 18+** & npm - JavaScript runtime and package manager
-- **Python 3.8+** & pip - Python runtime and package manager
+- **Node.js 22+** & npm - JavaScript runtime and package manager
+- **Python 3.11** & pip - Python runtime and package manager
 - **Git** - Version control
 
 ## 🚀 Installation
@@ -65,7 +67,7 @@ Before installation, ensure you have:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/KenUsa-31/Trilingua.git
+git clone https://github.com/walbengwapo-png/Trilingua.git
 cd Trilingua/trilingua-code
 ```
 
@@ -78,22 +80,18 @@ composer install
 ### 3. Install Node.js Dependencies
 
 ```bash
-npm install
+npm ci
 ```
 
 ### 4. Install Python Dependencies
 
 ```bash
-pip install transformers sentencepiece python-docx pdfplumber odfpy striprtf PyMuPDF fastapi uvicorn torch python-multipart
+pip install -r Model/requirements.txt
 ```
 
-### 5. Download the AI Model
+### 5. Configure AI Providers
 
-```bash
-python Model/download_model.py
-```
-
-This will download the NLLB-200 model (~2.5GB). It may take several minutes.
+Set the Ollama Cloud and Gemini settings from `.env.example`. Cloud providers do not require a local model download. The optional NLLB provider requires its own dependencies and model files.
 
 ### 6. Configure Environment
 
@@ -105,7 +103,7 @@ php artisan key:generate
 Edit `.env` and update:
 - `APP_NAME=TriLingua`
 - `APP_URL=http://localhost:8000`
-- Supabase credentials (optional, for document storage)
+- Supabase database and private storage credentials for document workflows
 
 ### 7. Set Up Database
 

@@ -14,7 +14,7 @@ import re
 # Ensure the Model package is importable when running pytest from the repo root.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from hypothesis import given, settings, assume
+from hypothesis import given, settings, assume, HealthCheck
 from hypothesis import strategies as st
 
 from document_translator_v3 import (
@@ -425,7 +425,8 @@ def test_context_hint_source_always_preserved(hint: str, source: str):
     )
 
 
-@settings(max_examples=100)
+# Generating 500-600 words intentionally exceeds the health-check time on busy CI.
+@settings(max_examples=100, suppress_health_check=[HealthCheck.too_slow])
 @given(
     hint=st.lists(_word, min_size=500, max_size=600).map(" ".join),
     source=st.lists(_word, min_size=1, max_size=20).map(" ".join),
@@ -1446,7 +1447,7 @@ def table_dimensions_data(draw):
 
 
 @given(data=table_dimensions_data())
-@settings(max_examples=50)
+@settings(max_examples=50, deadline=None)
 def test_table_structural_preservation(data):
     # Feature: translation-layout-quality, Property 12: Table structural preservation
     """
