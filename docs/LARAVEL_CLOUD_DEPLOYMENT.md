@@ -39,6 +39,8 @@ php artisan deployment:validate-production --check-migrations
 
 Migration `2026_10_08_161834_create_python_document_jobs_table` creates the internal engine queue, PostgreSQL lease functions and `translation_jobs.engine_job_uuid`. Apply it before enabling Python's durable worker. RLS and revoked anonymous/authenticated grants keep this queue server-only; the Python service-role secret grants access. The previous provider-usage migration also remains part of the rollout. Never run `migrate:fresh`, a seed or a rollback against the existing database.
 
+Both migrations were applied to the existing Supabase database on 2026-10-09 after backup/restore verification. All 35 migrations are applied. Existing counts remain 1 user, 15 history records and 59 storage objects. The service-role queue/table RPC returned 200; anonymous requests returned 401. Cloud compute has not been deployed, and the browser-control connection is currently unavailable. The user confirmed correcting the shared token; live service authentication still needs verification.
+
 Configure one custom background process on the App cluster:
 
 ```sh
