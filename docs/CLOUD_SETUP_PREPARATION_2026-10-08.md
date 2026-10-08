@@ -25,4 +25,18 @@ The user chose **preparation only; do not start paid compute**. No deployment wa
 
 See [the deployment guide](LARAVEL_CLOUD_DEPLOYMENT.md) for build commands, environment names and acceptance criteria. Different reviewer/translator model families do not establish unbiased or accurate output.
 
+## Latest deployment constraint: free tiers only
+
+The user subsequently requested a functional deployed version, then clarified that no cash or credit should be spent. No paid compute is authorized. The Ollama API key has not yet been supplied.
+
+- Reducing Cloud compute to 512 MiB does not make it free. Cloud Starter is $5/month plus usage after its introductory period; active compute consumes usage credits.
+- Render offers free web services, but they sleep after 15 idle minutes, share 750 running hours per workspace/month, and may restart or be suspended. There are no free dedicated worker or cron service types. PHP needs a Docker deployment; this repository does not yet contain that deployment. Queue processing and scheduling need an explicit tested approach within the free web service.
+- Render free services block common SMTP ports 25, 465 and 587. The current SMTP template cannot be assumed to deliver password-reset emails there; an HTTPS mail transport and account access would need verification.
+- Ollama Free includes limited starter usage and starter model access, with one concurrent request. Access to both selected models within the user's free allowance is unverified. No AI calls, credit purchases or upgrades were made.
+- The Laravel environment example now names the existing bucket `trailingua`; no replacement bucket is needed. The existing bucket remains public until its privacy setting is changed and signed downloads are checked.
+
+Moving both services to a free Render demo has been presented for the user's decision. It has not been approved or deployed, and the free tier is not evidence of reliable continuous production operation.
+
+Current sources: [Cloud pricing](https://laravel.com/cloud/docs/pricing), [Cloud trial](https://laravel.com/cloud/docs/free-trial), [Render free limits](https://render.com/docs/free), [Ollama pricing and free usage](https://ollama.com/pricing).
+
 Sources: [Cloud Python deployment](https://laravel.com/cloud/docs/deploy-guides/python), [Cloud pricing](https://laravel.com/cloud/docs/pricing), [Render request duration](https://render.com/docs/render-vs-heroku-comparison), [Render pricing](https://render.com/pricing), [private Supabase buckets](https://supabase.com/docs/guides/storage/buckets/fundamentals), [PyMuPDF font assets](https://pymupdf.readthedocs.io/en/latest/font.html).
