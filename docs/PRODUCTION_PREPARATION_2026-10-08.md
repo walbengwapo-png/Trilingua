@@ -4,7 +4,7 @@ Prepared the current `C:\dev\Trilingua` source for Laravel Cloud in an isolated 
 
 | Check | Result |
 | --- | --- |
-| Laravel suite, isolated SQLite in memory | 497 passed, 1,842 assertions |
+| Laravel suite, isolated SQLite in memory | 501 passed, 1,870 assertions |
 | Deterministic Python suite, fresh virtual environment | 412 passed, 35 deselected |
 | Frontend production build | Passed after dependency updates |
 | Production configuration and `artisan optimize`, synthetic settings | Passed before and after configuration caching; no live service calls |
@@ -19,5 +19,7 @@ Prepared the current `C:\dev\Trilingua` source for Laravel Cloud in an isolated 
 Python live-provider/load modules and slow/golden/font tests were excluded deliberately. PHPUnit reports existing metadata deprecations; Starlette reports an HTTPX test-client deprecation. Structural property assertions remain intact; only hardware-sensitive timing checks were adjusted for document I/O and intentionally large generated inputs. Deployment code passed Pint; legacy code was not reformatted.
 
 The JavaScript updates fix the chart-library XSS dependency, UUID advisory, shell-quoting injection, and source-map advisory. A concrete shell-quoting exploit is now rejected. PHP's CommonMark parser and Python's Pillow were upgraded to patched versions. Mammoth's remaining moderate advisory has no compatible upstream fix; the application uses its separate browser build. See the [deployment guide](LARAVEL_CLOUD_DEPLOYMENT.md) for that limit.
+
+GitHub's Linux runner exposed premature input deletion after dispatch errors. Cleanup now runs only for confirmed rejection on upload and re-translation. Regression tests verify actual file bytes across runtime/database failures and accepted/unresolved/rejected outcomes; an empty directory no longer counts as preserved input.
 
 No production database migration, provider translation, Cloud deployment, live Supabase storage operation or human quality review was performed. Before serving users, configure both Cloud applications, back up the existing database, and complete the deployed acceptance checks in the [Laravel Cloud guide](LARAVEL_CLOUD_DEPLOYMENT.md). Starter is $5 plus metered usage; the current database queue needs awake compute.

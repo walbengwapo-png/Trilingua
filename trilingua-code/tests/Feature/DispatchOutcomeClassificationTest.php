@@ -7,12 +7,15 @@ use App\Models\TranslationQuota;
 use App\Models\User;
 use App\Services\DispatchOutcome;
 use App\Services\DispatchOutcomeClassifier;
+use App\Services\StorageService;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Mockery;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -32,15 +35,6 @@ class DispatchOutcomeClassificationTest extends TestCase
     {
         Mockery::close();
         parent::tearDown();
-    }
-
-    private function subdirs(string $path): array
-    {
-        if (! is_dir($path)) {
-            return [];
-        }
-
-        return array_values(array_diff(scandir($path) ?: [], ['.', '..']));
     }
 
     private function docUpload(): UploadedFile
@@ -132,7 +126,11 @@ class DispatchOutcomeClassificationTest extends TestCase
         // Dispatch fails outright: the enqueue call is reached and throws
         // before anything is written to the queue.
         $broker = Mockery::mock(\Illuminate\Contracts\Bus\Dispatcher::class);
-        $broker->shouldReceive('dispatch')->andThrow(new \RuntimeException('queue unavailable'));
+        $inputPath = null;
+        $broker->shouldReceive('dispatch')->andReturnUsing(function ($job) use (&$inputPath) {
+            $inputPath = $job->tempPath;
+            throw new \RuntimeException('queue unavailable');
+        });
         $this->app->instance(\Illuminate\Contracts\Bus\Dispatcher::class, $broker);
 
         $response = $this->actingAs($user)->post('/translate', [
@@ -150,9 +148,12 @@ class DispatchOutcomeClassificationTest extends TestCase
         $this->assertNotNull($row);
         $this->assertSame(0, (int) $row->files, 'a provably rejected submission is refunded');
         $this->assertSame(0, (int) $row->bytes);
+        $this->assertNotNull($inputPath);
+        $this->assertFileDoesNotExist($inputPath, 'a rejected dispatch removes the actual input');
     }
 
-    public function test_unresolved_dispatch_keeps_the_quota_and_the_input_and_returns_the_reference(): void
+    #[DataProvider('dispatchFailures')]
+    public function test_unresolved_dispatch_keeps_the_quota_and_the_input_and_returns_the_reference(\Throwable $failure): void
     {
         config([
             'translation.upload.max_daily_files' => 25,
@@ -160,7 +161,6 @@ class DispatchOutcomeClassificationTest extends TestCase
         ]);
 
         $user = User::factory()->create();
-        $before = $this->subdirs(storage_path('app/uploads'));
 
         // Simulate a genuinely unresolvable read-back: the enqueue was
         // attempted, but the outcome cannot be observed.
@@ -173,7 +173,12 @@ class DispatchOutcomeClassificationTest extends TestCase
         $this->app->instance(DispatchOutcomeClassifier::class, $classifier);
 
         $broker = Mockery::mock(\Illuminate\Contracts\Bus\Dispatcher::class);
-        $broker->shouldReceive('dispatch')->andThrow(new \RuntimeException('connection lost during commit'));
+        $inputPath = null;
+        $broker->shouldReceive('dispatch')->andReturnUsing(function ($job) use (&$inputPath, $failure) {
+            $inputPath = $job->tempPath;
+            $this->beforeApplicationDestroyed(static fn () => \App\Services\FileCleanup::dir(dirname($inputPath)));
+            throw $failure;
+        });
         $this->app->instance(\Illuminate\Contracts\Bus\Dispatcher::class, $broker);
 
         $response = $this->actingAs($user)->post('/translate', [
@@ -192,11 +197,17 @@ class DispatchOutcomeClassificationTest extends TestCase
         $this->assertSame(1, (int) $row->files, 'an unresolved dispatch must NOT refund - a worker may hold the job');
         $this->assertGreaterThan(0, (int) $row->bytes);
 
-        $this->assertNotSame(
-            $before,
-            $this->subdirs(storage_path('app/uploads')),
-            'an unresolved dispatch must KEEP the input, because a worker may be reading it'
-        );
+        $this->assertNotNull($inputPath);
+        $this->assertFileExists($inputPath, 'a worker may be reading the input');
+        $this->assertSame('PK'.str_repeat('A', 256), file_get_contents($inputPath));
+    }
+
+    public static function dispatchFailures(): array
+    {
+        return [
+            'runtime failure' => [new \RuntimeException('connection lost during commit')],
+            'database failure' => [new QueryException('sqlite', 'COMMIT', [], new \RuntimeException('connection lost during commit'))],
+        ];
     }
 
     // ---------------------------------------------------------------------
@@ -395,5 +406,11 @@ class DispatchOutcomeClassificationTest extends TestCase
     {
         parent::setUp();
         Cache::flush();
+        $storage = Mockery::mock(StorageService::class);
+        $storage->shouldReceive('uploadWithFallback')->andReturn([
+            'storage_path' => 'mock-original.docx',
+            'backend' => StorageService::BACKEND_SUPABASE,
+        ]);
+        $this->app->instance(StorageService::class, $storage);
     }
 }

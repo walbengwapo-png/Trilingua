@@ -302,9 +302,8 @@ class DocumentsController extends Controller
                     ], 503);
                 }
 
-                FileCleanup::dir($persistDir);
-
                 if ($outcome->safeToCompensate) {
+                    FileCleanup::dir($persistDir);
                     $this->quota->refund((int) Auth::id(), $fileSize, $quotaDay);
                     $this->discardUnacceptedRow($jobRow, $jobId);
                 }

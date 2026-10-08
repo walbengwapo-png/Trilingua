@@ -4,11 +4,15 @@ namespace Tests\Feature;
 
 use App\Models\TranslationHistory;
 use App\Models\TranslationJob;
+use App\Models\TranslationQuota;
 use App\Models\User;
 use App\Services\StorageService;
+use App\Services\DispatchOutcome;
+use App\Services\DispatchOutcomeClassifier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Mockery;
+use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -110,6 +114,52 @@ class RetranslateAvailabilityTest extends TestCase
         $this->app->instance(StorageService::class, $storage);
 
         $this->retrans($user, $record)->assertOk()->assertJsonPath('status', 'processing');
+    }
+
+    #[DataProvider('dispatchOutcomes')]
+    public function test_dispatch_failure_only_removes_input_when_rejection_is_confirmed(string $status, int $responseStatus): void
+    {
+        config(['translation.upload.max_daily_files' => 25]);
+        $user = User::factory()->create();
+        $record = $this->record($user);
+
+        $storage = Mockery::mock(StorageService::class);
+        $storage->shouldReceive('exists')->andReturn(StorageService::PRESENCE_PRESENT);
+        $storage->shouldReceive('read')->andReturn('PK-original-bytes');
+        $this->app->instance(StorageService::class, $storage);
+
+        $rejected = $status === DispatchOutcome::REJECTED;
+        $classifier = Mockery::mock(DispatchOutcomeClassifier::class);
+        $classifier->shouldReceive('classify')->andReturn(new DispatchOutcome($status, 'simulated read-back', $rejected));
+        $this->app->instance(DispatchOutcomeClassifier::class, $classifier);
+
+        $inputPath = null;
+        $broker = Mockery::mock(\Illuminate\Contracts\Bus\Dispatcher::class);
+        $broker->shouldReceive('dispatch')->andReturnUsing(function ($job) use (&$inputPath) {
+            $inputPath = $job->tempPath;
+            $this->beforeApplicationDestroyed(static fn () => \App\Services\FileCleanup::dir(dirname($inputPath)));
+            throw new RuntimeException('connection lost during commit');
+        });
+        $this->app->instance(\Illuminate\Contracts\Bus\Dispatcher::class, $broker);
+
+        $this->retrans($user, $record)->assertStatus($responseStatus);
+        $this->assertSame($rejected ? 0 : 1, (int) TranslationQuota::where('user_id', $user->id)->firstOrFail()->files);
+        $this->assertNotNull($inputPath);
+        if ($rejected) {
+            $this->assertFileDoesNotExist($inputPath);
+        } else {
+            $this->assertFileExists($inputPath);
+            $this->assertSame('PK-original-bytes', file_get_contents($inputPath));
+        }
+    }
+
+    public static function dispatchOutcomes(): array
+    {
+        return [
+            'unresolved' => [DispatchOutcome::UNKNOWN, 503],
+            'accepted' => [DispatchOutcome::ACCEPTED, 200],
+            'rejected' => [DispatchOutcome::REJECTED, 500],
+        ];
     }
 
     public function test_ownership_is_checked_before_storage_is_probed(): void
