@@ -27,7 +27,7 @@ See [the deployment guide](LARAVEL_CLOUD_DEPLOYMENT.md) for build commands, envi
 
 ## Latest deployment constraint: free tiers only
 
-The user subsequently requested a functional deployed version, then clarified that no cash or credit should be spent. No paid compute is authorized. The Ollama API key has not yet been supplied.
+The user subsequently requested a functional deployed version and clarified the funding constraint: **use included Cloud credits only; no additional charges**. No upgrade or compute usage beyond included credits is authorized. The Ollama API key has not yet been supplied.
 
 - Reducing Cloud compute to 512 MiB does not make it free. Cloud Starter is $5/month plus usage after its introductory period; active compute consumes usage credits.
 - Render offers free web services, but they sleep after 15 idle minutes, share 750 running hours per workspace/month, and may restart or be suspended. There are no free dedicated worker or cron service types. PHP needs a Docker deployment; this repository does not yet contain that deployment. Queue processing and scheduling need an explicit tested approach within the free web service.
@@ -35,7 +35,7 @@ The user subsequently requested a functional deployed version, then clarified th
 - Ollama Free includes limited starter usage and starter model access, with one concurrent request. Access to both selected models within the user's free allowance is unverified. No AI calls, credit purchases or upgrades were made.
 - The Laravel environment example now names the existing bucket `trailingua`; no replacement bucket is needed. The existing bucket remains public until its privacy setting is changed and signed downloads are checked.
 
-Moving both services to a free Render demo has been presented for the user's decision. It has not been approved or deployed, and the free tier is not evidence of reliable continuous production operation.
+The user declined moving to Render and wants to retain the two separate Cloud applications. Separating Laravel and Python is valid, but it does not eliminate Cloud billing or its HTTP timeout. The remaining included credit balance and spending controls must be verified before starting compute. Cloud spending limits allow in-flight work to finish and may have a small overage; they are not an absolute zero-charge guarantee. No new compute was started. The free Render tier is not evidence of reliable continuous production operation.
 
 Current sources: [Cloud pricing](https://laravel.com/cloud/docs/pricing), [Cloud trial](https://laravel.com/cloud/docs/free-trial), [Render free limits](https://render.com/docs/free), [Ollama pricing and free usage](https://ollama.com/pricing).
 
