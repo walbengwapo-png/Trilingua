@@ -1101,6 +1101,17 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
             _insert_font(page_obj, _name, fnt.buffer)
             _fallback_used.add(_path)
             return _name, fnt
+        # Cloud Linux images may have no system fonts; bundled Noto covers punctuation and pesos.
+        try:
+            fontcode = {(False, False): "notos", (True, False): "notosbo",
+                        (False, True): "notosit", (True, True): "notosbi"}[(bold, italic)]
+            fnt = fitz.Font(fontcode)
+            if _font_has_all(fnt, req_cps):
+                _insert_font(page_obj, fontcode, fnt.buffer)
+                _fallback_used.add("bundled " + fnt.name)
+                return fontcode, fnt
+        except Exception:
+            pass
         try:
             return variant, fitz.Font(variant)
         except Exception:

@@ -2,6 +2,8 @@
 
 This repository contains two HTTP applications. Keep the existing Laravel/Python separation and the existing Supabase database/storage. No local PC process is needed once both applications are deployed. A successful build alone does not verify translations or production operation.
 
+**Hosting blocker verified on 2026-10-08:** the Cloud settings for both Laravel and FastAPI allow HTTP timeouts of 5–60 seconds. The current Python document endpoint holds the request open while translating, and Laravel permits that call to take 1,200 seconds. A separate Cloud Python application does not remove this limit. Do not deploy the current document API there expecting long jobs to work: choose a Python host with a longer request limit, or first implement durable Python background jobs with polling. Neither alternative has been approved for paid deployment.
+
 ## Cost and required settings
 
 Laravel Cloud Starter is $5/month with $5 in monthly usage credit; additional compute, storage and traffic are metered. It is not a $5 fixed-price server. Check the Cloud cost estimate and spending limit before enabling resources. Two applications and a continuously running database queue worker consume compute independently.
@@ -45,17 +47,21 @@ Use the Cloud-generated HTTPS URL for `APP_URL`. Keep one stable `APP_KEY` acros
 
 ## Python application
 
-Create a second Cloud application from the same repository and branch, root `trilingua-code/Model`. Cloud supports FastAPI and reads `requirements.txt` plus `.python-version` from this root. Runtime dependencies are installed during the build; no model download or provider warm-up is required.
+The Python root is `trilingua-code/Model`, with runtime dependencies in `requirements.txt`. No local model download or provider warm-up is required. The pinned `pymupdf-fonts` package provides Noto fonts for PDF punctuation and Philippine peso symbols when Windows fonts are unavailable.
+
+A Cloud FastAPI application named `trilingua-python` has been created in Singapore, but remains undeployed. Cloud reads `.python-version` from this root and installs runtime dependencies during the build. Its 60-second HTTP ceiling blocks the current long document calls.
 
 Start command:
 
 ```sh
-uvicorn server:app --host :: --port $PORT --workers 1 --timeout-graceful-shutdown 1300
+uvicorn server:app --host :: --port $PORT --workers 1
 ```
+
+For a host that supports the existing request duration, Render currently documents a 100-minute HTTP limit and 2 GB/1 CPU compute at $25/month. This is a proposed alternative, not a provisioned service. Its Python build command is `pip install -r requirements.txt && pip check`, and its start command uses `--host 0.0.0.0` instead of `--host ::`. Keep one replica and drain document work before a redeploy; increasing Uvicorn's shutdown timeout does not override a platform termination limit.
 
 Use `.env.cloud.example` in this root as the environment template. Set `APP_ENV=production` and the **same random `PYTHON_SERVICE_TOKEN`** on both applications (at least 32 characters). Put this application's HTTPS URL into Laravel's `PYTHON_SERVICE_URL`. Set the Python health check to `/health`.
 
-Supply the Ollama and Gemini keys only to the Python app. The Ollama endpoint must be `https://ollama.com/api/chat`, not localhost; confirm the selected models are available on your own accounts before translating. Keep one Uvicorn worker and one translation slot initially: terminal Ollama authentication/quota errors are latched per process and prohibit retries/fallback until a deliberate restart. Do not automatically restart the service merely to clear a quota stop.
+Supply `OLLAMA_API_KEY` only to the approved Python host. The chosen profile uses Ollama Cloud for both roles: `gpt-oss:20b` for translation, `gemma4:31b` for blind review, and both fallbacks set to `none`. The reviewer uses a different model family; accuracy and independence still require evaluation. The Ollama endpoint must be `https://ollama.com/api/chat`, not localhost; confirm the selected models are available on the account before translating. Keep one Uvicorn worker and one translation slot initially: terminal Ollama authentication/quota errors are latched per process and prohibit retries/fallback until a deliberate restart. Do not automatically restart the service merely to clear a quota stop.
 
 The optional NLLB route needs separately installed model dependencies and substantially more memory; it is not part of this small hosted configuration. The unit pipeline remains disabled pending its release gates. Tune compute size only after measuring peak memory on representative DOCX/PDF/PPTX/XLSX files; a low-cost instance is not proof that every 50 MiB upload will fit.
 
@@ -83,3 +89,5 @@ Dependency limit: `npm audit` still reports the moderate [sprintf-js advisory](h
 - [Background workers](https://laravel.com/cloud/docs/workers) and [Scale-to-Zero](https://laravel.com/cloud/docs/compute)
 - [Supabase database connections](https://supabase.com/docs/guides/database/connecting-to-postgres)
 - [Supabase private buckets](https://supabase.com/docs/guides/storage/buckets/fundamentals)
+- [Render request duration and 2 GB compute](https://render.com/docs/render-vs-heroku-comparison), [current pricing](https://render.com/pricing)
+- [PyMuPDF optional font assets](https://pymupdf.readthedocs.io/en/latest/font.html)
