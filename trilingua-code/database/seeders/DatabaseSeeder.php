@@ -12,14 +12,18 @@ class DatabaseSeeder extends Seeder
 
     /**
      * Seed the application's database.
+     *
+     * Development-only test account. Admin accounts are NEVER created or
+     * modified here: first-admin creation is an explicit operator action via
+     * `php artisan admin:create {email}`. This also guarantees seeding can
+     * never turn an existing account into a known-password admin.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
+        User::updateOrCreate([
             'email' => 'test@example.com',
+        ], [
+            'name' => 'Test User',
         ]);
     }
 }

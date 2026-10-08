@@ -1,0 +1,74 @@
+{
+  "cases": [
+    {
+      "name": "tables",
+      "description": "A 2x3 table with a header row for table-header context resolution.",
+      "blocks": [
+        {"type": "heading", "text": "Inventory", "style": {"font_size": 14, "bold": true}},
+        {"type": "table_cell", "text": "Product", "table_index": 0, "row": 0, "col": 0, "col_span": 1, "row_span": 1, "style": {"font_size": 11, "bold": true}},
+        {"type": "table_cell", "text": "Qty", "table_index": 0, "row": 0, "col": 1, "col_span": 1, "row_span": 1, "style": {"font_size": 11, "bold": true}},
+        {"type": "table_cell", "text": "Unit price", "table_index": 0, "row": 0, "col": 2, "col_span": 1, "row_span": 1, "style": {"font_size": 11, "bold": true}},
+        {"type": "table_cell", "text": "Printed book", "table_index": 0, "row": 1, "col": 0, "col_span": 1, "row_span": 1, "style": {"font_size": 11}},
+        {"type": "table_cell", "text": "25", "table_index": 0, "row": 1, "col": 1, "col_span": 1, "row_span": 1, "style": {"font_size": 11}},
+        {"type": "table_cell", "text": "159.99", "table_index": 0, "row": 1, "col": 2, "col_span": 1, "row_span": 1, "style": {"font_size": 11}},
+        {"type": "table_cell", "text": "Ebook", "table_index": 0, "row": 2, "col": 0, "col_span": 1, "row_span": 1, "style": {"font_size": 11}},
+        {"type": "table_cell", "text": "120", "table_index": 0, "row": 2, "col": 1, "col_span": 1, "row_span": 1, "style": {"font_size": 11}},
+        {"type": "table_cell", "text": "89.99", "table_index": 0, "row": 2, "col": 2, "col_span": 1, "row_span": 1, "style": {"font_size": 11}}
+      ]
+    },
+    {
+      "name": "long_cells",
+      "description": "Narrow cells with kwargs long source text to force preflight overflow.",
+      "blocks": [
+        {"type": "table_cell", "text": "A very long description that will clearly not fit into this tiny narrow cell box at all", "table_index": 0, "row": 0, "col": 0, "col_span": 1, "row_span": 1, "bbox": [50, 50, 200, 70], "page": 0, "style": {"font_size": 12}},
+        {"type": "table_cell", "text": "Short", "table_index": 0, "row": 0, "col": 1, "col_span": 1, "row_span": 1, "bbox": [210, 50, 400, 70], "page": 0, "style": {"font_size": 12}}
+      ]
+    },
+    {
+      "name": "columns",
+      "description": "Two text columns with distinct horizontal regions on the same page.",
+      "blocks": [
+        {"type": "heading", "text": "Newsletter", "style": {"font_size": 14, "bold": true}},
+        {"type": "paragraph", "text": "Left column body text one", "bbox": [40, 100, 290, 160], "page": 0, "style": {"font_size": 11}},
+        {"type": "paragraph", "text": "Left column body text two", "bbox": [40, 165, 290, 220], "page": 0, "style": {"font_size": 11}},
+        {"type": "paragraph", "text": "Right column body text one", "bbox": [310, 100, 560, 160], "page": 0, "style": {"font_size": 11}},
+        {"type": "paragraph", "text": "Right column body text two", "bbox": [310, 165, 560, 220], "page": 0, "style": {"font_size": 11}}
+      ]
+    },
+    {
+      "name": "captions",
+      "description": "An image placeholder and its caption block.",
+      "blocks": [
+        {"type": "image", "text": "", "bbox": [50, 80, 550, 360], "page": 0, "style": {}},
+        {"type": "caption", "text": "Figure 1: Quarterly revenue chart", "bbox": [50, 365, 550, 390], "page": 0, "style": {"font_size": 9, "italic": true}}
+      ]
+    },
+    {
+      "name": "headers_footers",
+      "description": "Recurring running header across pages, a one-off header, and footers.",
+      "blocks": [
+        {"type": "header", "text": "ACME Annual Report", "bbox": [50, 30, 550, 45], "page": 0, "style": {"font_size": 10}},
+        {"type": "header", "text": "ACME Annual Report", "bbox": [50, 30, 550, 45], "page": 1, "style": {"font_size": 10}},
+        {"type": "paragraph", "text": "Introductory paragraph on page one.", "bbox": [50, 80, 550, 110], "page": 0, "style": {"font_size": 12}},
+        {"type": "footer", "text": "Page 1 of 2", "bbox": [50, 760, 250, 775], "page": 0, "style": {"font_size": 9}}
+      ]
+    },
+    {
+      "name": "images",
+      "description": "Image blocks that must survive translation untouched.",
+      "blocks": [
+        {"type": "image", "text": "", "bbox": [80, 120, 450, 300], "page": 0, "style": {}},
+        {"type": "paragraph", "text": "A paragraph after the image.", "bbox": [80, 310, 450, 340], "page": 0, "style": {"font_size": 12}}
+      ]
+    },
+    {
+      "name": "mixed_fonts",
+      "description": "Mixed font sizes and weights on one page.",
+      "blocks": [
+        {"type": "heading", "text": "Mixed typography", "bbox": [50, 50, 500, 75], "page": 0, "style": {"font_size": 18, "bold": true}},
+        {"type": "paragraph", "text": "Regular body text in a serif face.", "bbox": [50, 80, 500, 110], "page": 0, "style": {"font_size": 12, "font": "TimesNewRoman"}},
+        {"type": "paragraph", "text": "Small caption-like annotation", "bbox": [50, 115, 500, 130], "page": 0, "style": {"font_size": 8, "italic": true}}
+      ]
+    }
+  ]
+}

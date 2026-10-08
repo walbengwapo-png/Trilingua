@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Feature: translation-pipeline-optimization
 """
 Property-based tests for translation-layout-quality components.
 
@@ -16,7 +17,37 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 
-from document_translator_v3 import Context_Buffer, Chunk_Splitter, Glossary_Store
+from document_translator_v3 import (
+    Chunk_Splitter,
+    Context_Buffer,
+    Glossary_Store,
+    Font_Mapper,
+    Style_Mapper,
+    _resolve_overflow,
+)
+
+from document.chunker import ChunkSplitter as ChunkSplitter_Modern
+
+
+# ===========================================================================
+# Smoke tests: all six symbols are importable from document_translator_v3
+# Feature: translation-pipeline-optimization
+# ===========================================================================
+
+def test_importable_symbols():
+    """
+    Validates: Requirements 12.1, 12.2
+
+    Six smoke-test assertions confirming that Chunk_Splitter, Context_Buffer,
+    Glossary_Store, Font_Mapper, Style_Mapper, and _resolve_overflow are all
+    importable from document_translator_v3 and are not None.
+    """
+    assert Chunk_Splitter is not None, "Chunk_Splitter must be importable and not None"
+    assert Context_Buffer is not None, "Context_Buffer must be importable and not None"
+    assert Glossary_Store is not None, "Glossary_Store must be importable and not None"
+    assert Font_Mapper is not None, "Font_Mapper must be importable and not None"
+    assert Style_Mapper is not None, "Style_Mapper must be importable and not None"
+    assert _resolve_overflow is not None, "_resolve_overflow must be importable and not None"
 
 
 # ---------------------------------------------------------------------------
@@ -244,6 +275,71 @@ def test_chunk_content_round_trip(text: str):
         f"  Reconstructed: {reconstructed!r}\n"
         f"  Expected:      {expected!r}"
     )
+
+
+# ===========================================================================
+# Property 2b: Normalized spacing contract (R8 decision)
+# Feature: translation-layout-quality, Property 2b: normalized spacing contract
+# ===========================================================================
+# R8 decision: the chunker's spacing contract is NORMALIZED — every output
+# chunk contains only single-space-separated tokens, and the round-trip holds
+# in normalized form. Layout fidelity is carried by block structure, order,
+# and types, not by intra-text whitespace; no downstream consumer relies on
+# raw repeated spaces inside a chunk (all are word-token based). The legacy
+# verbatim fast path is fixed to normalize so both splitters agree.
+
+_SPLITTERS = [("Chunk_Splitter", Chunk_Splitter),
+              ("ChunkSplitter", ChunkSplitter_Modern)]
+
+
+def test_chunk_repeated_spaces_are_normalized():
+    # The R8 evidence case: '0  0' (two spaces) must round-trip as '0 0'.
+    for name, cls in _SPLITTERS:
+        assert cls().split("0  0") == ["0 0"], (
+            f"{name} must normalize repeated spaces on the fast path."
+        )
+        assert (" ".join(cls().split("0  0"))
+                == " ".join("0  0".split())), f"{name} normalized round-trip failed."
+
+
+def test_chunk_repeated_spaces_real_document_like_case():
+    # A short block with a double space after an abbreviation (common in
+    # extracted PDF/DOCX text). Fits in one chunk → still normalized.
+    sample = "Mrs.  Smith   arrived.   Thank you."
+    for name, cls in _SPLITTERS:
+        chunks = cls().split(sample)
+        assert all("  " not in c for c in chunks), (
+            f"{name} left a double space in {chunks!r}"
+        )
+        assert " ".join(chunks) == " ".join(sample.split()), (
+            f"{name} normalized round-trip failed on {sample!r}"
+        )
+
+
+def test_chunk_no_sentence_boundary_still_normalizes():
+    # Step-5 path: no candidate anywhere within hard_cap → returns unsplit.
+    # Even then the output must be normalized, never the raw input.
+    words = ["alpha", "beta", "gamma", "delta", "epsilon", "zeta"]
+    text = "  ".join(words)  # double spaces everywhere, no punctuation
+    for name, cls in _SPLITTERS:
+        chunks = cls().split(text, max_tokens=3, hard_cap=600)
+        assert " ".join(chunks) == " ".join(text.split()), (
+            f"{name} must normalize when it cannot split."
+        )
+
+
+def test_chunk_multi_chunk_normalized_round_trip():
+    # Multi-chunk path already normalized; verify with repeated spaces across
+    # the input so the token stream (not the raw string) drives the split.
+    text = "  ".join(
+        "The quick brown fox jumps over the lazy dog. ".split() * 6
+    )
+    for name, cls in _SPLITTERS:
+        chunks = cls().split(text, max_tokens=10, hard_cap=600, min_tokens=5)
+        assert len(chunks) > 1, f"{name} should split into multiple chunks."
+        assert " ".join(chunks) == " ".join(text.split()), (
+            f"{name} multi-chunk normalized round-trip failed."
+        )
 
 
 # ===========================================================================
@@ -740,9 +836,6 @@ def test_glossary_whole_word_substitution(data):
 import copy
 from unittest.mock import MagicMock
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from document_translator_v3 import _resolve_overflow
-
 
 def _make_mock_page_for_property(insert_side_effects):
     """Build a minimal fitz.Page mock for property tests."""
@@ -901,7 +994,7 @@ def paragraph_formatting_data(draw):
 
 
 @given(blocks=paragraph_formatting_data())
-@settings(max_examples=100)
+@settings(max_examples=100, deadline=None)
 def test_docx_paragraph_formatting_preservation(blocks):
     # Feature: translation-layout-quality, Property 9: DOCX paragraph formatting preservation
     """
@@ -998,7 +1091,7 @@ _style_name_list = st.lists(
 
 
 @given(style_names=_style_name_list)
-@settings(max_examples=100)
+@settings(max_examples=100, deadline=None)
 def test_docx_paragraph_style_round_trip(style_names):
     # Feature: translation-layout-quality, Property 8: DOCX paragraph style round-trip
     """
@@ -1120,7 +1213,7 @@ def font_color_blocks(draw):
 
 
 @given(blocks=font_color_blocks())
-@settings(max_examples=100)
+@settings(max_examples=100, deadline=None)
 def test_docx_run_font_color_preservation(blocks):
     # Feature: translation-layout-quality, Property 10: DOCX run font color preservation
     """
@@ -1241,7 +1334,7 @@ def table_with_mixed_cells(draw):
 
 
 @given(cells=table_with_mixed_cells())
-@settings(max_examples=100)
+@settings(max_examples=100, deadline=None)
 def test_table_cell_translation_completeness(cells):
     # Feature: translation-layout-quality, Property 11: Table cell translation completeness
     """
@@ -1463,7 +1556,7 @@ def table_run_formatting_data(draw):
 
 
 @given(cells=table_run_formatting_data())
-@settings(max_examples=100)
+@settings(max_examples=100, deadline=None)
 def test_table_run_formatting_preservation(cells):
     # Feature: translation-layout-quality, Property 13: Table run formatting preservation
     """

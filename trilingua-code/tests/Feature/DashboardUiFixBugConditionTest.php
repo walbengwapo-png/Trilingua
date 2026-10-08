@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\TranslationHistory;
 use App\Models\User;
 use App\Services\HistoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Tests\TestCase;
 
 /**
@@ -43,42 +45,42 @@ class DashboardUiFixBugConditionTest extends TestCase
     /**
      * Build a fake document-type translation_history record for a given session.
      */
-    private function makeDocumentRecord(string $sessionId, string $createdAt = null): array
+    private function makeDocumentRecord(string $sessionId, ?string $createdAt = null): array
     {
         return [
-            'id'                    => random_int(1, 99999),
-            'session_id'            => $sessionId,
-            'translation_type'      => 'document',
-            'original_filename'     => 'test-doc.docx',
-            'translated_filename'   => 'test-doc-translated.docx',
-            'source_language'       => 'English',
-            'target_language'       => 'Cebuano',
-            'created_at'            => $createdAt ?? now()->toIso8601String(),
-            'storage_path'          => 'documents/test-doc-translated.docx',
+            'id' => random_int(1, 99999),
+            'session_id' => $sessionId,
+            'translation_type' => 'document',
+            'original_filename' => 'test-doc.docx',
+            'translated_filename' => 'test-doc-translated.docx',
+            'source_language' => 'English',
+            'target_language' => 'Cebuano',
+            'created_at' => $createdAt ?? now()->toIso8601String(),
+            'storage_path' => 'documents/test-doc-translated.docx',
             'signed_url_expires_at' => now()->addHour()->toIso8601String(),
-            'source_text'           => null,
-            'translated_text'       => null,
+            'source_text' => null,
+            'translated_text' => null,
         ];
     }
 
     /**
      * Build a fake text-type translation_history record for a given session.
      */
-    private function makeTextRecord(string $sessionId, string $sourceLang = 'English', string $targetLang = 'Cebuano', string $createdAt = null): array
+    private function makeTextRecord(string $sessionId, string $sourceLang = 'English', string $targetLang = 'Cebuano', ?string $createdAt = null): array
     {
         return [
-            'id'                    => random_int(1, 99999),
-            'session_id'            => $sessionId,
-            'translation_type'      => 'text',
-            'original_filename'     => null,
-            'translated_filename'   => null,
-            'source_language'       => $sourceLang,
-            'target_language'       => $targetLang,
-            'created_at'            => $createdAt ?? now()->toIso8601String(),
-            'storage_path'          => null,
+            'id' => random_int(1, 99999),
+            'session_id' => $sessionId,
+            'translation_type' => 'text',
+            'original_filename' => null,
+            'translated_filename' => null,
+            'source_language' => $sourceLang,
+            'target_language' => $targetLang,
+            'created_at' => $createdAt ?? now()->toIso8601String(),
+            'storage_path' => null,
             'signed_url_expires_at' => null,
-            'source_text'           => 'Hello world this is a test sentence.',
-            'translated_text'       => 'Kumusta kalibutan kini usa ka pagsulay nga tudling.',
+            'source_text' => 'Hello world this is a test sentence.',
+            'translated_text' => 'Kumusta kalibutan kini usa ka pagsulay nga tudling.',
         ];
     }
 
@@ -102,20 +104,20 @@ class DashboardUiFixBugConditionTest extends TestCase
         $user = User::factory()->create(['name' => 'Test User']);
         $this->actingAs($user);
 
-        // Seed 3 document records via a mocked HistoryService
-        $sessionId = session()->getId();
-        $records = [
-            $this->makeDocumentRecord($sessionId),
-            $this->makeDocumentRecord($sessionId),
-            $this->makeDocumentRecord($sessionId),
-        ];
-
-        // Mock HistoryService to return exactly 3 document records
-        $this->mock(HistoryService::class, function ($mock) use ($records) {
-            $mock->shouldReceive('getHistory')
-                 ->once()
-                 ->andReturn($records);
-        });
+        // Seed 3 real document rows. The dashboard aggregates straight from
+        // translation_history now, so the count has to come from the database
+        // for this to mean anything.
+        for ($i = 0; $i < 3; $i++) {
+            TranslationHistory::create([
+                'user_id'            => $user->id,
+                'translation_type'   => 'document',
+                'original_filename'  => 'test-doc.docx',
+                'translated_filename'=> 'test-doc-translated.docx',
+                'source_language'    => 'English',
+                'target_language'    => 'Cebuano',
+                'created_at'         => now(),
+            ]);
+        }
 
         // Act: GET /dashboard
         $response = $this->get('/dashboard');
@@ -130,8 +132,8 @@ class DashboardUiFixBugConditionTest extends TestCase
         $this->assertStringContainsString(
             '>3<',
             $content,
-            'COUNTEREXAMPLE: Dashboard stat card shows hardcoded "24" instead of real count "3". ' .
-            'The dashboard route renders the view directly without querying HistoryService, ' .
+            'COUNTEREXAMPLE: Dashboard stat card shows hardcoded "24" instead of real count "3". '.
+            'The dashboard route renders the view directly without querying HistoryService, '.
             'so the stat card always shows the hardcoded value regardless of actual records.'
         );
 
@@ -167,7 +169,7 @@ class DashboardUiFixBugConditionTest extends TestCase
         // Mock HistoryService to return empty records (we only care about the greeting)
         $this->mock(HistoryService::class, function ($mock) {
             $mock->shouldReceive('getHistory')
-                 ->andReturn([]);
+                ->andReturn([]);
         });
 
         // Act: GET /dashboard
@@ -181,20 +183,22 @@ class DashboardUiFixBugConditionTest extends TestCase
         $response->assertSee('Maria Santos', false);
     }
 
-    // ─── Test Case 3: New Translation counter shows "0/5000" not "0/8000" ─────
+    // ─── Test Case 3: New Translation counter uses server capability limit ────
 
     /**
      * Test Case 3 — New Translation counter
      *
-     * GET /translate, assert response contains "0/5000" (not "0/8000").
+     * GET /translate, assert response contains the configured 8,000-character
+     * limit and the frontend receives the same server-owned contract.
      *
-     * Bug Condition: Character counter shows wrong limit "0/8000".
-     * Expected Behavior: Counter shows "0/5000" matching the design.
+     * Bug Condition: Character counter can drift from backend validation.
+     * Expected Behavior: Counter shows "0/8000" from the shared capability
+     * contract, matching backend validation.
      *
      * EXPECTED OUTCOME ON UNFIXED CODE: FAIL
-     * Counterexample: Response contains "0/8000" instead of "0/5000".
+     * Counterexample: Response contains an independently hard-coded limit.
      */
-    public function test_case_3_new_translation_counter_shows_5000_limit(): void
+    public function test_case_3_new_translation_counter_uses_server_limit(): void
     {
         // Arrange: authenticate a user
         $user = User::factory()->create();
@@ -206,12 +210,8 @@ class DashboardUiFixBugConditionTest extends TestCase
         // Assert: page loads
         $response->assertStatus(200);
 
-        // Assert: response contains "0/5000" (correct limit)
-        // On unfixed code this FAILS because the blade has "0/8000" and MAX_CHARS = 8000
-        $response->assertSee('0/5000', false);
-
-        // Also assert "0/8000" is NOT present
-        $response->assertDontSee('0/8000', false);
+        $response->assertSee('0/8000', false);
+        $response->assertSee('"text_max_chars":8000', false);
     }
 
     // ─── Test Case 4: Speaker icons present on New Translation page ───────────
@@ -271,9 +271,12 @@ class DashboardUiFixBugConditionTest extends TestCase
         ];
 
         $this->mock(HistoryService::class, function ($mock) use ($records) {
-            $mock->shouldReceive('getHistory')
-                 ->once()
-                 ->andReturn($records);
+            $mock->shouldReceive('getDocumentsPaginated')
+                ->once()
+                ->andReturn(new \Illuminate\Pagination\LengthAwarePaginator($records, count($records), 24));
+
+            $mock->shouldReceive('getDocumentLanguagePairs')
+                ->andReturn([]);
         });
 
         // Act: GET /documents
@@ -314,10 +317,11 @@ class DashboardUiFixBugConditionTest extends TestCase
             $this->makeTextRecord($sessionId, 'Cebuano', 'English'),
         ];
 
+        // HistoryController::index paginates via getHistoryPaginated.
         $this->mock(HistoryService::class, function ($mock) use ($records) {
-            $mock->shouldReceive('getHistory')
-                 ->once()
-                 ->andReturn($records);
+            $mock->shouldReceive('getHistoryPaginated')
+                ->once()
+                ->andReturn(new LengthAwarePaginator($records, count($records), 50));
         });
 
         // Act: GET /history
@@ -360,10 +364,16 @@ class DashboardUiFixBugConditionTest extends TestCase
         ];
 
         // ── Bug 1 & 2: Dashboard ─────────────────────────────────────────────
-        $this->mock(HistoryService::class, function ($mock) use ($docRecords) {
-            $mock->shouldReceive('getHistory')
-                 ->andReturn($docRecords);
-        });
+        // Real rows: the dashboard aggregates from translation_history, so a
+        // mocked service would no longer influence what it renders. Only the
+        // document rows are persisted, matching the set this assertion expects
+        // the dashboard to count (textRecords drive the History page below).
+        foreach ($docRecords as $record) {
+            unset($record['id'], $record['session_id']);
+            $record['user_id']    = $user->id;
+            $record['created_at'] = now();
+            TranslationHistory::create($record);
+        }
 
         $dashResponse = $this->get('/dashboard');
         $dashResponse->assertStatus(200);
@@ -373,7 +383,7 @@ class DashboardUiFixBugConditionTest extends TestCase
         $this->assertStringContainsString(
             '>3<',
             $dashContent,
-            'BUG 1 CONFIRMED: Dashboard stat card shows hardcoded "24" instead of real count "3". ' .
+            'BUG 1 CONFIRMED: Dashboard stat card shows hardcoded "24" instead of real count "3". '.
             'Root cause: GET /dashboard route renders view directly without querying HistoryService.'
         );
 
@@ -381,7 +391,7 @@ class DashboardUiFixBugConditionTest extends TestCase
         $this->assertStringContainsString(
             'Maria Santos',
             $dashContent,
-            'BUG 2 CONFIRMED: Dashboard greeting does not contain real user name "Maria Santos". ' .
+            'BUG 2 CONFIRMED: Dashboard greeting does not contain real user name "Maria Santos". '.
             'Root cause: dashboard.blade.php has no greeting with auth()->user()->name.'
         );
 
@@ -389,9 +399,9 @@ class DashboardUiFixBugConditionTest extends TestCase
         $translateResponse = $this->get('/translate');
         $translateResponse->assertStatus(200);
 
-        // Bug 3: counter shows "0/8000" not "0/5000"
+        // Bug 3: counter receives the configured server limit.
         $translateResponse->assertSee(
-            '0/5000',
+            '0/8000',
             false
         );
 
@@ -404,7 +414,7 @@ class DashboardUiFixBugConditionTest extends TestCase
         // ── Bug 5: My Documents ──────────────────────────────────────────────
         $this->mock(HistoryService::class, function ($mock) use ($docRecords) {
             $mock->shouldReceive('getHistory')
-                 ->andReturn($docRecords);
+                ->andReturn($docRecords);
         });
 
         $docsResponse = $this->get('/documents');
@@ -416,7 +426,7 @@ class DashboardUiFixBugConditionTest extends TestCase
         // ── Bug 6: History ───────────────────────────────────────────────────
         $this->mock(HistoryService::class, function ($mock) use ($textRecords) {
             $mock->shouldReceive('getHistory')
-                 ->andReturn($textRecords);
+                ->andReturn($textRecords);
         });
 
         $historyResponse = $this->get('/history');

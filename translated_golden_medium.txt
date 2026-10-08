@@ -1,0 +1,40 @@
+[MOCK:1w] noitcudortnI
+
+[MOCK:30w] .smeti fo tsil a dna ,txet ydob ,sgnidaeh htiw troper ssenisub lacipyt a setalumis tI .shpargarap dna snoitces elpitlum htiw enilepip noitalsnart eht tset ot dengised si tnemucod htgnel-muidem sihT
+
+[MOCK:22w] .tnemucod eritne eht ssorca tnetsisnoc si ygolonimret taht serusne sihT .txetnoc level-tnemucod gniniatniam elihw yltnednepedni hpargarap hcae ssecorp dluohs enilepip noitalsnart ehT
+
+[MOCK:4w] weivrevO ssenisuB :1 noitceS
+
+[MOCK:37w] .setar noitneter remotsuc devorpmi dna stekram wen otni noisnapxe yb yliramirp nevird saw htworg sihT .raey tsal doirep emas eht ot derapmoc tnecrep 51 yb desaercni euneveR .retrauq tsap eht revo htworg tnacifingis decneirepxe sah ynapmoc ruO
+
+[MOCK:8w] :scirtem ecnamrofrep ylretrauq ruo sezirammus elbat gniwollof ehT
+
+[MOCK:29w] stnuocca evitca 005,21 :tnuoC remotsuC -
+srallod dnasuoht 007 :tiforP teN -
+srallod noillim 8.1 :sesnepxE gnitarepO -
+srallod noillim 5.2 :euneveR latoT -
+4202 3Q rof stluseR ylretrauQ
+
+[MOCK:4w] sevitaitinI cigetartS :2 noitceS
+
+[MOCK:45w] .sessenisub llams gnitegrat enil tcudorp wen a hcnual ot mia ew ,drihT .noiger cificaP-aisA eht ni ecneserp ruo dnapxe ot nalp ew ,dnoceS .seitilibapac gninrael enihcam dna ecnegilletni laicifitra ni tsevni lliw ew ,tsriF .raey gnimocpu eht rof seitiroirp cigetarts yek eerht deifitnedi evah eW
+
+[MOCK:21w] .eettimmoc evitucexe eht yb ylhtnom deweiver eb lliw ssergorP .maet lanoitcnuf-ssorc a dna tegdub detacided a detacolla neeb sah evitaitini hcaE
+
+[MOCK:4w] tnemssessA ksiR :3 noitceS
+
+[MOCK:12w] :ecalp ni era seigetarts noitagitim dna deifitnedi neeb evah sksir gniwollof ehT
+
+[MOCK:20w] .tekram elgnis yna ot erusopxe ecuder spleh oiloftrop deifisrevid ruO .ytniatrecnu cimonoce labolg ot eud nrecnoc a sniamer ytilitalov tekraM
+
+[MOCK:21w] .segakcap noitasnepmoc evititepmoc dna ssecorp tnemtiurcer devorpmi na detnemelpmi evah eW .gnignellahc eb ot seunitnoc selor lacinhcet dezilaiceps ni noitisiuqca tnelaT
+
+[MOCK:19w] .ylesolc stnempoleved gnirotinom si maet lagel ruO .krowemarf ecnailpmoc ruo ot stnemtsujda eriuqer yam stekram yek ni segnahc yrotalugeR
+
+[MOCK:1w] noisulcnoC
+
+[MOCK:37w] .sredlohekats ruo ot eulav reviled ot ytiliba ruo ni tnedifnoc niamer eW .shtnom evlewt txen eht revo stroffe ruo ediug lliw troper siht ni deniltuo sevitaitini cigetarts ehT .htworg deunitnoc rof denoitisop-llew si ynapmoc eht ,yrammus nI
+
+[MOCK:15w] .tuptuo detalsnart eht ni devreserp eb dluohs shpargarap llA .tnemucod tset htgnel-muidem eht sedulcnoc sihT
+

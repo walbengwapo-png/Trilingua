@@ -2,13 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Models\TranslationJob;
 use App\Models\User;
 use App\Services\HistoryService;
 use App\Services\StorageService;
-use App\Services\TranslationService;
+use App\Services\Translation\DTO\TranslationResponse;
+use App\Services\Translation\TranslationManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -26,7 +29,8 @@ use Tests\TestCase;
  *
  * Observed baseline behaviors (on unfixed code):
  *   - POST /translate with valid text returns HTTP 200 with {"translated": "..."}
- *   - POST /translate with a valid file returns HTTP 200 with {"download_url": "..."}
+ *   - POST /translate with a valid file returns HTTP 200 with {"job_id": "...", "original_filename": "..."}
+ *     (durable async pipeline; the download_url is surfaced via /translate/status/{jobId})
  *   - POST /history/redownload/{id} returns HTTP 200 with {"download_url": "..."}
  *   - GET /translate response contains the swap button markup and its JS handler
  *   - Unauthenticated GET /dashboard returns HTTP 302 redirect to the login page
@@ -41,21 +45,21 @@ class DashboardUiFixPreservationTest extends TestCase
     /**
      * Build a fake document-type translation_history record for a given session.
      */
-    private function makeDocumentRecord(string $sessionId, string $createdAt = null): array
+    private function makeDocumentRecord(string $sessionId, ?string $createdAt = null): array
     {
         return [
-            'id'                    => random_int(1, 99999),
-            'session_id'            => $sessionId,
-            'translation_type'      => 'document',
-            'original_filename'     => 'test-doc.docx',
-            'translated_filename'   => 'test-doc-translated.docx',
-            'source_language'       => 'English',
-            'target_language'       => 'Cebuano',
-            'created_at'            => $createdAt ?? now()->toIso8601String(),
-            'storage_path'          => 'documents/test-doc-translated.docx',
+            'id' => random_int(1, 99999),
+            'session_id' => $sessionId,
+            'translation_type' => 'document',
+            'original_filename' => 'test-doc.docx',
+            'translated_filename' => 'test-doc-translated.docx',
+            'source_language' => 'English',
+            'target_language' => 'Cebuano',
+            'created_at' => $createdAt ?? now()->toIso8601String(),
+            'storage_path' => 'documents/test-doc-translated.docx',
             'signed_url_expires_at' => now()->addHour()->toIso8601String(),
-            'source_text'           => null,
-            'translated_text'       => null,
+            'source_text' => null,
+            'translated_text' => null,
         ];
     }
 
@@ -82,16 +86,16 @@ class DashboardUiFixPreservationTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
 
-        // Mock TranslationService to return a translated string without hitting the microservice
-        $this->mock(TranslationService::class, function ($mock) {
+        // Mock TranslationManager to return a translated result without hitting the microservice
+        $this->mock(TranslationManager::class, function ($mock) {
             $mock->shouldReceive('translateText')
-                 ->andReturn('Kumusta kalibutan.');
+                ->andReturn(new TranslationResponse(translatedText: 'Kumusta kalibutan.'));
         });
 
         // Mock HistoryService to accept insertRecord without hitting Supabase
         $this->mock(HistoryService::class, function ($mock) {
             $mock->shouldReceive('insertRecord')
-                 ->andReturn(null);
+                ->andReturn(null);
         });
 
         // Property: for any valid text translation request, response is 200 with "translated" key.
@@ -125,74 +129,63 @@ class DashboardUiFixPreservationTest extends TestCase
             $this->assertArrayHasKey(
                 'translated',
                 $data,
-                "POST /translate with text input [{$input['source_lang']} → {$input['target_lang']}] " .
-                "must return JSON with 'translated' key. " .
-                "Preservation: TranslationController must remain unchanged after the fix."
+                "POST /translate with text input [{$input['source_lang']} → {$input['target_lang']}] ".
+                "must return JSON with 'translated' key. ".
+                'Preservation: TranslationController must remain unchanged after the fix.'
             );
         }
     }
 
-    // ─── Property 2b: POST /translate (document) returns HTTP 200 with `download_url` key ──
+    // ─── Property 2b: POST /translate (document) returns HTTP 200 with `job_id` key ──
 
     /**
-     * Preservation Test 2 — Document translation POST returns download_url JSON
+     * Preservation Test 2 — Document translation POST returns 200 with a job_id
      *
-     * Observed behavior: POST /translate with a valid document file returns HTTP 200
-     * with a JSON body containing the "download_url" key.
+     * Current (async) contract: POST /translate with a valid document uploads the
+     * original, creates a durable translation_jobs row and returns HTTP 200 with
+     * a JSON body containing "job_id" and "original_filename". The download_url is
+     * later surfaced through the job status endpoint.
      *
      * Property: For any valid document upload request (any supported file type,
      * any valid source/target language pair), POST /translate returns HTTP 200
-     * with a JSON body containing the "download_url" key.
+     * with a JSON body containing the "job_id" key.
      *
      * EXPECTED OUTCOME: PASS (on both unfixed and fixed code)
      */
-    public function test_preservation_post_translate_document_returns_200_with_download_url_key(): void
+    public function test_preservation_post_translate_document_returns_200_with_job_id_key(): void
     {
         // Arrange: authenticate a user
         $user = User::factory()->create();
         $this->actingAs($user);
 
-        // Mock TranslationService to return a fake output path without hitting the microservice
-        $fakeOutputPath = tempnam(sys_get_temp_dir(), 'translated_') . '.docx';
-        file_put_contents($fakeOutputPath, 'fake translated content');
+        // Keep the job queued so the request stays non-blocking.
+        config(['queue.default' => 'database']);
 
-        $this->mock(TranslationService::class, function ($mock) use ($fakeOutputPath) {
-            $mock->shouldReceive('translateDocument')
-                 ->andReturn($fakeOutputPath);
-            $mock->shouldReceive('getOriginalOutputName')
-                 ->andReturn('test_translated.docx');
-        });
-
-        // Mock StorageService to return a fake signed URL without hitting Supabase
+        // Mock StorageService to accept the original upload without hitting Supabase
         $this->mock(StorageService::class, function ($mock) {
-            $mock->shouldReceive('uploadFile')
-                 ->andReturn([
-                     'storage_path'          => 'session123/test_translated.docx',
-                     'signed_url'            => 'https://test.supabase.co/storage/v1/object/sign/test-bucket/test_translated.docx?token=abc',
-                     'signed_url_expires_at' => now()->addDays(7)->toIso8601String(),
-                 ]);
+            $mock->shouldReceive('uploadWithFallback')
+                ->andReturn([
+                    'backend' => 'supabase',
+                    'storage_path' => 'session123/test_translated.docx',
+                    'signed_url' => 'https://test.supabase.co/storage/v1/object/sign/test-bucket/test_translated.docx?token=abc',
+                    'signed_url_expires_at' => now()->addDays(7)->toIso8601String(),
+                ]);
         });
 
-        // Mock HistoryService to accept insertRecord without hitting Supabase
-        $this->mock(HistoryService::class, function ($mock) {
-            $mock->shouldReceive('insertRecord')
-                 ->andReturn(null);
-        });
-
-        // Property: for any valid document upload, response is 200 with "download_url" key.
+        // Property: for any valid document upload, response is 200 with "job_id" key.
         // Test representative file types.
         $fileTypes = [
-            ['name' => 'document.docx', 'mime' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-            ['name' => 'document.txt',  'mime' => 'text/plain'],
+            ['name' => 'document.docx', 'content' => 'PK'.str_repeat('A', 512)],
+            ['name' => 'document.txt',  'content' => str_repeat('plain text ', 40)],
         ];
 
         foreach ($fileTypes as $fileType) {
-            $file = UploadedFile::fake()->create($fileType['name'], 100, $fileType['mime']);
+            $file = UploadedFile::fake()->createWithContent($fileType['name'], $fileType['content']);
 
             $response = $this->post('/translate', [
                 'source_lang' => 'English',
                 'target_lang' => 'Cebuano',
-                'document'    => $file,
+                'document' => $file,
             ], [
                 'Accept' => 'application/json',
             ]);
@@ -200,20 +193,19 @@ class DashboardUiFixPreservationTest extends TestCase
             // Assert HTTP 200
             $response->assertStatus(200);
 
-            // Assert JSON body contains "download_url" key
+            // Assert JSON body contains "job_id" key
             $data = $response->json();
             $this->assertArrayHasKey(
-                'download_url',
+                'job_id',
                 $data,
-                "POST /translate with document [{$fileType['name']}] must return JSON with 'download_url' key. " .
-                "Preservation: TranslationController document flow must remain unchanged after the fix."
+                "POST /translate with document [{$fileType['name']}] must return JSON with 'job_id' key. ".
+                'Preservation: TranslationController document flow must remain unchanged after the fix.'
             );
         }
 
-        // Clean up temp file if it still exists
-        if (file_exists($fakeOutputPath)) {
-            @unlink($fakeOutputPath);
-        }
+        // Assert exactly one durable job row per submission was created.
+        $this->assertSame(2, TranslationJob::where('user_id', $user->id)->count());
+        $this->assertSame(2, DB::table('jobs')->count());
     }
 
     // ─── Property 2c: POST /history/redownload/{id} returns HTTP 200 with `download_url` key ──
@@ -246,33 +238,36 @@ class DashboardUiFixPreservationTest extends TestCase
         // so it matches the user ID the controller sees during the POST request
         $this->mock(HistoryService::class, function ($mock) use ($recordId, $user) {
             $mock->shouldReceive('getRecord')
-                 ->with($recordId)
-                 ->andReturnUsing(function () use ($recordId, $user) {
-                     return [
-                         'id'                    => $recordId,
-                         'user_id'               => $user->id,
-                         'translation_type'      => 'document',
-                         'original_filename'     => 'report.docx',
-                         'translated_filename'   => 'report_translated.docx',
-                         'source_language'       => 'English',
-                         'target_language'       => 'Cebuano',
-                         'created_at'            => now()->toIso8601String(),
-                         'storage_path'          => "session123/report_translated.docx",
-                         'signed_url_expires_at' => now()->addHour()->toIso8601String(),
-                     ];
-                 });
+                ->with($recordId)
+                ->andReturnUsing(function () use ($recordId, $user) {
+                    return [
+                        'id' => $recordId,
+                        'user_id' => $user->id,
+                        'translation_type' => 'document',
+                        'original_filename' => 'report.docx',
+                        'translated_filename' => 'report_translated.docx',
+                        'source_language' => 'English',
+                        'target_language' => 'Cebuano',
+                        'created_at' => now()->toIso8601String(),
+                        'storage_path' => 'session123/report_translated.docx',
+                        'signed_url_expires_at' => now()->addHour()->toIso8601String(),
+                    ];
+                });
 
             $mock->shouldReceive('updateExpiry')
-                 ->andReturn(null);
+                ->andReturn(null);
         });
 
         // Mock StorageService to return a new signed URL
         $this->mock(StorageService::class, function ($mock) {
+            $mock->shouldReceive('exists')
+                ->andReturn(StorageService::PRESENCE_PRESENT);
+
             $mock->shouldReceive('generateSignedUrl')
-                 ->andReturn([
-                     'signed_url'            => 'https://test.supabase.co/storage/v1/object/sign/test-bucket/report_translated.docx?token=xyz',
-                     'signed_url_expires_at' => now()->addDays(7)->toIso8601String(),
-                 ]);
+                ->andReturn([
+                    'signed_url' => 'https://test.supabase.co/storage/v1/object/sign/test-bucket/report_translated.docx?token=xyz',
+                    'signed_url_expires_at' => now()->addDays(7)->toIso8601String(),
+                ]);
         });
 
         // Act: POST /history/redownload/{id}
@@ -286,8 +281,8 @@ class DashboardUiFixPreservationTest extends TestCase
         $this->assertArrayHasKey(
             'download_url',
             $data,
-            "POST /history/redownload/{$recordId} must return JSON with 'download_url' key. " .
-            "Preservation: HistoryController::redownload must remain unchanged after the fix."
+            "POST /history/redownload/{$recordId} must return JSON with 'download_url' key. ".
+            'Preservation: HistoryController::redownload must remain unchanged after the fix.'
         );
 
         // Assert the download_url is a non-empty string
@@ -325,28 +320,28 @@ class DashboardUiFixPreservationTest extends TestCase
 
         $content = $response->getContent();
 
-        // Assert: swap button element with class "translation-swap" is present
+        // Assert: swap button element with class "lang-bar__swap" is present
         $this->assertStringContainsString(
-            'translation-swap',
+            'lang-bar__swap',
             $content,
-            "GET /translate must contain the swap button with class 'translation-swap'. " .
-            "Preservation: The swap button markup must remain unchanged after the fix."
+            "GET /translate must contain the swap button with class 'lang-bar__swap'. ".
+            'Preservation: The swap button markup must remain unchanged after the fix.'
         );
 
         // Assert: the JS swap handler is present (swapBtn variable or swap click handler)
         $this->assertStringContainsString(
             'swapBtn',
             $content,
-            "GET /translate must contain the JS swap button handler ('swapBtn'). " .
-            "Preservation: The swap button JS handler must remain unchanged after the fix."
+            "GET /translate must contain the JS swap button handler ('swapBtn'). ".
+            'Preservation: The swap button JS handler must remain unchanged after the fix.'
         );
 
         // Assert: the swap click event listener is wired up
         $this->assertStringContainsString(
             "swapBtn.addEventListener('click'",
             $content,
-            "GET /translate must contain swapBtn.addEventListener('click', ...) handler. " .
-            "Preservation: The swap button click handler must remain unchanged after the fix."
+            "GET /translate must contain swapBtn.addEventListener('click', ...) handler. ".
+            'Preservation: The swap button click handler must remain unchanged after the fix.'
         );
     }
 
@@ -407,11 +402,14 @@ class DashboardUiFixPreservationTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
 
-        // Mock HistoryService to return an empty array (zero records)
+        // Mock HistoryService to return an empty page (zero records)
         $this->mock(HistoryService::class, function ($mock) {
-            $mock->shouldReceive('getHistory')
-                 ->once()
-                 ->andReturn([]);
+            $mock->shouldReceive('getDocumentsPaginated')
+                ->once()
+                ->andReturn(new LengthAwarePaginator([], 0, 24));
+
+            $mock->shouldReceive('getDocumentLanguagePairs')
+                ->andReturn([]);
         });
 
         // Act: GET /documents
@@ -451,13 +449,16 @@ class DashboardUiFixPreservationTest extends TestCase
 
         $translatePage = $this->get('/translate');
         $translatePage->assertStatus(200);
-        $this->assertStringContainsString('translation-swap', $translatePage->getContent());
+        $this->assertStringContainsString('lang-bar__swap', $translatePage->getContent());
         $this->assertStringContainsString('swapBtn', $translatePage->getContent());
 
         // ── Property 2f: Empty-state on /documents ───────────────────────────
         $this->mock(HistoryService::class, function ($mock) {
-            $mock->shouldReceive('getHistory')
-                 ->andReturn([]);
+            $mock->shouldReceive('getDocumentsPaginated')
+                ->andReturn(new LengthAwarePaginator([], 0, 24));
+
+            $mock->shouldReceive('getDocumentLanguagePairs')
+                ->andReturn([]);
         });
 
         $docsPage = $this->get('/documents');
@@ -465,20 +466,20 @@ class DashboardUiFixPreservationTest extends TestCase
         $docsPage->assertSee('You have no documents yet.', false);
 
         // ── Property 2a: POST /translate text ────────────────────────────────
-        $this->mock(TranslationService::class, function ($mock) {
+        $this->mock(TranslationManager::class, function ($mock) {
             $mock->shouldReceive('translateText')
-                 ->andReturn('Kumusta kalibutan.');
+                ->andReturn(new TranslationResponse(translatedText: 'Kumusta kalibutan.'));
         });
 
         $this->mock(HistoryService::class, function ($mock) {
             $mock->shouldReceive('insertRecord')
-                 ->andReturn(null);
+                ->andReturn(null);
         });
 
         $textTranslation = $this->postJson('/translate', [
             'source_lang' => 'English',
             'target_lang' => 'Cebuano',
-            'text'        => 'Hello world',
+            'text' => 'Hello world',
         ]);
         $textTranslation->assertStatus(200);
         $this->assertArrayHasKey('translated', $textTranslation->json());
@@ -488,31 +489,34 @@ class DashboardUiFixPreservationTest extends TestCase
 
         $this->mock(HistoryService::class, function ($mock) use ($recordId, $user) {
             $mock->shouldReceive('getRecord')
-                 ->with($recordId)
-                 ->andReturnUsing(function () use ($recordId, $user) {
-                     return [
-                         'id'                    => $recordId,
-                         'user_id'               => $user->id,
-                         'translation_type'      => 'document',
-                         'original_filename'     => 'summary.docx',
-                         'translated_filename'   => 'summary_translated.docx',
-                         'source_language'       => 'English',
-                         'target_language'       => 'Filipino',
-                         'created_at'            => now()->toIso8601String(),
-                         'storage_path'          => "session123/summary_translated.docx",
-                         'signed_url_expires_at' => now()->addHour()->toIso8601String(),
-                     ];
-                 });
+                ->with($recordId)
+                ->andReturnUsing(function () use ($recordId, $user) {
+                    return [
+                        'id' => $recordId,
+                        'user_id' => $user->id,
+                        'translation_type' => 'document',
+                        'original_filename' => 'summary.docx',
+                        'translated_filename' => 'summary_translated.docx',
+                        'source_language' => 'English',
+                        'target_language' => 'Filipino',
+                        'created_at' => now()->toIso8601String(),
+                        'storage_path' => 'session123/summary_translated.docx',
+                        'signed_url_expires_at' => now()->addHour()->toIso8601String(),
+                    ];
+                });
             $mock->shouldReceive('updateExpiry')
-                 ->andReturn(null);
+                ->andReturn(null);
         });
 
         $this->mock(StorageService::class, function ($mock) {
+            $mock->shouldReceive('exists')
+                ->andReturn(StorageService::PRESENCE_PRESENT);
+
             $mock->shouldReceive('generateSignedUrl')
-                 ->andReturn([
-                     'signed_url'            => 'https://test.supabase.co/storage/v1/object/sign/test-bucket/summary_translated.docx?token=abc123',
-                     'signed_url_expires_at' => now()->addDays(7)->toIso8601String(),
-                 ]);
+                ->andReturn([
+                    'signed_url' => 'https://test.supabase.co/storage/v1/object/sign/test-bucket/summary_translated.docx?token=abc123',
+                    'signed_url_expires_at' => now()->addDays(7)->toIso8601String(),
+                ]);
         });
 
         $redownload = $this->postJson("/history/redownload/{$recordId}");

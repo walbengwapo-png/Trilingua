@@ -41,7 +41,7 @@
 /* ── Stat cards ─────────────────────────────────────────────────────────── */
 .cards-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 16px;
 }
 
@@ -70,6 +70,7 @@
 .stat-card__icon--blue   { background: #eff6ff; color: #2563eb; }
 .stat-card__icon--green  { background: #f0fdf4; color: #16a34a; }
 .stat-card__icon--purple { background: #faf5ff; color: #7c3aed; }
+.stat-card__icon--amber  { background: #fffbeb; color: #b45309; }
 
 .stat-card__label {
     font-size: 0.8125rem;
@@ -83,6 +84,18 @@
     color: var(--text);
     line-height: 1;
     letter-spacing: -0.03em;
+}
+
+.stat-card__value--sm {
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
+    word-break: break-word;
+}
+
+.stat-card__sub {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: -4px;
 }
 
 /* ── Section header ─────────────────────────────────────────────────────── */
@@ -103,7 +116,7 @@
 /* ── Quick actions ──────────────────────────────────────────────────────── */
 .quick-actions {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 14px;
 }
 
@@ -268,8 +281,10 @@
     letter-spacing: 0.04em;
 }
 
-.status-pill--completed { background: #d1fae5; color: #065f46; }
-.status-pill--text      { background: #e0f2fe; color: #0369a1; }
+.status-pill--pending  { background: #fef3c7; color: #b45309; }
+.status-pill--verified { background: #d1fae5; color: #065f46; }
+.status-pill--edited   { background: #e0f0ff; color: #1a6fb5; }
+.status-pill--flagged  { background: #fee2e2; color: #b91c1c; }
 
 /* ── Empty state ────────────────────────────────────────────────────────── */
 .table-empty {

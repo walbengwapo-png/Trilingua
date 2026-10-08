@@ -3,15 +3,35 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+        try { localStorage.setItem('trilingua-theme', '{{ auth()->user()->theme ?? 'light' }}'); } catch (e) {}
+    </script>
     <title>@yield('title', 'Dashboard') — TriLingua</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/favicon.ico" sizes="any">
     @vite(['resources/css/base.css', 'resources/css/layouts/app.css', 'resources/js/app.js'])
     @yield('styles')
     <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body class="app-body">
+<a class="skip-link" href="#main-content">Skip to main content</a>
 
 {{-- Global toast container --}}
 <div id="toast-container" aria-live="polite" aria-atomic="false" style="position:fixed;top:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none"></div>
+
+{{-- Global error modal --}}
+<div id="error-modal" class="app-error-modal" style="display:none" role="alertdialog" aria-modal="true" aria-labelledby="error-modal-title" aria-describedby="error-modal-msg">
+    <div class="app-error-modal__overlay" id="error-modal-overlay"></div>
+    <div class="app-error-modal__dialog">
+        <button class="app-error-modal__close" id="error-modal-close" aria-label="Close">&times;</button>
+        <div class="app-error-modal__icon" aria-hidden="true">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
+        <h3 class="app-error-modal__title" id="error-modal-title">Something went wrong</h3>
+        <p class="app-error-modal__msg" id="error-modal-msg"></p>
+        <button class="app-error-modal__btn" id="error-modal-ok">OK</button>
+    </div>
+</div>
 
 {{-- Login success toast --}}
 @if (session('login_success'))
@@ -25,9 +45,20 @@
 {{-- Mobile top bar --}}
 <div class="mobile-topbar" id="mobile-topbar">
     <a href="{{ route('dashboard') }}" class="mobile-topbar__brand">
-        <div class="brand__icon" style="width:28px;height:28px">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/>
+        <div class="brand__icon" style="width:28px;height:28px;background:transparent">
+            <svg width="100%" height="100%" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <circle cx="32" cy="19" r="14.5" fill="none" stroke="#ffffff" stroke-width="11"/>
+                <circle cx="32" cy="19" r="14.5" fill="none" stroke="#3b82f6" stroke-width="8.5"/>
+                <circle cx="20.7" cy="38.5" r="14.5" fill="none" stroke="#ffffff" stroke-width="11"/>
+                <circle cx="20.7" cy="38.5" r="14.5" fill="none" stroke="#10b981" stroke-width="8.5"/>
+                <circle cx="43.3" cy="38.5" r="14.5" fill="none" stroke="#ffffff" stroke-width="11"/>
+                <circle cx="43.3" cy="38.5" r="14.5" fill="none" stroke="#f43f5e" stroke-width="8.5"/>
+                <g transform="rotate(-6 32 32)">
+                    <rect x="25.5" y="24" width="13" height="16" rx="3" fill="#ffffff"/>
+                    <rect x="28" y="27.5" width="8" height="2.5" rx="1.25" fill="#3b82f6"/>
+                    <rect x="28" y="32" width="8" height="2.5" rx="1.25" fill="#cbd5e1"/>
+                    <rect x="28" y="36.5" width="6" height="2.5" rx="1.25" fill="#cbd5e1"/>
+                </g>
             </svg>
         </div>
         <span class="mobile-topbar__name">TriLingua</span>
@@ -48,9 +79,20 @@
     <aside class="sidebar" id="sidebar">
         {{-- Brand --}}
         <a href="{{ route('dashboard') }}" class="brand">
-            <div class="brand__icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/>
+            <div class="brand__icon" style="background:transparent">
+                <svg width="100%" height="100%" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <circle cx="32" cy="19" r="14.5" fill="none" stroke="#ffffff" stroke-width="11"/>
+                    <circle cx="32" cy="19" r="14.5" fill="none" stroke="#3b82f6" stroke-width="8.5"/>
+                    <circle cx="20.7" cy="38.5" r="14.5" fill="none" stroke="#ffffff" stroke-width="11"/>
+                    <circle cx="20.7" cy="38.5" r="14.5" fill="none" stroke="#10b981" stroke-width="8.5"/>
+                    <circle cx="43.3" cy="38.5" r="14.5" fill="none" stroke="#ffffff" stroke-width="11"/>
+                    <circle cx="43.3" cy="38.5" r="14.5" fill="none" stroke="#f43f5e" stroke-width="8.5"/>
+                    <g transform="rotate(-6 32 32)">
+                        <rect x="25.5" y="24" width="13" height="16" rx="3" fill="#ffffff"/>
+                        <rect x="28" y="27.5" width="8" height="2.5" rx="1.25" fill="#3b82f6"/>
+                        <rect x="28" y="32" width="8" height="2.5" rx="1.25" fill="#cbd5e1"/>
+                        <rect x="28" y="36.5" width="6" height="2.5" rx="1.25" fill="#cbd5e1"/>
+                    </g>
                 </svg>
             </div>
             <span class="brand__name">TriLingua</span>
@@ -59,7 +101,7 @@
         {{-- Navigation --}}
         <nav class="nav" aria-label="Main navigation">
 
-            <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+            <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" @if(request()->routeIs('dashboard')) aria-current="page" @endif>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
                     <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
@@ -67,7 +109,7 @@
                 Dashboard
             </a>
 
-            <a href="{{ route('translate') }}" class="nav-link {{ request()->routeIs('translate*') ? 'active' : '' }}">
+            <a href="{{ route('translate') }}" class="nav-link {{ request()->routeIs('translate*') ? 'active' : '' }}" @if(request()->routeIs('translate*')) aria-current="page" @endif>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/>
                     <path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/>
@@ -75,7 +117,7 @@
                 New Translation
             </a>
 
-            <a href="{{ route('documents') }}" class="nav-link {{ request()->routeIs('documents*') ? 'active' : '' }}">
+            <a href="{{ route('documents') }}" class="nav-link {{ request()->routeIs('documents*') ? 'active' : '' }}" @if(request()->routeIs('documents*')) aria-current="page" @endif>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                     <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
@@ -84,7 +126,7 @@
                 My Documents
             </a>
 
-            <a href="{{ route('history') }}" class="nav-link {{ request()->routeIs('history*') ? 'active' : '' }}">
+            <a href="{{ route('history') }}" class="nav-link {{ request()->routeIs('history*') ? 'active' : '' }}" @if(request()->routeIs('history*')) aria-current="page" @endif>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <circle cx="12" cy="12" r="10"/>
                     <polyline points="12 6 12 12 16 14"/>
@@ -92,7 +134,21 @@
                 Saved Translations
             </a>
 
-            <a href="{{ route('settings') }}" class="nav-link {{ request()->routeIs('settings*') ? 'active' : '' }}">
+            @if(auth()->user()->is_admin)
+            <div class="nav-section-label">Admin</div>
+            <a href="{{ route('admin.dashboard') }}" class="nav-link {{ request()->routeIs('admin.dashboard*') ? 'active' : '' }}" @if(request()->routeIs('admin.dashboard*')) aria-current="page" @endif>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+                Overview
+            </a>
+            <a href="{{ route('admin.review.index') }}" class="nav-link nav-link--sub {{ request()->routeIs('admin.review.*') ? 'active' : '' }}" @if(request()->routeIs('admin.review.*')) aria-current="page" @endif>Review Queue</a>
+            <a href="{{ route('admin.jobs.index') }}" class="nav-link nav-link--sub {{ request()->routeIs('admin.jobs.*') ? 'active' : '' }}" @if(request()->routeIs('admin.jobs.*')) aria-current="page" @endif>Jobs</a>
+            <a href="{{ route('admin.users.index') }}" class="nav-link nav-link--sub {{ request()->routeIs('admin.users.*') ? 'active' : '' }}" @if(request()->routeIs('admin.users.*')) aria-current="page" @endif>Users</a>
+            <a href="{{ route('admin.audit') }}" class="nav-link nav-link--sub {{ request()->routeIs('admin.audit') ? 'active' : '' }}" @if(request()->routeIs('admin.audit')) aria-current="page" @endif>Audit</a>
+            @endif
+
+            <a href="{{ route('settings') }}" class="nav-link {{ request()->routeIs('settings*') ? 'active' : '' }}" @if(request()->routeIs('settings*')) aria-current="page" @endif>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <circle cx="12" cy="12" r="3"/>
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -111,7 +167,7 @@
             </div>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
-                <button type="submit" class="sidebar-logout" title="Sign out">
+                <button type="submit" class="sidebar-logout" title="Sign out" aria-label="Sign out">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                         <polyline points="16 17 21 12 16 7"/>
@@ -123,7 +179,7 @@
     </aside>
 
     {{-- Main content --}}
-    <main class="main">
+    <main class="main" id="main-content" tabindex="-1">
         <header class="header">
             <div class="header-left">
                 <h1 class="title">@yield('title', 'Dashboard')</h1>
@@ -131,12 +187,26 @@
             </div>
             <div class="header-right">
                 {{-- Notification bell --}}
-                <button class="header-icon-btn" aria-label="Notifications" title="Notifications">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                    </svg>
-                </button>
+                <div class="notif-wrap" id="notif-wrap">
+                    <button class="header-icon-btn" id="notif-btn" aria-label="Notifications" title="Notifications" aria-haspopup="true" aria-expanded="false">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                        </svg>
+                    </button>
+                    <span class="notif-badge" id="notif-badge" hidden>0</span>
+
+                    <div class="notif-dropdown" id="notif-dropdown" aria-hidden="true">
+                        <div class="notif-dropdown__head">
+                            <span class="notif-dropdown__title">Notifications</span>
+                            <button type="button" class="notif-dropdown__markall" id="notif-markall">Mark all read</button>
+                        </div>
+                        <div class="notif-dropdown__list" id="notif-list">
+                            <div class="notif-dropdown__empty">Loading…</div>
+                        </div>
+                        <a href="{{ route('notifications.page') }}" class="notif-dropdown__viewall">View all notifications</a>
+                    </div>
+                </div>
 
                 {{-- User avatar dropdown --}}
                 <div class="header-user" id="header-user-btn" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false">
@@ -164,6 +234,10 @@
                         </div>
                     </div>
                     <div class="header-dropdown__divider"></div>
+                    <a href="{{ route('profile') }}" class="header-dropdown__item">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        Profile
+                    </a>
                     <a href="{{ route('settings') }}" class="header-dropdown__item">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                         Settings
@@ -213,19 +287,75 @@ window.showToast = function (type, title, message, duration) {
     }, duration || 4000);
 };
 
+// ── Global error modal ────────────────────────────────────────────────────
+window.showErrorModal = function (title, message) {
+    var modal  = document.getElementById('error-modal');
+    var titleEl  = document.getElementById('error-modal-title');
+    var msgEl    = document.getElementById('error-modal-msg');
+    if (!modal) { window.alert(message || title || 'An error occurred.'); return; }
+
+    if (titleEl)  titleEl.textContent = title || 'Something went wrong';
+    if (msgEl)    msgEl.textContent   = message || '';
+
+    var previousFocus = document.activeElement;
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    var ok        = document.getElementById('error-modal-ok');
+    var close     = document.getElementById('error-modal-close');
+    var overlay   = document.getElementById('error-modal-overlay');
+
+    function dismiss() {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+        if (ok)      ok.onclick      = null;
+        if (close)   close.onclick   = null;
+        if (overlay) overlay.onclick = null;
+        document.removeEventListener('keydown', onKey);
+        if (previousFocus && previousFocus.isConnected) previousFocus.focus();
+    }
+    function onKey(e) {
+        if (e.key === 'Escape') dismiss();
+        if (e.key !== 'Tab') return;
+        var controls = [close, ok].filter(function (control) { return control && !control.disabled; });
+        if (!controls.length) return;
+        if (e.shiftKey && document.activeElement === controls[0]) { e.preventDefault(); controls[controls.length - 1].focus(); }
+        else if (!e.shiftKey && document.activeElement === controls[controls.length - 1]) { e.preventDefault(); controls[0].focus(); }
+    }
+
+    if (ok)      ok.onclick      = dismiss;
+    if (close)   close.onclick   = dismiss;
+    if (overlay) overlay.onclick = dismiss;
+    document.addEventListener('keydown', onKey);
+    if (ok) ok.focus();
+};
+
 // ── Hamburger / sidebar ───────────────────────────────────────────────────
 (function () {
     var sidebar   = document.getElementById('sidebar');
     var overlay   = document.getElementById('sidebar-overlay');
     var hamburger = document.getElementById('hamburger-btn');
+    var main      = document.getElementById('main-content');
 
-    function openSidebar()  { sidebar.classList.add('open'); overlay.classList.add('active'); hamburger.setAttribute('aria-expanded','true'); document.body.style.overflow='hidden'; }
-    function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('active'); hamburger.setAttribute('aria-expanded','false'); document.body.style.overflow=''; }
+    function syncSidebar() {
+        if (window.innerWidth > 768 && sidebar.classList.contains('open')) {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+            hamburger.setAttribute('aria-expanded', 'false');
+            document.body.style.overflow = '';
+        }
+        sidebar.inert = window.innerWidth <= 768 && !sidebar.classList.contains('open');
+        main.inert = window.innerWidth <= 768 && sidebar.classList.contains('open');
+    }
+    function openSidebar()  { sidebar.classList.add('open'); overlay.classList.add('active'); hamburger.setAttribute('aria-expanded','true'); document.body.style.overflow='hidden'; syncSidebar(); sidebar.querySelector('.nav-link').focus(); }
+    function closeSidebar(restoreFocus) { sidebar.classList.remove('open'); overlay.classList.remove('active'); hamburger.setAttribute('aria-expanded','false'); document.body.style.overflow=''; syncSidebar(); if (restoreFocus && window.innerWidth <= 768) hamburger.focus(); }
 
     if (hamburger) hamburger.addEventListener('click', openSidebar);
-    if (overlay)   overlay.addEventListener('click', closeSidebar);
-    if (sidebar)   sidebar.querySelectorAll('.nav-link').forEach(function(l){ l.addEventListener('click', function(){ if(window.innerWidth<=768) closeSidebar(); }); });
-    document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeSidebar(); });
+    if (overlay)   overlay.addEventListener('click', function () { closeSidebar(true); });
+    if (sidebar)   sidebar.querySelectorAll('.nav-link').forEach(function(l){ l.addEventListener('click', function(){ if(window.innerWidth<=768) closeSidebar(false); }); });
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape' && sidebar.classList.contains('open')) closeSidebar(true); });
+    window.addEventListener('resize', syncSidebar);
+    syncSidebar();
 })();
 
 // ── Header user dropdown ──────────────────────────────────────────────────
@@ -234,14 +364,134 @@ window.showToast = function (type, title, message, duration) {
     var dropdown = document.getElementById('header-dropdown');
     if (!btn || !dropdown) return;
 
-    function open()  { dropdown.classList.add('open'); btn.setAttribute('aria-expanded','true'); dropdown.setAttribute('aria-hidden','false'); }
-    function close() { dropdown.classList.remove('open'); btn.setAttribute('aria-expanded','false'); dropdown.setAttribute('aria-hidden','true'); }
+    function open()  { dropdown.inert = false; dropdown.classList.add('open'); btn.setAttribute('aria-expanded','true'); dropdown.setAttribute('aria-hidden','false'); }
+    function close() { dropdown.classList.remove('open'); btn.setAttribute('aria-expanded','false'); dropdown.setAttribute('aria-hidden','true'); dropdown.inert = true; }
     function toggle(){ dropdown.classList.contains('open') ? close() : open(); }
 
     btn.addEventListener('click', toggle);
     btn.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); } });
     document.addEventListener('click', function(e){ if(!btn.contains(e.target)&&!dropdown.contains(e.target)) close(); });
     document.addEventListener('keydown', function(e){ if(e.key==='Escape') close(); });
+    dropdown.inert = true;
+})();
+
+// ── Notification bell ─────────────────────────────────────────────────────
+(function () {
+    var wrap   = document.getElementById('notif-wrap');
+    var btn    = document.getElementById('notif-btn');
+    var badge  = document.getElementById('notif-badge');
+    var panel  = document.getElementById('notif-dropdown');
+    var list   = document.getElementById('notif-list');
+    var markAll = document.getElementById('notif-markall');
+    if (!wrap || !btn || !panel || !list) return;
+
+    var csrfToken = document.querySelector('meta[name="csrf-token"]');
+    if (csrfToken) csrfToken = csrfToken.getAttribute('content');
+
+    function setUnread(n) {
+        n = Number(n) || 0;
+        if (n > 0) { badge.textContent = n > 99 ? '99+' : n; badge.hidden = false; }
+        else { badge.hidden = true; }
+    }
+
+    function open() {
+        panel.inert = false;
+        panel.classList.add('open');
+        btn.setAttribute('aria-expanded','true');
+        panel.setAttribute('aria-hidden','false');
+        load();
+    }
+    function close() {
+        panel.classList.remove('open');
+        btn.setAttribute('aria-expanded','false');
+        panel.setAttribute('aria-hidden','true');
+        panel.inert = true;
+    }
+    function toggle() { panel.classList.contains('open') ? close() : open(); }
+    panel.inert = true;
+
+    function load() {
+        list.innerHTML = '<div class="notif-dropdown__empty">Loading…</div>';
+        fetch('/notifications/data?limit=20', { headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                setUnread(res.unread_count || 0);
+                var items = res.notifications || [];
+                if (!items.length) {
+                    list.innerHTML = '<div class="notif-dropdown__empty">No notifications</div>';
+                    return;
+                }
+                var html = '';
+                items.forEach(function (n) {
+                    var d = n.data || {};
+                    var isRead = !!n.read_at;
+                    var cls = 'notif-item' + (isRead ? '' : ' notif-item--unread');
+                    var title = d.title || 'Notification';
+                    var sub;
+                    if (d.error) sub = 'Translation failed';
+                    else if (d.source_language && d.target_language) sub = d.source_language + ' → ' + d.target_language;
+                    else sub = '';
+                    var url = n.url || '#';
+                    var typeIcon = n.type && n.type.indexOf('Failed') !== -1 ? 'error' : 'success';
+                    html += '<a class="' + cls + '" href="' + url + '" data-url="' + url + '" data-id="' + n.id + '" aria-label="' + (isRead ? 'Read' : 'Unread') + ' notification">' +
+                        '<span class="notif-item__icon notif-item__icon--' + typeIcon + '" aria-hidden="true"></span>' +
+                        '<div class="notif-item__body"><p class="notif-item__title">' + title + '</p>' +
+                        (sub ? '<p class="notif-item__sub">' + sub + '</p>' : '') +
+                        '<p class="notif-item__time">' + (n.created_at ? new Date(n.created_at).toLocaleString() : '') + '</p></div></a>';
+                });
+                list.innerHTML = html;
+
+                function openNotification(el) {
+                    var url = el.getAttribute('data-url');
+                    if (url && url !== '#') {
+                        markRead(el.getAttribute('data-id'), el).finally(function () {
+                            window.location.href = url;
+                        });
+                    } else {
+                        markRead(el.getAttribute('data-id'), el);
+                    }
+                }
+
+                list.querySelectorAll('.notif-item--unread').forEach(function (el) {
+                    el.addEventListener('click', function (e) { e.preventDefault(); openNotification(el); });
+                    el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openNotification(el); } });
+                });
+            })
+            .catch(function () {
+                list.innerHTML = '<div class="notif-dropdown__empty">Failed to load notifications</div>';
+            });
+    }
+
+    function markRead(id, el) {
+        var payload = id ? JSON.stringify({ id: id }) : '{}';
+        return fetch('/notifications/read', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+            body: payload
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                setUnread(res.unread_count || 0);
+                if (el) { el.classList.remove('notif-item--unread'); }
+            })
+            .catch(function () {});
+    }
+
+    btn.addEventListener('click', toggle);
+    if (markAll) markAll.addEventListener('click', function () { markRead(null, null); });
+
+    document.addEventListener('click', function (e) {
+        if (wrap && !wrap.contains(e.target)) close();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') close();
+    });
+
+    setUnread(badge.textContent);
+    fetch('/notifications/data?limit=1', { headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return r.json(); })
+        .then(function (res) { setUnread(res.unread_count || 0); })
+        .catch(function () {});
 })();
 </script>
 @yield('scripts')

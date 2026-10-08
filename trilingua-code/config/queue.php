@@ -38,9 +38,12 @@ return [
         'database' => [
             'driver' => 'database',
             'connection' => env('DB_QUEUE_CONNECTION'),
-            'table' => env('DB_QUEUE_TABLE', 'laravel.jobs'),
+            'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // Must exceed the effective worker timeout with margin. The timeout
+            // ladder is defined in config/timeouts.php and enforced by
+            // deployment:validate-timeouts at startup.
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 1800),
             'after_commit' => false,
         ],
 
@@ -123,7 +126,7 @@ return [
     'failed' => [
         'driver' => env('QUEUE_FAILED_DRIVER', 'database-uuids'),
         'database' => env('DB_CONNECTION', 'sqlite'),
-        'table' => 'laravel.failed_jobs',
+        'table' => 'failed_jobs',
     ],
 
 ];

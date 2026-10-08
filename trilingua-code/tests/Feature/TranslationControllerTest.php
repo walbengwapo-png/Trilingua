@@ -1,0 +1,143 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Jobs\TranslateDocumentJob;
+use App\Models\TranslationHistory;
+use App\Models\TranslationJob;
+use App\Models\TranslationQuota;
+use App\Models\User;
+use App\Services\StorageService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Mockery;
+use Tests\TestCase;
+
+class TranslationControllerTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_capabilities_endpoint_and_page_share_the_server_contract(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->getJson('/translate/capabilities');
+
+        $response->assertOk()
+            ->assertJsonPath('text_max_chars', 8000)
+            ->assertJsonPath('max_upload_kb', 51200)
+            ->assertJsonPath('max_upload_bytes', 52428800)
+            ->assertJsonPath('formats.7', 'pptx')
+            ->assertJsonPath('formats.8', 'xlsx')
+            ->assertJsonPath('modes.3', 'auto');
+
+        $page = $this->actingAs($user)->get('/translate');
+        $page->assertOk()
+            ->assertSee('maxlength="8000"', false)
+            ->assertSee('accept=".docx,.pdf,.txt,.md,.rtf,.odt,.csv,.pptx,.xlsx"', false)
+            ->assertSee('"max_upload_bytes":52428800', false);
+    }
+
+    public function test_document_translation_creates_durable_job_and_returns_job_id(): void
+    {
+        config(['queue.default' => 'database']);
+
+        $user = User::factory()->create();
+
+        $storage = Mockery::mock(StorageService::class);
+        $storage->shouldReceive('uploadWithFallback')
+            ->once()
+            ->andReturn([
+                'backend' => 'supabase',
+                'storage_path' => 'user/originals/abc.docx',
+                'signed_url' => 'https://example.test/original',
+                'signed_url_expires_at' => now()->toIso8601String(),
+            ]);
+        $this->app->instance(StorageService::class, $storage);
+
+        $file = UploadedFile::fake()->createWithContent(
+            'sample.docx',
+            'PK'.random_bytes(256)
+        );
+
+        $response = $this->actingAs($user)->post('/translate', [
+            'source_lang' => 'English',
+            'target_lang' => 'Cebuano',
+            'document' => $file,
+        ], ['Accept' => 'application/json']);
+
+        $response->assertOk();
+        $response->assertJsonPath('status', 'processing');
+        $response->assertJsonStructure(['job_id', 'original_filename']);
+
+        // Durable row created with canonical content hash + opaque storage key.
+        $jobRow = TranslationJob::where('user_id', $user->id)->firstOrFail();
+        $this->assertSame(64, strlen((string) $jobRow->payload_hash));
+        $this->assertSame(TranslationJob::STATUS_QUEUED, $jobRow->status);
+        $this->assertSame('user/originals/abc.docx', $jobRow->original_storage_path);
+
+        // A single queued database job exists.
+        $this->assertSame(1, DB::table('jobs')->count());
+        $queued = DB::table('jobs')->first();
+        $payload = json_decode($queued->payload, true);
+        /** @var TranslateDocumentJob $queuedJob */
+        $queuedJob = unserialize($payload['data']['command']);
+        $this->assertInstanceOf(TranslateDocumentJob::class, $queuedJob);
+        $this->assertSame((int) $jobRow->id, $queuedJob->translationJobId);
+    }
+
+    public function test_document_extension_spoof_is_rejected_before_processing(): void
+    {
+        $user = User::factory()->create();
+
+        // NUL bytes = binary without DOCX zip magic; claim .docx → must 422.
+        $file = UploadedFile::fake()->createWithContent(
+            'malware.docx',
+            "\x00\x00MZ\x90\x00".random_bytes(64)
+        );
+
+        $response = $this->actingAs($user)->post('/translate', [
+            'source_lang' => 'English',
+            'target_lang' => 'Cebuano',
+            'document' => $file,
+        ], ['Accept' => 'application/json']);
+
+        $response->assertStatus(422);
+        $this->assertSame(0, TranslationJob::count());
+        $this->assertSame(0, DB::table('jobs')->count());
+    }
+
+    public function test_upload_quota_blocks_excessive_daily_documents(): void
+    {
+        config(['translation.upload.max_daily_files' => 1]);
+
+        $user = User::factory()->create();
+
+        // One accepted document already counted today (R6: the quota ledger,
+        // not history rows, is the source of truth).
+        TranslationQuota::create([
+            'user_id' => $user->id,
+            'quota_day' => now()->toDateString(),
+            'files' => 1,
+            'bytes' => 1,
+        ]);
+
+        $file = UploadedFile::fake()->createWithContent('e.docx', 'PK'.random_bytes(64));
+
+        $response = $this->actingAs($user)->post('/translate', [
+            'source_lang' => 'English',
+            'target_lang' => 'Cebuano',
+            'document' => $file,
+        ], ['Accept' => 'application/json']);
+
+        $response->assertStatus(429);
+        $this->assertSame(0, TranslationJob::count());
+    }
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
+    }
+}

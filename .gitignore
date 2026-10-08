@@ -1,0 +1,10 @@
+# Local migration artifacts and credentials must never be committed.
+cookies.txt
+passwords.txt
+pass.txt
+env content.txt
+partially_done.zip
+translated_*
+# Raw security evidence is never committed (see security/evidence/manifest.md).
+security/evidence/evidence_raw/
+evidence/

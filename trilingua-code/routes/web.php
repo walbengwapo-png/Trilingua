@@ -1,15 +1,26 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\DocumentReviewController;
+use App\Http\Controllers\Admin\JobController;
+use App\Http\Controllers\Admin\ReviewController;
+use App\Http\Controllers\Admin\TextReviewController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
-use App\Http\Controllers\Auth\ResetPasswordController;
-use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Http\Controllers\BookmarksController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentsController;
 use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TranslationController;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -18,23 +29,29 @@ Route::get('/', function () {
 // Clears stale session cookies from previous config (safe to remove after first use)
 Route::get('/clear-session', function () {
     return response('Cookies cleared. <a href="/login">Go to login</a>')
-        ->withCookie(\Cookie::forget('laravel_session'))
-        ->withCookie(\Cookie::forget('XSRF-TOKEN'));
+        ->withCookie(Cookie::forget('laravel_session'))
+        ->withCookie(Cookie::forget('XSRF-TOKEN'));
 });
 
 // Auth routes with rate limiting
 Route::middleware('throttle:10,1')->group(function () {
-    Route::get('/register', [RegisterController::class, 'show'])->name('register');
-    Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
+    Route::middleware('guest')->group(function () {
+        Route::get('/register', [RegisterController::class, 'show'])->name('register');
+        Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
 
-    Route::get('/login', [LoginController::class, 'show'])->name('login');
-    Route::post('/login', [LoginController::class, 'login'])->name('login.attempt');
+        Route::get('/login', [LoginController::class, 'show'])->name('login');
+        Route::post('/login', [LoginController::class, 'login'])->name('login.attempt');
 
-    // Password reset
-    Route::get('/forgot-password', [ForgotPasswordController::class, 'show'])->name('password.request');
-    Route::post('/forgot-password', [ForgotPasswordController::class, 'send'])->name('password.email');
-    Route::get('/reset-password/{token}', [ResetPasswordController::class, 'show'])->name('password.reset');
-    Route::post('/reset-password', [ResetPasswordController::class, 'reset'])->name('password.update');
+        // Google OAuth is guest-only and rate limited alongside other auth routes.
+        Route::get('/auth/google', [GoogleController::class, 'redirect'])->name('auth.google.redirect');
+        Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('auth.google.callback');
+
+        // Password reset
+        Route::get('/forgot-password', [ForgotPasswordController::class, 'show'])->name('password.request');
+        Route::post('/forgot-password', [ForgotPasswordController::class, 'send'])->name('password.email');
+        Route::get('/reset-password/{token}', [ResetPasswordController::class, 'show'])->name('password.reset');
+        Route::post('/reset-password', [ResetPasswordController::class, 'reset'])->name('password.update');
+    });
 });
 
 Route::post('/logout', [LoginController::class, 'logout'])
@@ -45,17 +62,81 @@ Route::post('/logout', [LoginController::class, 'logout'])
 Route::middleware(['auth', 'throttle:60,1'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Status endpoint sits behind auth + throttle: the job owner polls their
+    // own job_id only, so this is safe for long translations (session lifetime
+    // far exceeds the ~6 min polling window).
+    Route::get('/translate/status/{jobId}', [TranslationController::class, 'status'])
+        ->name('translate.status');
+
+    Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
+
     Route::get('/settings', [SettingsController::class, 'show'])->name('settings');
     Route::post('/settings/account', [SettingsController::class, 'updateAccount'])->name('settings.account');
     Route::post('/settings/password', [SettingsController::class, 'updatePassword'])->name('settings.password');
     Route::post('/settings/general', [SettingsController::class, 'updateGeneral'])->name('settings.general');
 
     Route::get('/translate', [TranslationController::class, 'show'])->name('translate');
+    Route::get('/translate/capabilities', [TranslationController::class, 'capabilities'])->name('translate.capabilities');
     Route::post('/translate', [TranslationController::class, 'translate'])->name('translate.submit');
-    Route::get('/translate/download/{token}', [TranslationController::class, 'download'])->name('translate.download');
 
     Route::get('/documents', [DocumentsController::class, 'index'])->name('documents');
+    Route::post('/documents/{id}/re-translate', [DocumentsController::class, 'retranslate'])->name('documents.retranslate');
+    Route::get('/bookmarks', [BookmarksController::class, 'index'])->name('bookmarks');
+
+    Route::get('/notifications', [NotificationController::class, 'page'])->name('notifications.page');
+    Route::get('/notifications/data', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 
     Route::get('/history', [HistoryController::class, 'index'])->name('history');
+    Route::get('/history/{id}', [HistoryController::class, 'detail'])->name('history.detail');
+    Route::get('/history/{id}/view', [HistoryController::class, 'view'])->name('history.view');
+    Route::get('/history/{id}/file', [HistoryController::class, 'showFile'])->name('history.file');
+    Route::get('/history/{id}/original-file', [HistoryController::class, 'showOriginalFile'])->name('history.original-file');
+    Route::get('/history/{id}/blocks', [HistoryController::class, 'blocks'])->name('history.blocks');
     Route::post('/history/redownload/{id}', [HistoryController::class, 'redownload'])->name('history.redownload');
+    Route::post('/history/redownload-original/{id}', [HistoryController::class, 'redownloadOriginal'])->name('history.redownload-original');
+    Route::post('/history/{id}/rename', [HistoryController::class, 'rename'])->name('history.rename');
+    Route::post('/history/{id}/bookmark', [HistoryController::class, 'toggleBookmark'])->name('history.bookmark');
+    Route::post('/history/{id}/priority', [HistoryController::class, 'togglePriority'])->name('history.priority');
+    Route::delete('/history/{id}', [HistoryController::class, 'destroy'])->name('history.destroy');
+
+    // ── Admin (auth + throttle inherited from the outer group) ────────────
+    Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+        // Dashboard CSV exports
+        Route::get('/export/review-trends', [AdminDashboardController::class, 'exportReviewTrends'])->name('dashboard.export.review-trends');
+        Route::get('/export/flags', [AdminDashboardController::class, 'exportFlags'])->name('dashboard.export.flags');
+        Route::get('/export/users', [AdminDashboardController::class, 'exportUsers'])->name('dashboard.export.users');
+
+        // Read-only review queue + detail
+        Route::get('/review', [ReviewController::class, 'index'])->name('review.index');
+        Route::get('/review/{translation}', [ReviewController::class, 'show'])->name('review.show');
+        Route::get('/review/{translation}/blocks', [ReviewController::class, 'blocks'])->name('review.blocks');
+
+        // Read-only audit trail viewer
+        Route::get('/audit', [AuditLogController::class, 'index'])->name('audit');
+
+        // Translation/queue ops
+        Route::get('/jobs', [JobController::class, 'index'])->name('jobs.index');
+        Route::post('/jobs/retry/{failedJobId}', [JobController::class, 'retry'])->name('jobs.retry');
+
+        // Read-only user directory
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show');
+        Route::get('/users/{user}/translations', [UserController::class, 'translations'])->name('users.translations');
+
+        // ── Text review write actions ─────────────────────────────────────
+        Route::post('/review/{translation}/verify', [TextReviewController::class, 'verify'])->name('review.text.verify');
+        Route::post('/review/{translation}/update', [TextReviewController::class, 'update'])->name('review.text.update');
+        Route::post('/review/{translation}/flag', [TextReviewController::class, 'flag'])->name('review.text.flag');
+
+        // ── Document review write actions ─────────────────────────────────
+        Route::post('/review/{translation}/verify-document', [DocumentReviewController::class, 'verifyDocument'])->name('review.document.verify');
+        Route::post('/review/{translation}/flag-document', [DocumentReviewController::class, 'flagDocument'])->name('review.document.flag');
+        Route::post('/review/{translation}/blocks/{block}/update', [DocumentReviewController::class, 'updateBlock'])->name('review.block.update');
+        Route::post('/review/{translation}/save-regenerate', [DocumentReviewController::class, 'saveAndRegenerate'])->name('review.save-regenerate');
+        Route::get('/review/{translation}/file', [DocumentReviewController::class, 'showTranslatedFile'])->name('review.document.file');
+        Route::get('/review/{translation}/original-file', [DocumentReviewController::class, 'showOriginalFile'])->name('review.original-file');
+    });
 });

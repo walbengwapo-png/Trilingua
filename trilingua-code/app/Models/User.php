@@ -24,8 +24,8 @@ class User extends Authenticatable
         'email',
         'password',
         'theme',
-        'language',
         'is_admin',
+        'google_id',
     ];
 
     /**
@@ -50,6 +50,22 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_admin' => 'boolean',
         ];
+    }
+
+    /**
+     * Translations this user submitted.
+     */
+    public function translations()
+    {
+        return $this->hasMany(TranslationHistory::class);
+    }
+
+    /**
+     * Translations this user reviewed (admin review history).
+     */
+    public function reviewedTranslations()
+    {
+        return $this->hasMany(TranslationHistory::class, 'reviewed_by');
     }
 
     /**
