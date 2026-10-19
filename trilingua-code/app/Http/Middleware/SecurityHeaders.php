@@ -43,6 +43,11 @@ class SecurityHeaders
             "frame-ancestors 'self';"
         );
         
+        // Observe strict script violations before a separate enforcement decision.
+        $response->headers->set('Content-Security-Policy-Report-Only',
+            "script-src 'self'; script-src-attr 'none';"
+        );
+
         // Referrer Policy
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         
