@@ -8,3 +8,8 @@ translated_*
 # Raw security evidence is never committed (see security/evidence/manifest.md).
 security/evidence/evidence_raw/
 evidence/
+
+# Raw TriLingua document-handling evidence and downloaded OCR samples live outside the checkout.
+/output/reviews/document-handling-2026-10-19/
+/output/reviews/trilingua-closing-pass-raw/
+/trilingua-code/Model/benchmarks/ocr-samples/
