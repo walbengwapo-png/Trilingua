@@ -822,14 +822,14 @@ def read_pptx(file_path):
 def read_xlsx(file_path):
     """Read text from Excel cells."""
     from openpyxl import load_workbook
-    wb = load_workbook(file_path, data_only=True)
+    wb = load_workbook(file_path, data_only=False)
     blocks = []
 
     for sheet_name in wb.sheetnames:
         ws = wb[sheet_name]
         for row in ws.iter_rows():
             for cell in row:
-                if cell.value and isinstance(cell.value, str) and len(cell.value.split()) >= 1:
+                if cell.data_type != "f" and cell.value and isinstance(cell.value, str) and len(cell.value.split()) >= 1:
                     blocks.append({
                         "type":  "cell",
                         "text":  cell.value,

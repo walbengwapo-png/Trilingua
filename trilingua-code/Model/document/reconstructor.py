@@ -20,6 +20,16 @@ import tempfile
 from .layout import BackgroundSampler
 
 
+def _request_workbook_recalculation(workbook):
+    from openpyxl.workbook.properties import CalcProperties
+    if workbook.calculation is None:
+        workbook.calculation = CalcProperties()
+    workbook.calculation.calcMode = "auto"
+    workbook.calculation.fullCalcOnLoad = True
+    workbook.calculation.forceFullCalc = True
+
+
+
 def _apply_translation_to_paragraph(para, translated_text, glossary_store):
     """
     Apply a translated string to a paragraph's runs, preserving per-run formatting.
@@ -365,13 +375,14 @@ def translate_xlsx_inplace(input_file, output_file, translate_fn,
     """
     from openpyxl import load_workbook
 
-    wb = load_workbook(input_file, data_only=True)
+    # Edit formula expressions, never their possibly absent cached results.
+    wb = load_workbook(input_file, data_only=False)
     total_cells = sum(
         1 for sheet_name in wb.sheetnames
         for row in wb[sheet_name].iter_rows()
         for cell in row
         if cell.value and isinstance(cell.value, str) and cell.value.strip()
-        and not str(cell.value).strip().startswith("=")
+        and cell.data_type != "f"
     )
     completed = 0
 
@@ -379,22 +390,26 @@ def translate_xlsx_inplace(input_file, output_file, translate_fn,
         ws = wb[sheet_name]
         for row in ws.iter_rows():
             for cell in row:
-                if not cell.value or not isinstance(cell.value, str):
+                if cell.data_type == "f" or not cell.value or not isinstance(cell.value, str):
                     continue
                 text = cell.value.strip()
-                if not text or text.startswith("="):
+                if not text:
                     continue
                 translated_text = translate_fn(text, block_type="table_cell")
                 if glossary_store is not None:
                     translated_text = glossary_store.apply(translated_text)
                 cell.value = translated_text
+                # Model output and literal source strings are text, even when
+                # they begin with '='. Never introduce a new executable formula.
+                cell.data_type = "s"
                 completed += 1
                 if progress_callback:
                     progress_callback(completed, total_cells)
 
     if save:
+        _request_workbook_recalculation(wb)
         wb.save(output_file)
-        print(f"  [OK] XLSX saved with perfect layout preservation ({completed} cells translated)")
+        print(f"  [OK] XLSX saved with formulas retained ({completed} text cells translated)")
     wb.close()
 
 
@@ -1853,6 +1868,7 @@ def write_xlsx(blocks, output_file, original_file=None):
                 cell = ws.cell(row=block["row"], column=block["col"])
                 cell.value = block["text"]
 
+        _request_workbook_recalculation(wb)
         wb.save(output_file)
         wb.close()
         print(f"  [OK] XLSX saved with full layout preservation")
@@ -1866,6 +1882,7 @@ def write_xlsx(blocks, output_file, original_file=None):
         for block in cell_blocks:
             ws.cell(row=block.get("row", 1), column=block.get("col", 1)).value = block["text"]
 
+        _request_workbook_recalculation(wb)
         wb.save(output_file)
         print(f"  [OK] XLSX saved (new workbook)")
 

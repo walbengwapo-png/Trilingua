@@ -73,6 +73,26 @@ test('sanitizer retains only safe targets and adds both rel protections', async 
     });assert.deepEqual(links,[['_blank','noopener noreferrer'],[null,'noopener noreferrer']]);} finally {await page.close();}
 });
 
+test('workbook processing warning is visible and renders warning text without markup', async () => {
+    const translation = source('resources/views/translation.blade.php');
+    const start = translation.indexOf('workbookWarning.textContent =');
+    assert.ok(start >= 0);
+    const ending = 'workbookWarning.hidden = !workbookWarning.textContent;';
+    const code = translation.slice(start, translation.indexOf(ending, start) + ending.length);
+    const page = await browser.newPage();
+    try {
+        await page.goto(origin);
+        const result = await page.evaluate(code => {
+            const warning = document.createElement('p'); warning.hidden = true; document.body.append(warning);
+            new Function('data', 'workbookWarning', code)({warnings:['Drawing shapes will be removed.', '<img src=x onerror="window.phase1Executed=1">']}, warning);
+            return {hidden:warning.hidden,text:warning.textContent,images:warning.querySelectorAll('img').length};
+        }, code);
+        assert.equal(result.hidden, false);
+        assert.match(result.text, /shapes will be removed/);
+        assert.equal(result.images, 0);
+    } finally { await page.close(); }
+});
+
 test('regeneration retains signed storage downloads while notifications stay same-origin', async () => {
     const page = await browser.newPage();
     try {

@@ -242,6 +242,9 @@ class TranslationController extends Controller
             ], 422);
         }
 
+        $workbookWarnings = $originalExt === '.xlsx'
+            ? \App\Support\WorkbookWarnings::inspect($persistentPath) : [];
+
         // 3. Durable dedup key — hash the actual bytes, then dedup.
         $contentHash = hash_file('sha256', $persistentPath);
         $payloadHash = TranslationJob::payloadHash(
@@ -363,6 +366,7 @@ class TranslationController extends Controller
                 'status' => 'processing',
                 'message' => 'Document queued for translation. Processing will begin shortly.',
                 'original_filename' => $originalName,
+                'warnings' => $workbookWarnings,
             ]);
         } catch (QueryException $e) {
             // Lost the race against an identical active job — return it instead.

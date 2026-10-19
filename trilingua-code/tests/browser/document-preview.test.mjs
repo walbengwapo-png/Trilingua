@@ -18,7 +18,12 @@ before(async () => {
     bundle = (await build({ stdin: { contents: `import './resources/js/document-preview.js';
         import {sanitizePreviewHtml} from './resources/js/preview-sanitizer.js';
         window.testPreviewSanitize = sanitizePreviewHtml;`, resolveDir: root },
-        bundle: true, write: false, platform: 'browser', format: 'iife' })).outputFiles[0].text;
+        bundle: true, write: false, platform: 'browser', format: 'iife',
+        plugins: process.env.TRILINGUA_WORKBOOK_SNAPSHOT ? [{ name: 'before-cache-fix', setup(b) {
+            b.onLoad({filter:/workbook-preview\.js$/}, () => ({
+                contents:readFileSync(process.env.TRILINGUA_WORKBOOK_SNAPSHOT,'utf8'),loader:'js',
+            }));
+        }}] : [] })).outputFiles[0].text;
     server = createServer((req, res) => {
         if (req.url === '/preview.js') {
             res.setHeader('Content-Type', 'text/javascript'); res.end(bundle);
@@ -154,6 +159,19 @@ test('actual XLSX preview keeps a saved calculated result', async () => {
     try {
         assert.match(await page.locator('#preview table').innerText(), /3/);
         assert.doesNotMatch(await page.locator('#preview').innerText(), /recalculate/);
+    } finally { await page.close(); }
+});
+
+test('openpyxl empty formula caches are stubs, not calculated zero values', async () => {
+    const zip = await JSZip.loadAsync(workbookBytes(false));
+    const xml = await zip.file('xl/worksheets/sheet1.xml').async('string');
+    zip.file('xl/worksheets/sheet1.xml', xml.replace(/<c\b[^>]*\br="A1"[^>]*>[\s\S]*?<\/c>/,
+        '<c r="A1"><f>SUM(1,2)</f><v></v></c>'));
+    const page = await mount('xlsx', await zip.generateAsync({type:'nodebuffer'}));
+    try {
+        const text = await page.locator('#preview').innerText();
+        assert.match(text, /=SUM\(1,2\)/);
+        assert.match(text, /recalculate/);
     } finally { await page.close(); }
 });
 

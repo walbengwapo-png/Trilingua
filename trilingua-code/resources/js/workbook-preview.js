@@ -5,7 +5,7 @@ export function renderWorkbook(XLSX, workbook) {
     const display = { ...sheet };
     let missingResults = false;
     for (const [address, cell] of Object.entries(sheet)) {
-        if (!address.startsWith('!') && cell && cell.f && cell.v == null) {
+        if (!address.startsWith('!') && cell && cell.f && (cell.v == null || cell.t === 'z')) {
             display[address] = { ...cell, t: 's', v: '=' + cell.f };
             delete display[address].w;
             delete display[address].h;

@@ -103,6 +103,7 @@
         <div class="translation-panel translation-panel--output">
             <div class="translation-panel__label">Translation</div>
             <div class="translation-panel__body">
+                <p id="workbook-warning" class="translation-save-warning" role="status" hidden></p>
                 <div id="output-text" aria-live="polite" aria-label="Translation output"></div>
 
                 <div id="output-download" hidden>
@@ -176,6 +177,7 @@
     var swapBtn       = document.getElementById('swap-btn');
     var outputText    = document.getElementById('output-text');
     var attachBtn     = document.getElementById('attach-btn');
+    var workbookWarning = document.getElementById('workbook-warning');
     var fileInput     = document.getElementById('file-input');
     var fileNameSpan  = document.getElementById('file-name');
     var removeFile    = document.getElementById('remove-file');
@@ -364,6 +366,8 @@
                 var data = null;
                 try { data = JSON.parse(raw); } catch (e) {}
 
+                workbookWarning.textContent = (data && Array.isArray(data.warnings) ? data.warnings : []).join(' ');
+                workbookWarning.hidden = !workbookWarning.textContent;
                 if (res.ok && data && data.status === 'processing' && data.job_id) {
                     // Document translation queued - poll for status
                     setProgressStage(data.duplicate ? 'Already translating this file…' : 'Translating document…');
