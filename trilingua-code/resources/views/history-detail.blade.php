@@ -168,7 +168,7 @@
                     @if ($isDoc)
                         <div class="preview-panel" id="detail-panel-translated">
                             @if ($translatedUrl && $translatedExt === 'pdf')
-                                <iframe class="review-pane__frame" src="{{ $translatedUrl }}" title="Translated document"></iframe>
+                                <iframe class="review-pane__frame" src="{{ \App\Support\PreviewUrl::pdf($translatedUrl) }}" title="Translated document"></iframe>
                             @elseif ($translatedUrl)
                                 <div class="review-pane__placeholder">
                                     <p>Live preview is only available for <strong>PDF</strong> files.</p>
@@ -183,7 +183,7 @@
                         </div>
                         <div class="preview-panel" id="detail-panel-original" style="display:none">
                             @if ($originalUrl && $originalExt === 'pdf')
-                                <iframe class="review-pane__frame" src="{{ $originalUrl }}" title="Original document"></iframe>
+                                <iframe class="review-pane__frame" src="{{ \App\Support\PreviewUrl::pdf($originalUrl) }}" title="Original document"></iframe>
                             @elseif ($originalUrl)
                                 <div class="review-pane__placeholder">
                                     <p>Live preview is only available for <strong>PDF</strong> files.</p>

@@ -22,6 +22,7 @@ export default defineConfig({
                 'resources/css/views/admin.css',
                 'resources/css/views/notifications.css',
                 'resources/js/app.js',
+                'resources/js/document-preview.js',
                 'resources/js/review-document.js'
             ],
             refresh: true,

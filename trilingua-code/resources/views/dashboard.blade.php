@@ -225,7 +225,7 @@
                 document.querySelectorAll('.kpi-card__value').forEach(function (el, i) {
                     var newEl = doc.querySelectorAll('.kpi-card__value')[i];
                     if (newEl && el.textContent.trim() !== newEl.textContent.trim()) {
-                        el.innerHTML = newEl.innerHTML;
+                        el.textContent = newEl.textContent;
                         el.style.transition = 'color 0.4s';
                         el.style.color = 'var(--primary)';
                         setTimeout(function () { el.style.color = ''; }, 800);
@@ -236,7 +236,7 @@
                 var oldTbody = document.querySelector('.table tbody');
                 var newTbody = doc.querySelector('.table tbody');
                 if (oldTbody && newTbody) {
-                    oldTbody.innerHTML = newTbody.innerHTML;
+                    oldTbody.replaceChildren(...window.sanitizeDashboardRows(newTbody.innerHTML).childNodes);
                 }
             })
             .catch(function () { /* silent fail — no broken UI */ });

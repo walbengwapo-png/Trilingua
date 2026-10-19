@@ -271,8 +271,11 @@ window.showToast = function (type, title, message, duration) {
     el.setAttribute('role', 'alert');
     el.innerHTML =
         '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="' + (colors[t]||colors.info) + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0" aria-hidden="true">' + (icons[t]||icons.info) + '</svg>' +
-        '<div style="flex:1;min-width:0"><p style="margin:0 0 2px;font-size:0.875rem;font-weight:600;color:#111827">' + title + '</p>' + (message ? '<p style="margin:0;font-size:0.8125rem;color:#6b7280">' + message + '</p>' : '') + '</div>' +
-        '<button onclick="this.closest(\'[role=alert]\').remove()" style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:2px;border-radius:4px;display:flex;flex-shrink:0" aria-label="Dismiss"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
+        '<div style="flex:1;min-width:0"><p style="margin:0 0 2px;font-size:0.875rem;font-weight:600;color:#111827"></p>' + (message ? '<p style="margin:0;font-size:0.8125rem;color:#6b7280"></p>' : '') + '</div>' +
+        '<button style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:2px;border-radius:4px;display:flex;flex-shrink:0" aria-label="Dismiss"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
+    el.querySelector('button').addEventListener('click', function () { el.remove(); });
+    el.querySelector('p').textContent = title || '';
+    if (message) el.querySelectorAll('p')[1].textContent = message;
     var container = document.getElementById('toast-container');
     if (container) container.appendChild(el);
     setTimeout(function () {
@@ -389,25 +392,36 @@ window.showErrorModal = function (title, message) {
                     list.innerHTML = '<div class="notif-dropdown__empty">No notifications</div>';
                     return;
                 }
-                var html = '';
+                var fragment = document.createDocumentFragment();
                 items.forEach(function (n) {
                     var d = n.data || {};
                     var isRead = !!n.read_at;
-                    var cls = 'notif-item' + (isRead ? '' : ' notif-item--unread');
-                    var title = d.title || 'Notification';
-                    var sub;
-                    if (d.error) sub = 'Translation failed';
-                    else if (d.source_language && d.target_language) sub = d.source_language + ' → ' + d.target_language;
-                    else sub = '';
-                    var url = n.url || '#';
-                    var typeIcon = n.type && n.type.indexOf('Failed') !== -1 ? 'error' : 'success';
-                    html += '<a class="' + cls + '" href="' + url + '" data-url="' + url + '" data-id="' + n.id + '" aria-label="' + (isRead ? 'Read' : 'Unread') + ' notification">' +
-                        '<span class="notif-item__icon notif-item__icon--' + typeIcon + '" aria-hidden="true"></span>' +
-                        '<div class="notif-item__body"><p class="notif-item__title">' + title + '</p>' +
-                        (sub ? '<p class="notif-item__sub">' + sub + '</p>' : '') +
-                        '<p class="notif-item__time">' + (n.created_at ? new Date(n.created_at).toLocaleString() : '') + '</p></div></a>';
+                    var link = document.createElement('a');
+                    link.className = 'notif-item' + (isRead ? '' : ' notif-item--unread');
+                    link.href = window.safeAppUrl(n.url || '#');
+                    link.dataset.url = link.getAttribute('href');
+                    link.dataset.id = String(n.id || '');
+                    link.setAttribute('aria-label', (isRead ? 'Read' : 'Unread') + ' notification');
+                    var icon = document.createElement('span');
+                    icon.className = 'notif-item__icon notif-item__icon--' +
+                        (n.type && n.type.indexOf('Failed') !== -1 ? 'error' : 'success');
+                    icon.setAttribute('aria-hidden', 'true');
+                    var body = document.createElement('div');
+                    body.className = 'notif-item__body';
+                    var sub = d.error ? 'Translation failed' :
+                        (d.source_language && d.target_language ? d.source_language + ' → ' + d.target_language : '');
+                    [['title', d.title || 'Notification'], ['sub', sub],
+                        ['time', n.created_at ? new Date(n.created_at).toLocaleString() : '']].forEach(function (entry) {
+                        if (!entry[1]) return;
+                        var text = document.createElement('p');
+                        text.className = 'notif-item__' + entry[0];
+                        text.textContent = entry[1];
+                        body.appendChild(text);
+                    });
+                    link.append(icon, body);
+                    fragment.appendChild(link);
                 });
-                list.innerHTML = html;
+                list.replaceChildren(fragment);
 
                 function openNotification(el) {
                     var url = el.getAttribute('data-url');

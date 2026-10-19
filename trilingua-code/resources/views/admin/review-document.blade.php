@@ -115,7 +115,7 @@
                 <div class="review-pane__body">
                     <div class="preview-panel" id="preview-final">
                         @if ($previewUrl && $isPdf)
-                            <iframe class="review-pane__frame" src="{{ $previewUrl }}" title="Translated document"></iframe>
+                            <iframe class="review-pane__frame" src="{{ \App\Support\PreviewUrl::pdf($previewUrl) }}" title="Translated document"></iframe>
                         @elseif ($previewUrl && in_array($previewExt, ['docx', 'xlsx', 'txt', 'md', 'csv', 'rtf']))
                             <div id="converter-host"
                                  data-ext="{{ $previewExt }}"
@@ -425,7 +425,7 @@
             var label = btn.textContent;
             btn.disabled = true;
             spinner.style.display = '';
-            result.innerHTML = '';
+            result.replaceChildren();
 
             var body = new FormData(regenForm);
             // Include every on-screen block edit so regeneration reflects the
@@ -454,16 +454,24 @@
                     return;
                 }
                 if (window.showToast) showToast('success', 'Regenerated', 'New version uploaded (' + (data.edited_blocks ?? 0) + ' edited blocks).');
-                var html =
-                    '<div class="regen-result">' +
-                    '<strong>Regeneration complete.</strong> (' + (data.edited_blocks ?? 0) + ' edited blocks included)' +
-                    '<div class="regen-result__links">' +
-                    '<a href="' + data.new_download_url + '">Download new version (' + (data.new_download_filename || 'file') + ')</a>';
-                if (data.original_download_url) {
-                    html += '<a href="' + data.original_download_url + '">Download original</a>';
-                }
-                html += '</div></div>';
-                result.innerHTML = html;
+                var published = document.createElement('div');
+                published.className = 'regen-result';
+                var heading = document.createElement('strong');
+                heading.textContent = 'Published.';
+                published.append(heading, document.createTextNode(' This is now the downloadable version. (' +
+                    (data.edited_blocks ?? 0) + ' edited blocks included)'));
+                var links = document.createElement('div');
+                links.className = 'regen-result__links';
+                [[data.new_download_url, 'Download new version (' + (data.new_download_filename || 'file') + ')'],
+                    [data.original_download_url, 'Download original']].forEach(function (entry) {
+                    if (!entry[0]) return;
+                    var link = document.createElement('a');
+                    link.href = window.safeAppUrl(entry[0], true);
+                    link.textContent = entry[1];
+                    links.appendChild(link);
+                });
+                published.appendChild(links);
+                result.replaceChildren(published);
                 // Refresh so the badges show the latest block statuses.
                 setTimeout(function () { window.location.reload(); }, 1200);
             })
