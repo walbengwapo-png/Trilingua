@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\TranslationHistory;
+use App\Support\SourceWordCounter;
 use Illuminate\Support\Facades\DB;
 
 class HistoryService
@@ -44,6 +45,9 @@ class HistoryService
             'source_text'           => $data['source_text'] ?? null,
             'translated_text'       => $data['translated_text'] ?? null,
             'job_id'                => $data['job_id'] ?? null,
+            'source_word_metadata'  => ($data['translation_type'] ?? 'document') === 'text'
+                ? SourceWordCounter::measure(is_string($data['source_text'] ?? null) ? $data['source_text'] : null)
+                : null,
         ]);
     }
 

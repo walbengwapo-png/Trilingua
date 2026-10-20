@@ -267,6 +267,13 @@ class GeminiProvider(TranslationProvider):
                     translated_text=result, provider=self.name, model=self._model,
                     token_usage={"input": estimated_input_tokens, "output": len(result.split())},
                     execution_time_ms=(time.time() - start_time) * 1000,
+                    measurement_metadata={
+                        "schema_version": 1,
+                        "usage_provenance": {"input": "estimated", "output": "estimated"},
+                        "usage_method": {"input": "characters-divided-by-four-v1", "output": "word-proxy-v1"},
+                        "observed_providers": [{"provider": self.name, "model": self._model}],
+                        "calls_complete": False,
+                    },
                 )
             except requests.exceptions.Timeout:
                 error_message = f"Gemini API timed out after {max_attempts} attempt(s)"

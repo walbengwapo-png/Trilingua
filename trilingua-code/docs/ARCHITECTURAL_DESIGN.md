@@ -94,7 +94,7 @@
 │  ┌────────────────────────┴─────────────────────────────────────────┐   │
 │  │                    AI PROVIDER LAYER                              │   │
 │  │  ┌─────────┐ ┌──────────┐ ┌─────────┐ ┌──────────┐ ┌─────────┐ │   │
-│  │  │GPT-OSS  │ │ Mistral  │ │ OpenAI  │ │ Gemini   │ │Future...│ │   │
+│  │  │GPT-OSS  │ │ Gemini  │ │ OpenAI  │ │ Gemini   │ │Future...│ │   │
 │  │  │(Default)│ │(Fallback)│ │(Future) │ │(Future)  │ │         │ │   │
 │  │  └─────────┘ └──────────┘ └─────────┘ └──────────┘ └─────────┘ │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
@@ -341,9 +341,9 @@ trilingua-code/Model/
 ├── providers/                                     # AI PROVIDER LAYER
 │   ├── base.py                                    # Abstract TranslationProvider
 │   ├── gptoss.py                                  # GPT-OSS (Ollama Cloud)
-│   ├── mistral.py                                 # Mistral AI
+│   ├── gemini.py                                 # Gemini AI
 │   ├── future_openai.py                           # OpenAI stub
-│   ├── future_gemini.py                           # Gemini stub
+│   ├── gemini.py                           # Gemini stub
 │   └── future_deepseek.py                         # DeepSeek stub
 │
 ├── memory/                                        # MEMORY MANAGEMENT
@@ -673,7 +673,7 @@ Response:
   "engine": "provider:gptoss",
   "model": "llama3.1:8b",
   "active_provider": "gptoss",
-  "available_providers": ["gptoss", "mistral"],
+  "available_providers": ["gptoss", "gemini"],
   "languages": ["English", "Filipino", "Cebuano"],
   "formats": [".docx", ".pdf", ".pptx", ".xlsx", ".txt", ".csv"],
   "provider_status": { "available": true, "model": "llama3.1:8b" }
@@ -2147,9 +2147,9 @@ Primary Provider (GPT-OSS)
             │
             └── All 3 retries failed?
                 │
-                ├── Fallback to Mistral?
-                │   ├── Mistral available? → Use Mistral
-                │   └── Mistral failed? → Return error
+                ├── Fallback to Gemini?
+                │   ├── Gemini available? → Use Gemini
+                │   └── Gemini failed? → Return error
                 │
                 └── No fallback configured?
                     └── Return error: "All providers unavailable"

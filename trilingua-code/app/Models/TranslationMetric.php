@@ -34,6 +34,7 @@ class TranslationMetric extends Model
         'input_tokens',
         'output_tokens',
         'document_type',
+        'measurement_metadata',
         'created_at',
     ];
 
@@ -50,6 +51,7 @@ class TranslationMetric extends Model
         'cache_misses' => 'integer',
         'input_tokens' => 'integer',
         'output_tokens' => 'integer',
+        'measurement_metadata' => 'array',
         'created_at' => 'datetime',
     ];
 

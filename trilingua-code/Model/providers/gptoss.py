@@ -261,6 +261,14 @@ class GPTOSSProvider(TranslationProvider):
                     token_usage["input"] = data["prompt_eval_count"]
                 if not token_usage:
                     token_usage = {"input": len(text.split()), "output": len(result.split())}
+                    usage_provenance = {"input": "estimated", "output": "estimated"}
+                    usage_method = {"input": "word-proxy-v1", "output": "word-proxy-v1"}
+                else:
+                    usage_provenance = {
+                        direction: "provider-reported" if direction in token_usage else "unknown"
+                        for direction in ("input", "output")
+                    }
+                    usage_method = {}
 
                 elapsed_ms = (_time.time() - start_time) * 1000
                 return TranslationResponse(
@@ -269,6 +277,12 @@ class GPTOSSProvider(TranslationProvider):
                     model=self._model,
                     token_usage=token_usage,
                     execution_time_ms=elapsed_ms,
+                    measurement_metadata={
+                        "schema_version": 1,
+                        "usage_provenance": usage_provenance, "usage_method": usage_method,
+                        "observed_providers": [{"provider": self.name, "model": self._model}],
+                        "calls_complete": False,
+                    },
                 )
 
             except requests.exceptions.ConnectionError:

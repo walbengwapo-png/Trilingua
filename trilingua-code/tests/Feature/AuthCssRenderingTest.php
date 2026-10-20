@@ -534,6 +534,6 @@ class AuthCssRenderingTest extends TestCase
         $response->assertSee('class="kpi-card"', false);
         $response->assertSee('Total Translations', false);
         $response->assertSee('Activity (Last 30 Days)', false);
-        $response->assertSee('Words Translated', false);
+        $response->assertSee('Source words processed', false);
     }
 }

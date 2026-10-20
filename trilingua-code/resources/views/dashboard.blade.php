@@ -35,6 +35,7 @@
             $totals = $stats['totals'] ?? ['total' => 0, 'documents' => 0, 'texts' => 0, 'words' => 0, 'bookmarked' => 0];
             $deltas = $stats['deltas'] ?? ['translationsDelta' => 0, 'wordsDelta' => 0];
             $avgQuality = $stats['avgQuality'] ?? null;
+            $sourceWords = $stats['sourceWords'] ?? ['known_words' => 0, 'complete_records' => 0, 'partial_records' => 0, 'missing_records' => 0, 'legacy_words' => 0, 'legacy_records' => 0];
         @endphp
 
         <div class="kpi-card">
@@ -51,14 +52,14 @@
 
         <div class="kpi-card">
             <div class="kpi-card__row">
-                <span class="kpi-card__label">Words Translated</span>
-                <span class="delta {{ ($deltas['wordsDelta'] ?? 0) > 0 ? 'delta--up' : (($deltas['wordsDelta'] ?? 0) < 0 ? 'delta--down' : 'delta--flat') }}">
-                    <span class="delta__arrow">{{ ($deltas['wordsDelta'] ?? 0) > 0 ? '▲' : (($deltas['wordsDelta'] ?? 0) < 0 ? '▼' : '–') }}</span>
-                    {{ abs($deltas['wordsDelta'] ?? 0) }}%
-                </span>
+                <span class="kpi-card__label">Source words processed</span>
+                <span class="text-muted">Known source only</span>
             </div>
-            <div class="kpi-card__value">{{ number_format($totals['words']) }}</div>
-            <p class="kpi-card__sub">Across {{ $totals['total'] }} translation{{ $totals['total'] === 1 ? '' : 's' }}</p>
+            <div class="kpi-card__value">{{ $sourceWords['complete_records'] + $sourceWords['partial_records'] > 0 ? number_format($sourceWords['known_words']) : 'Unavailable' }}</div>
+            <p class="kpi-card__sub">{{ $sourceWords['complete_records'] }} fully counted, {{ $sourceWords['partial_records'] }} partial, {{ $sourceWords['missing_records'] }} unavailable. Counts cover supplied source; extraction completeness is unverified.</p>
+            @if ($sourceWords['legacy_records'] > 0)
+                <p class="kpi-card__sub">Legacy count: {{ number_format($sourceWords['legacy_words']) }} across {{ $sourceWords['legacy_records'] }} records using the earlier method; shown separately.</p>
+            @endif
         </div>
 
         <div class="kpi-card">

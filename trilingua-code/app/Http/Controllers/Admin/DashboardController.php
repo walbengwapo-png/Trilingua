@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\TranslationBlock;
 use App\Models\TranslationEditLog;
 use App\Models\TranslationHistory;
-use App\Models\TranslationMetric;
 use App\Models\User;
 use App\Models\UserActivityLog;
+use App\Services\EngineMetricsSummary;
 use App\Support\CsvExporter;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -75,15 +75,7 @@ class DashboardController extends Controller
                     'db_ok' => false,
                     'storage_ok' => false,
                 ],
-                'engineHealth' => [
-                    'samples' => 0,
-                    'avg_latency_ms' => null,
-                    'avg_llm_calls' => null,
-                    'cache_hit_rate' => null,
-                    'retranslation_rate' => null,
-                    'active_provider' => null,
-                    'active_model' => null,
-                ],
+                'engineHealth' => ['samples' => 0],
                 'healthScorecard' => [
                     'scored' => 0,
                     'below_threshold' => 0,
@@ -437,47 +429,7 @@ class DashboardController extends Controller
      */
     private function engineHealth(): array
     {
-        $base = TranslationMetric::query();
-
-        $count = (clone $base)->count();
-        if ($count === 0) {
-            return [
-                'samples' => 0,
-                'avg_latency_ms' => null,
-                'avg_llm_calls' => null,
-                'cache_hit_rate' => null,
-                'retranslation_rate' => null,
-                'active_provider' => null,
-                'active_model' => null,
-            ];
-        }
-
-        $avgLatency = (clone $base)->avg('total_time_ms');
-        $avgLlmCalls = (clone $base)->avg('llm_calls');
-
-        // Cache hit rate = hits ÷ (hits + misses) across document runs.
-        $cacheHits = (clone $base)->sum('cache_hits');
-        $cacheMisses = (clone $base)->sum('cache_misses');
-        $cacheTotal = $cacheHits + $cacheMisses;
-        $cacheHitRate = $cacheTotal > 0 ? round($cacheHits / $cacheTotal * 100, 1) : null;
-
-        // Retranslation rate = retranslated ÷ total translated blocks.
-        $translated = (clone $base)->sum('blocks_translated');
-        $retranslated = (clone $base)->sum('retranslated_chunks');
-        $retranslationRate = $translated > 0 ? round($retranslated / $translated * 100, 1) : null;
-
-        // Most recent provider/model actually used.
-        $latest = (clone $base)->orderByDesc('id')->first();
-
-        return [
-            'samples' => $count,
-            'avg_latency_ms' => $avgLatency === null ? null : (int) round((float) $avgLatency),
-            'avg_llm_calls' => $avgLlmCalls === null ? null : round((float) $avgLlmCalls, 1),
-            'cache_hit_rate' => $cacheHitRate,
-            'retranslation_rate' => $retranslationRate,
-            'active_provider' => $latest?->provider,
-            'active_model' => $latest?->model,
-        ];
+        return app(EngineMetricsSummary::class)->summarize();
     }
 
     /**

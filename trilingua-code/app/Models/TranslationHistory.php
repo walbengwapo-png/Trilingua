@@ -42,6 +42,7 @@ class TranslationHistory extends Model
         'bookmarked_at',
         'job_id',
         'document_word_count',
+        'source_word_metadata',
         'draft_revision',
         'published_revision',
     ];
@@ -58,6 +59,7 @@ class TranslationHistory extends Model
         'is_bookmarked' => 'boolean',
         'bookmarked_at' => 'datetime',
         'document_word_count' => 'integer',
+        'source_word_metadata' => 'array',
         'draft_revision' => 'integer',
         'published_revision' => 'integer',
     ];

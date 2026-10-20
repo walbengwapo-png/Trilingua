@@ -92,6 +92,7 @@ class UserController extends Controller
         // This view renders the core card set (wordsTranslated, totalDocs,
         // translationsThisMonth), so it takes that slice of the envelope.
         $stats = $summary['core'];
+        $sourceWords = $summary['sourceWords'];
 
         $totals = [
             'total'    => $summary['totals']['total'],
@@ -122,7 +123,7 @@ class UserController extends Controller
         $failedLogins  = UserActivityLog::where('user_id', $user->id)->where('action', 'login_failed')->count();
 
         return view('admin.user-detail', compact(
-            'user', 'stats', 'totals', 'recent',
+            'user', 'stats', 'totals', 'recent', 'sourceWords',
             'reviewActions', 'accountActions', 'loginCount', 'failedLogins'
         ));
     }

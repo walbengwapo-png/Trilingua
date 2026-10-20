@@ -21,6 +21,7 @@ class TranslationResponse:
     warnings: list = field(default_factory=list)
     success: bool = True
     error_message: str = ""
+    measurement_metadata: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -54,7 +55,7 @@ class DocumentTranslationResponse:
     # ── Engine metrics ────────────────────────────────────────────────────
     # Captured from DocumentContext.summary() so Laravel can surface real AI
     # operational metrics (latency, LLM call counts, cache efficiency, and the
-    # retranslation rate — a direct translation-quality proxy) on its dashboards.
+    # operational rework counts) on its dashboards; these are not quality proof.
     metrics: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:

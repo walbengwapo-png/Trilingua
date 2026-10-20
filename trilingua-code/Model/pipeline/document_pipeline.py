@@ -142,6 +142,18 @@ def _engine_metrics(ctx: DocumentContext, provider=None) -> dict:
         "cache_misses": s.get("cache_misses", 0),
         "document_type": s.get("document_type", ""),
         "providers_used": s.get("providers_used", {}),
+        "measurement_metadata": {
+            "schema_version": 1,
+            "observed_providers": s.get("observed_providers", []),
+            "calls_complete": False,
+            "calls_provenance": "unknown",
+            "timing_scope": "document_pipeline_elapsed",
+            "timing_observed": bool(ctx._start_time),
+            # Existing wrappers and counters do not establish full request/usage coverage.
+            "usage_provenance": {"input": "unknown", "output": "unknown"},
+            "cache_complete": False,
+            "rework_complete": False,
+        },
         "provider_chain": list(getattr(provider, "provider_names", ())) if provider else [],
         **route,
     }

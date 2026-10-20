@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\TranslationBlock;
 use App\Models\TranslationHistory;
 use App\Support\ReviewStatus;
+use App\Support\SourceWordCounter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -34,13 +35,16 @@ class BlockService
     public function persistBlocks(TranslationHistory $history, array $blocks, ?array $sidecar = null): int
     {
         if ($blocks === []) {
+            if ($history->source_word_metadata === null && $history->document_word_count === null) {
+                $history->source_word_metadata = SourceWordCounter::fromBlocks([]);
+                $history->save();
+            }
             return 0;
         }
 
         $count = DB::transaction(function () use ($history, $blocks, $sidecar) {
             $created = 0;
             $scores = [];
-            $totalWords = 0;
 
             foreach ($blocks as $index => $block) {
                 $sourceText = (string) ($block['source_text'] ?? $block['text'] ?? '');
@@ -67,7 +71,6 @@ class BlockService
                     'created_at'             => now(),
                 ]);
 
-                $totalWords += str_word_count($sourceText);
                 $created++;
             }
 
@@ -77,9 +80,10 @@ class BlockService
                 $history->quality_score = $average;
             }
 
-            // Store the real source word count (replaces the old 250/doc guess).
-            if ($totalWords > 0) {
-                $history->document_word_count = $totalWords;
+            // Preserve original volume on regeneration/replay and retain legacy counts.
+            if ($history->source_word_metadata === null && $history->document_word_count === null) {
+                $history->source_word_metadata = SourceWordCounter::fromBlocks($blocks);
+                $history->document_word_count = $history->source_word_metadata['count'];
             }
 
             if ($sidecar !== null) {
