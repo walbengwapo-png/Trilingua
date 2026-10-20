@@ -15,10 +15,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Trust only Cloudflare edge proxies (Tunnel/CDN) so X-Forwarded-* headers
-        // cannot be spoofed by arbitrary clients. Never use `*` here.
-        // If the deployment moves to a different ingress/CDN, update this list.
-        $middleware->trustProxies(at: [
+        // Laravel handles Cloud's ingress natively; other hosts trust Cloudflare only.
+        $middleware->trustProxies(at: laravel_cloud() ? null : [
             // Cloudflare IPv4
             '173.245.48.0/20',
             '103.21.244.0/22',

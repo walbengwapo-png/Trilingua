@@ -14,6 +14,7 @@ return [
     'python_service' => [
         'url' => env('PYTHON_SERVICE_URL', 'http://127.0.0.1:5000'),
         'timeout' => env('PYTHON_SERVICE_TIMEOUT', 1200),
+        'document_jobs' => (bool) env('PYTHON_DOCUMENT_JOBS', false),
         // Shared secret the Laravel client presents as X-Service-Token so the
         // python service can reject non-app callers. Deploy both sides together.
         'token' => env('PYTHON_SERVICE_TOKEN'),

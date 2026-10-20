@@ -13,6 +13,32 @@ from dto.responses import TranslationResponse
 from pipeline.translation_pipeline import TranslationPipeline
 
 
+def test_pdf_unicode_punctuation_survives_without_system_fonts(tmp_path, monkeypatch):
+    import document.reconstructor as reconstructor
+
+    original_exists = reconstructor.os.path.exists
+    monkeypatch.setattr(
+        reconstructor.os.path, "exists",
+        lambda path: False if str(path).startswith("C:\\Windows\\Fonts\\") else original_exists(path),
+    )
+    source, output = tmp_path / "source.pdf", tmp_path / "output.pdf"
+    with fitz.open() as doc:
+        page = doc.new_page()
+        page.insert_text((50, 80), "Source sentence with enough space for Unicode punctuation.", fontsize=12)
+        doc.save(source)
+    blocks = read_pdf(str(source), "single")
+    target = "“Magandang umaga”—dalhin ang dokumento… ₱250."
+    blocks[0]["_original_text"] = blocks[0]["text"]
+    blocks[0]["text"] = target
+    write_pdf_preserved(blocks, str(source), str(output))
+    with fitz.open(output) as doc:
+        text = " ".join(page.get_text() for page in doc).replace("\u00a0", " ")
+        for character in ("“", "”", "—", "…", "₱"):
+            assert character in text
+        assert "Magandang umaga" in text
+        assert "Source sentence" not in text
+
+
 @pytest.mark.parametrize("rotation", [90, 180, 270])
 def test_rotated_page_keeps_translation_upright(tmp_path, rotation):
     source = tmp_path / "source.pdf"

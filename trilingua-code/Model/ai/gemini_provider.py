@@ -2,6 +2,7 @@
 """Google Gemini provider for structured document-analysis tasks."""
 
 import json
+from provider_usage import provider_post
 import os
 import re
 import time as _time
@@ -179,8 +180,8 @@ class GeminiAnalysisProvider(AIAnalysisProvider):
         for attempt in range(self._max_attempts):
             delay = 2 ** attempt
             try:
-                response = requests.post(
-                    url, headers=headers, json=payload,
+                response = provider_post(requests.post,
+                    url, provider=self.name, model=self._model, purpose="analysis", headers=headers, json=payload,
                     timeout=(10, int(os.environ.get("GEMINI_ANALYSIS_TIMEOUT_SECONDS", "30"))),
                 )
                 if response.status_code >= 400:

@@ -21,6 +21,7 @@ deeper analysis. This way, simple hallucinations are caught instantly,
 and the AI only reviews chunks that passed the regex check.
 """
 
+from provider_usage import call_with_purpose, ProviderStopped
 import os
 import math
 from dataclasses import dataclass, field
@@ -171,7 +172,9 @@ class AIQualityReviewer:
             )
 
         try:
-            batch_result = self._ai.analyze(system_prompt, user_prompt)
+            batch_result = call_with_purpose("quality_review", self._ai.analyze, system_prompt, user_prompt)
+        except ProviderStopped:
+            raise
         except Exception as e:
             print(f"  [QualityReview] Batch review failed: {e}")
             print("  [QualityReview] Using deterministic checks; no per-item AI retries")
@@ -305,7 +308,9 @@ class AIQualityReviewer:
 
         # Call AI for deep review
         try:
-            result = self._ai.analyze(system_prompt, user_prompt)
+            result = call_with_purpose("quality_review", self._ai.analyze, system_prompt, user_prompt)
+        except ProviderStopped:
+            raise
         except Exception as e:
             # If AI review fails, pass the translation (don't block on review)
             print(f"  [QualityReview] AI review failed: {e}")

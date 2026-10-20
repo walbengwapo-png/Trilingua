@@ -6,7 +6,7 @@ Supports: GPT-OSS (Ollama Cloud), Google Gemini
 Document formats: .docx .pdf .txt .md .rtf .odt .csv .pptx .xlsx
 
 Architecture:
-  Laravel → server.py → pipeline/ → providers/ → AI API
+  Laravel â†’ server.py â†’ pipeline/ â†’ providers/ â†’ AI API
 
 Usage:
     set GEMINI_API_KEY=your_key_here     # For Gemini analysis and review
@@ -21,6 +21,7 @@ import os
 import hmac
 import logging
 import time as _time
+from uuid import UUID
 
 # Ensure the Model directory is on the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -118,7 +119,7 @@ else:
         print(f"  WARNING: Unknown analysis provider '{ANALYSIS_PROVIDER}'; using Ollama")
     _analysis_provider = _ollama_analysis_provider
 
-# Future providers (stubs — raise NotImplementedError when instantiated)
+# Future providers (stubs â€” raise NotImplementedError when instantiated)
 # Uncomment imports above and these lines when ready to implement:
 # _openai_provider = OpenAIProvider()
 # _deepseek_provider = DeepSeekProvider()
@@ -196,6 +197,12 @@ _BUSY_WAIT_SECONDS = max(
 _translation_semaphore = threading.BoundedSemaphore(_MAX_CONCURRENT)
 
 
+class UsageHTTPException(HTTPException):
+    def __init__(self, status_code, detail, provider_usage):
+        super().__init__(status_code, detail)
+        self.provider_usage = provider_usage
+
+
 def _run_pipeline_guarded(pipeline_call):
     """Run a pipeline call under the concurrency guard.
 
@@ -210,7 +217,24 @@ def _run_pipeline_guarded(pipeline_call):
             f"{_BUSY_WAIT_SECONDS} seconds (max {_MAX_CONCURRENT} active).",
         )
     try:
-        return pipeline_call()
+        from provider_usage import usage_scope, ProviderStopped
+        usage = None
+        try:
+            with usage_scope() as usage:
+                result = pipeline_call()
+                usage.check()
+                summary = usage.summary()
+                response = result[0] if isinstance(result, tuple) else result
+                if hasattr(response, 'token_usage'):
+                    response.provider_usage = summary
+                if hasattr(response, 'metrics'):
+                    response.metrics['provider_usage'] = summary
+                return result
+        except ProviderStopped as error:
+            raise UsageHTTPException(429, str(error), usage.summary() if usage else None) from error
+        except Exception as error:
+            error.provider_usage = usage.summary() if usage else None
+            raise
     finally:
         _translation_semaphore.release()
 
@@ -218,93 +242,7 @@ def _run_pipeline_guarded(pipeline_call):
 print(f"  [OK] Concurrent translations limited to {_MAX_CONCURRENT}")
 
 # ---------------------------------------------------------------------------
-# COLD START PRE-WARMING
-# Pre-import heavy libraries at startup so the first request doesn't pay
-# the import penalty. Python's import system caches modules in sys.modules,
-# so subsequent imports are instant dictionary lookups.
-# ---------------------------------------------------------------------------
-_COLD_START_WARMED = False
-
-def _warm_cold_start():
-    """Pre-warm all heavy dependencies so the first request is fast.
-    
-    This resolves the "first translation slow, subsequent fast" issue.
-    Call this once at server startup.
-    """
-    global _COLD_START_WARMED
-    if _COLD_START_WARMED:
-        return
-    _COLD_START_WARMED = True
-    
-    warm_start = _time.time()
-    print("  [WARMUP] Pre-warming cold-start dependencies...")
-    
-    # 1. Pre-import heavy document processing libraries
-    # These are imported lazily inside function bodies in extractor.py and
-    # reconstructor.py. Importing them here loads them into sys.modules
-    # so the first request doesn't pay the 1-3s import penalty.
-    libs = [
-        ("python-docx",     lambda: __import__("docx")),
-        ("PyMuPDF (fitz)",  lambda: __import__("fitz")),
-        ("python-pptx",     lambda: __import__("pptx")),
-        ("openpyxl",        lambda: __import__("openpyxl")),
-        ("odfpy",           lambda: __import__("odf")),
-        ("striprtf",        lambda: __import__("striprtf")),
-    ]
-    for name, loader in libs:
-        try:
-            loader()
-            print(f"    [WARMUP] [OK] {name}")
-        except ImportError:
-            print(f"    [WARMUP] [MISSING] {name} (not installed)")
-    
-    # 2. Pre-warm SQLite translation cache
-    # Create the database and schema at startup, not on first request.
-    try:
-        from cache.sqlite_cache import SQLiteTranslationCache
-        cache = SQLiteTranslationCache(
-            ttl_days=int(os.environ.get("TRANSLATION_CACHE_TTL_DAYS", "30")),
-            enabled=os.environ.get("TRANSLATION_CACHE_ENABLED", "true").lower() == "true",
-        )
-        # Force table creation by doing a no-op lookup
-        cache.get("__warmup__", "English", "__warmup__")
-        print("    [WARMUP] [OK] SQLite cache initialized")
-    except Exception as e:
-        print(f"    [WARMUP] [FAIL] SQLite cache: {e}")
-    
-    # 3. Pre-warm HTTP connection pool
-    # Send a lightweight health-check to the AI provider to establish
-    # the TCP/TLS connection so the first translation request doesn't
-    # need to do a cold handshake.
-    try:
-        provider = _get_active_provider()
-        health_result = provider.health()
-        if health_result.get("status") == "ok":
-            print(f"    [WARMUP] [OK] {provider.name} connection pool warmed")
-        else:
-            print(f"    [WARMUP] [OK] {provider.name} connection pool warmed (status: {health_result.get('status')})")
-    except Exception as e:
-        print(f"    [WARMUP] [OK] {provider.name} connection pool warmed (health check: {e})")
-
-    # 4. Pre-warm GPT-OSS model into GPU memory
-    # The health check above only does a GET /api/tags — it does NOT
-    # load the model. This sends a real chat request to force Ollama
-    # to spin up a GPU instance so the first translation is fast.
-    if _gptoss_provider.name == provider.name:
-        try:
-            print(f"    [WARMUP] Loading {_gptoss_provider.model_name} (may take 1-2 min)...")
-            if _gptoss_provider.warmup():
-                print(f"    [WARMUP] [OK] {_gptoss_provider.model_name} loaded into memory")
-            else:
-                print(f"    [WARMUP] [INFO] Model will load on first request")
-        except Exception as e:
-            print(f"    [WARMUP] [INFO] Model warmup: {e}")
-
-    elapsed = (_time.time() - warm_start) * 1000
-    print(f"  [WARMUP] Complete in {elapsed:.0f}ms")
-
-# Run pre-warming immediately at startup
-_warm_cold_start()
+# Dependencies and SQLite cache remain lazy; startup makes no provider requests.
 
 from contextlib import asynccontextmanager
 
@@ -329,10 +267,31 @@ async def _runtime_lifespan(app: FastAPI):
         print(f"  [OK] Threadpool limited to {_THREADPOOL_SIZE} worker threads")
     except Exception as e:
         print(f"  [WARN] Could not configure threadpool limiter: {e}")
-    yield
+    worker = None
+    if os.environ.get("DOCUMENT_JOBS_ENABLED", "false").lower() == "true":
+        from document_jobs import DocumentJobStore, DocumentJobWorker
+        from anyio import to_thread
+        store = DocumentJobStore()
+        await to_thread.run_sync(store.verify)
+        worker = DocumentJobWorker(store, translate_document)
+        app.state.document_jobs = worker
+        worker.thread.start()
+    try:
+        yield
+    finally:
+        if worker:
+            worker.stop.set()
+            worker.wake.set()
 
 
 app = FastAPI(title="TriLingua Translation Service v5", lifespan=_runtime_lifespan)
+
+
+@app.exception_handler(UsageHTTPException)
+async def usage_error_response(request, error):
+    from fastapi.responses import JSONResponse
+    return JSONResponse(status_code=error.status_code,
+                        content={'detail': error.detail, 'provider_usage': error.provider_usage})
 
 
 @app.middleware("http")
@@ -552,7 +511,8 @@ def translate_text(req: TextRequest):
             if not _text_quality_reviewer.needs_retranslation(review):
                 return initial, review, warnings
 
-            repaired = _translation_pipeline._translate_with_echo_guard(
+            from provider_usage import call_with_purpose
+            repaired = call_with_purpose("repair", _translation_pipeline._translate_with_echo_guard,
                 text=source_text,
                 source_lang=req.source_lang,
                 target_lang=req.target_lang,
@@ -587,7 +547,7 @@ def translate_text(req: TextRequest):
         result, review, warnings = _run_pipeline_guarded(_translate_and_review)
 
         if not result.success:
-            raise HTTPException(500, result.error_message)
+            raise UsageHTTPException(500, result.error_message, getattr(result, "provider_usage", None))
 
         if review is not None and not review.available:
             warnings.append("AI quality review unavailable; translation was retained without a review score.")
@@ -616,6 +576,7 @@ def translate_text(req: TextRequest):
             ],
             "warnings": warnings,
             "token_usage": result.token_usage,
+            "provider_usage": getattr(result, "provider_usage", None),
             "execution_time_ms": result.execution_time_ms,
             "measurement_metadata": measurement_metadata,
         }
@@ -623,7 +584,7 @@ def translate_text(req: TextRequest):
         raise
     except Exception as e:
         logging.getLogger("uvicorn.error").exception("Text translation failed")
-        raise HTTPException(500, str(e))
+        raise UsageHTTPException(500, str(e), getattr(e, "provider_usage", None))
 
 
 # ---------------------------------------------------------------------------
@@ -646,22 +607,7 @@ def translate_document(
     pdf_column_mode: str = Form("auto"),
     mode: str = Form("balanced"),
 ):
-    if pdf_column_mode not in VALID_PDF_COLUMN_MODES:
-        raise HTTPException(
-            400,
-            f"Invalid pdf_column_mode '{pdf_column_mode}'. "
-            f"Must be one of: {sorted(VALID_PDF_COLUMN_MODES)}"
-        )
-    if source_lang not in LANGUAGES:
-        raise HTTPException(400, f"Unknown source language: {source_lang}")
-    if target_lang not in LANGUAGES:
-        raise HTTPException(400, f"Unknown target language: {target_lang}")
-    if source_lang == target_lang:
-        raise HTTPException(400, "Source and target languages must differ.")
-
-    ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in EXTENSION_MAP:
-        raise HTTPException(400, f"Unsupported file type: {ext}. Supported: {sorted(SUPPORTED_EXTENSIONS)}")
+    ext = validate_document_request(file.filename, source_lang, target_lang, pdf_column_mode)
 
     out_ext = EXTENSION_MAP[ext]
     tmp_dir = tempfile.mkdtemp()
@@ -676,66 +622,119 @@ def translate_document(
         with open(input_path, "wb") as f:
             f.write(contents)
 
-        print(f"[SERVER] Translating document: {file.filename} ({source_lang} → {target_lang})")
-        print(f"[SERVER] Format: {ext}, Size: {len(contents)} bytes")
-
-        # Use the new DocumentPipeline
         from dto.requests import DocumentTranslationRequest as DTR
-        request = DTR(
-            file_path=input_path,
-            source_lang=source_lang,
-            target_lang=target_lang,
-            pdf_column_mode=pdf_column_mode,
-            mode=mode,
-        )
+        request = DTR(file_path=input_path, source_lang=source_lang,
+                      target_lang=target_lang, pdf_column_mode=pdf_column_mode, mode=mode)
         result = _run_pipeline_guarded(lambda: _document_pipeline.translate(request))
 
         if not result.success:
-            raise HTTPException(500, result.error_message)
-
+            raise UsageHTTPException(500, result.error_message, getattr(result, "provider_usage", None))
         actual_output = result.output_path
         if not os.path.exists(actual_output):
             raise HTTPException(500, "Translation produced no output file.")
-
-        original_stem = os.path.splitext(file.filename)[0]
-        download_name = f"{original_stem}_translated{out_ext}"
-
-        print(f"[SERVER] Translation complete. Output file ready at: {actual_output}")
-        print(f"[SERVER] Provider: {result.provider}, Model: {result.model}")
-        print(f"[SERVER] Execution time: {result.total_execution_time_ms:.0f}ms")
-
-        # Read the file into memory and clean up immediately
         with open(actual_output, "rb") as f:
             file_contents = f.read()
-
-        # Clean up the temporary directory
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-
-        # Return the JSON envelope: base64 file bytes + per-block review data.
-        # Laravel decodes file_base64 and persists `blocks` for admin review.
         return {
             "file_base64": base64.b64encode(file_contents).decode("ascii"),
             "blocks": getattr(result, "blocks", None) or [],
             "sidecar": getattr(result, "sidecar", None),
-            "download_filename": download_name,
+            "download_filename": f"{os.path.splitext(file.filename)[0]}_translated{out_ext}",
             "mime_type": _content_type_for_ext(out_ext),
             "metrics": result.metrics or {},
             "validation": getattr(result, "output_validation", {}) or {},
         }
     except PDFValidationError as e:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
         raise HTTPException(422, {"message": str(e), "validation": e.report})
     except HTTPException:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
         raise
     except Exception as e:
+        raise UsageHTTPException(500, f"Translation error: {str(e)}", getattr(e, "provider_usage", None))
+    finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
-        print(f"[SERVER] Exception during translation: {str(e)}")
-        raise HTTPException(500, f"Translation error: {str(e)}")
+
+
+def validate_document_request(filename, source_lang, target_lang, pdf_column_mode):
+    if pdf_column_mode not in VALID_PDF_COLUMN_MODES:
+        raise HTTPException(
+            400,
+            f"Invalid pdf_column_mode '{pdf_column_mode}'. "
+            f"Must be one of: {sorted(VALID_PDF_COLUMN_MODES)}"
+        )
+    if source_lang not in LANGUAGES:
+        raise HTTPException(400, f"Unknown source language: {source_lang}")
+    if target_lang not in LANGUAGES:
+        raise HTTPException(400, f"Unknown target language: {target_lang}")
+    if source_lang == target_lang:
+        raise HTTPException(400, "Source and target languages must differ.")
+
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in EXTENSION_MAP:
+        raise HTTPException(400, f"Unsupported file type: {ext}. Supported: {sorted(SUPPORTED_EXTENSIONS)}")
+
+    return ext
+
+
+def document_job_worker():
+    worker = getattr(app.state, "document_jobs", None)
+    if worker is None:
+        raise HTTPException(503, "Durable document jobs are not configured")
+    return worker
+
+
+@app.post("/translate/document/jobs", status_code=202, dependencies=[Depends(require_service_token)])
+def submit_document_job(
+    job_id: UUID = Form(...), file: UploadFile = File(...),
+    source_lang: str = Form(...), target_lang: str = Form(...),
+    pdf_column_mode: str = Form("auto"), mode: str = Form("balanced"),
+):
+    from document_jobs import MAX_INPUT_BYTES, public_status
+    validate_document_request(file.filename, source_lang, target_lang, pdf_column_mode)
+    if mode not in VALID_MODES:
+        raise HTTPException(400, "Invalid processing mode")
+    contents = file.file.read(MAX_INPUT_BYTES + 1)
+    if not contents or len(contents) > MAX_INPUT_BYTES:
+        raise HTTPException(413, "Document must contain between 1 byte and 50 MiB")
+    worker = document_job_worker()
+    row = worker.store.submit(job_id, os.path.basename(file.filename), contents,
+                              {"source_lang": source_lang, "target_lang": target_lang,
+                               "pdf_column_mode": pdf_column_mode, "mode": mode})
+    worker.wake.set()
+    return public_status(row)
+
+
+@app.get("/translate/document/jobs/{job_id}", dependencies=[Depends(require_service_token)])
+def document_job_status(job_id: UUID):
+    from document_jobs import public_status
+    row = document_job_worker().store.get(str(job_id))
+    if row is None:
+        raise HTTPException(404, "Document job not found")
+    return public_status(row)
+
+
+@app.get("/translate/document/jobs/{job_id}/result", dependencies=[Depends(require_service_token)])
+def document_job_result(job_id: UUID):
+    from fastapi.responses import Response
+    store = document_job_worker().store
+    row = store.get(str(job_id))
+    if row is None:
+        raise HTTPException(404, "Document job not found")
+    if row["status"] != "completed" or row.get("acknowledged"):
+        raise HTTPException(409, "Document job result is not available")
+    return Response(store.read_object(row["result_path"]), media_type="application/json")
+
+
+@app.delete("/translate/document/jobs/{job_id}", dependencies=[Depends(require_service_token)])
+def acknowledge_document_job(job_id: UUID):
+    store = document_job_worker().store
+    row = store.get(str(job_id))
+    if row is None:
+        raise HTTPException(404, "Document job not found")
+    store.acknowledge(row)
+    return {"acknowledged": True}
 
 
 # ---------------------------------------------------------------------------
-# POST /translate/document/regenerate — reconstruction-only re-render of an
+# POST /translate/document/regenerate â€” reconstruction-only re-render of an
 # edited document. Requires a sidecar captured at translate time plus the
 # ORIGINAL source file (needed for PDF and in-place DOCX/PPTX/XLSX replay).
 # No extraction, analysis, prepass, memory, or AI translation runs here.
@@ -819,7 +818,7 @@ def translate_document_regenerate(
 
 # ---------------------------------------------------------------------------
 # Cache management
-# DELETE /cache/clear — clears the persistent SQLite translation cache
+# DELETE /cache/clear â€” clears the persistent SQLite translation cache
 # ---------------------------------------------------------------------------
 @app.delete("/cache/clear", dependencies=[Depends(require_service_token)])
 def clear_cache():

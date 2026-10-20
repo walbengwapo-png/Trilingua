@@ -451,12 +451,11 @@ class TranslationController extends Controller
             // Race window (or a DB failure) during acceptance. Classify the real
             // outcome before touching quota or input: a lost dedup race is not
             // the same as a dispatch failure.
-            FileCleanup::dir($persistDir);
-
             $authoritative = $this->reReadJobRow($jobRow, $jobId);
             $outcome = $this->dispatchOutcome->classify($authoritative, (string) $jobId, TranslationJob::STATUS_CREATED, dispatchAttempted: $dispatchAttempted);
 
             if ($outcome->isRejected()) {
+                FileCleanup::dir($persistDir);
                 $this->quota->refund($userId, $fileSize, $quotaDay);
                 $this->discardUnacceptedRow($jobRow, $jobId);
 
@@ -492,8 +491,6 @@ class TranslationController extends Controller
             ]);
             throw $e;
         } catch (\Throwable $e) {
-            FileCleanup::dir($persistDir);
-
             $authoritative = $this->reReadJobRow($jobRow, $jobId);
             $outcome = $this->dispatchOutcome->classify($authoritative, (string) $jobId, TranslationJob::STATUS_CREATED, dispatchAttempted: $dispatchAttempted);
 
@@ -514,6 +511,7 @@ class TranslationController extends Controller
             }
 
             if ($outcome->safeToCompensate) {
+                FileCleanup::dir($persistDir);
                 $this->quota->refund($userId, $fileSize, $quotaDay);
                 $this->discardUnacceptedRow($jobRow, $jobId);
             }

@@ -8,12 +8,12 @@ Returns only assistant.message.content.
 Never exposes reasoning or provider-specific JSON.
 """
 
+from provider_usage import ProviderStopped, ollama_post, ollama_headers, reported_tokens
 import os
 import json
 import re
 import time as _time
 import requests
-from urllib.parse import urlsplit
 from dto.responses import TranslationResponse
 from dto.pipeline import ProviderCapabilities, TranslationUnitResult
 from .base import TranslationProvider
@@ -72,15 +72,7 @@ class GPTOSSProvider(TranslationProvider):
     def __init__(self, api_url: str = "", model: str = ""):
         self._api_url = api_url or os.environ.get("OLLAMA_CLOUD_URL", "http://localhost:11434/api/chat")
         self._model = model or os.environ.get("OLLAMA_CLOUD_MODEL", "gpt-oss:20b-cloud")
-        self._headers = {"Content-Type": "application/json"}
-        endpoint = urlsplit(self._api_url)
-        if endpoint.hostname == "ollama.com":
-            if endpoint.scheme != "https":
-                raise ValueError("Direct Ollama Cloud API access requires HTTPS")
-            api_key = os.environ.get("OLLAMA_API_KEY", "").strip()
-            if not api_key:
-                raise ValueError("OLLAMA_API_KEY is required for direct Ollama Cloud API access")
-            self._headers["Authorization"] = f"Bearer {api_key}"
+        self._headers = ollama_headers(self._api_url)
         # keep_alive: how long Ollama keeps the model loaded between requests.
         # Default 30m avoids GPU spin-up on every request without pinning the
         # model in memory indefinitely. "-1" pins it forever.
@@ -156,7 +148,7 @@ class GPTOSSProvider(TranslationProvider):
                 }
                 if response_format == "json":
                     payload["format"] = "json"
-                resp = self._session.post(
+                resp = ollama_post(self._session.post,
                     self._api_url,
                     headers=self._headers,
                     json=payload,
@@ -173,6 +165,8 @@ class GPTOSSProvider(TranslationProvider):
                         body = ""
                         try:
                             body = resp.text[:200].strip()
+                        except ProviderStopped:
+                            raise
                         except Exception:
                             pass
                         _diag(
@@ -236,6 +230,8 @@ class GPTOSSProvider(TranslationProvider):
 
                     try:
                         result = sanitize_translation(result, text)
+                    except ProviderStopped:
+                        raise
                     except RuntimeError as sanitize_err:
                         if ("Hallucinated repetition" in str(sanitize_err)
                                 and attempt < max_attempts - 1):
@@ -315,6 +311,8 @@ class GPTOSSProvider(TranslationProvider):
                 print(f"  Warning: Timeout, retrying ({attempt + 1}/{max_attempts})...")
                 _time.sleep(1)
 
+            except ProviderStopped:
+                raise
             except Exception as e:
                 if attempt == max_attempts - 1:
                     elapsed_ms = (_time.time() - start_time) * 1000
@@ -564,7 +562,7 @@ class GPTOSSProvider(TranslationProvider):
                     "format": "json",
                     "options": options,
                 }
-                resp = self._session.post(
+                resp = ollama_post(self._session.post,
                     self._api_url,
                     headers=self._headers,
                     json=payload,
@@ -626,6 +624,9 @@ class GPTOSSProvider(TranslationProvider):
                 print(f"  Warning: Timeout (batch), retrying "
                       f"({attempt + 1}/{max_attempts})...")
                 _time.sleep(1)
+            except ProviderStopped as error:
+                _record_failure(ctx, "rate_limit" if error.status_code == 429 else "authentication_or_allowance")
+                raise
             except Exception as e:
                 if attempt == max_attempts - 1:
                     _record_failure(ctx, "provider_error")
@@ -694,6 +695,8 @@ class GPTOSSProvider(TranslationProvider):
         extracted = cls._extract_json_object(content)
         try:
             raw = json.loads(extracted, object_pairs_hook=_dupe_detecting)
+        except ProviderStopped:
+            raise
         except Exception:
             # Not even a parseable JSON object — every entry is unresolved.
             return {}, expected_ids
@@ -737,9 +740,11 @@ class GPTOSSProvider(TranslationProvider):
         This sends a minimal "hello" request so the first real translation
         doesn't pay the GPU spin-up penalty.
         """
+        if os.environ.get("ALLOW_PROVIDER_WARMUP") != "1":
+            return False
         try:
-            resp = self._session.post(
-                self._api_url,
+            resp = ollama_post(self._session.post,
+                self._api_url, purpose="warmup",
                 headers=self._headers,
                 json={
                     "model": self._model,
@@ -754,6 +759,8 @@ class GPTOSSProvider(TranslationProvider):
             )
             resp.raise_for_status()
             return True
+        except ProviderStopped:
+            raise
         except Exception:
             return False
 
@@ -779,6 +786,8 @@ class GPTOSSProvider(TranslationProvider):
                 "model": self._model,
                 "error": f"Ollama returned status {resp.status_code}",
             }
+        except ProviderStopped:
+            raise
         except Exception as e:
             return {
                 "status": "unavailable",

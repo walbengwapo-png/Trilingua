@@ -8,6 +8,8 @@ use App\Services\Translation\DTO\TranslationResponse;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Illuminate\Support\Sleep;
 
 /**
  * TranslationManager — Laravel's ONLY translation entry point.
@@ -138,24 +140,29 @@ class TranslationManager
         string $targetLang,
         string $pdfColumnMode = 'auto',
         string $mode = 'balanced',
+        ?string $engineJobId = null,
+        ?callable $heartbeat = null,
     ): array {
         $ext = strtolower('.' . $file->getClientOriginalExtension());
         $outExt = config('translation.extension_map.' . ltrim($ext, '.'), $ext);
 
         $startTime = microtime(true);
+        $async = (bool) config('translation.python_service.document_jobs');
+        $engineJobId ??= (string) Str::uuid();
 
         try {
-            $response = $this->withToken(Http::timeout($this->timeout))
+            $response = $this->withToken(Http::timeout($async ? 45 : $this->timeout)->connectTimeout(10))
                 ->attach(
                     'file',
                     file_get_contents($file->getRealPath()),
                     $file->getClientOriginalName()
                 )
-                ->post("{$this->pythonUrl}/translate/document", [
+                ->post("{$this->pythonUrl}/translate/document" . ($async ? '/jobs' : ''), [
                     'source_lang' => $sourceLang,
                     'target_lang' => $targetLang,
                     'pdf_column_mode' => $pdfColumnMode,
                     'mode' => $mode,
+                    ...($async ? ['job_id' => $engineJobId] : []),
                 ]);
 
             if ($response->failed()) {
@@ -173,6 +180,9 @@ class TranslationManager
                 throw new TranslationException($errorMessage, $response->status());
             }
 
+            if ($async) {
+                $response = $this->waitForDocumentJob($engineJobId, $heartbeat, $startTime + $this->timeout);
+            }
             $data = $response->json();
             $elapsedMs = (microtime(true) - $startTime) * 1000;
 
@@ -221,6 +231,50 @@ class TranslationManager
             throw new TranslationException(
                 'Could not connect to the translation service. Make sure it is running: python Model/server.py'
             );
+        }
+    }
+
+    private function waitForDocumentJob(string $id, ?callable $heartbeat, float $deadline)
+    {
+        while (microtime(true) < $deadline) {
+            if ($heartbeat !== null) {
+                $heartbeat();
+            }
+            $http = $this->withToken(Http::timeout(min(45, max(1, $deadline - microtime(true))))->connectTimeout(10));
+            $response = $http->get("{$this->pythonUrl}/translate/document/jobs/{$id}");
+            if ($response->failed()) {
+                throw new TranslationException("Document job polling failed (HTTP {$response->status()}).", $response->status());
+            }
+            $status = $response->json('status');
+            if ($status === 'failed') {
+                throw new TranslationException((string) ($response->json('error') ?? 'Document background job failed.'),
+                    (int) ($response->json('error_status') ?? 500));
+            }
+            if ($status === 'completed') {
+                $result = $http->get("{$this->pythonUrl}/translate/document/jobs/{$id}/result");
+                if ($result->failed()) {
+                    throw new TranslationException('Document job result could not be retrieved.', $result->status());
+                }
+                return $result;
+            }
+            if (! in_array($status, ['queued', 'processing'], true)) {
+                throw new TranslationException('Document service returned an invalid job status.');
+            }
+            Sleep::for(min(5, max(0, $deadline - microtime(true))))->seconds();
+        }
+        throw new TranslationException('Document translation exceeded the allowed processing time.', 408);
+    }
+
+    public function acknowledgeDocumentJob(string $id): void
+    {
+        try {
+            $response = $this->withToken(Http::timeout(45)->connectTimeout(10))
+                ->delete("{$this->pythonUrl}/translate/document/jobs/{$id}");
+            if ($response->failed()) {
+                Log::warning('Document job temporary files could not be acknowledged', ['job_id' => $id]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Document job acknowledgement unavailable', ['job_id' => $id]);
         }
     }
 

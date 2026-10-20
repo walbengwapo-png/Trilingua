@@ -246,28 +246,21 @@ def test_batch_prompt_uses_the_actual_block_ids():
     assert "Use every exact BLOCK number" in prompt
 
 
-def test_gptoss_honors_retry_after_and_recovers(monkeypatch):
+def test_gptoss_ambiguous_429_stops_without_retry(monkeypatch):
+    from provider_usage import ProviderStopped
+    from unittest.mock import Mock
+    import pytest
     monkeypatch.setenv("GPTOSS_MAX_ATTEMPTS", "3")
-    monkeypatch.setenv("GPTOSS_MIN_INTERVAL_SECONDS", "0")
     waits = []
     monkeypatch.setattr("providers.gptoss._time.sleep", waits.append)
-
-    limited = SimpleNamespace(status_code=429, headers={"Retry-After": "2"})
-    success = SimpleNamespace(
-        status_code=200,
-        headers={},
-        raise_for_status=lambda: None,
-        json=lambda: {"message": {"content": "Kumusta"}},
-    )
     provider = GPTOSSProvider(api_url="http://test/api/chat", model="test")
-    calls = iter((limited, success))
-    monkeypatch.setattr(provider._session, "post", lambda *a, **k: next(calls))
-
-    result = provider.translate("Hello", "English", "Cebuano")
-
-    assert result.success
-    assert result.translated_text == "Kumusta"
-    assert waits == [2.0]
+    limited = SimpleNamespace(status_code=429, headers={"Retry-After": "2"})
+    post = Mock(return_value=limited)
+    monkeypatch.setattr(provider._session, "post", post)
+    with pytest.raises(ProviderStopped):
+        provider.translate("Hello", "English", "Cebuano")
+    assert post.call_count == 1
+    assert waits == []
 
 
 def test_direct_ollama_cloud_uses_a_key_without_sending_it_to_local_ollama(monkeypatch):
