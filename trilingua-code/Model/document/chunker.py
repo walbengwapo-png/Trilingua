@@ -14,6 +14,13 @@ class ChunkSplitter:
 
     Uses a word-token model (one token = one whitespace-delimited word).
     Sentence boundaries are tokens that end with '.', '!', or '?'.
+
+    Spacing contract (normalized): every output chunk contains only
+    single-space-separated tokens, and joining the chunks with a single
+    space reproduces the input tokens in order once whitespace runs are
+    normalized — ``" ".join(chunks) == " ".join(text.split())``.
+    Layout fidelity is carried by block structure, order, and types, not by
+    intra-text whitespace, so we never pass raw repeated spaces to a model.
     """
 
     def split(
@@ -36,8 +43,9 @@ class ChunkSplitter:
 
         Returns
         -------
-        A list of strings whose concatenated words reproduce *text* exactly
-        (round-trip property).
+        A list of strings whose concatenated words reproduce *text* in order
+        after normalising runs of whitespace to a single space (normalized
+        round-trip property).
         """
         # Edge-case: empty or whitespace-only input.
         if not text or not text.strip():
@@ -49,9 +57,13 @@ class ChunkSplitter:
 
         tokens = text.split()
 
+        # Normalized form of the whole input; the single source of truth for
+        # every non-recursive return path below.
+        normalized = " ".join(tokens)
+
         # Step 1 — short-circuit: text already fits in one chunk.
         if len(tokens) <= max_tokens:
-            return [text]
+            return [normalized]
 
         # Steps 2-4 — find the best split boundary.
         best_boundary = None
@@ -74,7 +86,7 @@ class ChunkSplitter:
 
         # Step 5 — no candidate anywhere within hard_cap → return unsplit.
         if best_boundary is None:
-            return [text]
+            return [normalized]
 
         # Step 6 — split at the chosen boundary.
         first_tokens = tokens[:best_boundary + 1]
@@ -82,7 +94,7 @@ class ChunkSplitter:
 
         # Step 7 — merge short tails back.
         if len(remainder_tokens) < min_tokens:
-            return [text]
+            return [normalized]
 
         # Step 8 — recurse on the remainder.
         first_chunk = " ".join(first_tokens)

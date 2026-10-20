@@ -127,12 +127,10 @@
                      data-id="{{ $record['id'] }}">
 
                     <div class="history-card__header">
-                        @if ($score !== null)
-                            <span class="quality-score" title="Quality score">
+                            <span class="quality-score" title="Automated AI review signal (not human-verified)">
                                 <span class="quality-score__dot quality-score__dot--{{ $scoreLevel }}" aria-hidden="true"></span>
-                                {{ $score }}
+                                {{ $score === null ? 'Unavailable' : $score }}
                             </span>
-                        @endif
                         <span class="match-badge">{{ $matchPct }}%</span>
                         <span class="type-badge type-badge--{{ $isDoc ? 'doc' : 'text' }}">
                             {{ $isDoc ? 'Document' : 'Text' }}

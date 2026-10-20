@@ -185,7 +185,7 @@ class AdminWriteHttpTest extends TestCase
         $block = $history->blocks->first();
 
         $this->actingAs($admin)
-            ->postJson("/admin/review/{$history->id}/blocks/{$block->id}/update", ['current_text' => 'Edited text'])
+            ->postJson("/admin/review/{$history->id}/blocks/{$block->id}/update", ['current_text' => 'Edited text', 'expected_draft_revision' => 0])
             ->assertOk();
 
         $fresh = $block->fresh();
@@ -229,9 +229,10 @@ class AdminWriteHttpTest extends TestCase
 
         // Mock the storage + translation manager so no real Supabase/Python call.
         $storage = \Mockery::mock(StorageService::class);
-        $storage->shouldReceive('downloadFile')->once()->andReturn('original-bytes');
-        $storage->shouldReceive('uploadFile')->once()->andReturn([
-            'storage_path' => '1/regenerated.pdf',
+        $storage->shouldReceive('read')->andReturn('original-bytes');
+        $storage->shouldReceive('uploadWithFallback')->once()->andReturn([
+            'backend' => 'supabase',
+            'storage_path' => '1/translations/regenerated.pdf',
             'signed_url' => 'https://supabase.test/regenerated',
             'signed_url_expires_at' => now()->toIso8601String(),
         ]);
@@ -254,12 +255,16 @@ class AdminWriteHttpTest extends TestCase
         Http::fake();
 
         $this->actingAs($admin)
-            ->postJson("/admin/review/{$history->id}/save-regenerate")
+            ->postJson("/admin/review/{$history->id}/save-regenerate", [
+                'expected_draft_revision' => 0,
+            ])
             ->assertOk()
             ->assertJson([
                 'success' => true,
                 'new_download_url' => 'https://supabase.test/regenerated',
                 'original_download_url' => 'https://supabase.test/original',
+                'published' => true,
+                'draft' => false,
             ]);
     }
 
@@ -270,9 +275,10 @@ class AdminWriteHttpTest extends TestCase
         $block = $history->blocks->first();
 
         $storage = \Mockery::mock(StorageService::class);
-        $storage->shouldReceive('downloadFile')->once()->andReturn('original-bytes');
-        $storage->shouldReceive('uploadFile')->once()->andReturn([
-            'storage_path' => '1/regenerated.pdf',
+        $storage->shouldReceive('read')->andReturn('original-bytes');
+        $storage->shouldReceive('uploadWithFallback')->once()->andReturn([
+            'backend' => 'supabase',
+            'storage_path' => '1/translations/regenerated.pdf',
             'signed_url' => 'https://supabase.test/regenerated',
             'signed_url_expires_at' => now()->toIso8601String(),
         ]);
@@ -302,18 +308,27 @@ class AdminWriteHttpTest extends TestCase
         $this->actingAs($admin)
             ->postJson("/admin/review/{$history->id}/save-regenerate", [
                 'blocks' => [$block->id => 'Unsa nga hubad'],
+                'expected_draft_revision' => 0,
+                'expected_storage_path' => $history->storage_path,
             ])
             ->assertOk()
             ->assertJsonPath('edited_blocks', 1);
 
-        // The edit was persisted through the audited path before regeneration.
+        // The edit was persisted through the audited path before regeneration,
+        // and the success published the draft (revisions now match).
         $fresh = $block->fresh();
         $this->assertSame('Unsa nga hubad', $fresh->current_text);
         $this->assertSame('edited', $fresh->status);
         $this->assertSame('Kumusta kalibutan', $fresh->ai_translated_text);
-        $this->assertSame('edited', $history->fresh()->review_status);
+        $freshHistory = $history->fresh();
+        $this->assertSame('edited', $freshHistory->review_status);
+        $this->assertSame(1, (int) $freshHistory->draft_revision);
+        $this->assertSame(1, (int) $freshHistory->published_revision);
+        $this->assertFalse($freshHistory->hasUnpublishedEdits());
 
-        $log = TranslationEditLog::where('translation_history_id', $history->id)->latest('id')->first();
+        $log = TranslationEditLog::where('translation_history_id', $history->id)
+            ->where('action', 'edit')
+            ->latest('id')->first();
         $this->assertNotNull($log);
         $this->assertSame('edit', $log->action);
         $this->assertSame('Kumusta kalibutan', $log->previous_text);

@@ -7,6 +7,9 @@ use Illuminate\Support\Facades\DB;
 
 class HistoryService
 {
+    public function __construct(
+        private StorageCleanupService $cleanup,
+    ) {}
     /**
      * Insert a new translation job record into translation_history.
      *
@@ -86,7 +89,54 @@ class HistoryService
     {
         return TranslationHistory::where('user_id', $userId)
             ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
             ->paginate($perPage);
+    }
+
+    /**
+     * Fetch a page of a user's document translations, newest first.
+     *
+     * The My Documents page renders a list that grows without bound, so it is
+     * paginated rather than truncated: the previous version read a capped slice
+     * and offered no way to reach anything older.
+     *
+     * @param  int  $userId  The authenticated user's ID.
+     * @param  int  $perPage  Documents per page.
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator<int, array<string, mixed>>
+     */
+    public function getDocumentsPaginated(int $userId, int $perPage = 24)
+    {
+        return TranslationHistory::where('user_id', $userId)
+            ->where('translation_type', 'document')
+            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
+            ->paginate($perPage);
+    }
+
+    /**
+     * Distinct language pairs present in a user's document translations.
+     *
+     * Computed by the database rather than by scanning a loaded page, so the
+     * filter dropdown keeps offering every pair the user has actually used.
+     *
+     * @param  int  $userId  The authenticated user's ID.
+     * @return array<int, string>
+     */
+    public function getDocumentLanguagePairs(int $userId): array
+    {
+        $pairs = TranslationHistory::where('user_id', $userId)
+            ->where('translation_type', 'document')
+            ->whereNotNull('source_language')->where('source_language', '<>', '')
+            ->whereNotNull('target_language')->where('target_language', '<>', '')
+            ->orderBy('source_language')
+            ->orderBy('target_language')
+            ->distinct()
+            ->get(['source_language', 'target_language'])
+            ->map(fn ($r) => $r->source_language . ' → ' . $r->target_language)
+            ->unique()
+            ->values();
+
+        return $pairs->all();
     }
 
     /**
@@ -164,9 +214,14 @@ class HistoryService
     }
 
     /**
-     * Delete a history record and its child translations.
-     * Also returns storage entries so the caller can delete files from their
-     * respective backends (each entry carries its own backend).
+     * Delete a history record and its child translations, and durably record
+     * — in the same DB transaction — every unique storage object that must be
+     * cleaned up once the rows are gone.
+     *
+     * Objects are NOT deleted here. They are enqueued into the cleanup outbox,
+     * and HistoryController::destroy attempts them immediately; the scheduled
+     * translations:cleanup-storage command retries whatever remains pending.
+     * A shared original referenced by a surviving row is never enqueued.
      *
      * @param  int $id      The record ID.
      * @param  int $userId  The authenticated user's ID (ownership check).
@@ -176,41 +231,45 @@ class HistoryService
     {
         $record = TranslationHistory::find($id);
 
-        if (!$record || (int) $record->user_id !== $userId) {
+        if (! $record || (int) $record->user_id !== $userId) {
             return ['deleted' => false, 'storage_entries' => []];
         }
 
-        $storageEntries = [];
+        $children = TranslationHistory::where('parent_document_id', $id)->get()->all();
 
-        // Collect child translations' storage entries
-        $children = TranslationHistory::where('parent_document_id', $id)->get();
-        foreach ($children as $child) {
+        // Every backend/path pair this batch will stop referencing, de-duplicated.
+        $candidates = [];
+        foreach ([$record, ...$children] as $row) {
             foreach ([
-                ['backend' => $child->storage_backend ?: 'supabase', 'path' => $child->storage_path],
-                ['backend' => $child->original_storage_backend ?: 'supabase', 'path' => $child->original_storage_path],
+                ['backend' => $row->storage_backend ?: 'supabase', 'path' => (string) $row->storage_path],
+                ['backend' => $row->original_storage_backend ?: 'supabase', 'path' => (string) $row->original_storage_path],
             ] as $entry) {
-                if (!empty($entry['path'])) {
-                    $storageEntries[] = $entry;
+                if ($entry['path'] !== '') {
+                    $candidates[$entry['backend'] . '::' . $entry['path']] = $entry;
                 }
             }
-            $child->delete();
         }
 
-        // Collect this record's own storage entries
-        foreach ([
-            ['backend' => $record->storage_backend ?: 'supabase', 'path' => $record->storage_path],
-            ['backend' => $record->original_storage_backend ?: 'supabase', 'path' => $record->original_storage_path],
-        ] as $entry) {
-            if (!empty($entry['path'])) {
-                $storageEntries[] = $entry;
+        $removedIds = array_map(fn ($row) => (int) $row->id, [$record, ...$children]);
+
+        DB::transaction(function () use ($record, $children, $candidates, $removedIds) {
+            foreach ($children as $child) {
+                $child->delete();
             }
-        }
+            $record->delete();
 
-        $record->delete();
+            // Deletion intent is now durable; a storage outage cannot orphan
+            // objects whose owner row is gone (R7 gate).
+            foreach ($candidates as $entry) {
+                if (! $this->cleanup->hasLiveReference($entry['backend'], $entry['path'], $removedIds)) {
+                    $this->cleanup->recordPending($entry['backend'], $entry['path'], (int) $record->id);
+                }
+            }
+        });
 
         return [
             'deleted' => true,
-            'storage_entries' => $storageEntries,
+            'storage_entries' => array_values($candidates),
         ];
     }
 

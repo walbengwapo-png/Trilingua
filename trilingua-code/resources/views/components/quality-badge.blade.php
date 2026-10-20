@@ -3,21 +3,13 @@
 ])
 
 @php
-    if ($score === null || $score === '' || (int) $score < 0) {
-        $cls = 'quality-badge--empty';
-        $label = '—';
-    } elseif ((int) $score >= 70) {
-        $cls = 'quality-badge--good';
-        $label = (string) (int) $score;
-    } elseif ((int) $score >= 40) {
-        $cls = 'quality-badge--medium';
-        $label = (string) (int) $score;
-    } else {
-        $cls = 'quality-badge--poor';
-        $label = (string) (int) $score;
-    }
+    $unavailable = $score === null || $score === '' || (int) $score < 0;
+    $label = $unavailable ? 'Unavailable' : (string) (int) $score;
 @endphp
 
-<span class="quality-badge {{ $cls }}">
-    <span class="quality-badge__dot"></span>{{ $label }}
+<span class="quality-badge quality-badge--empty"
+      title="Automated AI review signal for triage only — not human-verified accuracy."
+      role="img"
+      aria-label="Automated AI review signal, not human-verified accuracy: {{ $unavailable ? 'unavailable' : $label . ' of 100' }}">
+    <span class="quality-badge__dot" aria-hidden="true"></span>{{ $label }}
 </span>

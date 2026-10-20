@@ -13,7 +13,7 @@
     <div class="review-page-header">
         <div class="review-page-header__title">
             <h2>Review Queue <span class="count-badge">{{ $queue->total() }}</span></h2>
-            <p>Read-only queue of every translation across all users.</p>
+            <p>Review translations from all users. Open an item to verify, edit, or flag it.</p>
         </div>
     </div>
 
@@ -127,9 +127,9 @@
                 @endphp
                 <tr @class(['review-table__row--priority' => !empty($record->is_priority)])>
                     <td>
-                        <span class="quality-score">
+                        <span class="quality-score" title="Automated AI review signal (not human-verified)">
                             <span class="quality-score__dot quality-score__dot--{{ $level }}" aria-hidden="true"></span>
-                            {{ $score === null ? '—' : $score }}
+                            {{ $score === null ? 'Unavailable' : $score }}
                         </span>
                     </td>
                     <td>

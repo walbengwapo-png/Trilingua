@@ -39,6 +39,25 @@ def build_translation_prompt(text: str, source_lang: str, target_lang: str,
     type_desc = type_descriptions.get(block_type, block_type)
 
     user_msg = f"Translate this {type_desc} from {source_lang} to {target_lang}.\n"
+    user_msg += (
+        "Return only the translation. Preserve names, initials, numbers, dates, URLs, "
+        "email addresses, identifiers, and intentional line breaks exactly unless the "
+        "source itself requires localized wording. Keep the original meaning, tense, "
+        "formality, and level of certainty; do not add explanations or omit details.\n"
+    )
+
+    if target_lang.lower() == "cebuano":
+        user_msg += (
+            "Use natural contemporary Cebuano: choose the verb focus and aspect that "
+            "matches the source, keep pronouns and politeness consistent, and prefer "
+            "clear native phrasing over word-for-word English structure.\n"
+        )
+    elif target_lang.lower() == "filipino":
+        user_msg += (
+            "Use natural contemporary Filipino: keep aspect, voice, formality, and "
+            "pronouns consistent, and prefer idiomatic Filipino over word-for-word "
+            "English structure.\n"
+        )
 
     # OPTIMIZATION: Expanded few-shot examples (Task 6)
     # Add few-shot examples for Cebuano and Filipino

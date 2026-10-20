@@ -10,6 +10,7 @@ use App\Services\Translation\DTO\TranslationResponse;
 use App\Services\Translation\TranslationManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -259,6 +260,9 @@ class DashboardUiFixPreservationTest extends TestCase
 
         // Mock StorageService to return a new signed URL
         $this->mock(StorageService::class, function ($mock) {
+            $mock->shouldReceive('exists')
+                ->andReturn(StorageService::PRESENCE_PRESENT);
+
             $mock->shouldReceive('generateSignedUrl')
                 ->andReturn([
                     'signed_url' => 'https://test.supabase.co/storage/v1/object/sign/test-bucket/report_translated.docx?token=xyz',
@@ -398,14 +402,13 @@ class DashboardUiFixPreservationTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
 
-        // Mock HistoryService to return an empty array (zero records)
+        // Mock HistoryService to return an empty page (zero records)
         $this->mock(HistoryService::class, function ($mock) {
-            $mock->shouldReceive('getHistory')
+            $mock->shouldReceive('getDocumentsPaginated')
                 ->once()
-                ->andReturn([]);
+                ->andReturn(new LengthAwarePaginator([], 0, 24));
 
-            // DocumentsController::index also queries originals on the same instance.
-            $mock->shouldReceive('getOriginalsWithTranslations')
+            $mock->shouldReceive('getDocumentLanguagePairs')
                 ->andReturn([]);
         });
 
@@ -451,11 +454,10 @@ class DashboardUiFixPreservationTest extends TestCase
 
         // ── Property 2f: Empty-state on /documents ───────────────────────────
         $this->mock(HistoryService::class, function ($mock) {
-            $mock->shouldReceive('getHistory')
-                ->andReturn([]);
+            $mock->shouldReceive('getDocumentsPaginated')
+                ->andReturn(new LengthAwarePaginator([], 0, 24));
 
-            // DocumentsController::index also queries originals on the same instance.
-            $mock->shouldReceive('getOriginalsWithTranslations')
+            $mock->shouldReceive('getDocumentLanguagePairs')
                 ->andReturn([]);
         });
 
@@ -507,6 +509,9 @@ class DashboardUiFixPreservationTest extends TestCase
         });
 
         $this->mock(StorageService::class, function ($mock) {
+            $mock->shouldReceive('exists')
+                ->andReturn(StorageService::PRESENCE_PRESENT);
+
             $mock->shouldReceive('generateSignedUrl')
                 ->andReturn([
                     'signed_url' => 'https://test.supabase.co/storage/v1/object/sign/test-bucket/summary_translated.docx?token=abc123',

@@ -42,6 +42,8 @@ class TranslationHistory extends Model
         'bookmarked_at',
         'job_id',
         'document_word_count',
+        'draft_revision',
+        'published_revision',
     ];
 
     protected $casts = [
@@ -56,6 +58,8 @@ class TranslationHistory extends Model
         'is_bookmarked' => 'boolean',
         'bookmarked_at' => 'datetime',
         'document_word_count' => 'integer',
+        'draft_revision' => 'integer',
+        'published_revision' => 'integer',
     ];
 
     public function user()
@@ -93,6 +97,16 @@ class TranslationHistory extends Model
     public function blocks(): HasMany
     {
         return $this->hasMany(TranslationBlock::class);
+    }
+
+    /**
+     * True when the current block draft text is NOT what the published,
+     * downloadable file contains — i.e. edits are saved but not published yet
+     * (Save & Regenerate has not succeeded since the last edit).
+     */
+    public function hasUnpublishedEdits(): bool
+    {
+        return (int) ($this->draft_revision ?? 0) > (int) ($this->published_revision ?? 0);
     }
 
     /**

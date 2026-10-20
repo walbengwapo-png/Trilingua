@@ -19,6 +19,7 @@ Run:
 
 import os
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -84,6 +85,21 @@ def test_inplace_uses_batch_translate_blocks(document_pipeline, tmp_path):
     spy.assert_called_once()
     assert response.sidecar is not None
     assert os.path.exists(response.output_path)
+
+
+def test_inplace_output_stays_in_request_directory(document_pipeline, tmp_path):
+    """Concurrent requests must never share Model/translated_input.docx."""
+    src = _make_docx(str(tmp_path / "input.docx"))
+    request = DocumentTranslationRequest(
+        file_path=src, source_lang="English", target_lang="Cebuano",
+    )
+
+    response = document_pipeline.translate(request)
+
+    output_path = Path(response.output_path)
+    assert output_path.is_absolute()
+    assert output_path.parent == tmp_path
+    assert output_path.exists()
 
 
 # ===========================================================================

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\TranslationHistory;
 use App\Services\HistoryService;
+use App\Services\StorageCleanupService;
 use App\Services\StorageService;
 use App\Support\SafeFileNames;
 use Illuminate\Contracts\View\View;
@@ -20,6 +21,7 @@ class HistoryController extends Controller
     public function __construct(
         private HistoryService $history,
         private StorageService $storage,
+        private StorageCleanupService $cleanup,
     ) {}
 
     /**
@@ -159,9 +161,52 @@ class HistoryController extends Controller
     }
 
     /**
-     * Build a StreamedResponse for an inline file preview.
+     * GET /history/{id}/blocks — return the ordered block content for a
+     * document translation (ownership-checked).
+     *
+     * Used as the lazy source for the "render from blocks" preview fallback,
+     * so the history detail page never has to embed every block on load.
      */
-    private function streamFile(string $bytes, string $filename, string $ext): StreamedResponse
+            public function blocks(int $id): JsonResponse
+    {
+        try {
+            $record = $this->history->getRecord($id);
+        } catch (\Throwable $e) {
+            Log::error('HistoryController::blocks failed', [
+                'id' => $id,
+                'exception' => $e->getMessage(),
+            ]);
+            return response()->json(['error' => 'Unable to load block content.'], 500);
+        }
+
+        if ($record === null) {
+            return response()->json(['error' => 'Record not found.'], 404);
+        }
+
+        if ((int) $record['user_id'] !== Auth::id()) {
+            return response()->json(['error' => 'Forbidden.'], 403);
+        }
+
+        // Owner-facing "Final/Saved" block endpoint: expose PUBLISHED content only.
+        // Unpublished draft current_text is never disclosed here, so a preview can
+        // never be labelled Final/Saved while it actually shows draft wording.
+        $rows = \App\Models\TranslationBlock::where('translation_history_id', $id)
+            ->orderBy('block_index')
+            ->get(['id', 'block_index', 'block_type', 'source_text', 'published_text', 'ai_translated_text']);
+
+        $blocks = $rows->map(fn ($b) => [
+            'id' => $b->id,
+            'block_index' => $b->block_index,
+            'block_type' => $b->block_type,
+            'source_text' => $b->source_text,
+            'published_text' => $b->published_text,
+            'has_published' => $b->published_text !== null,
+            'ai_translated_text' => $b->ai_translated_text,
+        ]);
+
+        return response()->json(['blocks' => $blocks]);
+    }
+private function streamFile(string $bytes, string $filename, string $ext): StreamedResponse
     {
         $mime = $this->mimeForExtension($ext);
         if ($mime === 'application/octet-stream' && function_exists('finfo_open')) {
@@ -272,22 +317,32 @@ class HistoryController extends Controller
             ], 200);
         }
 
-        // 4. Generate a new signed URL via StorageService
+        // 4. Ask the backend whether the object is really gone before
+        //    promising a permanent 404. See availabilityEvidence().
+        if ($this->availabilityEvidence($backend, (string) $record['storage_path'])
+            === StorageService::PRESENCE_MISSING) {
+            Log::error('HistoryController::redownload confirmed the object is gone', [
+                'id'              => $id,
+                'storage_backend' => $backend,
+                'storage_path'    => $record['storage_path'],
+            ]);
+
+            return response()->json(
+                ['error' => 'This file is no longer available.'],
+                404
+            );
+        }
+
+        // 5. Generate a new signed URL via StorageService. A failure here is
+        //    never treated as proof of loss: the object is either present or
+        //    unverified, and in both cases the user can simply retry.
         try {
             $storageResult = $this->storage->generateSignedUrl($record['storage_path']);
         } catch (\Throwable $e) {
-            // 4. Map "not found" exceptions to 404
-            if (stripos($e->getMessage(), 'not found') !== false) {
-                return response()->json(
-                    ['error' => 'This file is no longer available.'],
-                    404
-                );
-            }
-
-            // 5. All other storage errors map to 500
             Log::error('HistoryController::redownload failed to generate signed URL', [
-                'id'        => $id,
-                'exception' => $e->getMessage(),
+                'id'              => $id,
+                'exception'       => $e->getMessage(),
+                'storage_backend' => $backend,
             ]);
 
             return response()->json(
@@ -351,19 +406,27 @@ class HistoryController extends Controller
             ], 200);
         }
 
+        if ($this->availabilityEvidence($backend, (string) $record['original_storage_path'])
+            === StorageService::PRESENCE_MISSING) {
+            Log::error('HistoryController::redownloadOriginal confirmed the object is gone', [
+                'id'              => $id,
+                'storage_backend' => $backend,
+                'storage_path'    => $record['original_storage_path'],
+            ]);
+
+            return response()->json(
+                ['error' => 'Original document is no longer available.'],
+                404
+            );
+        }
+
         try {
             $storageResult = $this->storage->generateSignedUrl($record['original_storage_path']);
         } catch (\Throwable $e) {
-            if (stripos($e->getMessage(), 'not found') !== false) {
-                return response()->json(
-                    ['error' => 'Original document is no longer available.'],
-                    404
-                );
-            }
-
             Log::error('HistoryController::redownloadOriginal failed to generate signed URL', [
-                'id' => $id,
-                'exception' => $e->getMessage(),
+                'id'              => $id,
+                'exception'       => $e->getMessage(),
+                'storage_backend' => $backend,
             ]);
             return response()->json(
                 ['error' => 'Unable to generate download link. Please try again later.'],
@@ -374,6 +437,41 @@ class HistoryController extends Controller
         return response()->json([
             'download_url' => $storageResult['signed_url'],
         ], 200);
+    }
+
+    /**
+     * Backend-authoritative evidence that a stored object is still there.
+     *
+     * The two redownload routes previously decided between "this file is gone"
+     * (404) and "try again later" (500) by searching the thrown exception's
+     * message for the substring "not found". Exception text is not an API, and
+     * the substring matched both real and false cases:
+     *
+     *   - A DNS, TLS or gateway outage whose message contains "not found"
+     *     (for example "Host not found") was reported as permanent loss, and
+     *     the user was told a file that still existed could never be recovered.
+     *   - A genuinely deleted object reported as "NoSuchKey", or hidden behind
+     *     a 403 on the private bucket, was reported as transient, so the user
+     *     retried a deleted file forever and was never offered a re-upload.
+     *
+     * Only the backend can answer this question, so the verdict comes from
+     * StorageService::exists(), which distinguishes a proven 404 from a network
+     * or authorisation outage. A failure to obtain evidence is itself
+     * PRESENCE_UNKNOWN, which callers must never read as loss.
+     */
+    private function availabilityEvidence(string $backend, string $storagePath): string
+    {
+        try {
+            return $this->storage->exists($backend, $storagePath);
+        } catch (\Throwable $e) {
+            Log::warning('HistoryController could not establish storage presence', [
+                'storage_backend' => $backend,
+                'storage_path'    => $storagePath,
+                'exception'       => $e->getMessage(),
+            ]);
+
+            return StorageService::PRESENCE_UNKNOWN;
+        }
     }
 
     /**
@@ -503,7 +601,13 @@ class HistoryController extends Controller
     }
 
     /**
-     * DELETE /history/{id} — delete a translation record and its files from Supabase Storage.
+     * DELETE /history/{id} — delete a translation record and its files.
+     *
+     * Rows and the durable cleanup list are committed together by deleteRecord.
+     * Objects are then attempted immediately (best-effort); whatever survives
+     * a backend outage stays pending in the outbox and the scheduled
+     * translations:cleanup-storage command retries it — user data is never
+     * silently orphaned.
      */
     public function destroy(Request $request, int $id): JsonResponse
     {
@@ -517,21 +621,19 @@ class HistoryController extends Controller
             return response()->json(['error' => 'Failed to delete translation. Please try again.'], 500);
         }
 
-        if (!$result['deleted']) {
+        if (! $result['deleted']) {
             return response()->json(['error' => 'Record not found or access denied.'], 404);
         }
 
-        // Delete files from their respective backends (best-effort, non-blocking)
-        foreach ($result['storage_entries'] as $entry) {
-            try {
-                $this->storage->delete($entry['backend'], $entry['path']);
-            } catch (\Throwable $e) {
-                Log::warning('HistoryController::destroy failed to delete file from storage', [
-                    'storage_path' => $entry['path'],
-                    'backend'      => $entry['backend'],
-                    'exception'    => $e->getMessage(),
-                ]);
-            }
+        // Best-effort immediate pass; failures remain pending for the scheduled
+        // command, so the request response never depends on storage health.
+        try {
+            $this->cleanup->processPending(count($result['storage_entries']) ?: 50);
+        } catch (\Throwable $e) {
+            Log::warning('HistoryController::destroy immediate cleanup failed', [
+                'id' => $id,
+                'exception' => $e->getMessage(),
+            ]);
         }
 
         return response()->json(['success' => true]);

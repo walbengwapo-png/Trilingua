@@ -20,6 +20,7 @@ _STRUCT_KEYS = (
     "slide", "shape_id", "para_idx", "table_index",
     "row", "col", "row_span", "col_span", "sheet",
     "alignment", "passthrough",
+    "style", "pdf_coordinates", "rendered_layout",
 )
 
 
@@ -95,6 +96,8 @@ def finalize_sidecar(entries, request, ext, ctx=None, extra=None):
         "document_type": (ctx.document_profile.document_type
                           if ctx and ctx.document_profile else ""),
         "layout_plan": _layout_to_dict(ctx.layout_plan) if ctx and ctx.layout_plan else None,
+        "layout_preflight": _layout_preflight_to_dict(ctx)
+                            if ctx and ctx.block_layout else None,
         "blocks": entries,
     }
     if extra:
@@ -105,6 +108,15 @@ def finalize_sidecar(entries, request, ext, ctx=None, extra=None):
 # ---------------------------------------------------------------------------
 # Layout plan (de)serialization
 # ---------------------------------------------------------------------------
+
+def _layout_preflight_to_dict(ctx):
+    """Serialize advisory unit-pipeline layout preflight findings."""
+    return {
+        "generated_by": "unit_pipeline.layout_preflight",
+        "advisory": True,
+        "blocks": {str(idx): entry for idx, entry in sorted(ctx.block_layout.items())},
+    }
+
 
 def _layout_to_dict(plan):
     def _adj(a):

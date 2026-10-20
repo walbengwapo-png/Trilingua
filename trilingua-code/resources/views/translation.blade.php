@@ -103,8 +103,14 @@
         <div class="translation-panel translation-panel--output">
             <div class="translation-panel__label">Translation</div>
             <div class="translation-panel__body">
-                <p id="workbook-warning" class="translation-save-warning" role="status" hidden></p>
                 <div id="output-text" aria-live="polite" aria-label="Translation output"></div>
+                <p id="workbook-warning" class="translation-save-warning" role="status" hidden></p>
+                <p id="document-job-hint" class="translation-job-hint" hidden>
+                    You can leave or refresh this page while the document runs. Find the result in <a href="{{ route('documents') }}">My Documents</a> when it is ready.
+                </p>
+                <p id="output-save-warning" class="translation-save-warning" role="status" hidden>
+                    Translation complete, but it could not be saved to Saved Translations or admin review. Copy it or save a text file now.
+                </p>
 
                 <div id="output-download" hidden>
                     <a id="download-link" href="#" class="download-btn">
@@ -157,7 +163,7 @@
         <span class="translate-progress__spinner" aria-hidden="true"></span>
         <span class="translate-progress__body">
             <span class="translate-progress__stage" id="translate-progress-stage">Translating…</span>
-            <span class="translate-progress__timer" id="translate-progress-timer">0s</span>
+        <span class="translate-progress__timer" id="translate-progress-timer" aria-hidden="true">0s</span>
         </span>
     </div>
 
@@ -176,8 +182,10 @@
     var translationMode = document.getElementById('translation-mode');
     var swapBtn       = document.getElementById('swap-btn');
     var outputText    = document.getElementById('output-text');
-    var attachBtn     = document.getElementById('attach-btn');
+    var documentJobHint = document.getElementById('document-job-hint');
+    var outputSaveWarning = document.getElementById('output-save-warning');
     var workbookWarning = document.getElementById('workbook-warning');
+    var attachBtn     = document.getElementById('attach-btn');
     var fileInput     = document.getElementById('file-input');
     var fileNameSpan  = document.getElementById('file-name');
     var removeFile    = document.getElementById('remove-file');
@@ -298,7 +306,7 @@
     }
 
     function setProgressStage(stage) {
-        progressStage.textContent = stage;
+        if (progressStage.textContent !== stage) progressStage.textContent = stage;
     }
 
     function updateProgressTimer() {
@@ -333,6 +341,7 @@
 
     translateBtn.addEventListener('click', function () {
         clearError(sourceError); clearError(outputError);
+        documentJobHint.hidden = true;
         var file = fileInput.files[0];
         var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         setLoading(true);
@@ -356,6 +365,9 @@
             formData.append('text', text);
         }
 
+        var previousJobId = sessionStorage.getItem(JOB_STORAGE_KEY);
+        stopPolling(false);
+
         fetch('/translate', {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
@@ -368,17 +380,22 @@
 
                 workbookWarning.textContent = (data && Array.isArray(data.warnings) ? data.warnings : []).join(' ');
                 workbookWarning.hidden = !workbookWarning.textContent;
-                if (res.ok && data && data.status === 'processing' && data.job_id) {
+                if (data && data.job_id && ((res.ok && data.status === 'processing') || data.dispatch === 'unknown')) {
                     // Document translation queued - poll for status
-                    setProgressStage(data.duplicate ? 'Already translating this file…' : 'Translating document…');
+                    outputSaveWarning.hidden = true;
+                    beginPolling(data.job_id, data.dispatch === 'unknown'
+                        ? 'Checking whether your upload was queued…'
+                        : (data.duplicate ? 'Already translating this file…' : 'Translating document…'));
                     outputText.textContent = data.message || 'Translation in progress... This may take a few minutes depending on document size.';
                     outputDownload.setAttribute('hidden', '');
                     copyBtn.setAttribute('aria-disabled', 'true');
                     saveBtn.setAttribute('aria-disabled', 'true');
-                    pollJobStatus(data.job_id);
                 } else if (res.ok && data && (data.download_url || data.download_data)) {
+                    sessionStorage.removeItem(JOB_STORAGE_KEY);
+                    outputSaveWarning.hidden = true;
                     hideProgress();
-                    outputText.textContent = '';
+                    documentJobHint.hidden = true;
+                    outputText.textContent = 'Your document has been translated. Download the translated file below to view the result.';
                     outputDownload.removeAttribute('hidden');
                     downloadLink.href = data.download_data || data.download_url;
                     downloadLink.download = data.download_filename || 'translated_document';
@@ -387,8 +404,10 @@
                     saveBtn.setAttribute('aria-disabled', 'true');
                     if (window.showToast) showToast('success', 'Document translated!', 'Your file is ready to download.');
                 } else if (res.ok && data && data.translated) {
+                    sessionStorage.removeItem(JOB_STORAGE_KEY);
                     hideProgress();
                     outputText.textContent = data.translated;
+                    outputSaveWarning.hidden = data.saved !== false;
                     outputDownload.setAttribute('hidden', '');
                     copyBtn.removeAttribute('aria-disabled');
                     saveBtn.removeAttribute('aria-disabled');
@@ -404,66 +423,183 @@
                 } else {
                     hideProgress();
                     var errorMsg = (data && (data.error || data.detail)) || 'Translation failed. Please try again.';
+                    if (data && data.request_id) errorMsg += ' Reference: ' + data.request_id;
                     showError(outputError, errorMsg);
                 }
             });
         })
         .catch(function () { hideProgress(); showError(outputError, 'Network error. Please check your connection and try again.'); })
-        .finally(function () { setLoading(false); });
+        .finally(function () {
+            setLoading(false);
+            if (!activePollJobId && previousJobId && sessionStorage.getItem(JOB_STORAGE_KEY) === previousJobId && !document.hidden) {
+                beginPolling(previousJobId, 'Checking translation status…');
+            }
+        });
     });
 
-    // Poll for document translation status
-    function pollJobStatus(jobId) {
-        var maxAttempts = 300; // 10 minutes max (300 * 2s), matching the service timeout.
-        var attempts = 0;
-        var interval = setInterval(function () {
-            attempts++;
-            if (attempts > maxAttempts) {
-                clearInterval(interval);
-                hideProgress();
-                showError(outputError, 'Translation timed out. Please try again or contact support if the issue persists.');
-                return;
-            }
+    // ── Durable document status polling (U1) ─────────────────────────────────
+    // The browser never infers failure from elapsed polling time. A healthy job
+    // can legitimately run up to the job (1300s) + worker (1500s) timeout, so
+    // "it has been N minutes" is NOT a failure signal. Polling:
+    //   - relies on the durable /translate/status/{id} row for terminal state;
+    //   - never issues overlapping requests (inFlight guard);
+    //   - stops when the page hides or navigates (pagehide / visibilitychange);
+    //   - keeps the job id in sessionStorage so refresh or re-visit resumes
+    //     checking from the same durable row;
+    //   - only ends on a server-confirmed terminal state (completed / failed)
+    //     or when the row genuinely cannot be located (404).
+    var JOB_STORAGE_KEY = 'trilingua.active_document_job';
+    var LONG_WAIT_MS = 600 * 1000; // ~10 minutes before the honest long-run note
 
-            fetch('/translate/status/' + jobId, {
-                credentials: 'include',
-                headers: { 'Accept': 'application/json' }
-            })
-            .then(function (res) {
-                return res.text().then(function (raw) {
-                    var data = null;
-                    try { data = JSON.parse(raw); } catch (e) {}
+    var pollTimerId = null;
+    var pollInFlight = false;
+    var pollGeneration = 0;
+    var activePollJobId = null;
+    var pollDelayMs = 2000;
+    var pollStartedAt = 0;
+    var longWaitNoteShown = false;
 
-                    if (data && data.status === 'completed') {
-                        clearInterval(interval);
-                        hideProgress();
-                        outputText.textContent = '';
-                        outputDownload.removeAttribute('hidden');
-                        downloadLink.href = data.download_data || data.download_url;
-                        downloadLink.download = data.download_filename || 'translated_document';
-                        downloadLabel.textContent = 'Download: ' + (data.download_filename || 'translated_document');
-                        copyBtn.setAttribute('aria-disabled', 'true');
-                        saveBtn.setAttribute('aria-disabled', 'true');
-                        if (window.showToast) showToast('success', 'Document translated!', 'Your file is ready to download.');
-                    } else if (data && data.status === 'failed') {
-                        clearInterval(interval);
-                        hideProgress();
-                        showError(outputError, (data && data.error) || 'Translation failed. Please try again.');
-                    } else if (!res.ok) {
-                        // Server error during polling — stop to avoid silent loop
-                        clearInterval(interval);
-                        hideProgress();
-                        showError(outputError, 'Could not retrieve translation status. Please try again or contact support.');
-                    } else if (attempts % 15 === 0) {
-                        // Refresh the overlay stage every ~30 seconds while polling
-                        setProgressStage('Still translating…');
-                    }
-                });
-            })
-            .catch(function () {
-                // Don't show error on polling failure, just continue
+    function stopPolling(clearStoredJob) {
+        pollGeneration++;
+        if (pollTimerId !== null) {
+            clearTimeout(pollTimerId);
+            pollTimerId = null;
+        }
+        pollInFlight = false;
+        if (clearStoredJob) {
+            sessionStorage.removeItem(JOB_STORAGE_KEY);
+        }
+        activePollJobId = null;
+    }
+
+    function beginPolling(jobId, stage) {
+        stopPolling(false);
+        activePollJobId = jobId;
+        sessionStorage.setItem(JOB_STORAGE_KEY, jobId);
+        pollDelayMs = 2000;
+        longWaitNoteShown = false;
+        pollStartedAt = Date.now();
+        showProgress(stage || 'Translating document…');
+        documentJobHint.hidden = false;
+        if (!outputText.textContent.trim()) outputText.textContent = 'Checking your document translation…';
+        pollOnce(jobId, pollGeneration);
+    }
+
+    function pollOnce(jobId, generation) {
+        if (generation !== pollGeneration || activePollJobId !== jobId || document.hidden || pollInFlight) {
+            return;
+        }
+        pollInFlight = true;
+
+        fetch('/translate/status/' + jobId, {
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(function (res) {
+            return res.text().then(function (raw) {
+                if (generation !== pollGeneration || activePollJobId !== jobId) return;
+                var data = null;
+                try { data = JSON.parse(raw); } catch (e) {}
+
+                if (data && data.status === 'completed' && (data.download_url || data.download_data)) {
+                    stopPolling(true);
+                    outputSaveWarning.hidden = true;
+                    hideProgress();
+                    documentJobHint.hidden = true;
+                    outputText.textContent = 'Your document has been translated. Download the translated file below to view the result.';
+                    outputDownload.removeAttribute('hidden');
+                    downloadLink.href = data.download_data || data.download_url;
+                    downloadLink.download = data.download_filename || 'translated_document';
+                    downloadLabel.textContent = 'Download: ' + (data.download_filename || 'translated_document');
+                    copyBtn.setAttribute('aria-disabled', 'true');
+                    saveBtn.setAttribute('aria-disabled', 'true');
+                    if (window.showToast) showToast('success', 'Document translated!', 'Your file is ready to download.');
+                    return;
+                }
+
+                if (data && data.status === 'completed' && data.download_available === false) {
+                    outputDownload.setAttribute('hidden', '');
+                    outputText.textContent = data.message || 'Translation complete. Download temporarily unavailable; checking again shortly.';
+                    setProgressStage('Translation complete — checking download availability…');
+                    return;
+                }
+
+                if (data && data.status === 'failed') {
+                    stopPolling(true);
+                    hideProgress();
+                    documentJobHint.hidden = true;
+                    showError(outputError, (data && data.error) || 'Translation failed. Please try again.');
+                    return;
+                }
+
+                if (res.status === 404 && data && data.error) {
+                    // No durable row and no cache marker: the server truly cannot
+                    // locate this job. A real end state, not an elapsed-time guess.
+                    stopPolling(true);
+                    hideProgress();
+                    documentJobHint.hidden = true;
+                    showError(outputError, data.error);
+                    return;
+                }
+
+                if (!res.ok) {
+                    // Transient status failure (5xx): do not end the tracker or
+                    // claim failure — say the status is temporarily unavailable.
+                    setProgressStage('Status temporarily unavailable — checking again…');
+                    return;
+                }
+
+                if (!data || !['created', 'queued', 'processing'].includes(data.status)) {
+                    setProgressStage('Status temporarily unavailable — checking again…');
+                    return;
+                }
+
+                // Still processing (created / queued / processing).
+                if (Date.now() - pollStartedAt > LONG_WAIT_MS) {
+                    showLongWaitNote();
+                } else {
+                    setProgressStage(data.status === 'processing' ? 'Translating document…' : 'Queued — waiting to start…');
+                }
             });
-        }, 2000); // Poll every 2 seconds
+        })
+        .catch(function () {
+            if (generation === pollGeneration && activePollJobId === jobId) {
+                setProgressStage('Status temporarily unavailable — checking again…');
+            }
+        })
+        .finally(function () {
+            if (generation !== pollGeneration || activePollJobId !== jobId) return;
+            pollInFlight = false;
+            if (!document.hidden) {
+                pollTimerId = setTimeout(function () { pollOnce(jobId, generation); }, pollDelayMs);
+            }
+            pollDelayMs = Math.min(15000, Math.round(pollDelayMs * 1.5));
+        });
+    }
+
+    function showLongWaitNote() {
+        setProgressStage('Still translating… Large documents may take longer.');
+        if (longWaitNoteShown) {
+            return;
+        }
+        longWaitNoteShown = true;
+        outputText.textContent = 'The document is still running. You do not need to keep this page open.';
+    }
+
+    // Resume after refresh / re-visit, and stop once the page hides/navigates.
+    window.addEventListener('pagehide', function () { stopPolling(false); });
+    document.addEventListener('visibilitychange', function () {
+        var active = sessionStorage.getItem(JOB_STORAGE_KEY);
+        if (document.hidden) {
+            stopPolling(false);
+        } else if (active) {
+            beginPolling(active, 'Checking translation status…');
+        }
+    });
+
+    var storedJobId = sessionStorage.getItem(JOB_STORAGE_KEY);
+    if (storedJobId) {
+        beginPolling(storedJobId, 'Checking translation status…');
     }
 
     // ── Clear ─────────────────────────────────────────────────────────────────
@@ -471,6 +607,7 @@
         sourceText.value = '';
         updateCounter();
         outputText.textContent = '';
+        outputSaveWarning.hidden = true;
         clearError(sourceError); clearError(outputError);
     });
 

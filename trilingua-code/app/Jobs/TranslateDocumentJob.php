@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Exceptions\TranslationException;
+use App\Models\TranslationHistory;
 use App\Models\TranslationJob;
 use App\Models\User;
 use App\Notifications\TranslationCompleted;
@@ -11,6 +12,7 @@ use App\Services\BlockService;
 use App\Services\HistoryService;
 use App\Services\MetricsService;
 use App\Services\StorageService;
+use App\Services\StorageCleanupService;
 use App\Services\Translation\TranslationManager;
 use App\Support\AdminNotifier;
 use App\Support\ReviewStatus;
@@ -40,9 +42,10 @@ class TranslateDocumentJob implements ShouldQueue
     public array $backoff = [30, 120];
 
     /**
-     * Timeout must exceed the python service's 600s limit plus upload margins.
+     * Payload upper bound for one attempt, sourced from the timeout ladder in
+     * config/timeouts.php (default 1300). Must stay below the worker window.
      */
-    public int $timeout = 650;
+    public int $timeout = 1300;
 
     /**
      * The UUID for this job; surfaced as job_id to the frontend and used as the
@@ -71,13 +74,20 @@ class TranslateDocumentJob implements ShouldQueue
         public ?int $parentDocumentId = null,
         public ?string $originalStorageBackend = 'supabase',
         public ?int $translationJobId = null,
-    ) {}
+        public ?string $presetUuid = null,
+    ) {
+        $this->timeout = (int) config('timeouts.job', 1300);
+    }
 
     /**
-     * Get the UUID for this job instance.
+     * Get the UUID for this job instance. A preset UUID (used when an operator
+     * replays a failed job) wins so polling, dedup and history stay coherent.
      */
     public function uuid(): string
     {
+        if ($this->presetUuid !== null && $this->presetUuid !== '') {
+            return $this->presetUuid;
+        }
         if ($this->jobUuid === null) {
             $this->jobUuid = (string) Str::uuid();
         }
@@ -104,15 +114,18 @@ class TranslateDocumentJob implements ShouldQueue
         $this->storeProgress(10, 'Document queued for translation. Processing will begin shortly.');
 
         try {
-            if (!file_exists($this->tempPath)) {
-                throw new \RuntimeException('Uploaded file not found at: ' . $this->tempPath);
-            }
+            // Ensure a worker-local input exists. A replayed job's original
+            // scratch file was cleaned at terminal failure, so reconstruct it
+            // from the durable original when present. A job with NO durable
+            // original is unrecoverable and must fail honestly.
+            $job?->noteProgress(5);
+            $this->resolveInputPath($storageService, $job);
 
             // Ensure the ORIGINAL file is stored durably (used by re-translation
             // and the review workspace). If the initial upload failed but the
             // durable fallback exists, backfill it now from the worker's copy.
             if ($this->originalStoragePath === null) {
-                $this->backfillOriginalStorage($storageService);
+                $this->backfillOriginalStorage($storageService, $job);
             }
 
             $uploadedFile = new UploadedFile(
@@ -159,18 +172,50 @@ class TranslateDocumentJob implements ShouldQueue
             // 3. Store the translated file durably (primary with retries, then
             //    the encrypted persistent fallback backend). There is NO inline
             //    base64 fallback: output is never parked on the worker alone.
+            //    A retried job after a partial failure reuses the object it
+            //    already recorded instead of creating a duplicate.
             $translatedStoragePath = $this->userId . '/translations/' . (string) Str::uuid() . $this->normalizedOutputExt($downloadFilename);
 
             $job?->noteProgress(80);
             $this->storeProgress(80, 'Uploading translated file...');
 
-            $upload = $storageService->uploadWithFallback($outputPath, $translatedStoragePath);
+            $upload = $this->durableTranslatedUpload($storageService, $job, $outputPath, $translatedStoragePath);
+
+            // Object storage cannot join the DB transaction below, so the
+            // durable paths are recorded on the state row NOW — a later retry
+            // reuses them (idempotence) and a cleanup job could remove a
+            // stranded object if the history write can never complete.
+            if ($job !== null) {
+                TranslationJob::whereKey($job->getKey())->update([
+                    'translated_storage_path'    => $upload['storage_path'],
+                    'translated_storage_backend' => $upload['backend'],
+                    'last_heartbeat_at'          => now(),
+                ]);
+            }
 
             $job?->noteProgress(95);
 
             // 4. Record the translation in history (source of truth for the UI).
-            $history = null;
-            try {
+            //    The history row + review blocks are REQUIRED before the job may
+            //    be completed. A block-persistence failure removes the freshly
+            //    inserted row (compensating write, already in the job's DB
+            //    transaction on Postgres via BlockService) and fails terminally
+            //    instead of reporting a completed state the user could never
+            //    review. Metrics stay non-fatal (documented boundary).
+            $existingHistory = TranslationHistory::where('job_id', $this->uuid())
+                ->where('user_id', $this->userId)
+                ->orderByDesc('id')
+                ->first();
+
+            if ($existingHistory !== null) {
+                // Idempotent resume: a prior partial attempt already linked
+                // this job to a history row; never create a second one. The row
+                // is NOT this attempt's, so it is never this attempt's to
+                // compensate away.
+                $history = $existingHistory;
+                $historyCreatedThisAttempt = false;
+            } else {
+                $historyCreatedThisAttempt = true;
                 $history = $historyService->insertRecord([
                     'user_id'                  => $this->userId,
                     'original_filename'        => $this->originalName,
@@ -190,19 +235,63 @@ class TranslateDocumentJob implements ShouldQueue
                     'job_id'                   => $this->uuid(),
                 ]);
 
-                // Persist per-block review data + roll up quality score.
-                $this->persistDocumentBlocks($blockService, $metricsService, $history, $translationResult);
-            } catch (\Throwable $e) {
-                Log::error('Job: Failed to insert history record (non-fatal)', [
-                    'exception' => $e->getMessage(),
-                    'user_id'   => $this->userId,
-                ]);
+                if ($history === null) {
+                    throw new \RuntimeException('The translation history record could not be created.');
+                }
+
+                try {
+                    // Persist required review blocks/sidecar (throws on failure).
+                    $this->persistRequiredBlocks($blockService, $history, $translationResult);
+                } catch (\Throwable $e) {
+                    // Compensate so a row never claims "completed with review
+                    // data" while listing nothing. Lasts until the durable
+                    // cleanup job drops the stranded translated object.
+                    try {
+                        $history->delete();
+                        $history = null;
+                    } catch (\Throwable $deleteError) {
+                        Log::warning('Job: could not delete history row after block failure (non-fatal)', [
+                            'translation_history_id' => $history->id ?? null,
+                            'exception' => $deleteError->getMessage(),
+                        ]);
+                    }
+
+                    throw $e;
+                }
             }
 
+            // Metrics persistence is explicitly non-fatal: the user can still
+            // retrieve the file, and dashboards tolerate missing metrics rows.
+            $metricsService->persistDocumentMetrics($history, $translationResult['metrics'] ?? []);
+
             // 5. Finalize the state machine: mark complete + publish download URL.
+            //    Completion is the LAST step and it is CONDITIONAL: another actor
+            //    (a reconciler, a competing worker) may already have made the row
+            //    terminal, in which case markCompleted() refuses. Announcing
+            //    success after a refusal would tell the user and the admin queue
+            //    that work completed while the authoritative row says otherwise.
             $downloadUrl = $this->downloadUrlFor($history, $upload);
 
-            $job?->markCompleted($upload['backend'], $upload['storage_path'], $history?->id);
+            $completed = $job === null || $job->markCompleted(
+                $upload['backend'],
+                $upload['storage_path'],
+                (int) $history->id
+            );
+
+            if (! $completed) {
+                $this->compensateRefusedCompletion(
+                    $job,
+                    $history,
+                    $historyCreatedThisAttempt,
+                    $storageService,
+                    $upload
+                );
+
+                $this->cleanupFile($outputPath);
+                $this->cleanupFile($this->tempPath);
+
+                return;
+            }
 
             $this->storeResult([
                 'status' => 'completed',
@@ -231,13 +320,29 @@ class TranslateDocumentJob implements ShouldQueue
             ]);
 
             $job?->noteProgress(max(0, (int) ($job->progress ?? 0)));
-            $job?->noteError($e);
 
             if ($this->isRetryable($e) && $this->attempts() + 1 < $this->tries) {
                 // Return the job to the queue with its original upload intact;
                 // deleting tempPath here would guarantee the retry fails.
+                //
+                // This attempt is NOT terminal: it is being released back onto
+                // the queue. Driving the row to `failed` first (the previous
+                // order) left the API reporting a failure for work that was
+                // still legitimately scheduled to run, for the whole backoff
+                // window, and also made the markQueued() below impossible —
+                // markTerminallyFailed() refreshes the instance to a terminal
+                // state, and markQueued() then refuses a non-active row.
                 $this->cleanupFile($outputPath);
-                $job?->markQueued();
+
+                $requeued = $job?->markQueued();
+                if ($job !== null && ! $requeued) {
+                    Log::warning('Job: retry could not return the row to queued; the authoritative state is unchanged', [
+                        'job_id' => $this->uuid(),
+                        'translation_job_id' => $job->getKey(),
+                        'status' => $job->status,
+                    ]);
+                }
+
                 $this->storeResult([
                     'status' => 'processing',
                     'message' => 'A temporary error occurred. Retrying...',
@@ -245,6 +350,10 @@ class TranslateDocumentJob implements ShouldQueue
                 $this->release(($this->backoff[$this->attempts()] ?? 120));
                 return;
             }
+
+            // Terminal failure. Only now is the row driven terminal, because no
+            // further attempt will be made.
+            $job?->markTerminallyFailed($e, $this->isRecoverable());
 
             // Terminal failure: surface it to the frontend AND to failed_jobs
             // so operators can inspect and replay. This is the fix for the
@@ -273,10 +382,71 @@ class TranslateDocumentJob implements ShouldQueue
     }
 
     /**
+     * Ensure $this->tempPath points at a real, readable worker-local input file.
+     *
+     * A first attempt always carries the persisted upload. A replayed job's
+     * scratch file was cleaned at terminal failure, so the durable original is
+     * fetched from its recorded backend and reconstructed locally. When neither
+     * exists the job is unrecoverable and fails honestly.
+     */
+    private function resolveInputPath(StorageService $storageService, ?TranslationJob $job): void
+    {
+        if (file_exists($this->tempPath) && is_readable($this->tempPath)) {
+            return;
+        }
+
+        if (!$this->isRecoverable()) {
+            throw new \RuntimeException(
+                'The original input file is unavailable and no durable copy exists; this job cannot be replayed.'
+            );
+        }
+
+        Log::info('Job: reconstructing worker-local input from durable original', [
+            'backend'      => $this->originalStorageBackend,
+            'storage_path' => $this->originalStoragePath,
+            'user_id'      => $this->userId,
+            'job_id'       => $this->uuid(),
+        ]);
+
+        $contents = $storageService->read($this->originalStorageBackend, $this->originalStoragePath);
+
+        if ($contents === '' || $contents === null) {
+            throw new \RuntimeException('Durable original was empty; this job cannot be replayed.');
+        }
+
+        $dir = storage_path('app/uploads/recovered');
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $recovered = $dir . DIRECTORY_SEPARATOR . (string) Str::uuid() . $this->originalExt;
+        if (file_put_contents($recovered, $contents) === false) {
+            throw new \RuntimeException('Failed to reconstruct the worker-local input file.');
+        }
+
+        $this->tempPath = $recovered;
+
+        if ($job !== null) {
+            $job->noteProgress(5);
+        }
+    }
+
+    /**
+     * A job is recoverable only when a durable original exists on a recorded
+     * backend; without it there is nothing for a retry to reconstruct from.
+     */
+    private function isRecoverable(): bool
+    {
+        return filled($this->originalStoragePath) && filled($this->originalStorageBackend);
+    }
+
+    /**
      * If the original file was never durably stored at upload time, persist it
      * now from the worker's persisted copy using the fallback/primary storage.
+     * A successful durable backfill is written back onto the state-machine row
+     * so a later operator retry can reconstruct the input.
      */
-    private function backfillOriginalStorage(StorageService $storageService): void
+    private function backfillOriginalStorage(StorageService $storageService, ?TranslationJob $job): void
     {
         if (!file_exists($this->tempPath)) {
             return;
@@ -286,6 +456,14 @@ class TranslateDocumentJob implements ShouldQueue
             $upload = $storageService->uploadWithFallback($this->tempPath, $storagePath);
             $this->originalStoragePath = $upload['storage_path'];
             $this->originalStorageBackend = $upload['backend'];
+
+            if ($job !== null) {
+                TranslationJob::whereKey($job->getKey())
+                    ->update([
+                        'original_storage_path'   => $this->originalStoragePath,
+                        'original_storage_backend' => $this->originalStorageBackend,
+                    ]);
+            }
         } catch (\Throwable $e) {
             Log::warning('Job: failed to backfill original storage (non-fatal)', [
                 'exception' => $e->getMessage(),
@@ -365,36 +543,164 @@ class TranslateDocumentJob implements ShouldQueue
     }
 
     /**
-     * Persist per-block review data and the sidecar onto the history row.
+     * Compensate a completion transition that another actor refused.
+     *
+     * Two very different situations share a refused transition, and they must
+     * not be treated alike:
+     *
+     *  - The authoritative row is ALREADY completed. This attempt simply lost a
+     *    race with the winning worker. That is an idempotency case: the winning
+     *    history row and object stay exactly as they are, and this attempt sends
+     *    no second completion notification.
+     *  - The authoritative row is failed/cancelled. The history row this
+     *    attempt created claims `completed` under a transition that was refused,
+     *    so it is removed and the object it points at is released. A history row
+     *    inherited from a prior attempt is NEVER removed, and no object is
+     *    deleted while a surviving history row still references it.
      */
-    private function persistDocumentBlocks(
-        BlockService $blockService,
-        MetricsService $metricsService,
-        ?\App\Models\TranslationHistory $history,
-        array $translationResult
+    private function compensateRefusedCompletion(
+        ?TranslationJob $job,
+        ?TranslationHistory $history,
+        bool $historyCreatedThisAttempt,
+        StorageService $storageService,
+        array $upload
     ): void {
-        if ($history === null) {
+        $authoritative = $job === null
+            ? null
+            : TranslationJob::find($job->getKey());
+
+        $authoritativeStatus = $authoritative?->status;
+
+        Log::warning('Job: completion transition refused; compensating this attempt only', [
+            'job_id' => $this->uuid(),
+            'translation_job_id' => $job?->getKey(),
+            'authoritative_status' => $authoritativeStatus,
+            'history_created_this_attempt' => $historyCreatedThisAttempt,
+        ]);
+
+        if ($authoritativeStatus === TranslationJob::STATUS_COMPLETED) {
+            // Idempotent: another worker owns the result. Nothing to compensate,
+            // and nothing may be deleted — the winner's object is the referenced
+            // one now. Report completion once, from the durable row.
+            $this->storeResult([
+                'status' => 'completed',
+                'message' => 'Translation completed.',
+            ]);
+
             return;
         }
+
+        if ($historyCreatedThisAttempt && $history !== null) {
+            try {
+                $history->delete();
+            } catch (\Throwable $e) {
+                Log::warning('Job: could not remove the history row created by a refused attempt', [
+                    'translation_history_id' => $history->id,
+                    'exception' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $this->releaseUnreferencedObject($storageService, $upload);
+
+        $this->storeResult([
+            'status' => 'failed',
+            'error' => $authoritative?->error
+                ?: 'The translation was stopped before it could be completed.',
+        ]);
+    }
+
+    /**
+     * Delete an object this attempt uploaded, but only when no surviving row
+     * still points at it.
+     *
+     * This asks the SAME question as StorageCleanupService::hasLiveReference -
+     * "does any row that can still be executed or replayed need this object?" -
+     * but excludes THIS job's own state row. That exclusion is what keeps the
+     * two paths from cancelling each other out: this job recorded
+     * `translated_storage_path` before the history write, so without the
+     * exclusion its own row would vouch for the very object a refused
+     * completion must release and the object would never be reclaimed.
+     *
+     * Every OTHER job still counts, including one that legitimately holds the
+     * same object for its own retry.
+     */
+    private function releaseUnreferencedObject(StorageService $storageService, array $upload): void
+    {
+        $path = $upload['storage_path'] ?? null;
+        $backend = $upload['backend'] ?? null;
+
+        if (blank($path) || blank($backend)) {
+            return;
+        }
+
         try {
-            $history->load('blocks')->blocks()->delete();
-            $blockService->persistBlocks(
-                $history,
-                $translationResult['blocks'] ?? [],
-                $translationResult['sidecar'] ?? null
+            $excludeJobIds = ($this->translationJobId !== null) ? [$this->translationJobId] : [];
+
+            // Resolved here rather than injected into handle(): this is the rare
+            // refused-completion path, and keeping it out of handle()'s signature
+            // avoids churning every direct caller of that method.
+            $cleanup = app(StorageCleanupService::class);
+
+            $stillReferenced = $cleanup->hasLiveReference(
+                $backend,
+                $path,
+                [],
+                $excludeJobIds
             );
 
-            // Persist the engine metrics returned by the Python service.
-            $metricsService->persistDocumentMetrics(
-                $history,
-                $translationResult['metrics'] ?? []
-            );
+            if ($stillReferenced) {
+                return;
+            }
+
+            $storageService->delete($backend, $path);
         } catch (\Throwable $e) {
-            Log::warning('Job: Failed to persist document blocks (non-fatal)', [
+            Log::warning('Job: could not release an object from a refused attempt', [
+                'backend' => $backend,
                 'exception' => $e->getMessage(),
-                'translation_history_id' => $history->id ?? null,
             ]);
         }
+    }
+
+    /**
+     * Store the translated output durably. A retry of a partially persisted
+     * attempt (history write failed after a successful object upload) reuses
+     * the recorded object instead of uploading a second one.
+     */
+    private function durableTranslatedUpload(StorageService $storageService, ?TranslationJob $job, string $outputPath, string $translatedStoragePath): array
+    {
+        if ($job !== null && filled($job->translated_storage_path) && filled($job->translated_storage_backend)) {
+            return [
+                'backend'               => $job->translated_storage_backend,
+                'storage_path'          => $job->translated_storage_path,
+                'signed_url'            => null,
+                'signed_url_expires_at' => now()->addSeconds(StorageService::SIGNED_URL_EXPIRY_SECONDS)->toIso8601String(),
+            ];
+        }
+
+        return $storageService->uploadWithFallback($outputPath, $translatedStoragePath);
+    }
+
+    /**
+     * Persist per-block review data and the sidecar onto the history row.
+     *
+     * Runs inside the completion transaction. Block persistence is REQUIRED for
+     * the review workspace, so a failure here must throw (rolling the history
+     * insert back) rather than silently completing a document no admin can
+     * review. A genuinely block-less envelope is accepted and documented.
+     */
+    private function persistRequiredBlocks(
+        BlockService $blockService,
+        TranslationHistory $history,
+        array $translationResult
+    ): void {
+        $history->load('blocks')->blocks()->delete();
+
+        $blockService->persistBlocks(
+            $history,
+            $translationResult['blocks'] ?? [],
+            $translationResult['sidecar'] ?? null
+        );
     }
 
     /**

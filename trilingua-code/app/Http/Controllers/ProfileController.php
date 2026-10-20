@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\TranslationEditLog;
 use App\Models\TranslationHistory;
 use App\Models\UserActivityLog;
+use App\Services\TranslationStatsService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -51,24 +52,26 @@ class ProfileController extends Controller
      */
     private function adminWorkSummary(int $adminId): array
     {
+        // Counters come from database aggregates over the admin's whole log;
+        // only the five rows the panel lists are loaded.
+        $c = TranslationEditLog::where('admin_id', $adminId)
+            ->selectRaw('COUNT(*) AS total')
+            ->selectRaw('COUNT(DISTINCT translation_history_id) AS items')
+            ->selectRaw("SUM(CASE WHEN action = 'verify' THEN 1 ELSE 0 END) AS verifies")
+            ->selectRaw("SUM(CASE WHEN action = 'edit' THEN 1 ELSE 0 END) AS edits")
+            ->selectRaw("SUM(CASE WHEN action = 'flag' THEN 1 ELSE 0 END) AS flags")
+            ->selectRaw('SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS this_month', [now()->copy()->startOfMonth()])
+            ->first();
+
         $logs = TranslationEditLog::where('admin_id', $adminId)
             ->with('translationHistory:id,translated_filename,original_filename')
             ->orderByDesc('id')
-            ->limit(200)
+            ->limit(5)
             ->get();
-
-        $total     = $logs->count();
-        $items     = $logs->pluck('translation_history_id')->unique()->count();
-        $verifies  = $logs->where('action', 'verify')->count();
-        $edits     = $logs->where('action', 'edit')->count();
-        $flags     = $logs->where('action', 'flag')->count();
-        $thisMonth = $logs->filter(
-            fn ($l) => $l->created_at && $l->created_at->isCurrentMonth()
-        )->count();
 
         $pendingQueue = TranslationHistory::where('review_status', 'pending')->count();
 
-        $recent = $logs->take(5)->map(function ($l) {
+        $recent = $logs->map(function ($l) {
             $history = $l->translationHistory;
             $name = $history
                 ? ($history->translated_filename ?? $history->original_filename ?? '#' . $l->translation_history_id)
@@ -84,12 +87,12 @@ class ProfileController extends Controller
         })->values();
 
         return [
-            'total'         => $total,
-            'items'         => $items,
-            'verifies'      => $verifies,
-            'edits'         => $edits,
-            'flags'         => $flags,
-            'thisMonth'     => $thisMonth,
+            'total'         => (int) $c->total,
+            'items'         => (int) $c->items,
+            'verifies'      => (int) $c->verifies,
+            'edits'         => (int) $c->edits,
+            'flags'         => (int) $c->flags,
+            'thisMonth'     => (int) $c->this_month,
             'pendingQueue'  => $pendingQueue,
             'recent'        => $recent,
         ];
@@ -102,40 +105,19 @@ class ProfileController extends Controller
      */
     private function translationSummary(int $userId): array
     {
+        // Counters are aggregated by the database over every row; only the
+        // five most recent rows are loaded, because that is all the panel
+        // actually lists. Reading a capped slice and reporting its length as
+        // the user's lifetime total is the bug this replaces.
+        $summary = TranslationStatsService::profileSummary($userId);
+
         $translations = TranslationHistory::where('user_id', $userId)
             ->orderBy('created_at', 'desc')
-            ->limit(200)
+            ->orderBy('id', 'desc')
+            ->limit(5)
             ->get();
 
-        $total      = $translations->count();
-        $documents  = $translations->where('translation_type', 'document')->count();
-        $thisMonth  = $translations->filter(
-            fn ($t) => $t->created_at && $t->created_at->isCurrentMonth()
-        )->count();
-
-        $pairs      = $translations
-            ->filter(fn ($t) => $t->source_language || $t->target_language)
-            ->map(fn ($t) => ($t->source_language ?? '?') . '|' . ($t->target_language ?? '?'))
-            ->unique()
-            ->count();
-
-        $quality    = $translations
-            ->pluck('quality_score')
-            ->filter(fn ($q) => $q !== null && $q >= 0)
-            ->values();
-
-        $avgQuality = $quality->isNotEmpty()
-            ? round($quality->avg(), 1)
-            : null;
-
-        $statusBreakdown = [
-            'pending'  => $translations->where('review_status', 'pending')->count(),
-            'verified' => $translations->where('review_status', 'verified')->count(),
-            'edited'   => $translations->where('review_status', 'edited')->count(),
-            'flagged'  => $translations->where('review_status', 'flagged')->count(),
-        ];
-
-        $recent = $translations->take(5)->map(function ($t) {
+        $recent = $translations->map(function ($t) {
             $name = $t->translation_type === 'document'
                 ? ($t->original_filename ?? 'Untitled Document')
                 : \Illuminate\Support\Str::limit($t->source_text ?? '', 45);
@@ -151,13 +133,13 @@ class ProfileController extends Controller
         })->values();
 
         return [
-            'total'           => $total,
-            'documents'       => $documents,
-            'text'            => $total - $documents,
-            'thisMonth'       => $thisMonth,
-            'languagePairs'   => $pairs,
-            'avgQuality'      => $avgQuality,
-            'statusBreakdown' => $statusBreakdown,
+            'total'           => $summary['total'],
+            'documents'       => $summary['documents'],
+            'text'            => $summary['total'] - $summary['documents'],
+            'thisMonth'       => $summary['thisMonth'],
+            'languagePairs'   => $summary['languagePairs'],
+            'avgQuality'      => $summary['avgQuality'],
+            'statusBreakdown' => $summary['statusBreakdown'],
             'recent'          => $recent,
         ];
     }

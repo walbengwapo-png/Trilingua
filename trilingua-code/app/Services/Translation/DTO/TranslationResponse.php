@@ -16,6 +16,9 @@ class TranslationResponse
         public readonly string $model = '',
         public readonly array $tokenUsage = [],
         public readonly float $executionTimeMs = 0.0,
+        public readonly string $mode = 'balanced',
+        public readonly ?float $qualityScore = null,
+        public readonly array $qualityIssues = [],
         public readonly array $warnings = [],
         public readonly bool $success = true,
         public readonly string $errorMessage = '',
@@ -32,6 +35,11 @@ class TranslationResponse
             model: $data['model'] ?? '',
             tokenUsage: $data['token_usage'] ?? [],
             executionTimeMs: $data['execution_time_ms'] ?? 0.0,
+            mode: $data['mode'] ?? 'balanced',
+            qualityScore: isset($data['quality_score'])
+                ? (float) $data['quality_score']
+                : null,
+            qualityIssues: $data['quality_issues'] ?? [],
             warnings: $data['warnings'] ?? [],
             success: $data['success'] ?? true,
             errorMessage: $data['error_message'] ?? $data['error'] ?? '',
@@ -49,6 +57,9 @@ class TranslationResponse
             'model' => $this->model,
             'token_usage' => $this->tokenUsage,
             'execution_time_ms' => $this->executionTimeMs,
+            'mode' => $this->mode,
+            'quality_score' => $this->qualityScore,
+            'quality_issues' => $this->qualityIssues,
             'warnings' => $this->warnings,
             'success' => $this->success,
         ];

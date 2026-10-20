@@ -41,9 +41,9 @@
             linkText="Review stack" />
 
         <x-kpi-card
-            label="Avg Quality Score"
+            label="Avg AI Review Signal"
             :value="$avgQuality === null ? '—' : $avgQuality"
-            sub="AI-scored translations, 0–100"
+            sub="Automated AI review signal, not human-verified"
             size="sm" />
 
         <x-kpi-card

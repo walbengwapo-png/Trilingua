@@ -72,6 +72,22 @@ class DocumentContext:
     blocks_batched: int = 0          # Blocks in batches
     blocks_passthrough: int = 0      # Untranslatable blocks skipped
     concurrency_level: int = 1       # Concurrency used (from env var)
+    scheduler_wait_ms: float = 0.0   # Time batches waited for a shared GPT-OSS slot
+    scheduler_batches: int = 0
+    scheduler_slots: int = 0
+    echo_retries: int = 0
+    semantic_fallbacks: int = 0
+    batch_fallbacks: int = 0
+
+    # Phase 5: GPT-OSS unit-pipeline execution metrics. provider_request_ms is
+    # wall time actually spent inside provider HTTP requests; provider_retries
+    # counts units re-requested individually after a malformed-but-successful
+    # batch; provider_failures is a category -> count breakdown (e.g.
+    # rate_limit, timeout, connection, provider_error, invalid_response,
+    # per_unit_failure, empty_response).
+    provider_request_ms: float = 0.0
+    provider_retries: int = 0
+    provider_failures: dict[str, int] = field(default_factory=dict)
 
     # Phase D Tier 3a: Deferred reviews for batched AI quality review
     # List of (block_index, source_text, translated_text, context_hint, document_type)
@@ -81,6 +97,12 @@ class DocumentContext:
     # Mapping block_index -> {"score": float, "issues": [QualityIssue-dict]}.
     # Surfaced from the AI quality reviewer's in-memory output — never recomputed.
     block_quality: dict[int, dict] = field(default_factory=dict)
+
+    # Unit-pipeline layout preflight findings (ADVISORY ONLY — never applied).
+    # Mapping block_index -> JSON-safe LayoutResult snapshot. Populated by
+    # batch_translate_units and surfaced in the regeneration sidecar; the
+    # reconstruction/layout validator remains the actual layout authority.
+    block_layout: dict[int, dict] = field(default_factory=dict)
 
     # ── Warnings ──────────────────────────────────────────────────────────
     warnings: list[str] = field(default_factory=list)
@@ -108,6 +130,7 @@ class DocumentContext:
     # ── Provider Info ─────────────────────────────────────────────────────
     provider_name: str = ""
     provider_model: str = ""
+    providers_used: dict[str, dict] = field(default_factory=dict)
 
     # ── Internal State ────────────────────────────────────────────────────
     _start_time: float = 0.0       # time.perf_counter() at creation
@@ -165,7 +188,7 @@ class DocumentContext:
             return {f: i.get(f, "") for f in fields}
         return {f: getattr(i, f, "") for f in fields}
 
-    def record_block_quality(self, block_index: int, score: float,
+    def record_block_quality(self, block_index: int, score: float | None,
                              issues: list) -> None:
         """Record the AI quality review for a single block.
 
@@ -175,13 +198,41 @@ class DocumentContext:
 
         Args:
             block_index: Index of the block within the document.
-            score: Quality score (0.0 - 100.0).
+            score: Quality score (0.0 - 100.0), or None if unavailable.
             issues: Iterable of QualityIssue dataclasses (or dicts).
         """
         with self._llm_lock:
             self.block_quality[block_index] = {
-                "score": round(float(score), 1),
+                "score": round(float(score), 1) if score is not None else None,
                 "issues": [self._issue_to_dict(i) for i in (issues or [])],
+            }
+
+    @staticmethod
+    def _safe_font_size(value) -> float | None:
+        """Normalize a LayoutResult final_font to a JSON-safe number or None."""
+        try:
+            return round(float(value), 2)
+        except (TypeError, ValueError):
+            return None
+
+    def record_block_layout(self, block_index: int, layout_result) -> None:
+        """Record an advisory layout preflight finding for one block.
+
+        Thread-safe — uses the same internal lock as record_block_quality.
+        The snapshot is JSON-safe so it can be written into the regeneration
+        sidecar. It stays advisory: nothing in the pipeline ever applies these
+        values to fonts, positions or geometry.
+        """
+        with self._llm_lock:
+            self.block_layout[block_index] = {
+                "fit_actions": list(getattr(layout_result, "fit_actions", ()) or ()),
+                "collision_state": str(getattr(layout_result, "collision_state", "none")),
+                "clipping_state": str(getattr(layout_result, "clipping_state", "none")),
+                "final_geometry": [float(v) for v in
+                                   (getattr(layout_result, "final_geometry", ()) or ())],
+                "final_font_size": self._safe_font_size(
+                    getattr(layout_result, "final_font", None)
+                ),
             }
 
     def record_llm_call(self, elapsed_ms: float) -> None:
@@ -198,9 +249,44 @@ class DocumentContext:
             phase = self._current_phase or "uncategorized"
             self.phase_llm_calls[phase] = self.phase_llm_calls.get(phase, 0) + 1
 
+    # ── Phase 5: GPT-OSS unit-pipeline execution metrics (thread-safe) ──────
+    def add_provider_request(self, elapsed_ms: float) -> None:
+        """Accumulate wall time spent inside provider HTTP requests.
+
+        Thread-safe so parallel GPT-OSS scheduler slots never drop metrics.
+        """
+        with self._llm_lock:
+            self.provider_request_ms += elapsed_ms
+
+    def add_provider_retries(self, count: int = 1) -> None:
+        """Record units re-requested individually after a malformed batch."""
+        with self._llm_lock:
+            self.provider_retries += count
+
+    def add_provider_failures(self, category: str, count: int = 1) -> None:
+        """Record provider failures under a category (rate_limit, timeout,
+        connection, provider_error, invalid_response, per_unit_failure,
+        empty_response)."""
+        with self._llm_lock:
+            self.provider_failures[category] = \
+                self.provider_failures.get(category, 0) + count
+
+    def record_provider(self, provider: str, model: str) -> None:
+        """Record the provider/model that actually returned a translation."""
+        if not provider:
+            return
+        with self._llm_lock:
+            entry = self.providers_used.setdefault(
+                provider, {"model": model, "calls": 0}
+            )
+            entry["model"] = model or entry.get("model", "")
+            entry["calls"] += 1
+
     def add_warning(self, warning: str) -> None:
         """Add a warning message."""
-        self.warnings.append(warning)
+        with self._llm_lock:
+            if warning not in self.warnings:
+                self.warnings.append(warning)
 
     def add_chunk_stat(self, translated: bool = True, retranslated: bool = False) -> None:
         """Record a chunk translation statistic."""
@@ -235,6 +321,16 @@ class DocumentContext:
             "blocks_batched": self.blocks_batched,
             "blocks_passthrough": self.blocks_passthrough,
             "concurrency_level": self.concurrency_level,
+            "scheduler_wait_ms": round(self.scheduler_wait_ms, 1),
+            "scheduler_batches": self.scheduler_batches,
+            "scheduler_slots": self.scheduler_slots,
+            "echo_retries": self.echo_retries,
+            "semantic_fallbacks": self.semantic_fallbacks,
+            "batch_fallbacks": self.batch_fallbacks,
+            "layout_preflight_blocks": len(self.block_layout),
+            "provider_request_ms": round(self.provider_request_ms, 1),
+            "provider_retries": self.provider_retries,
+            "provider_failures": dict(self.provider_failures),
             # PROFILING
             "llm_calls": self.llm_calls,
             "llm_total_time_ms": round(self.llm_total_time_ms, 1),
@@ -248,6 +344,7 @@ class DocumentContext:
             "total_time_ms": round(self.total_time_ms, 1),
             "provider": self.provider_name,
             "model": self.provider_model,
+            "providers_used": dict(self.providers_used),
         }
 
     def log_summary(self) -> None:
@@ -271,6 +368,8 @@ class DocumentContext:
         print(f"  Batched:        {s['blocks_batched']} blocks in batches")
         print(f"  Passthrough:    {s['blocks_passthrough']} blocks skipped")
         print(f"  Concurrency:    {s['concurrency_level']}")
+        print(f"  Slot wait:      {s['scheduler_wait_ms']:.0f}ms")
+        print(f"  Recovery:       {s['echo_retries']} echoes / {s['semantic_fallbacks']} fallbacks")
         print(f"  Warnings:       {s['warnings']}")
         # PROFILING
         print(f"  LLM Calls:      {s['llm_calls']} ({s['llm_total_time_ms']:.0f}ms)")

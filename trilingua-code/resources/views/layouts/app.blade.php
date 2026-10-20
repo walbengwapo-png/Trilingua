@@ -14,6 +14,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body class="app-body">
+<a class="skip-link" href="#main-content">Skip to main content</a>
 
 {{-- Global toast container --}}
 <div id="toast-container" aria-live="polite" aria-atomic="false" style="position:fixed;top:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none"></div>
@@ -100,7 +101,7 @@
         {{-- Navigation --}}
         <nav class="nav" aria-label="Main navigation">
 
-            <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+            <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" @if(request()->routeIs('dashboard')) aria-current="page" @endif>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
                     <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
@@ -108,7 +109,7 @@
                 Dashboard
             </a>
 
-            <a href="{{ route('translate') }}" class="nav-link {{ request()->routeIs('translate*') ? 'active' : '' }}">
+            <a href="{{ route('translate') }}" class="nav-link {{ request()->routeIs('translate*') ? 'active' : '' }}" @if(request()->routeIs('translate*')) aria-current="page" @endif>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/>
                     <path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/>
@@ -116,7 +117,7 @@
                 New Translation
             </a>
 
-            <a href="{{ route('documents') }}" class="nav-link {{ request()->routeIs('documents*') ? 'active' : '' }}">
+            <a href="{{ route('documents') }}" class="nav-link {{ request()->routeIs('documents*') ? 'active' : '' }}" @if(request()->routeIs('documents*')) aria-current="page" @endif>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                     <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
@@ -125,7 +126,7 @@
                 My Documents
             </a>
 
-            <a href="{{ route('history') }}" class="nav-link {{ request()->routeIs('history*') ? 'active' : '' }}">
+            <a href="{{ route('history') }}" class="nav-link {{ request()->routeIs('history*') ? 'active' : '' }}" @if(request()->routeIs('history*')) aria-current="page" @endif>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <circle cx="12" cy="12" r="10"/>
                     <polyline points="12 6 12 12 16 14"/>
@@ -134,15 +135,20 @@
             </a>
 
             @if(auth()->user()->is_admin)
-            <a href="{{ route('admin.dashboard') }}" class="nav-link {{ request()->routeIs('admin.*') ? 'active' : '' }}">
+            <div class="nav-section-label">Admin</div>
+            <a href="{{ route('admin.dashboard') }}" class="nav-link {{ request()->routeIs('admin.dashboard*') ? 'active' : '' }}" @if(request()->routeIs('admin.dashboard*')) aria-current="page" @endif>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
                 </svg>
-                Admin
+                Overview
             </a>
+            <a href="{{ route('admin.review.index') }}" class="nav-link nav-link--sub {{ request()->routeIs('admin.review.*') ? 'active' : '' }}" @if(request()->routeIs('admin.review.*')) aria-current="page" @endif>Review Queue</a>
+            <a href="{{ route('admin.jobs.index') }}" class="nav-link nav-link--sub {{ request()->routeIs('admin.jobs.*') ? 'active' : '' }}" @if(request()->routeIs('admin.jobs.*')) aria-current="page" @endif>Jobs</a>
+            <a href="{{ route('admin.users.index') }}" class="nav-link nav-link--sub {{ request()->routeIs('admin.users.*') ? 'active' : '' }}" @if(request()->routeIs('admin.users.*')) aria-current="page" @endif>Users</a>
+            <a href="{{ route('admin.audit') }}" class="nav-link nav-link--sub {{ request()->routeIs('admin.audit') ? 'active' : '' }}" @if(request()->routeIs('admin.audit')) aria-current="page" @endif>Audit</a>
             @endif
 
-            <a href="{{ route('settings') }}" class="nav-link {{ request()->routeIs('settings*') ? 'active' : '' }}">
+            <a href="{{ route('settings') }}" class="nav-link {{ request()->routeIs('settings*') ? 'active' : '' }}" @if(request()->routeIs('settings*')) aria-current="page" @endif>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <circle cx="12" cy="12" r="3"/>
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -161,7 +167,7 @@
             </div>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
-                <button type="submit" class="sidebar-logout" title="Sign out">
+                <button type="submit" class="sidebar-logout" title="Sign out" aria-label="Sign out">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                         <polyline points="16 17 21 12 16 7"/>
@@ -173,7 +179,7 @@
     </aside>
 
     {{-- Main content --}}
-    <main class="main">
+    <main class="main" id="main-content" tabindex="-1">
         <header class="header">
             <div class="header-left">
                 <h1 class="title">@yield('title', 'Dashboard')</h1>
@@ -294,6 +300,7 @@ window.showErrorModal = function (title, message) {
     if (titleEl)  titleEl.textContent = title || 'Something went wrong';
     if (msgEl)    msgEl.textContent   = message || '';
 
+    var previousFocus = document.activeElement;
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 
@@ -308,8 +315,16 @@ window.showErrorModal = function (title, message) {
         if (close)   close.onclick   = null;
         if (overlay) overlay.onclick = null;
         document.removeEventListener('keydown', onKey);
+        if (previousFocus && previousFocus.isConnected) previousFocus.focus();
     }
-    function onKey(e) { if (e.key === 'Escape') dismiss(); }
+    function onKey(e) {
+        if (e.key === 'Escape') dismiss();
+        if (e.key !== 'Tab') return;
+        var controls = [close, ok].filter(function (control) { return control && !control.disabled; });
+        if (!controls.length) return;
+        if (e.shiftKey && document.activeElement === controls[0]) { e.preventDefault(); controls[controls.length - 1].focus(); }
+        else if (!e.shiftKey && document.activeElement === controls[controls.length - 1]) { e.preventDefault(); controls[0].focus(); }
+    }
 
     if (ok)      ok.onclick      = dismiss;
     if (close)   close.onclick   = dismiss;
@@ -323,14 +338,27 @@ window.showErrorModal = function (title, message) {
     var sidebar   = document.getElementById('sidebar');
     var overlay   = document.getElementById('sidebar-overlay');
     var hamburger = document.getElementById('hamburger-btn');
+    var main      = document.getElementById('main-content');
 
-    function openSidebar()  { sidebar.classList.add('open'); overlay.classList.add('active'); hamburger.setAttribute('aria-expanded','true'); document.body.style.overflow='hidden'; }
-    function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('active'); hamburger.setAttribute('aria-expanded','false'); document.body.style.overflow=''; }
+    function syncSidebar() {
+        if (window.innerWidth > 768 && sidebar.classList.contains('open')) {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+            hamburger.setAttribute('aria-expanded', 'false');
+            document.body.style.overflow = '';
+        }
+        sidebar.inert = window.innerWidth <= 768 && !sidebar.classList.contains('open');
+        main.inert = window.innerWidth <= 768 && sidebar.classList.contains('open');
+    }
+    function openSidebar()  { sidebar.classList.add('open'); overlay.classList.add('active'); hamburger.setAttribute('aria-expanded','true'); document.body.style.overflow='hidden'; syncSidebar(); sidebar.querySelector('.nav-link').focus(); }
+    function closeSidebar(restoreFocus) { sidebar.classList.remove('open'); overlay.classList.remove('active'); hamburger.setAttribute('aria-expanded','false'); document.body.style.overflow=''; syncSidebar(); if (restoreFocus && window.innerWidth <= 768) hamburger.focus(); }
 
     if (hamburger) hamburger.addEventListener('click', openSidebar);
-    if (overlay)   overlay.addEventListener('click', closeSidebar);
-    if (sidebar)   sidebar.querySelectorAll('.nav-link').forEach(function(l){ l.addEventListener('click', function(){ if(window.innerWidth<=768) closeSidebar(); }); });
-    document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeSidebar(); });
+    if (overlay)   overlay.addEventListener('click', function () { closeSidebar(true); });
+    if (sidebar)   sidebar.querySelectorAll('.nav-link').forEach(function(l){ l.addEventListener('click', function(){ if(window.innerWidth<=768) closeSidebar(false); }); });
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape' && sidebar.classList.contains('open')) closeSidebar(true); });
+    window.addEventListener('resize', syncSidebar);
+    syncSidebar();
 })();
 
 // ── Header user dropdown ──────────────────────────────────────────────────
@@ -339,14 +367,15 @@ window.showErrorModal = function (title, message) {
     var dropdown = document.getElementById('header-dropdown');
     if (!btn || !dropdown) return;
 
-    function open()  { dropdown.classList.add('open'); btn.setAttribute('aria-expanded','true'); dropdown.setAttribute('aria-hidden','false'); }
-    function close() { dropdown.classList.remove('open'); btn.setAttribute('aria-expanded','false'); dropdown.setAttribute('aria-hidden','true'); }
+    function open()  { dropdown.inert = false; dropdown.classList.add('open'); btn.setAttribute('aria-expanded','true'); dropdown.setAttribute('aria-hidden','false'); }
+    function close() { dropdown.classList.remove('open'); btn.setAttribute('aria-expanded','false'); dropdown.setAttribute('aria-hidden','true'); dropdown.inert = true; }
     function toggle(){ dropdown.classList.contains('open') ? close() : open(); }
 
     btn.addEventListener('click', toggle);
     btn.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); } });
     document.addEventListener('click', function(e){ if(!btn.contains(e.target)&&!dropdown.contains(e.target)) close(); });
     document.addEventListener('keydown', function(e){ if(e.key==='Escape') close(); });
+    dropdown.inert = true;
 })();
 
 // ── Notification bell ─────────────────────────────────────────────────────
@@ -369,6 +398,7 @@ window.showErrorModal = function (title, message) {
     }
 
     function open() {
+        panel.inert = false;
         panel.classList.add('open');
         btn.setAttribute('aria-expanded','true');
         panel.setAttribute('aria-hidden','false');
@@ -378,8 +408,10 @@ window.showErrorModal = function (title, message) {
         panel.classList.remove('open');
         btn.setAttribute('aria-expanded','false');
         panel.setAttribute('aria-hidden','true');
+        panel.inert = true;
     }
     function toggle() { panel.classList.contains('open') ? close() : open(); }
+    panel.inert = true;
 
     function load() {
         list.innerHTML = '<div class="notif-dropdown__empty">Loading…</div>';

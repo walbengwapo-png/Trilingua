@@ -1,38 +1,29 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 return new class extends Migration
 {
     /**
-     * Create the default administrator on installations that do not yet have it.
+     * No automatic administrator provisioning.
      *
-     * The existence check makes this safe for databases where the account was
-     * created previously through DatabaseSeeder or manually.
+     * A known default credential (admin@example.com / password) previously
+     * granted access to every admin review, user, job, and audit route on fresh
+     * installs. First-admin creation is an explicit one-time operator action via
+     * `php artisan admin:create {email}` — never a fixed, committed credential,
+     * and never an environment secret read inside a migration (migrations must
+     * be deterministic and safe to replay).
+     *
+     * This migration is intentionally a no-op. Accounts that already exist from
+     * prior provisioning are NOT deleted here; deployment remediation for those
+     * is covered by the runbook (inventory → rotate/disable uncertain accounts
+     * → verify only the operator-authorized admin can log in).
      */
     public function up(): void
     {
-        if (DB::table('users')->where('email', 'admin@example.com')->exists()) {
-            return;
-        }
-
-        DB::table('users')->insert([
-            'name' => 'Admin User',
-            'email' => 'admin@example.com',
-            'password' => Hash::make('password'),
-            // PostgreSQL requires a boolean value rather than Laravel's
-            // integer-bound boolean parameter; `true` is valid in SQLite too.
-            'is_admin' => DB::raw('true'),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        // Intentionally left in place (no-op). See class docblock.
     }
 
-    /**
-     * Do not remove an account that may have since been used or customized.
-     */
     public function down(): void
     {
         // Intentionally left in place.

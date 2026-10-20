@@ -33,8 +33,8 @@
                 <span class="review-detail__meta-value">{{ $record->target_language ?? '—' }}</span>
             </div>
             <div class="review-detail__meta-item">
-                <span class="review-detail__meta-label">Quality Score</span>
-                <span class="review-detail__meta-value">{{ $record->quality_score === null ? '—' : $record->quality_score }}</span>
+                <span class="review-detail__meta-label">AI Review Signal</span>
+                <span class="review-detail__meta-value" title="Automated AI review signal — not human-verified accuracy.">({{ $record->quality_score === null ? 'Unavailable' : $record->quality_score }})</span>
             </div>
             @if ($record->flag_reason)
             <div class="review-detail__meta-item">

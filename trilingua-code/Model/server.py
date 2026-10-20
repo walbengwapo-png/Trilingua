@@ -2,14 +2,14 @@
 TriLingua Translation Microservice v5
 ======================================
 Modular AI Engine using provider pattern.
-Supports: GPT-OSS (Ollama Cloud), Mistral AI
+Supports: GPT-OSS (Ollama Cloud), Google Gemini
 Document formats: .docx .pdf .txt .md .rtf .odt .csv .pptx .xlsx
 
 Architecture:
   Laravel → server.py → pipeline/ → providers/ → AI API
 
 Usage:
-    set MISTRAL_API_KEY=your_key_here    # For Mistral fallback
+    set GEMINI_API_KEY=your_key_here     # For Gemini analysis and review
     set OLLAMA_CLOUD_URL=http://localhost:11434/api/chat  # For GPT-OSS
     python Model/server.py
 
@@ -19,10 +19,17 @@ The server listens on http://127.0.0.1:5000 by default.
 import sys
 import os
 import hmac
+import logging
 import time as _time
 
 # Ensure the Model directory is on the path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Must run before importing the pipeline: its progress logs include Unicode
+# language arrows and source text.  On a legacy Windows console, an ordinary
+# print would otherwise raise UnicodeEncodeError and abort the request.
+from config.runtime import configure_process_output
+configure_process_output()
 
 import base64
 import shutil
@@ -61,51 +68,68 @@ print("Initializing TriLingua v5 (Provider-based AI Engine)...")
 
 from dto.requests import LANGUAGES
 from dto.responses import TranslationResponse, HealthResponse
-from providers.mistral import MistralProvider
+from providers.gemini import GeminiProvider
 from providers.gptoss import GPTOSSProvider
+from providers.nllb import NLLBProvider
+from providers.fallback import FallbackTranslationProvider
 from providers.future_openai import OpenAIProvider
-from providers.future_gemini import GeminiProvider
 from providers.future_deepseek import DeepSeekProvider
-from ai.mistral_provider import MistralAnalysisProvider
+from ai.gemini_provider import GeminiAnalysisProvider
 from ai.ollama_provider import OllamaAnalysisProvider
 from ai.fallback_provider import FallbackAnalysisProvider
 from pipeline.translation_pipeline import TranslationPipeline
 from pipeline.document_pipeline import DocumentPipeline
+from config.processing_modes import VALID_MODES, get_mode
+from validators.ai_quality_reviewer import AIQualityReviewer
+from validators.translation_validator import PDFValidationError
 
 # ---------------------------------------------------------------------------
 # Provider selection
 # ---------------------------------------------------------------------------
 TRANSLATION_PROVIDER = os.environ.get("TRANSLATION_PROVIDER", "gptoss").lower()
+TRANSLATION_FALLBACK_PROVIDER = os.environ.get(
+    "TRANSLATION_FALLBACK_PROVIDER", "gemini"
+).lower()
+ANALYSIS_PROVIDER = os.environ.get("ANALYSIS_PROVIDER", "gemini").lower()
+ANALYSIS_FALLBACK_PROVIDER = os.environ.get(
+    "ANALYSIS_FALLBACK_PROVIDER", "ollama"
+).lower()
 
 # Initialize all available providers
-_mistral_provider = MistralProvider()
+_gemini_provider = GeminiProvider()
 _gptoss_provider = GPTOSSProvider()
+_nllb_provider = NLLBProvider()
 
-# Analysis provider (separate from translation providers)
-# Prefers Mistral AI for document analysis.
-# Fail over immediately on API errors, then allow Mistral to recover after
-# cooldown. Do not spend three near-identical requests on a rate-limited key.
-_analysis_provider = (
-    FallbackAnalysisProvider(
-        MistralAnalysisProvider(max_attempts=1), OllamaAnalysisProvider()
+# Analysis and quality review use a separate Gemini -> Ollama chain.
+_ollama_analysis_provider = OllamaAnalysisProvider()
+if ANALYSIS_PROVIDER == "gemini" and os.environ.get("GEMINI_API_KEY"):
+    _gemini_analysis_provider = GeminiAnalysisProvider(
+        max_attempts=max(1, int(os.environ.get("GEMINI_ANALYSIS_MAX_ATTEMPTS", "3")))
     )
-    if os.environ.get("MISTRAL_API_KEY")
-    else OllamaAnalysisProvider()
-)
+    _analysis_provider = FallbackAnalysisProvider(
+        _gemini_analysis_provider,
+        _ollama_analysis_provider
+        if ANALYSIS_FALLBACK_PROVIDER == "ollama" else None,
+    )
+else:
+    if ANALYSIS_PROVIDER == "gemini":
+        print("  WARNING: GEMINI_API_KEY is absent; using Ollama for analysis/review")
+    elif ANALYSIS_PROVIDER != "ollama":
+        print(f"  WARNING: Unknown analysis provider '{ANALYSIS_PROVIDER}'; using Ollama")
+    _analysis_provider = _ollama_analysis_provider
 
 # Future providers (stubs — raise NotImplementedError when instantiated)
 # Uncomment imports above and these lines when ready to implement:
 # _openai_provider = OpenAIProvider()
-# _gemini_provider = GeminiProvider()
 # _deepseek_provider = DeepSeekProvider()
 
 # Map provider names to instances (active + future stubs)
 AVAILABLE_PROVIDERS = {
-    "mistral": _mistral_provider,
+    "gemini": _gemini_provider,
     "gptoss": _gptoss_provider,
+    "nllb": _nllb_provider,
     # Future: uncomment when provider is implemented
     # "openai": _openai_provider,
-    # "gemini": _gemini_provider,
     # "deepseek": _deepseek_provider,
 }
 
@@ -117,9 +141,22 @@ def _get_active_provider():
         return _gptoss_provider
     return provider
 
+def _get_pipeline_provider(primary):
+    """Build the configured primary -> fallback translation route."""
+    fallback = AVAILABLE_PROVIDERS.get(TRANSLATION_FALLBACK_PROVIDER)
+    if fallback is None:
+        print(f"  WARNING: Unknown translation fallback "
+              f"'{TRANSLATION_FALLBACK_PROVIDER}'; fallback disabled")
+        return primary
+    if fallback.name == primary.name:
+        return primary
+    return FallbackTranslationProvider(primary, fallback)
+
 # Create pipelines with the active provider
 _active_provider = _get_active_provider()
-_translation_pipeline = TranslationPipeline(_active_provider)
+_pipeline_provider = _get_pipeline_provider(_active_provider)
+_translation_pipeline = TranslationPipeline(_pipeline_provider)
+_text_quality_reviewer = AIQualityReviewer(_analysis_provider)
 _document_pipeline = DocumentPipeline(
     _translation_pipeline,
     ai_analysis_provider=_analysis_provider,
@@ -141,10 +178,20 @@ print(f"  [OK] Available providers: {list(AVAILABLE_PROVIDERS.keys())}")
 # this guard stops the pile-up from happening in the first place.
 #
 #   TRANSLATION_THREADPOOL_SIZE  default 8  (matches provider HTTP pool sizes)
-#   TRANSLATION_MAX_CONCURRENT   default 3  (simultaneous pipeline executions)
+#   TRANSLATION_MAX_CONCURRENT   default 1 for Gemini, 3 otherwise
 # ---------------------------------------------------------------------------
 _THREADPOOL_SIZE = max(1, int(os.environ.get("TRANSLATION_THREADPOOL_SIZE", "8")))
-_MAX_CONCURRENT = max(1, int(os.environ.get("TRANSLATION_MAX_CONCURRENT", "3")))
+_DEFAULT_MAX_CONCURRENT = str(_pipeline_provider.max_concurrency or 3)
+_REQUESTED_MAX_CONCURRENT = max(
+    1, int(os.environ.get("TRANSLATION_MAX_CONCURRENT", _DEFAULT_MAX_CONCURRENT))
+)
+_MAX_CONCURRENT = min(
+    _REQUESTED_MAX_CONCURRENT,
+    _pipeline_provider.max_concurrency or _REQUESTED_MAX_CONCURRENT,
+)
+_BUSY_WAIT_SECONDS = max(
+    0, int(os.environ.get("TRANSLATION_BUSY_WAIT_SECONDS", "30"))
+)
 
 _translation_semaphore = threading.BoundedSemaphore(_MAX_CONCURRENT)
 
@@ -152,14 +199,15 @@ _translation_semaphore = threading.BoundedSemaphore(_MAX_CONCURRENT)
 def _run_pipeline_guarded(pipeline_call):
     """Run a pipeline call under the concurrency guard.
 
-    Rejects immediately (503) instead of queueing so a flood of simultaneous
-    translations cannot pile up behind the provider rate limit.
+    Wait briefly for a slot instead of rejecting ordinary text requests while
+    a document is between provider calls. Outbound GPT-OSS calls have their
+    own global serialization and pacing guard.
     """
-    if not _translation_semaphore.acquire(blocking=False):
+    if not _translation_semaphore.acquire(timeout=_BUSY_WAIT_SECONDS):
         raise HTTPException(
             503,
-            f"Server is busy processing other translations "
-            f"(max {_MAX_CONCURRENT} concurrent). Please retry in a moment.",
+            f"Server busy: translation queue is still full after waiting "
+            f"{_BUSY_WAIT_SECONDS} seconds (max {_MAX_CONCURRENT} active).",
         )
     try:
         return pipeline_call()
@@ -271,6 +319,11 @@ async def _runtime_lifespan(app: FastAPI):
     and a burst of document jobs could spawn unbounded concurrent executions.
     """
     try:
+        _enforce_startup_token_policy()
+    except RuntimeError as exc:
+        print(f"  [FATAL] {exc}")
+        raise
+    try:
         from anyio.to_thread import current_default_thread_limiter
         current_default_thread_limiter().total_tokens = _THREADPOOL_SIZE
         print(f"  [OK] Threadpool limited to {_THREADPOOL_SIZE} worker threads")
@@ -282,24 +335,83 @@ async def _runtime_lifespan(app: FastAPI):
 app = FastAPI(title="TriLingua Translation Service v5", lifespan=_runtime_lifespan)
 
 
+@app.middleware("http")
+async def log_translation_request(request, call_next):
+    if not request.url.path.startswith("/translate/"):
+        return await call_next(request)
+
+    logger = logging.getLogger("uvicorn.error")
+    started = _time.monotonic()
+    logger.info("Translation request received: %s %s", request.method, request.url.path)
+    try:
+        response = await call_next(request)
+    except Exception:
+        logger.exception("Translation request failed: %s %s", request.method, request.url.path)
+        raise
+    logger.info(
+        "Translation response: %s %s status=%s elapsed=%.1fs",
+        request.method, request.url.path, response.status_code, _time.monotonic() - started,
+    )
+    return response
+
+
 # ---------------------------------------------------------------------------
 # Service-token enforcement
 # The server binds to loopback, but any local process could otherwise call it.
-# When MODEL_SERVICE_TOKEN is set, the mutation/translation endpoints require
-# the X-Service-Token header to match it (compared in constant time). Laravel
-# sends this header automatically when translation.python_service.token is set;
-# the /health endpoint stays open for monitoring.
+# The mutation/translation endpoints require the X-Service-Token header to match
+# PYTHON_SERVICE_TOKEN (compared in constant time). Laravel sends this header
+# automatically from translation.python_service.token, which reads the same
+# variable name. The /health endpoint stays open for monitoring.
 # ---------------------------------------------------------------------------
+# Deployments that terminate TLS and network-isolate this service still must not
+# serve it unauthenticated, so a production process refuses to start without a
+# token. Local and test runs keep the opt-in behaviour they have always had.
+PRODUCTION_ENV_NAMES = {"production", "prod"}
+
+
+def _app_env() -> str:
+    return os.environ.get("APP_ENV", "").strip().lower()
+
+
+def _is_production() -> bool:
+    return _app_env() in PRODUCTION_ENV_NAMES
+
+
 def _model_service_token() -> str:
-    return os.environ.get("MODEL_SERVICE_TOKEN", "")
+    """The shared secret Laravel presents as X-Service-Token.
+
+    PYTHON_SERVICE_TOKEN is the canonical name. MODEL_SERVICE_TOKEN is read
+    only as a fallback so existing local .env files keep working; it must never
+    be the name used to configure a deployment.
+    """
+    canonical = os.environ.get("PYTHON_SERVICE_TOKEN", "").strip()
+    if canonical or _is_production():
+        return canonical
+    return os.environ.get("MODEL_SERVICE_TOKEN", "").strip()
+
+
+def _enforce_startup_token_policy() -> None:
+    """Refuse to serve production traffic without a shared secret."""
+    if not _is_production():
+        return
+    if not _model_service_token():
+        raise RuntimeError(
+            "PYTHON_SERVICE_TOKEN must be set to a non-empty value when "
+            "APP_ENV=production. Refusing to start the translation service "
+            "without service-token enforcement."
+        )
 
 
 async def require_service_token(
     x_service_token: str = Header(default=None),
 ):
     configured = _model_service_token()
-    # Token auth is opt-in: if no token is configured, server behaves as before.
     if not configured:
+        # Production cannot reach this branch: startup already refused to boot.
+        # Reaching it anyway means the process lost its configuration, and
+        # serving unauthenticated would silently expose every endpoint.
+        if _is_production():
+            raise HTTPException(503, "Service token is not configured.")
         return
     if not x_service_token or not hmac.compare_digest(x_service_token, configured):
         raise HTTPException(401, "Invalid or missing service token.")
@@ -336,12 +448,19 @@ def _content_type_for_ext(ext: str) -> str:
 @app.get("/health")
 def health():
     provider = _get_active_provider()
-    provider_health = provider.health()
+    # Report the operational provider chain, not only Gemini's model-metadata
+    # endpoint. After a translation opens the fallback circuit this exposes
+    # the degraded state and cooldown while still confirming GPT-OSS health.
+    provider_health = _pipeline_provider.health()
     return {
         "status": "ok",
-        "engine": f"provider:{provider.name}",
-        "model": provider.model_name,
+        "engine": f"provider:{_pipeline_provider.name}",
+        "model": _pipeline_provider.model_name,
         "active_provider": provider.name,
+        "fallback_provider": (
+            TRANSLATION_FALLBACK_PROVIDER
+            if TRANSLATION_FALLBACK_PROVIDER != provider.name else None
+        ),
         "available_providers": list(AVAILABLE_PROVIDERS.keys()),
         "languages": list(LANGUAGES.keys()),
         "formats": sorted(SUPPORTED_EXTENSIONS),
@@ -375,6 +494,7 @@ class TextRequest(BaseModel):
     text: str
     source_lang: str
     target_lang: str
+    mode: str = "balanced"
 
 
 @app.post("/translate/text", dependencies=[Depends(require_service_token)])
@@ -387,29 +507,111 @@ def translate_text(req: TextRequest):
         raise HTTPException(400, f"Unknown target language: {req.target_lang}")
     if req.source_lang == req.target_lang:
         raise HTTPException(400, "Source and target languages must differ.")
+    requested_mode = req.mode.lower().strip()
+    if requested_mode not in VALID_MODES:
+        raise HTTPException(400, f"Unknown processing mode: {req.mode}")
+    resolved_mode = "balanced" if requested_mode == "auto" else requested_mode
+    processing_mode = get_mode(resolved_mode)
 
     try:
         from dto.requests import TranslationRequest as TR
-        request = TR(
-            text=req.text.strip(),
-            source_lang=req.source_lang,
-            target_lang=req.target_lang,
-        )
-        result = _run_pipeline_guarded(lambda: _translation_pipeline.translate(request))
+        source_text = req.text
+
+        def _translate_and_review():
+            request = TR(
+                text=source_text,
+                source_lang=req.source_lang,
+                target_lang=req.target_lang,
+            )
+            initial = _translation_pipeline.translate(request)
+            if not initial.success:
+                return initial, None, []
+
+            warnings = list(initial.warnings)
+            if not processing_mode.ai_quality_review:
+                return initial, None, warnings
+
+            try:
+                review = _text_quality_reviewer.review(
+                    source=source_text,
+                    translation=initial.translated_text,
+                )
+            except Exception as error:
+                warnings.append(
+                    f"Quality review was unavailable; returning the valid "
+                    f"translation ({type(error).__name__})."
+                )
+                return initial, None, warnings
+            if "unavailable" in review.summary.lower():
+                warnings.append("Quality review was unavailable; returning the valid translation.")
+                return initial, None, warnings
+
+            if not _text_quality_reviewer.needs_retranslation(review):
+                return initial, review, warnings
+
+            repaired = _translation_pipeline._translate_with_echo_guard(
+                text=source_text,
+                source_lang=req.source_lang,
+                target_lang=req.target_lang,
+                block_type="paragraph",
+                context_hint=f"Previous quality issues: {review.summary}",
+                document_type="",
+            )
+            if not repaired.success or not repaired.translated_text:
+                warnings.append(
+                    "Quality repair failed; retained the initial translation."
+                )
+                return initial, review, warnings
+
+            try:
+                final_review = _text_quality_reviewer.review(
+                    source=source_text,
+                    translation=repaired.translated_text,
+                )
+            except Exception as error:
+                final_review = None
+                warnings.append(
+                    f"Final quality review was unavailable after repair "
+                    f"({type(error).__name__})."
+                )
+            _translation_pipeline.store_translation(
+                source_text, req.source_lang, req.target_lang,
+                repaired.translated_text,
+            )
+            warnings.extend(repaired.warnings)
+            return repaired, final_review, warnings
+
+        result, review, warnings = _run_pipeline_guarded(_translate_and_review)
 
         if not result.success:
             raise HTTPException(500, result.error_message)
+
+        if review is not None and not review.available:
+            warnings.append("AI quality review unavailable; translation was retained without a review score.")
 
         return {
             "translated": result.translated_text,
             "provider": result.provider,
             "model": result.model,
+            "mode": resolved_mode,
+            "quality_score": round(review.score, 1) if review and review.score is not None else None,
+            "quality_review_available": bool(review and review.available),
+            "quality_issues": [
+                {
+                    "severity": issue.severity,
+                    "category": issue.category,
+                    "description": issue.description,
+                }
+                for issue in (review.issues if review else [])
+            ],
+            "warnings": warnings,
             "token_usage": result.token_usage,
             "execution_time_ms": result.execution_time_ms,
         }
     except HTTPException:
         raise
     except Exception as e:
+        logging.getLogger("uvicorn.error").exception("Text translation failed")
         raise HTTPException(500, str(e))
 
 
@@ -507,7 +709,11 @@ def translate_document(
             "download_filename": download_name,
             "mime_type": _content_type_for_ext(out_ext),
             "metrics": result.metrics or {},
+            "validation": getattr(result, "output_validation", {}) or {},
         }
+    except PDFValidationError as e:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise HTTPException(422, {"message": str(e), "validation": e.report})
     except HTTPException:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         raise
@@ -588,6 +794,9 @@ def translate_document_regenerate(
             media_type="application/octet-stream",
             headers={"Content-Disposition": f"attachment; filename={download_name}"}
         )
+    except PDFValidationError as e:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise HTTPException(422, {"message": str(e), "validation": e.report})
     except HTTPException:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         raise
@@ -634,15 +843,10 @@ def clear_cache():
 if __name__ == "__main__":
     port = int(os.environ.get("TRANSLATION_PORT", 5000))
 
-    # File-watch reload is a developer convenience only. Default it to "auto":
-    # enabled for local/development APP_ENV, disabled everywhere else
-    # (staging/production). Force it explicitly with MODEL_SERVICE_RELOAD=true|false.
-    _reload_setting = os.environ.get("MODEL_SERVICE_RELOAD", "auto").lower()
-    if _reload_setting == "auto":
-        _app_env = os.environ.get("APP_ENV", "local").lower()
-        _reload = _app_env in ("local", "development", "dev", "testing")
-    else:
-        _reload = _reload_setting == "true"
+    # A file watcher can terminate an in-flight document whenever a test file
+    # or source file changes. Translation is a long-running service, so reload
+    # is opt-in even in local development.
+    _reload = os.environ.get("MODEL_SERVICE_RELOAD", "false").lower() == "true"
 
     uvicorn.run(
         "server:app",

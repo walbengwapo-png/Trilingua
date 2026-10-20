@@ -78,7 +78,7 @@
             </div>
             <div class="profile-stat">
                 <span class="profile-stat__value">{{ $translationSummary['avgQuality'] ?? '—' }}</span>
-                <span class="profile-stat__label">Avg quality</span>
+                <span class="profile-stat__label">Avg AI quality signal</span>
             </div>
         </div>
 

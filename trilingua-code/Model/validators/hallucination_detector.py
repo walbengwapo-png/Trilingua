@@ -9,6 +9,45 @@ Contains NO provider-specific code.
 
 import re
 
+from document.protected_spans import missing_protected_spans
+
+
+def translation_content_issue(source, translation):
+    """Provider-neutral acceptance check, including short labels and repairs.
+
+    This detects content contamination and literal loss, not linguistic accuracy.
+    """
+    if not translation or not translation.strip():
+        return "Empty translation"
+    patterns = (
+        r"^(?:could|can|would)\s+you\b.*\b(?:provide|send|give)\b.*\b(?:text|paragraph|passage)\b",
+        r"^(?:please\s+)?(?:provide|send)\b.*\b(?:text|paragraph|passage)\b.*\btranslat",
+        r"^(?:sorry|i(?:'m| am) sorry|paumanhin|pasensya)\b.*\b(?:text|teksto|talata|paragraph|isalin|hubar)",
+        r"^(?:maaari|pwede|puwede|mahimo)\b.*\b(?:ibigay|ihatag|ipadala)\b.*\b(?:teksto|talata|text)\b",
+        r"^(?:here\s+(?:is|are)\s+(?:the|your)\s+translat|translation\s*:)",
+        r"\b(?:no text (?:was )?(?:provided|received)|wala akong natanggap na teksto)\b",
+    )
+    for pattern in patterns:
+        if re.search(pattern, translation.strip(), re.I | re.S) and not re.search(
+                pattern, source.strip(), re.I | re.S):
+            return "Conversational response instead of document content"
+    missing = missing_protected_spans(source, translation)
+    if missing:
+        return "Missing protected content: " + ", ".join(missing[:5])
+    return ""
+
+
+def validate_translated_blocks(source_blocks, translated_blocks):
+    """Reject block loss and invalid final content before reconstructing."""
+    if len(source_blocks) != len(translated_blocks):
+        raise ValueError("Translation changed the document block count")
+    for index, (source, target) in enumerate(zip(source_blocks, translated_blocks)):
+        if target.get("passthrough"):
+            continue
+        issue = translation_content_issue(source.get("text", ""), target.get("text", ""))
+        if issue:
+            raise ValueError(f"Invalid translation for block {index}: {issue}")
+
 
 def sanitize_translation(translated_text, original_text):
     """

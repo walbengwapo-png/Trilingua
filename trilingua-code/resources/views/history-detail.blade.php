@@ -3,7 +3,7 @@
 @section('title', 'Translation Details')
 
 @section('styles')
-    @vite(['resources/css/views/history.css', 'resources/css/views/admin.css'])
+    @vite(['resources/css/views/history.css', 'resources/css/views/admin.css', 'resources/js/document-preview.js'])
 @endsection
 
 @section('content')
@@ -91,17 +91,15 @@
                             </span>
                         </div>
                         @endif
-                        @if ($score !== null)
                         <div class="detail-modal__meta-item">
-                            <span class="detail-modal__meta-label">Quality Score</span>
-                            <span class="detail-modal__meta-value">
+                            <span class="detail-modal__meta-label">AI Review Signal</span>
+                            <span class="detail-modal__meta-value" title="Automated AI review signal — not human-verified accuracy.">
                                 <span class="quality-score">
                                     <span class="quality-score__dot quality-score__dot--{{ $scoreLevel }}" aria-hidden="true"></span>
-                                    {{ $score }}
+                                    {{ $score === null ? 'Unavailable' : $score }}
                                 </span>
                             </span>
                         </div>
-                        @endif
                         <div class="detail-modal__meta-item">
                             <span class="detail-modal__meta-label">Priority</span>
                             <span class="detail-modal__meta-value">{{ !empty($record['is_priority']) ? 'Requested' : 'Not requested' }}</span>
@@ -170,10 +168,12 @@
                             @if ($translatedUrl && $translatedExt === 'pdf')
                                 <iframe class="review-pane__frame" src="{{ \App\Support\PreviewUrl::pdf($translatedUrl) }}" title="Translated document"></iframe>
                             @elseif ($translatedUrl)
-                                <div class="review-pane__placeholder">
-                                    <p>Live preview is only available for <strong>PDF</strong> files.</p>
-                                    <p>This translated file is a <strong>{{ strtoupper($translatedExt ?: 'document') }}</strong>.</p>
-                                    <a class="review-btn" href="{{ $translatedUrl }}" target="_blank" rel="noopener">Download translated document</a>
+                                <div class="converter-host"
+                                     data-ext="{{ $translatedExt }}"
+                                     data-file-url="{{ $translatedUrl }}"
+                                     data-blocks-mode="published"
+                                     data-blocks-url="{{ route('history.blocks', $record['id']) }}">
+                                    <div class="review-pane__loading">Loading preview…</div>
                                 </div>
                             @else
                                 <div class="review-pane__placeholder">
@@ -185,10 +185,12 @@
                             @if ($originalUrl && $originalExt === 'pdf')
                                 <iframe class="review-pane__frame" src="{{ \App\Support\PreviewUrl::pdf($originalUrl) }}" title="Original document"></iframe>
                             @elseif ($originalUrl)
-                                <div class="review-pane__placeholder">
-                                    <p>Live preview is only available for <strong>PDF</strong> files.</p>
-                                    <p>This original file is a <strong>{{ strtoupper($originalExt ?: 'document') }}</strong>.</p>
-                                    <a class="review-btn" href="{{ $originalUrl }}" target="_blank" rel="noopener">Download original document</a>
+                                <div class="converter-host"
+                                     data-ext="{{ $originalExt }}"
+                                     data-file-url="{{ $originalUrl }}"
+                                     data-blocks-url="{{ route('history.blocks', $record['id']) }}"
+                                     data-blocks-field="source_text">
+                                    <div class="review-pane__loading">Loading preview…</div>
                                 </div>
                             @else
                                 <div class="review-pane__placeholder">
@@ -242,6 +244,23 @@
     }
 
     // ── Tab switching (Translated / Original) ──────────────────────────────
+    var mountedPanels = {};
+    function tryMountPanel(name) {
+        if (mountedPanels[name]) return true;
+        var host = document.querySelector('#detail-panel-' + name + ' .converter-host');
+        if (host && window.documentPreview) {
+            mountedPanels[name] = true;
+            window.documentPreview.mount(host);
+            return true;
+        }
+        return false;
+    }
+    function mountPanel(name) {
+        if (!tryMountPanel(name)) {
+            document.addEventListener('DOMContentLoaded', function () { tryMountPanel(name); });
+        }
+    }
+
     var tabs = document.querySelectorAll('#detail-tabs .review-pane__tab');
     tabs.forEach(function (tab) {
         tab.addEventListener('click', function () {
@@ -251,8 +270,11 @@
             document.querySelectorAll('.preview-panel').forEach(function (p) {
                 p.style.display = (p.id === 'detail-panel-' + name) ? '' : 'none';
             });
+            mountPanel(name);
         });
     });
+
+    mountPanel('translated');
 
     // ── Copy text ──────────────────────────────────────────────────────────
     var copyBtn = document.getElementById('detail-copy-btn');

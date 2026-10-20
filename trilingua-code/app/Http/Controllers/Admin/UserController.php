@@ -83,16 +83,18 @@ class UserController extends Controller
      */
     public function show(User $user): View
     {
-        $records = TranslationHistory::where('user_id', $user->id)
-            ->orderBy('created_at', 'desc')
-            ->limit(200)
-            ->get()
-            ->toArray();
+        // Aggregated over every row the user owns. The previous version ran
+        // TranslationStatsService::compute() over the newest 200 rows, so the
+        // panel's document/text/word totals froze at 200 while the count beside
+        // them (counted separately) kept climbing.
+        $summary = TranslationStatsService::forUser($user->id);
 
-        $stats = TranslationStatsService::compute($records);
+        // This view renders the core card set (wordsTranslated, totalDocs,
+        // translationsThisMonth), so it takes that slice of the envelope.
+        $stats = $summary['core'];
 
         $totals = [
-            'total'    => TranslationHistory::where('user_id', $user->id)->count(),
+            'total'    => $summary['totals']['total'],
             'pending'  => TranslationHistory::where('user_id', $user->id)->where('review_status', 'pending')->count(),
             'verified' => TranslationHistory::where('user_id', $user->id)->where('review_status', 'verified')->count(),
             'edited'   => TranslationHistory::where('user_id', $user->id)->where('review_status', 'edited')->count(),

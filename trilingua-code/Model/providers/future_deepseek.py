@@ -31,7 +31,8 @@ class DeepSeekProvider(TranslationProvider):
     def model_name(self) -> str:
         return "deepseek-chat"
 
-    def translate(self, text, source_lang, target_lang, block_type="paragraph", context_hint=""):
+    def translate(self, text, source_lang, target_lang, block_type="paragraph",
+                  context_hint="", document_type="", response_format="text"):
         raise NotImplementedError
 
     def health(self):

@@ -17,6 +17,15 @@ class StorageService
      */
     public const SIGNED_URL_EXPIRY_SECONDS = 604800;
 
+    /**
+     * Three-state presence check. missing = confirmed gone (safe to treat as a
+     * terminal failure); unknown = could not verify (temporary outage) and must
+     * never be reported as a confirmed failure.
+     */
+    public const PRESENCE_PRESENT = 'present';
+    public const PRESENCE_MISSING = 'missing';
+    public const PRESENCE_UNKNOWN = 'unknown';
+
     public function __construct(private Client $guzzle) {}
 
     /**
@@ -168,13 +177,71 @@ class StorageService
 
     /**
      * Delete a file from any backend.
+     *
+     * A missing object is already success on every backend. Real failures —
+     * including a local unlink that could not remove the file — throw so the
+     * caller's retry path (storage_cleanup_outbox) stays observable instead
+     * of silently claiming success.
      */
+    /**
+     * Backend-specific readability evidence for a stored object.
+     *
+     * Returns PRESENCE_PRESENT only when the object is proven readable, PRESENCE_MISSING
+     * only when the backend reports NoSuchKey (or no local file), and
+     * PRESENCE_UNKNOWN when a network/authorisation outage prevents a verdict. Callers
+     * must treat unknown as uncertainty, never as a confirmed failure.
+     */
+    public function exists(string $backend, string $storagePath): string
+    {
+        if ($backend === self::BACKEND_LOCAL) {
+            $path = $this->localAbsolutePath($storagePath);
+            if (!is_file($path)) {
+                return self::PRESENCE_MISSING;
+            }
+            return is_readable($path) ? self::PRESENCE_PRESENT : self::PRESENCE_UNKNOWN;
+        }
+
+        $supabaseUrl    = config('services.supabase.url');
+        $serviceRoleKey = config('services.supabase.service_role_key');
+        $bucket         = config('services.supabase.bucket');
+
+        // The metadata endpoint returns a structured error. A bare HEAD 404
+        // cannot distinguish a missing object from a missing bucket or tenant.
+        $url = rtrim($supabaseUrl, '/') . '/storage/v1/object/info/' . $bucket . '/' . $storagePath;
+
+        try {
+            $response = $this->guzzle->get($url, [
+                'http_errors' => false,
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $serviceRoleKey,
+                ],
+            ]);
+        } catch (ConnectException $e) {
+            return self::PRESENCE_UNKNOWN;
+        } catch (\Throwable $e) {
+            return self::PRESENCE_UNKNOWN;
+        }
+
+        $status = $response->getStatusCode();
+
+        if ($status >= 200 && $status < 300) {
+            return self::PRESENCE_PRESENT;
+        }
+        $errorCode = json_decode((string) $response->getBody(), true)['code'] ?? null;
+        if ($status === 404 && $errorCode === 'NoSuchKey') {
+            return self::PRESENCE_MISSING;
+        }
+
+        return self::PRESENCE_UNKNOWN;
+    }
     public function delete(string $backend, string $storagePath): void
     {
         if ($backend === self::BACKEND_LOCAL) {
             $path = $this->localAbsolutePath($storagePath);
-            if (file_exists($path)) {
-                @unlink($path);
+            if (is_dir($path) || file_exists($path)) {
+                if (! @unlink($path)) {
+                    throw new \RuntimeException('Local storage delete failed for: ' . $storagePath);
+                }
             }
             return;
         }

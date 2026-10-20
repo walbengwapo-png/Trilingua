@@ -178,10 +178,9 @@ class AuthCssRenderingTest extends TestCase
     /**
      * Test that compiled CSS file contains custom styles
      *
-     * This test checks that the compiled guest.css file includes the custom
-     * CSS classes defined for authentication pages (not just Tailwind utilities).
+     * The welcome page owns .guest-center; check its compiled CSS entry.
      *
-     * After the fix, guest-specific styles should be in guest.css.
+     * This catches missing custom styles after the Vite build.
      */
     public function test_compiled_css_file_contains_custom_styles(): void
     {
@@ -195,42 +194,34 @@ class AuthCssRenderingTest extends TestCase
         $manifestContent = file_get_contents($manifestPath);
         $manifest = json_decode($manifestContent, true);
 
-        // Find the guest.css file in the manifest
+        // Find the welcome-page stylesheet in the manifest.
         $cssFile = null;
         foreach ($manifest as $key => $entry) {
-            if (str_contains($key, 'resources/css/guest.css') && isset($entry['file'])) {
+            if ($key === 'resources/css/views/welcome.css' && isset($entry['file'])) {
                 $cssFile = $entry['file'];
                 break;
             }
         }
 
         if ($cssFile === null) {
-            $this->markTestSkipped('Guest CSS entry not found in manifest.');
+            $this->fail('Welcome CSS entry not found in Vite manifest.');
         }
 
         // Read the compiled CSS file directly from filesystem
         $compiledCssPath = public_path('build/'.$cssFile);
         $this->assertFileExists(
             $compiledCssPath,
-            "Compiled guest CSS file not found at: build/{$cssFile}"
+            "Compiled welcome CSS file not found at: build/{$cssFile}"
         );
 
         $cssContent = file_get_contents($compiledCssPath);
 
-        // CRITICAL ASSERTIONS: Verify the CSS contains custom classes for guest pages
-        // After the fix, these should be present in guest.css
+        // Verify the welcome-page entry contains its own custom classes.
         $this->assertStringContainsString(
             '.guest-center',
             $cssContent,
             'CSS file does not contain expected .guest-center class. '.
             'This indicates custom CSS is being stripped during compilation or not properly separated.'
-        );
-
-        $this->assertStringContainsString(
-            '.form-card',
-            $cssContent,
-            'CSS file does not contain expected .form-card class. '.
-            'Custom CSS classes are missing from the compiled output.'
         );
 
         $this->assertStringContainsString(
@@ -248,11 +239,20 @@ class AuthCssRenderingTest extends TestCase
         );
 
         $this->assertStringContainsString(
-            '.btn',
+            '.actions',
             $cssContent,
-            'CSS file does not contain expected .btn class. '.
+            'CSS file does not contain expected .actions class. '.
             'Custom CSS classes are missing from the compiled output.'
         );
+
+        $guestCss = $manifest['resources/css/layouts/guest.css']['file'] ?? null;
+        $this->assertNotNull($guestCss, 'Guest layout CSS entry not found in Vite manifest.');
+        $guestPath = public_path('build/'.$guestCss);
+        $this->assertFileExists($guestPath);
+        $guestContent = file_get_contents($guestPath);
+        $this->assertStringContainsString('.auth-container', $guestContent);
+        $this->assertStringContainsString('.auth-card', $guestContent);
+        $this->assertStringContainsString('.btn-auth', $guestContent);
     }
 
     /**

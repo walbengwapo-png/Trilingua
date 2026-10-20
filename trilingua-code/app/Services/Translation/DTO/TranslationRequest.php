@@ -14,6 +14,7 @@ class TranslationRequest
         public readonly string $text,
         public readonly string $sourceLang,
         public readonly string $targetLang,
+        public readonly string $mode = 'balanced',
     ) {}
 
     /**
@@ -25,6 +26,7 @@ class TranslationRequest
             'text' => $this->text,
             'source_lang' => $this->sourceLang,
             'target_lang' => $this->targetLang,
+            'mode' => $this->mode,
         ];
     }
 }

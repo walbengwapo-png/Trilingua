@@ -47,6 +47,7 @@ def _nullcontext():
 from dto.requests import TranslationRequest, LANGUAGES, CODE_TO_LANG
 from dto.responses import TranslationResponse, ChunkResult
 from providers.base import TranslationProvider
+from .fair_scheduler import document_batch_scheduler
 from document.chunker import ChunkSplitter
 from document.semantic_chunker import SemanticChunker, SemanticChunk
 from document.document_analyzer import DocumentProfile
@@ -54,23 +55,32 @@ from memory.terminology import ContextBuffer
 from memory.glossary import GlossaryStore
 from memory.document_memory import DocumentMemory
 from cache.sqlite_cache import SQLiteTranslationCache
-from validators.hallucination_detector import sanitize_translation, detect_hallucination
+from validators.hallucination_detector import (sanitize_translation, detect_hallucination,
+                                               translation_content_issue)
 from validators.translation_validator import BLEUReporter
 from validators.ai_quality_reviewer import AIQualityReviewer
 from config.processing_modes import ProcessingMode
 from .phase_profiler import llm_call_profile
+from .unit_adapters import (build_provider_hint, to_unit_list, unit_to_block,
+                            translate_many_units)
+from dto.pipeline import TranslationUnitResult
+from document.map import build_document_map
+from document.protected_spans import restore_protected_spans
+from document.layout_preflight import preflight_units
 
 # OPTIMIZATION: Env var defaults (Tasks 1, 3, 4)
 # gptoss: 8 parallel calls (matches GPTOSSProvider._POOL_SIZE=8). Batching now
 # packs many blocks into few requests, so parallelism overlaps the remaining
-# long-block calls. Mistral is still capped at 4 (see executor setup below) —
-# it rate-limits harder on Ollama Cloud.
+# long-block calls. Gemini has its own conservative concurrency cap below to
+# reduce 429 responses on shared API quotas.
 # Tunable per environment via TRANSLATION_CONCURRENCY.
 _TRANSLATION_CONCURRENCY = int(os.environ.get("TRANSLATION_CONCURRENCY", "8"))
 _TRANSLATION_BATCH_ENABLED = os.environ.get("TRANSLATION_BATCH_ENABLED", "true").lower() == "true"
 _TRANSLATION_CACHE_ENABLED = os.environ.get("TRANSLATION_CACHE_ENABLED", "true").lower() == "true"
 _TRANSLATION_CACHE_TTL_DAYS = int(os.environ.get("TRANSLATION_CACHE_TTL_DAYS", "30"))
-_TRANSLATION_PROMPT_VERSION = os.environ.get("TRANSLATION_PROMPT_VERSION", "2026-09-balanced-v1")
+_TRANSLATION_PROMPT_VERSION = os.environ.get(
+    "TRANSLATION_PROMPT_VERSION", "2026-09-reference-gemini-v2"
+)
 
 # Phase D Tier 3a: Batched AI quality review (default on)
 # All translations complete first, then quality review runs
@@ -87,12 +97,37 @@ _TRANSLATION_MAX_TOKENS = int(os.environ.get("TRANSLATION_MAX_TOKENS", "400"))
 # OPTIMIZATION: Provider-aware batching limits (Tier 2b)
 # gptoss: 2000/8 -> 4000/12 (larger batches = fewer LLM calls per document;
 # the batch is one HTTP request, so bigger batches cut round-trip overhead).
-# mistral: 4000/12 -> 6000/16 (larger context window + relaxed rate limits).
+# gemini: 4000/12 -> 6000/16 (large context window and fewer round trips).
 _PROVIDER_BATCH_LIMITS = {
     "gptoss": {"max_batch_chars": 4000, "max_batch_items": 12},
-    "mistral": {"max_batch_chars": 6000, "max_batch_items": 16},
+    "gemini": {"max_batch_chars": 6000, "max_batch_items": 16},
 }
 _DEFAULT_BATCH_LIMITS = {"max_batch_chars": 1500, "max_batch_items": 5}
+
+# Provider-neutral unit pipeline (Phases 1-4). Default OFF: the legacy dict
+# pipeline remains the production path for one release. When enabled, the
+# extractor dict is converted once to TranslationUnit DTOs, the core
+# translation/review/layout-preflight stages run DTO-only, and results are
+# converted back to legacy-shaped dicts exactly once at the boundary.
+#
+# IMPORTANT: The flag is read ONCE at process startup (module import time).
+# Changing TRANSLATION_UNIT_PIPELINE requires a service restart; it is never
+# consulted per document at runtime. Tests that flip it must reload the module
+# (or monkeypatch unit_pipeline_enabled) to simulate a restart.
+_TRANSLATION_UNIT_PIPELINE = os.environ.get(
+    "TRANSLATION_UNIT_PIPELINE", "false"
+).lower() == "true"
+
+
+def unit_pipeline_enabled() -> bool:
+    """Return whether the DTO unit pipeline is enabled.
+
+    Captures ``TRANSLATION_UNIT_PIPELINE`` at process startup (module import);
+    it is not read from the environment at call time, so enabling it requires
+    a service restart. Tests may monkeypatch this function or reload the
+    module to exercise the unit route.
+    """
+    return _TRANSLATION_UNIT_PIPELINE
 
 
 # OPTIMIZATION: Passthrough filter for untranslatable blocks (Task 4)
@@ -112,6 +147,9 @@ def _is_passthrough_block(text: str) -> tuple[bool, str]:
     Blocks matching any criterion are passed through untranslated.
     """
     stripped = text.strip()
+
+    if stripped.lower() in {"english", "cebuano", "filipino", "tagalog"}:
+        return True, "language_name"
 
     # Under 2 characters — always skip (single char can't be meaningful alone)
     if len(stripped) < 2:
@@ -172,7 +210,7 @@ def _normalize_for_compare(text: str) -> str:
     return re.sub(r"\s+", " ", text.strip()).lower()
 
 
-def _has_translatable_content(text: str) -> bool:
+def _has_translatable_content(text: str, block_type: str = "") -> bool:
     """Best-effort: would this source text actually change when translated?
 
     Returns False (i.e. "nothing to flag") for content that legitimately
@@ -195,6 +233,13 @@ def _has_translatable_content(text: str) -> bool:
     tokens = stripped.split()
     if len(tokens) < 2:
         return False
+    # Generic multi-word Title Case headings are commonly echoed as if they
+    # were names. Give them one explicit retry. Two-token names and honorific
+    # forms such as "Dr. Santos" remain protected.
+    if block_type in {"heading", "header", "title"} and len(tokens) >= 3:
+        words = [re.sub(r"^[^A-Za-z]+|[^A-Za-z]+$", "", token) for token in tokens]
+        if words and all(word and word[0].isupper() for word in words):
+            return True
     # Require at least two tokens that start lowercase — real sentence words.
     # Title-Case proper nouns ("Dr. Santos", "National Gallery"), all-caps
     # acronyms ("AI"), and mixed proper-noun phrases contribute no lowercase-
@@ -203,17 +248,64 @@ def _has_translatable_content(text: str) -> bool:
     return len(content_tokens) >= 2
 
 
-def _is_echo_output(source_text: str, translated_text: str) -> bool:
+def _is_echo_output(source_text: str, translated_text: str,
+                    block_type: str = "", source_lang: str = "",
+                    target_lang: str = "") -> bool:
     """True when the 'translation' is effectively the source, unchanged.
 
     Only flagged for text with real translatable content; proper nouns,
     numbers, acronyms, and very short strings legitimately translate to
-    themselves and are excluded.
+    themselves and are excluded. When the source and target language are the
+    same, identity is the correct outcome and is never flagged.
     """
+    if source_lang and target_lang and source_lang.lower() == target_lang.lower():
+        return False
     return (
-        _has_translatable_content(source_text)
+        _has_translatable_content(source_text, block_type)
         and _normalize_for_compare(source_text) == _normalize_for_compare(translated_text)
     )
+
+
+def _partition_units_by_group(work_units, semantic_units) -> list:
+    """Partition work units into translate_many batches by semantic group.
+
+    Semantic chunks are used ONLY as context and batch boundaries — they never
+    combine multiple units into one output block. Units without a semantic
+    group form a trailing batch. Batches are ordered by their first member's
+    block index so the provider also receives the units in reading order.
+    ``semantic_units`` maps source_block_id -> SemanticChunk.
+    """
+    buckets: dict = {}
+    ungrouped = []
+    for unit in work_units:
+        chunk = semantic_units.get(unit.source_block_id)
+        if chunk is None:
+            ungrouped.append(unit)
+        else:
+            buckets.setdefault(id(chunk), []).append(unit)
+    keyed = [(min(u.source_block_id for u in group), group)
+             for group in buckets.values()]
+    if ungrouped:
+        keyed.append((min(u.source_block_id for u in ungrouped), ungrouped))
+    keyed.sort(key=lambda item: item[0])
+    return [group for _, group in keyed]
+
+
+# Mirrors the legacy worker's provider_outage markers. A provider-wide outage
+# (rate limit, timeout, connection, 5xx) must surface as a hard failure — never
+# as quietly-retained source text. Returns the message when the exception looks
+# systemic, otherwise "".
+_PROVIDER_OUTAGE_MARKERS = (
+    "rate limit", "timed out", "cannot connect",
+    "connection", "provider failed", "unavailable",
+)
+
+
+def _systemic_failure_message(exc: Exception) -> str:
+    message = str(exc)
+    if any(marker in message.lower() for marker in _PROVIDER_OUTAGE_MARKERS):
+        return message
+    return ""
 
 
 # OPTIMIZATION: Batch prompt builder (Task 3)
@@ -238,13 +330,16 @@ def _build_batch_prompt(entries: list[tuple[int, str]],
     for idx, text in entries:
         lines.append(f"[BLOCK_{idx}] {text}")
 
+    example = ", ".join(f'"{idx}": "..."' for idx, _ in entries[:3])
+
     limit = _PROVIDER_BATCH_LIMITS.get(provider_name, _DEFAULT_BATCH_LIMITS)
     max_chars = limit["max_batch_chars"]
 
     return (
         f"Translate each entry from {source_lang} to {target_lang} independently. "
-        f"Return ONLY valid JSON, no preamble, no explanation.\n"
-        f"{{\"1\": \"...\", \"2\": \"...\"}}\n\n"
+        f"Return ONLY one valid JSON object, no preamble, no explanation. "
+        f"Use every exact BLOCK number as a key and omit none.\n"
+        f"{{{example}}}\n\n"
         f"Entries (max {max_chars} chars total):\n" + "\n".join(lines)
     )
 
@@ -387,6 +482,17 @@ class TranslationPipeline:
         # OPTIMIZATION: Shared SQLite cache instance (Task 2)
         self._shared_cache: SQLiteTranslationCache | None = None
 
+    def concurrency_limit(self) -> int:
+        """Return the actual per-document provider worker limit."""
+        concurrency = max(1, _TRANSLATION_CONCURRENCY)
+        provider_cap = getattr(self.provider, "max_concurrency", None)
+        return min(concurrency, provider_cap) if provider_cap else concurrency
+
+    @staticmethod
+    def _record_provider_response(ctx, response: TranslationResponse) -> None:
+        if ctx and response:
+            ctx.record_provider(response.provider, response.model)
+
     def _get_cache(self) -> SQLiteTranslationCache | None:
         """Get or create the shared SQLite cache."""
         if self._shared_cache is None and _TRANSLATION_CACHE_ENABLED:
@@ -401,6 +507,19 @@ class TranslationPipeline:
                 namespace=namespace,
             )
         return self._shared_cache
+
+    def store_translation(self, source_text: str, source_lang: str,
+                          target_lang: str, translated_text: str,
+                          block_type: str = "paragraph") -> None:
+        """Replace the cached value with a reviewed/repaired translation."""
+        cache = self._get_cache()
+        if cache and translated_text and not translation_content_issue(source_text, translated_text) and not _is_echo_output(
+            source_text, translated_text, block_type, source_lang, target_lang
+        ):
+            cache.put(
+                source_text, target_lang, self.provider.name, translated_text,
+                source_lang=source_lang,
+            )
 
     def _translate_with_echo_guard(self, *, text: str, source_lang: str,
                                    target_lang: str, block_type: str,
@@ -418,16 +537,41 @@ class TranslationPipeline:
         etc.) is excluded by _is_echo_output, so correct identity translations
         are never retried or failed.
         """
-        response = self.provider.translate(
-            text=text,
-            source_lang=source_lang,
-            target_lang=target_lang,
-            block_type=block_type,
-            context_hint=context_hint,
-            document_type=document_type,
-        )
+        # Reject invalid content on every provider route, including repairs.
+        # Existing echo handling below remains separate: identity can be valid.
+        def checked_call(call, hint):
+            result = call(text=text, source_lang=source_lang, target_lang=target_lang,
+                          block_type=block_type, context_hint=hint,
+                          document_type=document_type)
+            self._record_provider_response(ctx, result)
+            if result.success:
+                issue = translation_content_issue(text, result.translated_text)
+                if issue:
+                    result.success = False
+                    result.error_message = issue
+                    result.translated_text = ""
+            return result
 
-        if response.success and _is_echo_output(text, response.translated_text):
+        response = checked_call(self.provider.translate, context_hint)
+        if not response.success and response.error_message.startswith(
+                ("Conversational response", "Missing protected content", "Empty translation")):
+            hint = (f"{context_hint}\nPrevious output was invalid: {response.error_message}. "
+                    "Return only the translated document text; preserve every URL, number, "
+                    "and placeholder exactly. Do not ask for input or add commentary.")
+            with llm_call_profile(ctx) if ctx else _nullcontext():
+                response = checked_call(self.provider.translate, hint)
+            if not response.success:
+                secondary = getattr(self.provider, "translate_secondary", None)
+                if callable(secondary):
+                    with llm_call_profile(ctx) if ctx else _nullcontext():
+                        response = checked_call(secondary, hint)
+            return response
+
+        if response.success and _is_echo_output(
+            text, response.translated_text, block_type, source_lang, target_lang
+        ):
+            if ctx:
+                ctx.echo_retries += 1
             with llm_call_profile(ctx) if ctx else _nullcontext():
                 retry_hint = (
                     f"{context_hint}\n"
@@ -442,23 +586,71 @@ class TranslationPipeline:
                     context_hint=retry_hint,
                     document_type=document_type,
                 )
-            if retry_response.success and not _is_echo_output(text, retry_response.translated_text):
+            self._record_provider_response(ctx, retry_response)
+            if retry_response.success and translation_content_issue(text, retry_response.translated_text):
+                retry_response.success = False
+                retry_response.error_message = translation_content_issue(text, retry_response.translated_text)
+                retry_response.translated_text = ""
+            if retry_response.success and not _is_echo_output(
+                text, retry_response.translated_text, block_type,
+                source_lang, target_lang,
+            ):
                 response = retry_response
             elif retry_response.success:
-                # Still echoing — treat as a real failure, never cache it.
-                print(f"  ⚠️  Provider echoed source unchanged after retry ({target_lang})")
-                return TranslationResponse(
-                    translated_text=text,
-                    provider=self.provider.name,
-                    model=self.provider.model_name,
-                    token_usage={},
-                    execution_time_ms=0.0,
-                    success=False,
-                    error_message=(
-                        f"Translation failed: the provider returned the source "
-                        f"text unchanged for target language {target_lang}."
-                    ),
-                )
+                if block_type in {"heading", "header", "title"}:
+                    retry_response.warnings.append(
+                        "Title Case heading remained unchanged after retry; "
+                        "quality review will determine whether it is a proper name."
+                    )
+                    response = retry_response
+                else:
+                    # An echo is semantically invalid but does not mean the
+                    # primary is unavailable. Route this one block directly
+                    # to the serialized backup without opening its cooldown.
+                    secondary = getattr(self.provider, "translate_secondary", None)
+                    if callable(secondary):
+                        if ctx:
+                            ctx.semantic_fallbacks += 1
+                        with llm_call_profile(ctx) if ctx else _nullcontext():
+                            fallback_response = secondary(
+                                text=text, source_lang=source_lang,
+                                target_lang=target_lang, block_type=block_type,
+                                context_hint=retry_hint, document_type=document_type,
+                            )
+                        self._record_provider_response(ctx, fallback_response)
+                        if fallback_response.success and translation_content_issue(text, fallback_response.translated_text):
+                            fallback_response.success = False
+                            fallback_response.error_message = translation_content_issue(text, fallback_response.translated_text)
+                            fallback_response.translated_text = ""
+                        if (fallback_response.success and not _is_echo_output(
+                                text, fallback_response.translated_text, block_type,
+                                source_lang, target_lang)):
+                            fallback_response.warnings.append(
+                                "Primary echoed source after retry; semantic fallback succeeded."
+                            )
+                            return fallback_response
+                        if not fallback_response.success:
+                            return fallback_response
+
+                    # Both the primary (after retry) and the semantic fallback
+                    # returned the source unchanged. For a handful of blocks this
+                    # is normally correct — the text is already in the target
+                    # language or contains nothing translatable. Keep the source
+                    # and surface a warning instead of failing the whole doc.
+                    warning = (
+                        "Source echoed unchanged after primary retry and semantic "
+                        f"fallback; kept as-is (likely already in {target_lang} "
+                        "or untranslatable). Verify output."
+                    )
+                    print(f"  ⚠️  Provider echoed source unchanged after retry; "
+                          f"keeping text as-is ({target_lang})")
+                    if ctx:
+                        ctx.add_warning(warning)
+                    return TranslationResponse(
+                        translated_text=text, provider=self.provider.name,
+                        model=self.provider.model_name, token_usage={},
+                        execution_time_ms=0.0, success=True, warnings=[warning],
+                    )
             else:
                 return retry_response
 
@@ -496,11 +688,12 @@ class TranslationPipeline:
                 request.text, request.target_lang, self.provider.name,
                 source_lang=request.source_lang,
             )
-            if cached is not None:
+            if cached is not None and not translation_content_issue(request.text, cached):
                 return TranslationResponse(
                     translated_text=cached,
-                    provider=self.provider.name,
+                    provider="cache",
                     model=self.provider.model_name,
+                    warnings=["Translation served from the configured provider-chain cache."],
                     execution_time_ms=(time.time() - start_time) * 1000,
                 )
 
@@ -525,12 +718,10 @@ class TranslationPipeline:
         # 4. Push to context buffer on success (for fast mode) and persist
         if response.success and response.translated_text:
             context_buffer.push(response.translated_text)
-            if cache:
-                cache.put(
-                    request.text, request.target_lang,
-                    self.provider.name, response.translated_text,
-                    source_lang=request.source_lang,
-                )
+            self.store_translation(
+                request.text, request.source_lang, request.target_lang,
+                response.translated_text, request.block_type,
+            )
 
         # 5. Update execution time
         response.execution_time_ms = (time.time() - start_time) * 1000
@@ -607,7 +798,7 @@ class TranslationPipeline:
                     chunk_text, target_lang, self.provider.name,
                     source_lang=source_lang,
                 )
-                if cached is not None:
+                if cached is not None and not translation_content_issue(text, cached):
                     translated_chunks.append((chunk_pid, cached))
                     continue
 
@@ -651,7 +842,8 @@ class TranslationPipeline:
                         if retry_response.success:
                             translated = retry_response.translated_text
                             retranslated_count += 1
-                            warnings.append(f"Chunk {i + 1} retranslated (score: {review.score:.1f})")
+                            score_note = f"score: {review.score:.1f}" if review.score is not None else "review unavailable"
+                            warnings.append(f"Chunk {i + 1} retranslated ({score_note})")
 
                 # Cache the result
                 if translation_cache:
@@ -740,16 +932,15 @@ class TranslationPipeline:
         total = len(blocks)
 
         # Phase 3: Semantic chunking
-        if mode and mode.semantic_chunking and semantic_chunker and document_profile:
+        semantic_groups: list[list[int]] | None = None
+        if (mode and mode.semantic_chunking and semantic_chunker
+                and document_profile and document_profile.is_reliable()):
             semantic_chunks = semantic_chunker.chunk_blocks(blocks, document_profile)
-            block_chunks: dict[int, list[tuple[str, list[int]]]] = {}
+            semantic_groups = []
             for chunk in semantic_chunks:
-                for bi in chunk.block_indices:
-                    if bi not in block_chunks:
-                        block_chunks[bi] = []
-                    block_chunks[bi].append((chunk.text, chunk.block_indices))
-        else:
-            block_chunks = None
+                ordered = list(dict.fromkeys(chunk.block_indices))
+                if ordered:
+                    semantic_groups.append(ordered)
 
         # OPTIMIZATION: Phase 1 — Pre-filter passthrough blocks (Task 4)
         passthrough_indices: set[int] = set()
@@ -774,7 +965,7 @@ class TranslationPipeline:
                     text, target_lang, self.provider.name,
                     source_lang=source_lang,
                 )
-                if cached is not None:
+                if cached is not None and not translation_content_issue(text, cached):
                     cached_results[i] = cached
                     if ctx:
                         ctx.blocks_cached += 1
@@ -801,39 +992,61 @@ class TranslationPipeline:
         batched_indices: set[int] = set()
 
         if _TRANSLATION_BATCH_ENABLED:
-            # Provider-aware batch limits
-            provider_limits = _PROVIDER_BATCH_LIMITS.get(
-                self.provider.name, _DEFAULT_BATCH_LIMITS
-            )
+            # The chain advertises limits that every provider in it can honor.
+            provider_limits = getattr(self.provider, "batch_limits", None)
+            if not provider_limits:
+                batch_provider_name = getattr(
+                    self.provider, "batch_provider_name", self.provider.name
+                )
+                provider_limits = _PROVIDER_BATCH_LIMITS.get(
+                    batch_provider_name, _DEFAULT_BATCH_LIMITS
+                )
             max_batch_items = provider_limits["max_batch_items"]
             max_batch_chars = provider_limits["max_batch_chars"]
-            # Leave headroom for the JSON wrapper + "max N chars" instruction
-            content_budget = int(max_batch_chars * 0.9)
+            content_budget = max_batch_chars
 
-            current_batch: list[tuple[int, str, str]] = []
-            current_batch_chars = 0
-            for item in work_items:
-                idx, text, btype = item
-                char_count = len(text)
-                within_batch_size = len(current_batch) < max_batch_items
-                within_char_limit = current_batch_chars + char_count <= content_budget
-                fits_alone = char_count <= content_budget
+            by_index = {item[0]: item for item in work_items}
+            packing_groups: list[list[tuple[int, str, str]]] = []
+            grouped: set[int] = set()
+            if semantic_groups:
+                for group in semantic_groups:
+                    items = [by_index[idx] for idx in group
+                             if idx in by_index and idx not in grouped]
+                    if items:
+                        packing_groups.append(items)
+                        grouped.update(item[0] for item in items)
+                ungrouped = [item for item in work_items if item[0] not in grouped]
+                if ungrouped:
+                    packing_groups.append(ungrouped)
+            else:
+                packing_groups = [work_items]
 
-                if within_batch_size and within_char_limit:
-                    current_batch.append(item)
-                    current_batch_chars += char_count
-                else:
-                    if current_batch:
+            # Never merge across a semantic boundary. Each boundary may still
+            # split into smaller ID-keyed batches when provider limits require.
+            for group_items in packing_groups:
+                current_batch: list[tuple[int, str, str]] = []
+                current_batch_chars = 0
+                for item in group_items:
+                    _, text, _ = item
+                    char_count = len(text)
+                    within_batch_size = len(current_batch) < max_batch_items
+                    within_char_limit = current_batch_chars + char_count <= content_budget
+                    fits_alone = char_count <= content_budget
+
+                    if within_batch_size and within_char_limit:
+                        current_batch.append(item)
+                        current_batch_chars += char_count
+                    else:
+                        if current_batch:
+                            batches.append(current_batch)
+                        current_batch = [item]
+                        current_batch_chars = char_count
+                    if not fits_alone and len(current_batch) == 1:
                         batches.append(current_batch)
-                    current_batch = [item]
-                    current_batch_chars = char_count
-                if not fits_alone and current_batch and len(current_batch) == 1:
-                    # Oversized block — flush it as its own single-item batch
+                        current_batch = []
+                        current_batch_chars = 0
+                if current_batch:
                     batches.append(current_batch)
-                    current_batch = []
-                    current_batch_chars = 0
-            if current_batch:
-                batches.append(current_batch)
 
             # Track which indices are in batches
             for batch in batches:
@@ -848,43 +1061,67 @@ class TranslationPipeline:
         if ctx:
             ctx.blocks_batched = len(batched_indices)
 
-        # OPTIMIZATION: Phase 5 — Concurrent translation with ThreadPoolExecutor (Task 1)
-        # FIX: Using ThreadPoolExecutor instead of asyncio to avoid nested event loop
-        # errors in FastAPI's async context. The provider calls are synchronous HTTP
-        # requests (blocking I/O), so thread pools are the correct mechanism.
+        # Document GPT-OSS batches use one process-wide fair scheduler.  This
+        # prevents two simultaneous documents from each creating an eight-call
+        # burst while retaining the fast eight-slot total capacity.
         results: dict[int, str] = {}
 
         # Phase D Tier 3a: When batched review is enabled, skip per-chunk review in workers
         worker_quality_reviewer = None if _TRANSLATION_BATCHED_REVIEW else quality_reviewer
+        failed_blocks: dict[int, str] = {}
+        systemic_failure = False
 
         if work_items:
-            concurrency = max(1, _TRANSLATION_CONCURRENCY)
-            if self.provider.name == "mistral":
-                concurrency = min(concurrency, 4)
-            with ThreadPoolExecutor(max_workers=concurrency) as executor:
-                # Submit all batch work items to the thread pool
+            primary_name = getattr(self.provider, "provider_names", (self.provider.name,))[0]
+            use_fair_scheduler = primary_name == "gptoss"
+            executor = None if use_fair_scheduler else ThreadPoolExecutor(
+                max_workers=self.concurrency_limit()
+            )
+            try:
                 future_to_batch = {}
                 for batch_idx, batch in enumerate(batches):
-                    future = executor.submit(
-                        self._translate_batch_worker,
-                        batch, source_lang, target_lang,
-                        document_memory, translation_cache, worker_quality_reviewer,
+                    callback = lambda batch=batch: self._translate_batch_worker(
+                        batch, source_lang, target_lang, document_memory,
+                        translation_cache, worker_quality_reviewer,
                         document_profile, context_preamble, ctx,
+                    )
+                    future = (
+                        document_batch_scheduler.submit(str(id(ctx)), callback)
+                        if use_fair_scheduler else executor.submit(callback)
                     )
                     future_to_batch[future] = batch_idx
 
-                # Collect results as they complete
                 for future in as_completed(future_to_batch):
                     try:
                         batch_results = future.result()
                         results.update(batch_results)
-                        # Update ctx.blocks_translated count
                         if ctx:
                             ctx.blocks_translated += len(batch_results)
+                            if use_fair_scheduler:
+                                ctx.scheduler_batches += 1
+                                ctx.scheduler_slots = document_batch_scheduler.slots
+                            ctx.scheduler_wait_ms = getattr(ctx, "scheduler_wait_ms", 0.0) + getattr(
+                                future, "scheduler_wait_ms", 0.0
+                            )
                     except Exception as e:
                         batch_idx = future_to_batch[future]
                         batch = batches[batch_idx]
                         print(f"  Warning: Batch {batch_idx} failed: {e}")
+                        provider_failure = any(marker in str(e).lower() for marker in (
+                            "rate limit", "timed out", "cannot connect",
+                            "connection", "provider failed", "unavailable",
+                        ))
+                        if provider_failure:
+                            # Cancel queued work and fail once. Retrying every
+                            # block would multiply one provider outage into a
+                            # request storm that survives the web timeout.
+                            systemic_failure = True
+                            for pending in future_to_batch:
+                                pending.cancel()
+                            for failed_idx, _, _ in work_items:
+                                if failed_idx not in results:
+                                    failed_blocks[failed_idx] = str(e)
+                            break
                         # Fall back to individual translation for failed batch
                         for idx, text, btype in batch:
                             try:
@@ -899,7 +1136,41 @@ class TranslationPipeline:
                                     ctx.blocks_translated += 1
                             except Exception as e2:
                                 print(f"  Warning: Fallback translation failed for block {idx}: {e2}")
-                                results[idx] = text  # Passthrough on total failure
+                                failed_blocks[idx] = str(e2)
+            finally:
+                if executor is not None:
+                    executor.shutdown(wait=True)
+
+        if failed_blocks:
+            content_failure = any(message.startswith(("Conversational response", "Missing protected content",
+                                                       "Empty translation")) for message in failed_blocks.values())
+            if systemic_failure or content_failure:
+                # A provider-wide outage (rate limit, timeout, connection)
+                # marked every outstanding block as failed. Returning the
+                # document with the source text intact would silently mask the
+                # outage, so surface it and let the queue retry.
+                sample = "; ".join(
+                    f"block {idx}: {message}" for idx, message in list(failed_blocks.items())[:3]
+                )
+                raise RuntimeError(
+                    f"Translation failed for {len(failed_blocks)} block(s). {sample}. "
+                    "The source document was not returned as a false successful translation."
+                )
+            # A small number of isolated block failures (echoed/untranslatable
+            # content, per-block provider errors) should not destroy the whole
+            # document. Keep the source text for those blocks and warn; the
+            # failed indices fall out of `results` and reassembly below marks
+            # them as passthrough.
+            for idx, message in failed_blocks.items():
+                if ctx:
+                    ctx.add_warning(
+                        f"Block {idx} could not be translated and was kept in "
+                        f"source: {message[:200]}"
+                    )
+            print(
+                f"  ⚠️  {len(failed_blocks)} block(s) could not be translated; "
+                f"source text kept so the document can still be produced."
+            )
 
         # Phase D Tier 3a: Batched AI quality review (single AI call for all blocks)
         if _TRANSLATION_BATCHED_REVIEW and quality_reviewer and results:
@@ -915,10 +1186,30 @@ class TranslationPipeline:
                     review_entries.append((idx, source_text, results[idx]))
 
             if review_entries:
-                batch_reviews = quality_reviewer.batch_review(
-                    review_entries,
-                    document_type=document_profile.document_type if document_profile else "",
-                )
+                try:
+                    batch_reviews = quality_reviewer.batch_review(
+                        review_entries,
+                        document_type=document_profile.document_type if document_profile else "",
+                        block_types={
+                            idx: blocks[idx].get("type", "paragraph")
+                            for idx, _, _ in review_entries
+                        },
+                    )
+                except TypeError as error:
+                    if "block_types" not in str(error):
+                        raise
+                    batch_reviews = quality_reviewer.batch_review(
+                        review_entries,
+                        document_type=document_profile.document_type if document_profile else "",
+                    )
+                if ctx and any(
+                    "unavailable" in review.summary.lower()
+                    for review in batch_reviews.values()
+                ):
+                    ctx.add_warning(
+                        "Quality review was unavailable for one or more blocks; "
+                        "deterministic checks were used."
+                    )
 
                 retranslated_count = 0
                 for idx, source_text, rev_text in review_entries:
@@ -927,30 +1218,38 @@ class TranslationPipeline:
                         ctx.record_block_quality(idx, review.score, review.issues)
                     if review and quality_reviewer.needs_retranslation(review):
                         context = ""
+                        retry_block_type = blocks[idx].get("type", "paragraph")
                         if document_memory:
                             context = document_memory.get_context_for_block(
-                                {"text": source_text, "type": ""}, idx
+                                {"text": source_text, "type": retry_block_type}, idx
                             )
                         with llm_call_profile(ctx) if ctx else _nullcontext():
-                            retry_response = self.provider.translate(
+                            retry_response = self._translate_with_echo_guard(
                                 text=source_text,
                                 source_lang=source_lang,
                                 target_lang=target_lang,
-                                block_type="paragraph",
+                                block_type=retry_block_type,
                                 context_hint=f"{context}\nPrevious issues: {review.summary}",
                                 document_type=document_profile.document_type if document_profile else "",
+                                ctx=ctx,
                             )
                         if retry_response.success and retry_response.translated_text:
                             results[idx] = retry_response.translated_text
                             retranslated_count += 1
                             if translation_cache and not _is_echo_output(
-                                source_text, retry_response.translated_text
+                                source_text, retry_response.translated_text,
+                                retry_block_type, source_lang, target_lang,
                             ):
                                 translation_cache.put(
                                     source_text, target_lang,
                                     self.provider.name, retry_response.translated_text,
                                     source_lang=source_lang,
                                 )
+                        elif ctx:
+                            ctx.add_warning(
+                                f"Quality repair failed for block {idx}; "
+                                "the valid initial translation was retained."
+                            )
 
                 if retranslated_count > 0:
                     print(f"  [QualityReview] {retranslated_count} block(s) retranslated via batched review")
@@ -975,9 +1274,14 @@ class TranslationPipeline:
                 if glossary_store is not None:
                     translated_text = glossary_store.apply(translated_text)
 
+                issue = translation_content_issue(block.get("text", ""), translated_text)
+                if issue:
+                    raise RuntimeError(f"Invalid translation for block {i}: {issue}")
+
                 # Cache the result
                 if translation_cache and not _is_echo_output(
-                    block.get("text", ""), translated_text
+                    block.get("text", ""), translated_text,
+                    block.get("type", "paragraph"), source_lang, target_lang,
                 ):
                     translation_cache.put(
                         block.get("text", ""), target_lang,
@@ -985,19 +1289,11 @@ class TranslationPipeline:
                         source_lang=source_lang,
                     )
 
-                # Build new block preserving metadata
-                new_block = {
-                    "type": block["type"],
-                    "text": translated_text,
-                    "style": block.get("style", {}),
-                }
-
-                # Preserve position metadata for PDF
-                for key in ("position", "page", "slide", "shape_id", "para_idx",
-                            "sheet", "row", "col", "table_index",
-                            "alignment", "lines", "links"):
-                    if key in block:
-                        new_block[key] = block[key]
+                # Replace only text. Every extractor-provided identity, style,
+                # coordinate, table, slide, link, and source metadata field
+                # remains one-to-one for reconstruction.
+                new_block = dict(block)
+                new_block["text"] = translated_text
 
                 # Preserve original text for PDF expansion ratio
                 if "position" in block:
@@ -1021,6 +1317,374 @@ class TranslationPipeline:
                 progress_callback(i + 1, total)
 
         print(f"\n  [OK] Translation complete! ({total} blocks)")
+        return translated_blocks
+
+    # Provider-neutral unit pipeline (Phases 1-4).
+    #
+    # Same responsibilities as batch_translate_blocks, but the core
+    # (context enrichment, provider execution, quality review/repair and
+    # layout preflight) operates on TranslationUnit/TranslationUnitResult
+    # DTOs instead of loose dicts. Conversion happens once per boundary:
+    # dict -> unit via unit_adapters.to_unit_list, unit -> dict via
+    # unit_adapters.unit_to_block. The legacy dict shape (passthrough flag,
+    # _original_text, quality_score/quality_issues) is reproduced exactly so
+    # the reconstruction/sidecar/Laravel layers are untouched.
+    #
+    # Phase 4.1 stabilization: every unit's structural metadata (role, table
+    # headers, furniture status, previous/next context, protected-span
+    # instructions) plus the document preamble, document memory and semantic
+    # group context is rendered into unit.context_hint before dispatch and
+    # delivered to the provider verbatim. Semantic chunking is wired in as
+    # context + translate_many batch boundaries ONLY — no unit is ever merged
+    # into another output block. Layout preflight findings are persisted (as
+    # advisory data) on the context and serialized into the regeneration
+    # sidecar, never applied to geometry.
+    def batch_translate_units(self, blocks: list[dict], source_lang: str, target_lang: str,
+                              glossary_store: GlossaryStore | None = None,
+                              progress_callback=None,
+                              document_memory: DocumentMemory | None = None,
+                              mode: ProcessingMode | None = None,
+                              translation_cache: SQLiteTranslationCache | None = None,
+                              quality_reviewer: AIQualityReviewer | None = None,
+                              semantic_chunker: Any | None = None,
+                              document_profile: DocumentProfile | None = None,
+                              context_preamble: str = "",
+                              ctx=None) -> list[dict]:
+        total = len(blocks)
+        document_map = build_document_map(blocks)
+        units = to_unit_list(blocks, document_map)
+        by_block_id = {unit.source_block_id: unit for unit in units}
+
+        # Phase 1 — Passthrough prefilter
+        passthrough_ids: set[int] = set()
+        for unit in units:
+            should_skip, _ = _is_passthrough_block(unit.source_text)
+            if should_skip or not unit.source_text.strip():
+                passthrough_ids.add(unit.source_block_id)
+                if ctx:
+                    ctx.blocks_passthrough += 1
+
+        # Phase 2 — Cache lookups
+        cached_texts: dict[int, str] = {}
+        if translation_cache:
+            for unit in units:
+                if unit.source_block_id in passthrough_ids:
+                    continue
+                cached = translation_cache.get(
+                    unit.source_text, target_lang, self.provider.name,
+                    source_lang=source_lang,
+                )
+                if cached is not None and not translation_content_issue(unit.source_text, cached):
+                    cached_texts[unit.source_block_id] = cached
+                    if ctx:
+                        ctx.blocks_cached += 1
+                        ctx.cache_stat(hit=True)
+
+        # Phase 3 — Work units (non-empty, not passthrough, not cached)
+        work_units = [
+            unit for unit in units
+            if (unit.source_block_id not in passthrough_ids
+                and unit.source_block_id not in cached_texts
+                and unit.source_text.strip())
+        ]
+
+        document_type = document_profile.document_type if document_profile else ""
+
+        # Semantic chunking: build semantic groups up-front. They are used
+        # ONLY as per-unit context and as translate_many batch boundaries; a
+        # single unit is NEVER merged into another output block. Reading order
+        # and source_block_id stay untouched (reassembly iterates the original
+        # block list).
+        semantic_units: dict = {}
+        semantic_groups: list = []
+        if semantic_chunker:
+            semantic_groups = list(semantic_chunker.chunk_blocks(blocks, document_profile) or [])
+            for chunk in semantic_groups:
+                for block_index in chunk.block_indices:
+                    semantic_units[block_index] = chunk
+
+        # Enrich per-unit context: assemble the FULL provider-facing hint from
+        # document preamble, document memory, semantic-group context and every
+        # structural unit field (role, furniture, table headers, neighbors,
+        # protected-span instructions). The result is stored on
+        # unit.context_hint so both translate_many and the legacy fallback
+        # path deliver identical context to the provider.
+        for unit in work_units:
+            memory_ctx = ""
+            if document_memory:
+                memory_ctx = document_memory.get_context_for_block(
+                    {"text": unit.source_text, "type": unit.role},
+                    unit.source_block_id,
+                )
+            semantic_ctx = ""
+            chunk = semantic_units.get(unit.source_block_id)
+            if chunk is not None and len(chunk.block_indices) > 1:
+                others = [blocks[j].get("text", "") for j in chunk.block_indices
+                          if j != unit.source_block_id]
+                others = [o for o in others if o and o != unit.source_text]
+                if others:
+                    joined = " ".join(others)
+                    semantic_ctx = (
+                        "Related passages in this section (translate consistently, "
+                        "keep terminology aligned):\n" + joined[:1500]
+                    )
+            unit.context_hint = build_provider_hint(
+                unit, context_preamble=context_preamble, memory_context=memory_ctx,
+                semantic_context=semantic_ctx,
+            )
+
+        # Phase 4 — Execute via translate_many (duck-typed dispatch).
+        # When semantic chunking is active, each semantic group becomes one
+        # translate_many batch; otherwise all work units go in one call.
+        # GPT-OSS work is dispatched through the process-wide fair scheduler
+        # (no thread pool is created here); every other provider runs inline
+        # exactly as before. The provider must RAISE on systemic failures
+        # (rate limit / timeout / connection / 5xx) so the document fails fast
+        # instead of returning source text as a false successful translation.
+        results_by_id: dict[int, TranslationUnitResult] = {}
+        if work_units:
+            batches = _partition_units_by_group(work_units, semantic_units) \
+                if semantic_groups else [work_units]
+            primary_name = getattr(self.provider, "provider_names", (self.provider.name,))[0]
+            use_fair_scheduler = primary_name == "gptoss"
+
+            def _unit_batch_callback(batch):
+                return translate_many_units(
+                    self.provider, batch,
+                    source_lang=source_lang, target_lang=target_lang,
+                    context_hint=context_preamble or "",
+                    document_type=document_type, ctx=ctx,
+                )
+
+            if use_fair_scheduler:
+                future_to_batch = {}
+                for batch in batches:
+                    future = document_batch_scheduler.submit(
+                        str(id(ctx)), lambda b=batch: _unit_batch_callback(b)
+                    )
+                    future_to_batch[future] = batch
+
+                systemic_error = ""
+                for future in as_completed(future_to_batch):
+                    batch = future_to_batch[future]
+                    try:
+                        unit_results = future.result()
+                    except Exception as e:
+                        systemic_error = _systemic_failure_message(e)
+                        if systemic_error:
+                            print(f"  Warning: Unit batch failed systemically: {e}")
+                            for pending in future_to_batch:
+                                pending.cancel()
+                            break
+                        # Isolated batch failure — keep the source text for the
+                        # affected units and let the caller see the warning.
+                        print(f"  Warning: Unit batch failed: {e}")
+                        for unit in batch:
+                            results_by_id[unit.unit_id] = TranslationUnitResult(
+                                unit_id=unit.unit_id,
+                                status="failed",
+                                translated_text=unit.source_text,
+                                provider=self.provider.name,
+                                model=getattr(self.provider, "model_name", ""),
+                                error=str(e),
+                            )
+                        continue
+                    for result in unit_results:
+                        results_by_id[result.unit_id] = result
+                    if ctx:
+                        ctx.blocks_translated += len(unit_results)
+                        ctx.blocks_batched += len(unit_results) if len(batch) > 1 else 0
+                        ctx.scheduler_batches += 1
+                        ctx.scheduler_slots = document_batch_scheduler.slots
+                        ctx.scheduler_wait_ms = ctx.scheduler_wait_ms + getattr(
+                            future, "scheduler_wait_ms", 0.0
+                        )
+
+                if systemic_error:
+                    raise RuntimeError(
+                        f"Translation failed for {len(work_units)} unit(s): "
+                        f"{systemic_error}. The source document was not returned "
+                        "as a false successful translation."
+                    )
+            else:
+                for batch in batches:
+                    with llm_call_profile(ctx) if ctx else _nullcontext():
+                        unit_results = _unit_batch_callback(batch)
+                    for result in unit_results:
+                        results_by_id[result.unit_id] = result
+                    if ctx:
+                        ctx.blocks_translated += len(unit_results)
+                        ctx.blocks_batched += len(unit_results) if len(batch) > 1 else 0
+
+        # Phase 5 — Per-unit echo guard, quality review/repair, protected-span
+        # restoration, glossary, cache store.
+        final_texts: dict[int, str] = {}
+        for unit in work_units:
+            result = results_by_id.get(unit.unit_id)
+            if result is None or result.status == "failed":
+                reason = result.error if result else "no provider result"
+                final_texts[unit.source_block_id] = unit.source_text
+                if ctx:
+                    ctx.add_warning(
+                        f"Unit {unit.source_block_id} could not be translated; "
+                        f"source retained. ({reason})"
+                    )
+                continue
+
+            text = result.translated_text
+
+            # Echo guard — retry exactly like the legacy single-block worker.
+            if translation_content_issue(unit.source_text, text) or _is_echo_output(
+                    unit.source_text, text, unit.role, source_lang, target_lang):
+                if ctx:
+                    ctx.echo_retries += 1
+                with llm_call_profile(ctx) if ctx else _nullcontext():
+                    retry_response = self._translate_with_echo_guard(
+                        text=unit.source_text,
+                        source_lang=source_lang,
+                        target_lang=target_lang,
+                        block_type=unit.role,
+                        context_hint=unit.context_hint or unit.previous_context or "",
+                        document_type=document_type,
+                        ctx=ctx,
+                    )
+                if retry_response.success and retry_response.translated_text and not _is_echo_output(
+                    unit.source_text, retry_response.translated_text,
+                    unit.role, source_lang, target_lang,
+                ):
+                    text = retry_response.translated_text
+                    result.translated_text = text
+
+            issue = translation_content_issue(unit.source_text, text)
+            if issue:
+                raise RuntimeError(f"Invalid translation for block {unit.source_block_id}: {issue}")
+
+            # AI quality review + repair.
+            if quality_reviewer:
+                with llm_call_profile(ctx) if ctx else _nullcontext():
+                    review = quality_reviewer.review(
+                        source=unit.source_text,
+                        translation=text,
+                        document_type=document_type,
+                        block_type=unit.role,
+                    )
+                if ctx:
+                    ctx.record_block_quality(unit.source_block_id, review.score, review.issues)
+                if review.retry_required:
+                    retry_hint = "\n".join(filter(None, [
+                        unit.context_hint or unit.previous_context or "",
+                        f"Previous issues: {review.summary}",
+                    ]))
+                    with llm_call_profile(ctx) if ctx else _nullcontext():
+                        retry_response = self._translate_with_echo_guard(
+                            text=unit.source_text,
+                            source_lang=source_lang,
+                            target_lang=target_lang,
+                            block_type=unit.role,
+                            context_hint=retry_hint,
+                            document_type=document_type,
+                            ctx=ctx,
+                        )
+                    if retry_response.success and retry_response.translated_text:
+                        text = retry_response.translated_text
+                        result.translated_text = text
+                        result.status = "repaired"
+                        if ctx:
+                            ctx.retranslated_chunks += 1
+                    elif ctx:
+                        ctx.add_warning(
+                            f"Quality repair failed for unit {unit.source_block_id}; "
+                            "the valid initial translation was retained."
+                        )
+
+            # Protected-span restoration — numbers, URLs, emails, placeholders.
+            text = restore_protected_spans(unit.source_text, text, unit.protected_spans)
+
+            # Glossary post-processing.
+            if glossary_store is not None:
+                text = glossary_store.apply(text)
+
+            issue = translation_content_issue(unit.source_text, text)
+            if issue:
+                raise RuntimeError(f"Invalid translation for block {unit.source_block_id}: {issue}")
+
+            # Cache the result (skip echoes).
+            if translation_cache and not _is_echo_output(
+                unit.source_text, text, unit.role, source_lang, target_lang
+            ):
+                translation_cache.put(
+                    unit.source_text, target_lang, self.provider.name, text,
+                    source_lang=source_lang,
+                )
+
+            final_texts[unit.source_block_id] = text
+            result.translated_text = text
+
+        # Record in document memory for downstream chunks.
+        if document_memory:
+            for unit in work_units:
+                text = final_texts.get(unit.source_block_id)
+                if text:
+                    document_memory.record_translation(
+                        unit.source_text, text, unit.source_block_id
+                    )
+                    document_memory.extract_terms(unit.source_text, text)
+                    document_memory.update_abbreviations(unit.source_text)
+
+        # Phase 6 — Layout preflight (DTO-only; surfaced as warnings and
+        # persisted on the context so the regeneration sidecar can report it).
+        # Advisory only: it never alters fonts, positions or geometry — the
+        # reconstruction/layout validator remains the layout authority.
+        if work_units:
+            preflight_units(tuple(work_units), results_by_id,
+                            source_lang=source_lang, target_lang=target_lang)
+            for unit in work_units:
+                result = results_by_id.get(unit.unit_id)
+                if result and result.layout:
+                    layout = result.layout
+                    if ctx:
+                        ctx.record_block_layout(unit.source_block_id, layout)
+                    if (layout.collision_state != "none"
+                            or layout.clipping_state != "none"
+                            or "overflow" in layout.fit_actions):
+                        if ctx:
+                            ctx.add_warning(
+                                f"Layout: unit {unit.source_block_id} "
+                                f"({layout.collision_state}/{layout.clipping_state})"
+                            )
+
+        # Phase 7 — Reassemble legacy-shaped blocks in document order.
+        translated_blocks = []
+        for i, block in enumerate(blocks):
+            unit = by_block_id[i]
+            if i in passthrough_ids:
+                r = TranslationUnitResult(unit_id=unit.unit_id, status="passthrough",
+                                          translated_text=block.get("text", ""))
+                translated_blocks.append(unit_to_block(block, unit, r, ctx))
+            elif i in cached_texts:
+                r = TranslationUnitResult(unit_id=unit.unit_id, status="cached",
+                                          translated_text=cached_texts[i])
+                translated_blocks.append(unit_to_block(block, unit, r, ctx))
+            elif i in final_texts:
+                source_result = results_by_id.get(unit.unit_id)
+                r = TranslationUnitResult(
+                    unit_id=unit.unit_id,
+                    status=source_result.status if source_result else "translated",
+                    translated_text=final_texts[i],
+                    provider=source_result.provider if source_result else "",
+                    model=source_result.model if source_result else "",
+                )
+                if source_result:
+                    r.quality = source_result.quality
+                    r.layout = source_result.layout
+                translated_blocks.append(unit_to_block(block, unit, r, ctx))
+            else:
+                translated_blocks.append(dict(block, text=block.get("text", ""), passthrough=True))
+
+            if progress_callback:
+                progress_callback(i + 1, total)
+
+        print(f"\n  [OK] Unit translation complete! ({total} blocks)")
         return translated_blocks
 
     def _translate_batch_worker(
@@ -1053,39 +1717,106 @@ class TranslationPipeline:
             entries = [(idx, text) for idx, text, _ in batch]
             batch_text = _build_batch_prompt(
                 entries, source_lang, target_lang,
-                provider_name=self.provider.name,
+                provider_name=getattr(
+                    self.provider, "batch_provider_name", self.provider.name
+                ),
             )
 
             with llm_call_profile(ctx) if ctx else _nullcontext():
-                response = self.provider.translate(
-                    text=batch_text,
-                    source_lang=source_lang,
-                    target_lang=target_lang,
-                    block_type="paragraph",
-                    context_hint="",
-                    document_type=document_profile.document_type if document_profile else "",
-                )
+                try:
+                    response = self.provider.translate(
+                        text=batch_text,
+                        source_lang=source_lang,
+                        target_lang=target_lang,
+                        block_type="batch",
+                        context_hint=context_preamble or "",
+                        document_type=document_profile.document_type if document_profile else "",
+                        response_format="json",
+                    )
+                except TypeError as error:
+                    # Compatibility for local/test providers implementing the
+                    # pre-structured-output interface.
+                    if "response_format" not in str(error):
+                        raise
+                    response = self.provider.translate(
+                        text=batch_text,
+                        source_lang=source_lang,
+                        target_lang=target_lang,
+                        block_type="batch",
+                        context_hint=context_preamble or "",
+                        document_type=document_profile.document_type if document_profile else "",
+                    )
+            self._record_provider_response(ctx, response)
+            if ctx:
+                for warning in response.warnings:
+                    ctx.add_warning(warning)
 
             if response.success and response.translated_text:
                 parsed = _parse_batch_response(
                     response.translated_text,
                     [idx for idx, _, _ in batch],
                 )
-                if parsed:
-                    batch_results.update(parsed)
-                else:
-                    # Fall back to individual translation
-                    for idx, text, btype in batch:
-                        translated = self._translate_single_worker(
-                            text, source_lang, target_lang, btype,
-                            document_memory, translation_cache,
-                            quality_reviewer, document_profile, idx,
-                            context_preamble, ctx,
-                        )
-                        batch_results[idx] = translated
-            else:
-                # Fall back to individual translation
+                # A batch is valid only when every item is present and each
+                # translatable item actually changed. Send unresolved entries
+                # to the backup as ONE JSON batch before individual repair.
+                unresolved = []
                 for idx, text, btype in batch:
+                    candidate = parsed.get(idx)
+                    if candidate and not translation_content_issue(text, candidate) and not _is_echo_output(
+                        text, candidate, btype, source_lang, target_lang
+                    ):
+                        batch_results[idx] = candidate
+                    else:
+                        unresolved.append((idx, text, btype))
+
+                secondary = getattr(self.provider, "translate_secondary", None)
+                if unresolved and callable(secondary):
+                    if ctx:
+                        ctx.batch_fallbacks += 1
+                    fallback_prompt = _build_batch_prompt(
+                        [(idx, text) for idx, text, _ in unresolved],
+                        source_lang, target_lang, provider_name="gemini",
+                    )
+                    try:
+                        with llm_call_profile(ctx) if ctx else _nullcontext():
+                            fallback_response = secondary(
+                                text=fallback_prompt, source_lang=source_lang,
+                                target_lang=target_lang, block_type="batch",
+                                context_hint="\n".join(filter(None, [context_preamble,
+                                    "Primary batch was malformed or contained untranslated "
+                                    "entries. Return translated JSON only."])),
+                                document_type=document_profile.document_type
+                                if document_profile else "",
+                                response_format="json",
+                            )
+                    except TypeError as error:
+                        if "response_format" not in str(error):
+                            raise
+                        fallback_response = secondary(
+                            text=fallback_prompt, source_lang=source_lang,
+                            target_lang=target_lang, block_type="batch",
+                            context_hint="\n".join(filter(None, [context_preamble,
+                                "Primary batch contained untranslated entries."])),
+                            document_type=document_profile.document_type
+                            if document_profile else "",
+                        )
+                    self._record_provider_response(ctx, fallback_response)
+                    fallback_parsed = _parse_batch_response(
+                        fallback_response.translated_text,
+                        [idx for idx, _, _ in unresolved],
+                    ) if fallback_response.success else {}
+                    remaining = []
+                    for idx, text, btype in unresolved:
+                        candidate = fallback_parsed.get(idx)
+                        if candidate and not translation_content_issue(text, candidate) and not _is_echo_output(
+                            text, candidate, btype, source_lang, target_lang
+                        ):
+                            batch_results[idx] = candidate
+                        else:
+                            remaining.append((idx, text, btype))
+                    unresolved = remaining
+
+                for idx, text, btype in unresolved:
                     translated = self._translate_single_worker(
                         text, source_lang, target_lang, btype,
                         document_memory, translation_cache,
@@ -1093,8 +1824,72 @@ class TranslationPipeline:
                         context_preamble, ctx,
                     )
                     batch_results[idx] = translated
+            else:
+                # A provider failure affects the entire request. The outer
+                # coordinator decides whether recovery is safe; never fan a
+                # 429 out into one request per block here.
+                raise RuntimeError(
+                    response.error_message or "Translation provider failed"
+                )
 
         return batch_results
+
+    def _translate_oversized_worker(
+        self, text: str, source_lang: str, target_lang: str,
+        block_type: str, context: str, document_type: str, ctx=None,
+    ) -> TranslationResponse:
+        """Translate one oversized block in paragraph/sentence-safe pieces."""
+        chunks = _chunk_preserving_paragraphs(
+            text, _TRANSLATION_MAX_TOKENS, self.chunk_splitter
+        )
+        if len(chunks) <= 1:
+            with llm_call_profile(ctx) if ctx else _nullcontext():
+                return self._translate_with_echo_guard(
+                    text=text, source_lang=source_lang, target_lang=target_lang,
+                    block_type=block_type, context_hint=context,
+                    document_type=document_type, ctx=ctx,
+                )
+
+        translated_chunks: list[tuple[int, str]] = []
+        providers: list[str] = []
+        models: list[str] = []
+        warnings: list[str] = []
+        token_usage = {"input": 0, "output": 0}
+        elapsed = 0.0
+        rolling_context = context
+        for paragraph_id, chunk_text in chunks:
+            with llm_call_profile(ctx) if ctx else _nullcontext():
+                response = self._translate_with_echo_guard(
+                    text=chunk_text,
+                    source_lang=source_lang,
+                    target_lang=target_lang,
+                    block_type=block_type,
+                    context_hint=rolling_context,
+                    document_type=document_type,
+                    ctx=ctx,
+                )
+            if not response.success or not response.translated_text:
+                return response
+            translated_chunks.append((paragraph_id, response.translated_text))
+            if response.provider and response.provider not in providers:
+                providers.append(response.provider)
+            if response.model and response.model not in models:
+                models.append(response.model)
+            warnings.extend(response.warnings)
+            elapsed += response.execution_time_ms
+            for key in token_usage:
+                token_usage[key] += response.token_usage.get(key, 0)
+            recent = [part for _, part in translated_chunks[-2:]]
+            rolling_context = "\n\n".join(filter(None, [context, *recent]))
+
+        return TranslationResponse(
+            translated_text=_rejoin_paragraph_aware(translated_chunks),
+            provider="|".join(providers) or self.provider.name,
+            model="|".join(models) or self.provider.model_name,
+            token_usage=token_usage,
+            execution_time_ms=elapsed,
+            warnings=warnings,
+        )
 
     # OPTIMIZATION: Worker for single block translation (Task 1 fix)
     def _translate_single_worker(
@@ -1116,7 +1911,7 @@ class TranslationPipeline:
                 text, target_lang, self.provider.name,
                 source_lang=source_lang,
             )
-            if cached is not None:
+            if cached is not None and not translation_content_issue(text, cached):
                 return cached
 
         # Build context from document memory
@@ -1133,22 +1928,35 @@ class TranslationPipeline:
             else:
                 context = context_preamble
 
-        # Translate via provider (synchronous call — runs in thread pool)
-        with llm_call_profile(ctx) if ctx else _nullcontext():
-            response = self._translate_with_echo_guard(
-                text=text,
-                source_lang=source_lang,
-                target_lang=target_lang,
-                block_type=block_type,
-                context_hint=context,
-                document_type=document_profile.document_type if document_profile else "",
-                ctx=ctx,
+        # Translate via provider. Oversized blocks are split at paragraph or
+        # sentence boundaries and rejoined with intentional blank lines.
+        document_type = document_profile.document_type if document_profile else ""
+        if self.provider.estimate_tokens(text) > _TRANSLATION_MAX_TOKENS:
+            response = self._translate_oversized_worker(
+                text, source_lang, target_lang, block_type,
+                context, document_type, ctx,
             )
+        else:
+            with llm_call_profile(ctx) if ctx else _nullcontext():
+                response = self._translate_with_echo_guard(
+                    text=text,
+                    source_lang=source_lang,
+                    target_lang=target_lang,
+                    block_type=block_type,
+                    context_hint=context,
+                    document_type=document_type,
+                    ctx=ctx,
+                )
 
         if not response.success:
-            # Echo/other failure — do NOT cache; the reassembly path falls
-            # back to the source text so the document still builds.
-            return response.translated_text if response.translated_text else text
+            # Do not silently return the source as a successful translation.
+            # Raising lets the queue retry a transient outage and ensures a
+            # terminal provider failure is visible to the user.
+            raise RuntimeError(response.error_message or "Translation provider failed")
+
+        if ctx:
+            for warning in response.warnings:
+                ctx.add_warning(warning)
 
         translated = response.translated_text
 
@@ -1159,24 +1967,38 @@ class TranslationPipeline:
                     source=text,
                     translation=translated,
                     document_type=document_profile.document_type if document_profile else "",
+                    block_type=block_type,
+                )
+            if ctx and "unavailable" in review.summary.lower():
+                ctx.add_warning(
+                    f"Quality review was unavailable for block {block_index}; "
+                    "the valid initial translation was retained."
                 )
             if ctx and review is not None:
                 ctx.record_block_quality(block_index, review.score, review.issues)
             if quality_reviewer.needs_retranslation(review):
                 with llm_call_profile(ctx) if ctx else _nullcontext():
-                    retry_response = self.provider.translate(
+                    retry_response = self._translate_with_echo_guard(
                         text=text,
                         source_lang=source_lang,
                         target_lang=target_lang,
                         block_type=block_type,
                         context_hint=f"{context}\nPrevious issues: {review.summary}",
-                        document_type=document_profile.document_type if document_profile else "",
+                        document_type=document_type,
+                        ctx=ctx,
                     )
                 if retry_response.success:
                     translated = retry_response.translated_text
+                elif ctx:
+                    ctx.add_warning(
+                        f"Quality repair failed for block {block_index}; "
+                        "the valid initial translation was retained."
+                    )
 
         # Cache the result
-        if translation_cache and not _is_echo_output(text, translated):
+        if translation_cache and not _is_echo_output(
+            text, translated, block_type, source_lang, target_lang
+        ):
             translation_cache.put(
                 text, target_lang, self.provider.name, translated,
                 source_lang=source_lang,

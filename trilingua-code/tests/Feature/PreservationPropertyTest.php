@@ -563,6 +563,9 @@ class PreservationPropertyTest extends TestCase
 
         // Mock StorageService to return a new signed URL with the expected expiry
         $this->mock(StorageService::class, function ($mock) use ($newExpiry) {
+            $mock->shouldReceive('exists')
+                ->andReturn(StorageService::PRESENCE_PRESENT);
+
             $mock->shouldReceive('generateSignedUrl')
                 ->once()
                 ->andReturn([
@@ -632,6 +635,9 @@ class PreservationPropertyTest extends TestCase
         });
 
         $this->mock(StorageService::class, function ($mock) {
+            $mock->shouldReceive('exists')
+                ->andReturn(StorageService::PRESENCE_PRESENT);
+
             $mock->shouldReceive('generateSignedUrl')
                 ->once()
                 ->andReturn([

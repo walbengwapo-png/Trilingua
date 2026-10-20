@@ -21,6 +21,8 @@ deeper analysis. This way, simple hallucinations are caught instantly,
 and the AI only reviews chunks that passed the regex check.
 """
 
+import os
+import math
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -39,15 +41,16 @@ class QualityIssue:
 @dataclass
 class QualityReview:
     """Complete quality review result."""
-    score: float                    # 0.0 - 100.0
+    score: float | None             # None when AI review was unavailable
     issues: list[QualityIssue] = field(default_factory=list)
     retry_required: bool = False    # True if score < threshold
     summary: str = ""               # Brief summary for retry prompt
+    available: bool = True
 
     @property
     def passed(self) -> bool:
         """Whether the translation passed quality review."""
-        return not self.retry_required
+        return self.available and not self.retry_required
 
     @property
     def critical_issues(self) -> list[QualityIssue]:
@@ -81,15 +84,12 @@ class AIQualityReviewer:
     # Minimum threshold — translations below this are critically bad
     CRITICAL_THRESHOLD = 40.0
 
-    def __init__(self, ai_provider, threshold: float = DEFAULT_THRESHOLD):
-        self._ai = ai_provider
-        self.threshold = threshold
-
     def batch_review(
         self,
         entries: list[tuple[int, str, str]],
         document_type: str = "",
         terminology: list[str] | None = None,
+        block_types: dict[int, str] | None = None,
     ) -> dict[int, QualityReview]:
         """Review multiple translations in a single AI call.
 
@@ -116,7 +116,14 @@ class AIQualityReviewer:
                 )
                 continue
 
-            if source.strip() == translation.strip():
+            block_type = (block_types or {}).get(idx, "")
+            title_words = [word.strip(".,:;!?()[]{}") for word in source.split()]
+            title_maybe = (
+                block_type in {"heading", "header", "title"}
+                and len(title_words) >= 2
+                and all(word and word[0].isupper() for word in title_words)
+            )
+            if source.strip() == translation.strip() and not title_maybe:
                 results[idx] = QualityReview(
                     score=30.0,
                     issues=[QualityIssue(
@@ -143,56 +150,57 @@ class AIQualityReviewer:
         if not uncritical:
             return results
 
-        system_prompt = self._build_system_prompt(document_type)
-        user_prompt = build_batch_quality_review_prompt(uncritical, document_type)
+        # Do not feed Gemini's earlier document classification back into the
+        # Gemini review. A blind review sees only source/translation pairs and
+        # a fixed rubric, preventing the analysis phase from anchoring it.
+        review_document_type = "" if self.blind_review else document_type
+        system_prompt = self._build_system_prompt(review_document_type)
+        user_prompt = build_batch_quality_review_prompt(
+            uncritical, review_document_type
+        )
 
-        def _fallback_one(idx, source, translation):
-            """Try per-item review; treat provider-exception soft-fails as hard fails."""
-            try:
-                r = self.review(source, translation, document_type, terminology)
-            except Exception as fb_e:
-                print(f"  [QualityReview] Fallback per-item review failed: {fb_e}")
-                return QualityReview(
-                    score=0.0, retry_required=True,
-                    summary=f"Review failed: {fb_e}",
-                )
-            # Detect soft-fail: provider exception wrapped in score=100/passed
-            if r.score == 100.0 and not r.retry_required and "unavailable" in r.summary.lower():
-                print(f"  [QualityReview] Fallback per-item also unavailable, marking as failed")
-                return QualityReview(
-                    score=0.0, retry_required=True,
-                    summary="Review unavailable at all levels",
-                )
-            return r
+        def _deterministic_one(source, translation, reason):
+            """Keep independent issues without inventing an AI review score."""
+            issues = self._pre_check(source, translation, terminology)
+            return QualityReview(
+                score=None,
+                issues=issues,
+                retry_required=any(i.severity == "critical" for i in issues),
+                summary=f"AI review unavailable; deterministic checks used ({reason})",
+                available=False,
+            )
 
         try:
             batch_result = self._ai.analyze(system_prompt, user_prompt)
-        except (RuntimeError, ConnectionError) as e:
+        except Exception as e:
             print(f"  [QualityReview] Batch review failed: {e}")
-            print(f"  [QualityReview] Falling back to per-item review")
+            print("  [QualityReview] Using deterministic checks; no per-item AI retries")
             for idx, source, translation in uncritical:
-                results[idx] = _fallback_one(idx, source, translation)
+                results[idx] = _deterministic_one(source, translation, "provider unavailable")
             return results
 
         if not isinstance(batch_result, dict):
             print(f"  [QualityReview] Batch review returned non-dict (type={type(batch_result).__name__}), "
-                  f"falling back to per-item review")
+                          f"using deterministic checks")
             for idx, source, translation in uncritical:
-                results[idx] = _fallback_one(idx, source, translation)
+                results[idx] = _deterministic_one(source, translation, "malformed batch")
             return results
 
         for idx, source, translation in uncritical:
             key = str(idx)
             entry = batch_result.get(key) or batch_result.get(idx)
             if entry and isinstance(entry, dict):
-                # Validate score before parsing — if invalid, fall back to per-item
+                # Reject missing and non-finite scores before parsing.
                 try:
-                    test_score = entry.get("score", 100.0)
-                    float(test_score)
+                    test_score = entry.get("score")
+                    if isinstance(test_score, bool) or not math.isfinite(float(test_score)):
+                        raise ValueError("invalid score")
                 except (ValueError, TypeError):
                     print(f"  [QualityReview] Batch entry {idx} has non-numeric score "
-                          f"({test_score!r}), falling back to per-item review")
-                    results[idx] = _fallback_one(idx, source, translation)
+                              f"({test_score!r}), using deterministic checks")
+                    results[idx] = _deterministic_one(
+                        source, translation, "invalid batch score"
+                    )
                     continue
                 pre_issues = self._pre_check(source, translation, terminology)
                 review = self._parse_response(entry, pre_issues, source, translation)
@@ -207,12 +215,15 @@ class AIQualityReviewer:
                     )
                 results[idx] = review
             else:
-                print(f"  [QualityReview] Batch missing entry {idx}, falling back to per-item")
-                results[idx] = _fallback_one(idx, source, translation)
+                print(f"  [QualityReview] Batch missing entry {idx}; using deterministic checks")
+                results[idx] = _deterministic_one(
+                    source, translation, "missing batch entry"
+                )
 
         return results
 
-    def __init__(self, ai_provider, threshold: float = DEFAULT_THRESHOLD):
+    def __init__(self, ai_provider, threshold: float = DEFAULT_THRESHOLD,
+                 blind_review: bool | None = None):
         """Initialize the quality reviewer.
 
         Args:
@@ -222,10 +233,15 @@ class AIQualityReviewer:
         """
         self._ai = ai_provider
         self.threshold = threshold
+        self.blind_review = (
+            os.environ.get("QUALITY_REVIEW_BLIND", "true").lower() == "true"
+            if blind_review is None else blind_review
+        )
 
     def review(self, source: str, translation: str,
                document_type: str = "",
-               terminology: list[str] | None = None) -> QualityReview:
+               terminology: list[str] | None = None,
+               block_type: str = "") -> QualityReview:
         """Review a translation for quality issues.
 
         Args:
@@ -250,7 +266,13 @@ class AIQualityReviewer:
                 summary="Empty translation",
             )
 
-        if source.strip() == translation.strip():
+        title_words = [word.strip(".,:;!?()[]{}") for word in source.split()]
+        title_maybe = (
+            block_type in {"heading", "header", "title"}
+            and len(title_words) >= 2
+            and all(word and word[0].isupper() for word in title_words)
+        )
+        if source.strip() == translation.strip() and not title_maybe:
             return QualityReview(
                 score=30.0,
                 issues=[QualityIssue(
@@ -277,36 +299,35 @@ class AIQualityReviewer:
             )
 
         # Build prompts for AI review
-        system_prompt = self._build_system_prompt(document_type)
+        review_document_type = "" if self.blind_review else document_type
+        system_prompt = self._build_system_prompt(review_document_type)
         user_prompt = self._build_user_prompt(source, translation, terminology)
 
         # Call AI for deep review
         try:
             result = self._ai.analyze(system_prompt, user_prompt)
-        except (RuntimeError, ConnectionError) as e:
+        except Exception as e:
             # If AI review fails, pass the translation (don't block on review)
             print(f"  [QualityReview] AI review failed: {e}")
-            print(f"  [QualityReview] Passing translation without AI review")
+            print(f"  [QualityReview] Keeping translation without an AI review score")
             return QualityReview(
-                score=100.0,
+                score=None,
                 issues=pre_check_issues,
-                retry_required=False,
-                summary="AI review unavailable, passed without review",
+                retry_required=any(i.severity == "critical" for i in pre_check_issues),
+                summary="AI review unavailable; translation retained without a score",
+                available=False,
             )
 
         # Validate result type before parsing — fail-closed, not fail-open
         if not isinstance(result, dict):
-            print(f"  [QualityReview] CRITICAL: AI returned non-dict result "
-                  f"(type={type(result).__name__}), marking review as failed")
-            pre_check_issues.append(QualityIssue(
-                severity="critical", category="review_failed",
-                description=f"AI review provider returned {type(result).__name__} instead of dict",
-            ))
+            print(f"  [QualityReview] AI returned non-dict result "
+                  f"(type={type(result).__name__}); review unavailable")
             return QualityReview(
-                score=0.0,
+                score=None,
                 issues=pre_check_issues,
-                retry_required=True,
-                summary="AI review failed — provider returned malformed data",
+                retry_required=any(i.severity == "critical" for i in pre_check_issues),
+                summary="AI review unavailable; provider returned malformed data",
+                available=False,
             )
 
         # Parse the AI response
@@ -329,6 +350,8 @@ class AIQualityReviewer:
         """
         if review.retry_required:
             return True
+        if not review.available or review.score is None:
+            return any(i.severity == "critical" for i in review.issues)
         if review.score < self.threshold:
             return True
         if any(i.severity == "critical" for i in review.issues):
@@ -622,11 +645,21 @@ class AIQualityReviewer:
                         source: str, translation: str) -> QualityReview:
         """Parse the AI response into a QualityReview."""
         try:
-            score = float(result.get("score", 100.0))
+            raw_score = result["score"]
+            if isinstance(raw_score, bool):
+                raise ValueError("invalid score")
+            score = float(raw_score)
+            if not math.isfinite(score):
+                raise ValueError("invalid score")
             score = max(0.0, min(100.0, score))
-        except (ValueError, TypeError):
-            score = 0.0
-            print(f"  [QualityReview] Non-numeric score in AI response, marking as failed")
+        except (KeyError, ValueError, TypeError):
+            return QualityReview(
+                score=None,
+                issues=pre_issues,
+                retry_required=any(i.severity == "critical" for i in pre_issues),
+                summary="AI review unavailable; provider returned no valid score",
+                available=False,
+            )
 
         # Parse issues from AI
         ai_issues: list[QualityIssue] = []

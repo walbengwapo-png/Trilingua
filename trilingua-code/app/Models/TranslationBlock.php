@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * One row per extracted block of a document translation.
  *
- * ai_translated_text is immutable — the original AI output is preserved for
+ * ai_translated_text is immutable â€” the original AI output is preserved for
  * audit purposes. Admin edits are applied to current_text.
  */
 class TranslationBlock extends Model
@@ -25,6 +25,7 @@ class TranslationBlock extends Model
         'source_text',
         'ai_translated_text',
         'current_text',
+        'published_text',
         'quality_score',
         'quality_issues',
         'status',

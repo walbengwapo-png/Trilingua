@@ -3,10 +3,13 @@
 @section('title', 'Review Document Translation')
 
 @section('styles')
-    @vite(['resources/css/views/admin.css', 'resources/js/review-document.js'])
+    @vite(['resources/css/views/admin.css', 'resources/js/document-preview.js', 'resources/js/review-document.js'])
 @endsection
 
 @section('content')
+@php
+    $hasDraft = $record->hasUnpublishedEdits();
+@endphp
 <div class="stack">
 
     <a href="{{ route('admin.review.index') }}" class="review-back">
@@ -18,6 +21,11 @@
         <div class="review-detail__header">
             <div>
                 <span class="status-badge status-badge--{{ $record->review_status }}">{{ ucfirst($record->review_status) }}</span>
+                @if ($hasDraft)
+                    <span class="status-badge status-badge--edited">Unpublished edits</span>
+                @elseif ($record->review_status === 'edited')
+                    <span class="status-badge status-badge--edited">Published</span>
+                @endif
                 <h2 class="review-detail__title" style="font-size:1.15rem;font-weight:700;color:var(--text);margin:10px 0 0">{{ $record->original_filename ?? 'Document Translation' }}</h2>
                 @if ($record->translated_filename)
                     <p class="review-detail__subtitle" style="font-size:0.82rem;color:var(--muted);margin:4px 0 0">translated to → {{ $record->translated_filename }}</p>
@@ -36,8 +44,8 @@
                 <span class="review-detail__meta-value">{{ $record->target_language ?? '—' }}</span>
             </div>
             <div class="review-detail__meta-item">
-                <span class="review-detail__meta-label">Quality Score</span>
-                <span class="review-detail__meta-value">{{ $record->quality_score === null ? '—' : $record->quality_score }}</span>
+                <span class="review-detail__meta-label">AI Review Signal</span>
+                <span class="review-detail__meta-value" title="Automated AI review signal — not human-verified accuracy.">({{ $record->quality_score === null ? 'Unavailable' : $record->quality_score }})</span>
             </div>
             <div class="review-detail__meta-item">
                 <span class="review-detail__meta-label">Submitted By</span>
@@ -60,6 +68,12 @@
             <p class="review-form-note" id="unsaved-count" style="display:none;margin:0 0 10px"></p>
 
             <div class="block-card__actions" style="border-top:none;padding-top:0;margin-top:0">
+                @if ($hasDraft)
+                    <p class="review-form-note" id="draft-warning" style="margin:0 0 10px;color:var(--warning,#b45309)">
+                        Edits are saved as a <strong>draft</strong>. The downloadable file still shows the last published
+                        version. Run <strong>Save &amp; Regenerate</strong> to publish them; Verify is disabled until then.
+                    </p>
+                @endif
                 <form method="POST" action="{{ route('admin.review.document.verify', $record->id) }}" class="review-inline-form"
                       data-review-form data-reload="true" data-confirm-dirty="true">
                     @csrf
@@ -81,10 +95,13 @@
 
             <form method="POST" action="{{ route('admin.review.save-regenerate', $record->id) }}" class="review-form-card" style="margin-top:14px"
                   id="save-regenerate-form" data-regen-form>
+                <input type="hidden" name="expected_draft_revision" value="{{ $record->draft_revision }}">
+                <input type="hidden" name="expected_storage_path" value="{{ $record->storage_path }}">
                 @csrf
                 <p class="review-form-note" style="margin:0 0 8px">
-                    Collects every edited block and re-renders the document synchronously (reconstruction only —
-                    AI translation is never re-run). The new version is uploaded and you get download links for both files.
+                    Collects every edited block, re-renders the document (reconstruction only — AI translation is never
+                    re-run), uploads the new version, and makes it the downloadable one. Until this succeeds, edits stay
+                    a draft and the previous file remains downloadable.
                 </p>
                 <input type="text" name="note" class="review-input" placeholder="Optional audit note" style="width:100%;margin-bottom:8px">
                 <button type="submit" class="review-btn review-btn--warning" id="regen-btn">Save &amp; Regenerate</button>
@@ -106,37 +123,45 @@
                             <a class="review-pane__download" href="{{ $previewUrl }}" target="_blank" rel="noopener">Download</a>
                         @endif
                     </div>
-                    <div class="review-pane__tabs" id="preview-tabs">
-                        <button type="button" class="review-pane__tab is-active" data-tab="final">Final</button>
-                        <button type="button" class="review-pane__tab" data-tab="draft">Draft</button>
+                    <div class="review-pane__tabs" id="preview-tabs" role="tablist" aria-label="Document preview">
+                        <button type="button" class="review-pane__tab is-active" data-tab="final" id="tab-final" role="tab" aria-selected="true" aria-controls="preview-final" tabindex="0">Final</button>
+                        <button type="button" class="review-pane__tab" data-tab="draft" id="tab-draft" role="tab" aria-selected="false" aria-controls="preview-draft" tabindex="-1">Page preview</button>
                     </div>
                 </div>
 
                 <div class="review-pane__body">
-                    <div class="preview-panel" id="preview-final">
+                    <div class="preview-panel" id="preview-final" role="tabpanel" aria-labelledby="tab-final">
                         @if ($previewUrl && $isPdf)
                             <iframe class="review-pane__frame" src="{{ \App\Support\PreviewUrl::pdf($previewUrl) }}" title="Translated document"></iframe>
-                        @elseif ($previewUrl && in_array($previewExt, ['docx', 'xlsx', 'txt', 'md', 'csv', 'rtf']))
+                        @elseif ($previewUrl)
                             <div id="converter-host"
                                  data-ext="{{ $previewExt }}"
-                                 data-file-url="{{ route('admin.review.document.file', $record->id) }}">
+                                 data-blocks-mode="published"
+                                 data-file-url="{{ route('admin.review.document.file', $record->id) }}"
+                                 data-blocks-url="{{ route('admin.review.blocks', $record->id) }}">
                                 <div class="review-pane__loading">Loading preview…</div>
                             </div>
                         @else
                             <div class="review-pane__placeholder">
-                                <p>Live preview is only available for <strong>PDF</strong>, <strong>DOCX</strong>, and <strong>XLSX</strong>.</p>
-                                <p>This translated file is a <strong>{{ strtoupper($previewExt ?: 'document') }}</strong>.</p>
-                                @if ($previewUrl)
-                                    <a class="review-btn" href="{{ $previewUrl }}" target="_blank" rel="noopener">Download translated document</a>
-                                @elseif ($record->storage_path)
+                                @if ($record->storage_path)
                                     <p class="review-form-note">Preview URL could not be generated.</p>
+                                @else
+                                    <p>Translated file is not available.</p>
                                 @endif
                             </div>
                         @endif
                     </div>
-                    <div class="preview-panel" id="preview-draft" style="display:none">
+                    <div class="preview-panel" id="preview-draft" style="display:none" role="tabpanel" aria-labelledby="tab-draft">
+                        @php
+                            $previewFirst = $blocks->firstItem();
+                            $previewLast = $blocks->lastItem();
+                        @endphp
                         <div class="preview-draft__note">
-                            Showing your <strong>unsaved edits</strong> in blue. Switch to <strong>Final</strong> to compare against the saved file.
+                            <strong>Current page draft preview</strong> — blocks {{ $previewFirst ?? 0 }}{{ $previewLast ? '–' . $previewLast : '' }} of {{ $totalBlocks }} (page {{ $blocks->currentPage() }} of {{ $blocks->lastPage() }}).
+                            This mirrors only the blocks on the editable page you are viewing — not the whole document. Your unsaved edits show in blue; the downloadable file shows under <strong>Final</strong>.
+                            @if ($blocksFilter !== [] && array_filter($blocksFilter) !== [])
+                                <span class="review-form-note">Filters are active, so the preview mirrors only the matching blocks.</span>
+                            @endif
                         </div>
                         <div class="preview-draft__doc" id="draft-doc"></div>
                     </div>
@@ -212,16 +237,19 @@
                                         <span class="block-card__type">{{ $block->block_type ?? 'block' }}</span>
                                         <span class="status-badge status-badge--{{ $block->status }}">{{ ucfirst($block->status) }}</span>
                                         @if ($different)
-                                            <span class="status-badge status-badge--edited">Edited</span>
+                                            <span class="status-badge status-badge--edited">{{ $hasDraft ? 'Draft edit' : 'Edited' }}</span>
                                         @endif
                                     </div>
-                                    <span class="quality-score" style="min-width:0">
+                                    <span class="quality-score" style="min-width:0" title="Automated AI review signal (not human-verified)">
                                         <span class="quality-score__dot quality-score__dot--{{ $level }}" aria-hidden="true"></span>
-                                        {{ $score === null ? '—' : $score }}
+                                        {{ $score === null ? 'Unavailable' : $score }}
                                     </span>
                                 </div>
 
-                                <textarea class="doc-block__editor" name="current_text" data-block-current
+                                <label class="visually-hidden" for="block-editor-{{ $block->id }}">
+                                    Block #{{ $block->block_index }} ({{ $block->block_type ?? 'block' }}) — review translation text
+                                </label>
+                                <textarea id="block-editor-{{ $block->id }}" class="doc-block__editor" name="current_text" data-block-current
                                           data-saved="{{ htmlspecialchars($block->current_text ?? '', ENT_QUOTES) }}">{{ $block->current_text ?? '' }}</textarea>
 
                                 <details class="doc-block__ref">
@@ -242,7 +270,8 @@
                                     <form method="POST" action="{{ route('admin.review.block.update', [$record->id, $block->id]) }}"
                                           class="review-inline-form" data-review-form data-inplace="true">
                                         @csrf
-                                        <input type="hidden" name="current_text" value="{{ htmlspecialchars($block->current_text ?? '', ENT_QUOTES) }}">
+                                        <input type="hidden" name="expected_draft_revision" value="{{ $record->draft_revision }}">
+                                    <input type="hidden" name="current_text" value="{{ htmlspecialchars($block->current_text ?? '', ENT_QUOTES) }}">
                                         <button type="submit" class="review-btn review-btn--warning">Save Edit</button>
                                     </form>
                                 </div>
@@ -399,7 +428,7 @@
             }
             postForm(form).then(function (data) {
                 if (!data) return;
-                if (window.showToast) showToast('success', 'Updated', 'Status: ' + (data.status || 'ok'));
+                if (window.showToast) showToast('success', 'Updated', data.message || ('Status: ' + (data.status || 'ok')));
                 if (form.getAttribute('data-inplace') === 'true') {
                     var card = form.closest('.doc-block');
                     if (card) {
@@ -414,7 +443,37 @@
         });
     });
 
-    // ── Save & Regenerate ──────────────────────────────────────────────
+    // ── Save & Regenerate (publish) ────────────────────────────────────
+    function markPublished(data) {
+        // Textareas now hold the published text — the leave guard must not fire.
+        document.querySelectorAll('textarea[data-block-current]').forEach(function (ta) {
+            ta.setAttribute('data-saved', ta.value);
+        });
+
+        // Header: replace the review-status badge text and drop the
+        // "Unpublished edits" badge; hide the draft warning paragraph.
+        var statusBadge = document.querySelector('.review-detail__header .status-badge');
+        if (statusBadge && data.review_status) {
+            statusBadge.className = 'status-badge status-badge--' + data.review_status;
+            statusBadge.textContent = data.review_status.charAt(0).toUpperCase() + data.review_status.slice(1);
+            var draftBadge = statusBadge.nextElementSibling;
+            if (draftBadge && draftBadge.classList.contains('status-badge--edited')) {
+                draftBadge.parentNode.removeChild(draftBadge);
+            }
+        }
+
+        // Hide the draft warning paragraph the moment a publish succeeds.
+        var warning = document.getElementById('draft-warning');
+        if (warning) {
+            warning.style.display = 'none';
+        }
+
+        // Per-block "Draft edit" badges become plain "Edited".
+        document.querySelectorAll('.doc-block .status-badge--edited').forEach(function (b) {
+            if (b.textContent === 'Draft edit') b.textContent = 'Edited';
+        });
+    }
+
     var regenForm = document.getElementById('save-regenerate-form');
     if (regenForm) {
         regenForm.addEventListener('submit', function (e) {
@@ -426,6 +485,7 @@
             btn.disabled = true;
             spinner.style.display = '';
             result.replaceChildren();
+            suppressLeavePrompt = true;
 
             var body = new FormData(regenForm);
             // Include every on-screen block edit so regeneration reflects the
@@ -437,7 +497,6 @@
                     body.append('blocks[' + blockId + ']', textarea.value);
                 }
             });
-            suppressLeavePrompt = true;
             fetch(regenForm.action, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
@@ -450,10 +509,11 @@
                 var data = null;
                 try { data = JSON.parse(res.raw); } catch (e) {}
                 if (!res.r.ok) {
-                    if (window.showErrorModal) showErrorModal('Regeneration failed', (data && data.error) || 'Could not regenerate.');
+                    suppressLeavePrompt = false;
+                    if (window.showErrorModal) showErrorModal('Regeneration failed', (data && data.error) || 'Could not regenerate. Your edits stay saved as a draft.');
                     return;
                 }
-                if (window.showToast) showToast('success', 'Regenerated', 'New version uploaded (' + (data.edited_blocks ?? 0) + ' edited blocks).');
+                if (window.showToast) showToast('success', 'Published', data.message || 'New version published and made downloadable.');
                 var published = document.createElement('div');
                 published.className = 'regen-result';
                 var heading = document.createElement('strong');
@@ -472,12 +532,13 @@
                 });
                 published.appendChild(links);
                 result.replaceChildren(published);
-                // Refresh so the badges show the latest block statuses.
-                setTimeout(function () { window.location.reload(); }, 1200);
+                markPublished(data);
+                updateUnsavedCount();
             })
             .catch(function (err) {
                 btn.disabled = false;
                 spinner.style.display = 'none';
+                suppressLeavePrompt = false;
                 if (window.showErrorModal) showErrorModal('Regeneration failed', err.message || 'Network error.');
             });
         });

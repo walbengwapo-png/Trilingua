@@ -60,6 +60,7 @@ class BlockService
                     'source_text'            => $sourceText,
                     'ai_translated_text'     => $aiText,
                     'current_text'           => $aiText,
+                    'published_text'         => $aiText,
                     'quality_score'          => $score,
                     'quality_issues'         => $this->normalizeIssues($block['quality_issues'] ?? null),
                     'status'                 => ReviewStatus::PENDING,

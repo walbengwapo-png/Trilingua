@@ -29,7 +29,6 @@ def _request_workbook_recalculation(workbook):
     workbook.calculation.forceFullCalc = True
 
 
-
 def _apply_translation_to_paragraph(para, translated_text, glossary_store):
     """
     Apply a translated string to a paragraph's runs, preserving per-run formatting.
@@ -273,7 +272,7 @@ def translate_pptx_inplace(input_file, output_file, translate_fn,
                            save=True):
     """
     Translate a PPTX file by iterating slides/shapes/paragraphs in-place.
-    Uses a provided translation function instead of hardcoded Mistral.
+    Uses a provided translation function instead of a hardcoded AI provider.
 
     Args:
         save: Whether to write output_file. When False, the deck is only
@@ -328,7 +327,11 @@ def translate_pptx_inplace(input_file, output_file, translate_fn,
                 continue
 
             block_type = "paragraph"
-            if hasattr(shape, "placeholder_format") and shape.placeholder_format is not None:
+            # ``placeholder_format`` is exposed by python-pptx on every shape,
+            # but accessing it for a regular text box raises ValueError
+            # ("shape is not a placeholder"). Check the explicit flag before
+            # asking the shape for placeholder metadata.
+            if shape.is_placeholder:
                 ph_idx = shape.placeholder_format.idx
                 if ph_idx == 0:
                     block_type = "header"
@@ -777,21 +780,18 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
     """
     Replace original text in a PDF with translations while preserving layout.
 
-    Strategy: per-line redact-and-reinsert.
+    Strategy: preserve artwork, replace source text, fit complete blocks.
 
       - Original text is removed per LINE via ``apply_redactions(images=0,
         graphics=0, text=0)`` so images and vector graphics survive untouched.
-      - Translated block text is re-flowed into the original line boxes at their
-        exact baseline/x0 with per-line font/size/colour and block alignment.
-      - Overflow rules: expand into collision-checked whitespace first, then
-        shrink the font down to a 70% floor. Text is never merged into the next
-        block; excess words wrap to continuation lines inside the block's own box.
+      - Normalize page rotation, then measure complete translated blocks.
+      - Expand into free space, with bounded shrinking to a readable floor.
+      - Move overflowing blocks to continuation pages after their source page.
       - Hyperlink annotations are re-created at the translated line positions.
       - Garbage/passthrough blocks are skip-listed: original text and links stay.
 
-    A per-page page-copy fallback re-runs the same core on a pristine copy of the
-    page when a post-redaction invariant fails (I1 image bytes, I2 leftover glyphs,
-    I3 bbox collision, I4 exception).
+    Reopen the saved PDF to validate fragment coverage, orientation and geometry.
+    Failed checks raise PDFValidationError instead of returning a false success.
     """
     import fitz
 
@@ -832,8 +832,6 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
             "links": [],
         }]
 
-    for _b in blocks:
-        _ensure_lines(_b)
 
     def _clean_subset(name):
         return name.split("+", 1)[1] if "+" in name else name
@@ -899,6 +897,59 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
     # ---- open docs ----
     doc = fitz.open(original_pdf_path)
     src_doc = fitz.open(original_pdf_path)
+
+    # Native normalization keeps displayed artwork and links in one coordinate space.
+    import copy
+    original_blocks = blocks
+    blocks = copy.deepcopy(blocks)
+    transforms = {}
+    for page_num in range(len(src_doc)):
+        transforms[page_num] = src_doc[page_num].rotation_matrix
+        src_doc[page_num].remove_rotation()
+        doc[page_num].remove_rotation()
+    for block in blocks:
+        # Legacy symbol fonts use private-use codepoints for these bullet marks.
+        block["text"] = (block.get("text") or "").translate({0xf07d: "•", 0xe601: "•"})
+        page_num = int(block.get("page", 0))
+        if page_num < 0 or page_num >= len(src_doc):
+            raise ValueError(f"PDF block references missing page {page_num}")
+        if block.get("pdf_coordinates") != "display":
+            matrix = transforms[page_num]
+            block["position"] = list(fitz.Rect(block.get("position", (0, 0, 0, 0))) * matrix)
+            for line in block.get("lines", []):
+                line["bbox"] = list(fitz.Rect(line["bbox"]) * matrix)
+                line["baseline"] = line["bbox"][3] - float(line.get("size", 11)) * .2
+                for link in line.get("links", []):
+                    key = "rect" if "rect" in link else "from"
+                    if link.get(key):
+                        link[key] = list(fitz.Rect(link[key]) * matrix)
+        # Old sidecars did not retain block style. Recover it from source lines.
+        if not block.get("style") and block.get("lines"):
+            # Older extraction sometimes combined a large heading with body.
+            # Recover the dominant text style, rather than enlarging all body text.
+            from collections import Counter
+            weights = Counter()
+            for line in block["lines"]:
+                weights[(line.get("font"), line.get("size"), line.get("bold"),
+                         line.get("italic"))] += len(line.get("text", ""))
+            dominant = weights.most_common(1)[0][0]
+            first = next(line for line in block["lines"] if (
+                line.get("font"), line.get("size"), line.get("bold"), line.get("italic")) == dominant)
+            block["style"] = {key: first[key] for key in
+                              ("font", "font_original", "bold", "italic", "color") if key in first}
+            block["style"]["font_size"] = first.get("size", 11)
+        _ensure_lines(block)
+
+    placements = []
+    continuations = {}
+    continuation_title = {
+        "Cebuano": "Gipadayon gikan sa orihinal nga panid {}",
+        "Filipino": "Karugtong mula sa orihinal na pahina {}",
+    }.get(target_lang, "Continued from source page {}")
+    continuation_reference = {
+        "Cebuano": "Padayon sa panid {}",
+        "Filipino": "Karugtong sa pahina {}",
+    }.get(target_lang, "Continued on page {}")
 
     # ---- collect embedded font programs (raw + subset-stripped keys) ----
     _embedded_font_programs: dict[str, bytes] = {}
@@ -1121,31 +1172,7 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
                         n += 1
         return n
 
-    def _shrink_floor(base_size):
-        # env override for measuring the contribution of the shrink-to-fit floor
-        try:
-            _f = float(os.environ.get("TRI_SHRINK_FLOOR", "0.70"))
-        except ValueError:
-            _f = 0.70
-        return max(_f * base_size, 4.0)
 
-    def _fit_chunk(words, start, font_obj, size, width):
-        """Greedily take words that fit within *width* at *size*.
-
-        Returns (chunk_text, next_index, fits). ``fits`` is False when even the
-        first word does not fit at this size.
-        """
-        chunk = []
-        idx = start
-        for i in range(start, len(words)):
-            trial = " ".join(chunk + [words[i]])
-            if chunk and _text_width(trial, font_obj, size) > width:
-                break
-            if not chunk and _text_width(trial, font_obj, size) > width:
-                return "", i, False
-            chunk.append(words[i])
-            idx = i + 1
-        return " ".join(chunk), idx, True
 
     def _fit_chunk_runs(words, start, runs, size, width, page):
         """Greedily take words that fit within *width*, measuring each word at
@@ -1193,19 +1220,6 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
             idx = i + 1
         return " ".join(chunk), idx, True
 
-    def _expand_into_whitespace(x0, x1, baseline, size, occupied, page_width, block_x0, block_x1):
-        y0b = baseline - size * 0.8
-        y1b = baseline + size * 0.4
-        right_block = min(block_x1, page_width)
-        left_block = max(block_x0, 0.0)
-        for r, _tag in occupied:
-            if r.y1 < y0b or r.y0 > y1b:
-                continue
-            if r.x0 >= x1 and r.x0 < right_block:
-                right_block = r.x0
-            if r.x1 <= x0 and r.x1 > left_block:
-                left_block = r.x1
-        return left_block, right_block
 
     def _insert_line(page, text, x0, x1, y, fontname, font_obj, size, color, alignment):
         if not text:
@@ -1352,7 +1366,7 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
             placed.append((seg, fn, fo, sz, col, tw))
         total_w = sum(tw for _s, _f, _o, _z, _c, tw in placed)
         available = x1 - x0
-        if total_w > available * 1.02:
+        if total_w > available + .05:
             return None
         if alignment == 1:
             px = x0 + (available - total_w) / 2.0
@@ -1360,7 +1374,9 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
             px = x1 - total_w
         else:
             px = x0
+        start_x = px
         max_size = 0.0
+        top, bottom = y, y
         for seg, fn, fo, sz, col, tw in placed:
             try:
                 page.insert_text((px, y), seg, fontsize=sz, fontname=fn, color=col)
@@ -1369,7 +1385,9 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
                       f"fontname={fn} text={seg[:40]!r}: {type(e).__name__}: {e}")
             px += tw
             max_size = max(max_size, sz)
-        return fitz.Rect(x0, y - max_size * 1.1, x0 + total_w, y + max_size * 0.2)
+            top = min(top, y - fo.ascender * sz)
+            bottom = max(bottom, y - fo.descender * sz)
+        return fitz.Rect(start_x, top, start_x + total_w, bottom)
 
     def _recreate_links(page, line, placed_rect, recreated=None):
         if placed_rect is None:
@@ -1412,237 +1430,132 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
             return 2
         return 1
 
-    def _insert_block(page, block, page_width, page_height, occupied, block_index, layout_plan, recreated=None):
+    def _wrap_complete(text, font, size, width):
+        """Wrap complete paragraphs; split long URLs/tokens without dropping chars."""
+        result = []
+        for paragraph in text.split("\n"):
+            words = paragraph.split()
+            if not words:
+                result.append("")
+                continue
+            line = ""
+            for word in words:
+                if line and _text_width(line + " " + word, font, size) <= width:
+                    line += " " + word
+                    continue
+                if line:
+                    result.append(line)
+                    line = ""
+                while _text_width(word, font, size) > width:
+                    end = 1
+                    while end < len(word) and _text_width(word[:end + 1], font, size) <= width:
+                        end += 1
+                    if _text_width(word[:end], font, size) > width:
+                        raise ValueError("PDF text area is narrower than a single glyph")
+                    result.append(word[:end])
+                    word = word[end:]
+                line = word
+            if line:
+                result.append(line)
+        return result
+
+    def _block_metrics(block, page, size):
+        _, font = _resolve_line_font(block.get("style", {}), page, block.get("text", ""))
+        fonts = [font]
+        styles = [block.get("style", {})] + [run for line in block.get("lines", [])
+                                              for run in line.get("runs", [])]
+        for style in styles:
+            # Mixed runs can resolve ASCII segments to Base-14 while punctuation
+            # uses a system font. Measure both choices before placing the line.
+            fonts.extend(_resolve_line_font(style, page, text)[1]
+                         for text in (block.get("text", ""), ""))
+        ascent = max(font.ascender for font in fonts)
+        descent = min(font.descender for font in fonts)
+        return ascent, descent, max((ascent - descent) * size + 1.5, size * 1.35)
+
+    def _place_lines(page, block, index, rect, lines, size, action, recreated=None):
         style = block.get("style", {})
-        alignment = _block_alignment(block, page_width)
-        if layout_plan is not None:
-            for _adj in layout_plan.adjustments:
-                if _adj.block_index == block_index and _adj.alignment_override is not None:
-                    _am = {"left": 0, "center": 1, "right": 2, "justify": 3}
-                    alignment = _am.get(_adj.alignment_override, alignment)
-                    break
-        lines = block.get("lines", []) or []
-        if not lines:
-            return
-        translated = (block.get("text") or "").strip()
-        words = translated.split()
-        if not words:
-            return
-        if os.environ.get("TRI_DEBUG"):
-            print(f"    [_insert_block] page {block.get('page')} block {block_index} "
-                  f"words={len(words)} lines={len(lines)} pos={[round(v,1) for v in block.get('position',[0,0,0,0])]}")
-        bbox = block.get("position", [0, 0, 0, 0])
-        block_x0 = max(0.0, float(bbox[0]))
-        block_x1 = min(page_width, float(bbox[2]))
-        block_y1 = min(page_height, float(bbox[3]))
+        fontname, font = _resolve_line_font(style, page, block.get("text", ""))
+        ascent, descent, leading = _block_metrics(block, page, size)
+        y = rect.y0 + ascent * size
+        alignment = _block_alignment(block, page.rect.width) if action == "fit" else 0
+        runs = [dict(run, size=size) for line in block.get("lines", [])
+                for run in line.get("runs", [])]
+        mixed = len({(r.get("font"), r.get("bold"), r.get("italic"), r.get("color")) for r in runs}) > 1
+        for text in lines:
+            if text:
+                placed = _insert_line_runs(page, text, rect.x0, rect.x1, y, runs, alignment) if mixed else None
+                if placed is None:
+                    placed = _insert_line(page, text, rect.x0, rect.x1, y, fontname,
+                                          font, size, _resolve_color(style.get("color", 0)), alignment)
+                    if placed is not None:
+                        placed.y0 = y - font.ascender * size
+                        placed.y1 = y - font.descender * size
+                if placed is None:
+                    raise ValueError(f"PDF insertion failed for block {index}")
+                placements.append({"block_index": index, "source_page": block.get("page", 0),
+                                   "page_xref": page.xref, "rect": list(placed),
+                                   "text": text, "font_size": size, "action": action})
+                links = block.get("links", []) or [link for ln in block.get("lines", [])
+                                                   for link in ln.get("links", [])]
+                _recreate_links(page, {"links": links}, placed, recreated)
+            y += leading
+        return y
 
-        bfontname, bfont_obj = _resolve_line_font(style, page, translated)
-        bsize = max(4.0, min(float(style.get("font_size", 11) or 11), 72.0))
-        bcolor = _resolve_color(style.get("color", 0))
-
-        wi = 0
-        last_baseline = None
-        for ln in lines:
-            if wi >= len(words):
+    def _insert_block(page, block, page_width, page_height, occupied, block_index, layout_plan, recreated=None):
+        index = block["_render_index"]
+        text = (block.get("text") or "").strip()
+        if not text:
+            return
+        box = fitz.Rect(block["position"]) & page.rect
+        style = block.get("style", {})
+        name, font = _resolve_line_font(style, page, text)
+        base_size = max(8.0, min(float(style.get("font_size", 11) or 11), 72.0))
+        role = block.get("type", "paragraph")
+        floor = max(8.0, base_size * (.85 if role in {"heading", "title", "header"} else .8))
+        # Extend downward only into free space in this column, never into another
+        # block, table cell, illustration or text already placed on the page.
+        bottom = min(page_height - 2, box.y1)
+        candidates = []
+        for rect, tag in occupied:
+            if tag == block_index or rect.x1 <= box.x0 or rect.x0 >= box.x1:
+                continue
+            if rect.y0 >= box.y1 - .5:
+                candidates.append(rect.y0 - 2)
+        if candidates:
+            bottom = max(bottom, min(candidates))
+        elif role != "table_cell":
+            bottom = page_height - 2
+        area = fitz.Rect(box.x0, box.y0, box.x1, bottom)
+        sizes = [base_size, max(floor, base_size * .9), floor]
+        for size in dict.fromkeys(sizes):
+            if area.width < _text_width("W", font, size) or area.height <= 0:
                 break
-            lstyle = dict(style)
-            if ln.get("font"):
-                lstyle["font"] = ln["font"]
-            if ln.get("font_original"):
-                lstyle["font_original"] = ln["font_original"]
-            if ln.get("bold") is not None:
-                lstyle["bold"] = ln["bold"]
-            if ln.get("italic") is not None:
-                lstyle["italic"] = ln["italic"]
-            if ln.get("size"):
-                lstyle["font_size"] = ln["size"]
-            if ln.get("color") is not None:
-                lstyle["color"] = ln["color"]
-            fontname, font_obj = _resolve_line_font(lstyle, page, " ".join(words[wi:]))
-            base_size = max(4.0, min(float(lstyle.get("font_size", 11) or 11), 72.0))
-            color = _resolve_color(lstyle.get("color", 0))
-            lbbox = ln.get("bbox", [0, 0, 0, 0])
-            lx0, ly0, lx1, ly1 = (float(v) for v in lbbox)
-            baseline = float(ln.get("baseline", ly1))
-            if lx1 <= lx0:
+            lines = _wrap_complete(text, font, size, area.width)
+            source_runs = [dict(run, size=size) for line in block.get("lines", [])
+                           for run in line.get("runs", [])]
+            if len(block.get("lines", [])) == 1 and len(source_runs) > 1:
+                chunk, end, fits = _fit_chunk_runs(text.split(), 0, source_runs, size, area.width, page)
+                if fits and end == len(text.split()):
+                    lines = [chunk]
+            ascent, descent, leading = _block_metrics(block, page, size)
+            height = (len(lines) - 1) * leading + (ascent - descent) * size
+            target = fitz.Rect(area.x0, area.y0, area.x1, area.y0 + height)
+            if height > area.height + .1:
                 continue
-            available = lx1 - lx0
-            lalign = _line_alignment(ln, lx0, lx1)
-
-            rect_placed = None
-            line_runs = ln.get("runs")
-            if line_runs and len(line_runs) > 1:
-                chunk, nxt, fits = _fit_chunk_runs(words, wi, line_runs, base_size,
-                                                   available, page)
-            else:
-                chunk, nxt, fits = _fit_chunk(words, wi, font_obj, base_size, available)
-            if fits:
-                if line_runs and len(line_runs) > 1:
-                    rect_placed = _insert_line_runs(page, chunk, lx0, lx1, baseline,
-                                                    line_runs, lalign)
-                    if rect_placed is None:
-                        rect_placed = _insert_line(page, chunk, lx0, lx1, baseline,
-                                                   fontname, font_obj, base_size, color, lalign)
-                else:
-                    rect_placed = _insert_line(page, chunk, lx0, lx1, baseline,
-                                               fontname, font_obj, base_size, color, lalign)
-                wi = nxt
-            else:
-                ex0, ex1 = _expand_into_whitespace(lx0, lx1, baseline, base_size,
-                                                   occupied, page_width, block_x0, block_x1)
-                if ex1 - ex0 > available:
-                    chunk2, nxt2, fits2 = _fit_chunk(words, wi, font_obj, base_size, ex1 - ex0)
-                    if fits2:
-                        rect_placed = _insert_line(page, chunk2, ex0, ex1, baseline,
-                                                   fontname, font_obj, base_size, color, lalign)
-                        wi = nxt2
-                if rect_placed is None:
-                    shrink_size = _shrink_floor(base_size)
-                    chunk3, nxt3, fits3 = _fit_chunk(words, wi, font_obj, shrink_size, available)
-                    if fits3:
-                        rect_placed = _insert_line(page, chunk3, lx0, lx1, baseline,
-                                                   fontname, font_obj, shrink_size, color, lalign)
-                        wi = nxt3
-                    else:
-                        rect_placed = _insert_line(page, words[wi], lx0, lx1, baseline,
-                                                   fontname, font_obj, shrink_size, color, lalign)
-                        wi += 1
-            if rect_placed is not None:
-                last_baseline = baseline
-                _recreate_links(page, ln, rect_placed, recreated)
-
-        if wi < len(words) and last_baseline is not None:
-            line_h = bsize * 1.3
-            y = last_baseline + line_h
-            stop_reason = "unknown"
-            while wi < len(words):
-                cand = fitz.Rect(block_x0, y - bsize * 1.1, block_x1, y + line_h)
-                if cand.y1 > page_height:
-                    stop_reason = "page-bottom"
-                    break
-                blocked = False
-                for r, tag in occupied:
-                    if tag == block_index:
-                        continue
-                    inter = cand & r
-                    if not inter.is_empty and inter.get_area() > 1.0:
-                        blocked = True
-                        stop_reason = f"occupied@{round(r.y0,1)}-{round(r.y1,1)}"
-                        break
-                if blocked:
-                    break
-                size = bsize
-                chunk, nxt, fits = _fit_chunk(words, wi, bfont_obj, size, block_x1 - block_x0)
-                if not fits:
-                    size = _shrink_floor(bsize)
-                    chunk, nxt, fits = _fit_chunk(words, wi, bfont_obj, size, block_x1 - block_x0)
-                    if not fits:
-                        chunk, nxt = words[wi], wi + 1
-                rect_placed = _insert_line(page, chunk, block_x0, block_x1, y,
-                                           bfontname, bfont_obj, size, bcolor, alignment)
-                if rect_placed is not None:
-                    wi = nxt
-                else:
-                    wi += 1
-                y += line_h
-            if wi < len(words):
-                print(f"  [Layout] Overflow: {len(words) - wi} words exceed block box "
-                      f"on page {block.get('page')} (block {block_index}) — truncated "
-                      f"(no cross-block merge) stop={stop_reason} blockbox="
-                      f"[{round(block_y1,1)}<{round(page_height,1)}] "
-                      f"words={words[wi:wi+8]}")
-
-    def _norm_line(t):
-        return " ".join(t.split())
-
-    def _span_overlaps(page):
-        """Return list of (normA, normB) overlapping line pairs."""
-        d = page.get_text("dict")
-        line_texts = []
-        for b in d.get("blocks", []):
-            if b.get("type") != 0:
+            if any(tag != block_index and target.intersects(rect) and
+                   (target & rect).get_area() > 1 for rect, tag in occupied):
                 continue
-            for ln in b.get("lines", []):
-                rects = []
-                for sp in ln.get("spans", []):
-                    if not sp.get("text", "").strip():
-                        continue
-                    sb = sp.get("bbox")
-                    if not sb:
-                        continue
-                    rects.append((fitz.Rect(sb), float(sp.get("size", 11) or 11)))
-                if rects:
-                    line_texts.append((_norm_line(" ".join(sp.get("text", "") for sp in ln.get("spans", []))), rects))
-        pairs = []
-        for i in range(len(line_texts)):
-            for j in range(i + 1, len(line_texts)):
-                for sa, sza in line_texts[i][1]:
-                    for sb, szb in line_texts[j][1]:
-                        inter = sa & sb
-                        if inter.is_empty:
-                            continue
-                        min_sz = min(sza, szb)
-                        if inter.get_area() > 4.0 and inter.height > min_sz * 0.35:
-                            pairs.append((line_texts[i][0], line_texts[j][0]))
-                            break
-        return pairs
+            _place_lines(page, block, index, target, lines, size, "fit", recreated)
+            occupied.append((target, block_index))
+            return
+        # Whole blocks move together to readable continuation pages. Nothing is
+        # shortened, and source headings/bullets remain independent blocks.
+        continuations.setdefault(block.get("page", 0), []).append(block)
 
-    def _pre_existing_overlap(a, b, src_pairs):
-        """True if the two (normalized) line texts already overlapped in source."""
-        if not a or not b:
-            return False
-        for pa, pb in src_pairs:
-            if not pa or not pb:
-                continue
-            hit_a = a in pa or pa in a or a.split()[0] in pa or pa.split()[0] in a
-            hit_b = b in pb or pb in b or b.split()[0] in pb or pb.split()[0] in b
-            if hit_a and hit_b:
-                return True
-            hit_a2 = a in pb or pb in a or a.split()[0] in pb or pb.split()[0] in a
-            hit_b2 = b in pa or pa in b or b.split()[0] in pa or pa.split()[0] in b
-            if hit_a2 and hit_b2:
-                return True
-        return False
 
-    def _collision_check(page, translatable, occupied, src_page=None):
-        count = 0
-        src_pairs = _span_overlaps(src_page) if src_page is not None else []
-        d = page.get_text("dict")
-        line_rects = []
-        for b in d.get("blocks", []):
-            if b.get("type") != 0:
-                continue
-            for ln in b.get("lines", []):
-                rects = []
-                for sp in ln.get("spans", []):
-                    if not sp.get("text", "").strip():
-                        continue
-                    sb = sp.get("bbox")
-                    if not sb:
-                        continue
-                    rects.append((fitz.Rect(sb), float(sp.get("size", 11) or 11)))
-                if rects:
-                    line_rects.append((_norm_line(" ".join(sp.get("text", "") for sp in ln.get("spans", []))), rects))
-        for i in range(len(line_rects)):
-            for j in range(i + 1, len(line_rects)):
-                for sa, sza in line_rects[i][1]:
-                    for sb, szb in line_rects[j][1]:
-                        inter = sa & sb
-                        if inter.is_empty:
-                            continue
-                        min_sz = min(sza, szb)
-                        if inter.get_area() > 4.0 and inter.height > min_sz * 0.35:
-                            if _pre_existing_overlap(line_rects[i][0], line_rects[j][0], src_pairs):
-                                continue
-                            count += 1
-                            if os.environ.get("TRI_DEBUG") and count <= 8:
-                                print(f"    [_collision] A={line_rects[i][0][:26]!r} "
-                                      f"B={line_rects[j][0][:26]!r} "
-                                      f"area={inter.get_area():.1f} h={inter.height:.1f} "
-                                      f"bboxA={[round(v,1) for v in sa]} "
-                                      f"bboxB={[round(v,1) for v in sb]}")
-                            break
-        return count
+
+
 
     def _process_page(doc, page_num, translatable, occupied, src_page, layout_plan):
         page = doc[page_num]
@@ -1655,6 +1568,31 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
             imgs_before = _image_snapshot(page)
             redact_rects = []
             src_pix = src_page.get_pixmap() if src_page is not None else None
+            protected = [fitz.Rect(line["bbox"]) for block in pages_blocks.get(page_num, [])
+                         if block.get("passthrough") for line in block.get("lines", [])]
+
+            def redact_without_passthrough(rect):
+                # Redaction padding and clipped source text can intersect icons
+                # or numeric labels. Remove only the unprotected parts.
+                pieces = [rect]
+                for keep in protected:
+                    remaining = []
+                    for piece in pieces:
+                        overlap = piece & keep
+                        if overlap.is_empty:
+                            remaining.append(piece)
+                            continue
+                        remaining.extend(candidate for candidate in (
+                            fitz.Rect(piece.x0, piece.y0, piece.x1, overlap.y0),
+                            fitz.Rect(piece.x0, overlap.y1, piece.x1, piece.y1),
+                            fitz.Rect(piece.x0, overlap.y0, overlap.x0, overlap.y1),
+                            fitz.Rect(overlap.x1, overlap.y0, piece.x1, overlap.y1),
+                        ) if not candidate.is_empty)
+                    pieces = remaining
+                for piece in pieces:
+                    redact_rects.append(piece)
+                    bg = BackgroundSampler.sample(src_page, tuple(piece), src_pix)
+                    page.add_redact_annot(piece, fill=bg if bg is not None else None)
             for b in translatable:
                 for ln in b.get("lines", []):
                     lbbox = ln.get("bbox", [0, 0, 0, 0])
@@ -1664,18 +1602,14 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
                     pad = 2.5
                     rr = fitz.Rect(max(0.0, lx0 - pad), max(0.0, ly0 - pad),
                                    min(page_width, lx1 + pad), min(page_height, ly1 + pad))
-                    redact_rects.append(rr)
-                    bg = BackgroundSampler.sample(src_page, (rr.x0, rr.y0, rr.x1, rr.y1), src_pix)
-                    page.add_redact_annot(rr, fill=bg if bg is not None else None)
+                    redact_without_passthrough(rr)
                     for l in ln.get("links", []):
                         fr = l.get("from")
                         if not fr:
                             continue
                         lr = fitz.Rect(fr)
                         if not lr.is_empty:
-                            redact_rects.append(lr)
-                            bg = BackgroundSampler.sample(src_page, (lr.x0, lr.y0, lr.x1, lr.y1), src_pix)
-                            page.add_redact_annot(lr, fill=bg if bg is not None else None)
+                            redact_without_passthrough(lr)
             if not redact_rects:
                 return True, issues
             page.apply_redactions(images=0, graphics=0, text=0)
@@ -1696,10 +1630,6 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
         except Exception as e:
             issues.append(f"I4:exception:{str(e)[:90]}")
 
-        if not issues:
-            collide = _collision_check(page, translatable, occupied, src_page)
-            if collide:
-                issues.append(f"I3:collision({collide})")
 
         _reconcile_links(page, src_page, recreated)
         return len(issues) == 0, issues
@@ -1748,11 +1678,6 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
                 except Exception:
                     pass
 
-    def _fallback_page(doc, src_doc, page_num):
-        doc.insert_pdf(src_doc, from_page=page_num, to_page=page_num)
-        doc.delete_page(page_num)
-        last = doc.page_count - 1
-        doc.move_page(last, page_num)
 
     # ---- group blocks by page ----
     pages_blocks = {}
@@ -1760,50 +1685,174 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
         p = block.get("page", 0)
         pages_blocks.setdefault(p, []).append(block)
 
-    fallback_log = {}
-    still_failing = {}
-
-    for page_num in sorted(pages_blocks):
-        page_blocks = pages_blocks[page_num]
-        if page_num >= len(doc):
-            continue
-        translatable = [b for b in page_blocks if not b.get("passthrough")]
-        if not translatable:
-            continue
-        src_page = src_doc[page_num]
-        occupied = []
-        for bi, b in enumerate(translatable):
-            for ln in b.get("lines", []):
-                lb = ln.get("bbox", [0, 0, 0, 0])
-                occupied.append((fitz.Rect([float(v) for v in lb]), bi))
-        transl_rects = [r for r, _ in occupied]
-        for tb in src_page.get_text("blocks"):
-            if len(tb) < 6:
+    source_pages = len(src_doc)
+    source_artifacts = []
+    for index, block in enumerate(blocks):
+        block["_render_index"] = index
+    extras = {}
+    try:
+        for page_num in sorted(pages_blocks):
+            page_blocks = pages_blocks[page_num]
+            for block in page_blocks:
+                if not block.get("passthrough"):
+                    continue
+                for line in block.get("lines", []):
+                    text = line.get("text", "").strip()
+                    font = (line.get("font_original") or line.get("font", "")).lower()
+                    rect = fitz.Rect(line["bbox"])
+                    source_page = src_doc[page_num]
+                    if not source_page.rect.contains(rect):
+                        visible = source_page.get_text("text", clip=rect & source_page.rect).strip()
+                        if text not in visible:
+                            source_artifacts.append({"block_index": block["_render_index"],
+                                                     "source_page": page_num,
+                                                     "reason": "Pre-existing clipped source text", "text": text})
+                            continue
+                        rect &= source_page.rect
+                    # Pure private-use icon codes represent artwork. They are
+                    # protected from redaction, not treated as translated prose.
+                    artwork = any(name in font for name in ("icons", "wingdings", "webdings", "zapfdingbats"))
+                    if text and not artwork and not all(0xe000 <= ord(c) <= 0xf8ff or c.isspace() for c in text):
+                        placements.append({"block_index": block["_render_index"],
+                                           "source_page": page_num, "page_xref": doc[page_num].xref,
+                                           "rect": list(rect), "text": line["text"],
+                                           "font_size": line.get("size", 11), "action": "passthrough"})
+            translatable = [b for b in page_blocks if not b.get("passthrough")]
+            if not translatable:
                 continue
-            txt = (tb[4] or "").strip()
-            if not txt:
-                continue
-            tr = fitz.Rect(tb[0], tb[1], tb[2], tb[3])
-            if any(tr.intersects(x) for x in transl_rects):
-                continue
-            occupied.append((tr, None))
+            src_page = src_doc[page_num]
+            occupied = [(fitz.Rect(b["position"]), i) for i, b in enumerate(translatable)]
+            # Source blocks excluded from translation and illustrations are obstacles.
+            for block in page_blocks:
+                if block.get("passthrough"):
+                    occupied.append((fitz.Rect(block["position"]), None))
+            for image in src_page.get_image_info():
+                occupied.append((fitz.Rect(image["bbox"]), None))
+            # Ruled forms and tables have row boundaries even when extraction
+            # labels their text as paragraphs. Never expand through those rules.
+            drawings = src_page.get_drawings()
+            for drawing in drawings:
+                for item in drawing["items"]:
+                    if item[0] == "l":
+                        left, right = item[1:3]
+                        if abs(left.y - right.y) < .5 and abs(left.x - right.x) >= 20:
+                            occupied.append((fitz.Rect(min(left.x, right.x), left.y - .6,
+                                                       max(left.x, right.x), left.y + .6), None))
+                    elif item[0] == "re" and item[1].width >= 20:
+                        rect = item[1]
+                        for y in (rect.y0, rect.y1):
+                            occupied.append((fitz.Rect(rect.x0, y - .6, rect.x1, y + .6), None))
+            # Native clustering also covers vector illustrations (not exposed by
+            # get_image_info). Text-bearing panels are backgrounds, not figures.
+            for rect in src_page.cluster_drawings(drawings=drawings):
+                text = src_page.get_text("text", clip=rect)
+                if not any(character.isalpha() for character in text):
+                    occupied.append((rect, None))
+            translated_boxes = [fitz.Rect(b["position"]) for b in translatable]
+            for raw in src_page.get_text("blocks"):
+                rect = fitz.Rect(raw[:4])
+                if len(raw) > 6 and raw[6] != 0:
+                    continue
+                if not any(rect.intersects(box) for box in translated_boxes):
+                    occupied.append((rect, None))
+            ok, issues = _process_page(doc, page_num, translatable, occupied, src_page, layout_plan)
+            if not ok:
+                raise ValueError(f"PDF reconstruction failed on page {page_num + 1}: {issues}")
 
-        ok, issues = _process_page(doc, page_num, translatable, occupied, src_page, layout_plan)
-        if not ok:
-            _fallback_page(doc, src_doc, page_num)
-            fallback_log[page_num] = issues
-            ok2, issues2 = _process_page(doc, page_num, translatable, occupied, src_page, layout_plan)
-            if not ok2:
-                still_failing[page_num] = issues2
+        # Append, then reorder continuations immediately after their source page.
+        for source_page, overflow_blocks in sorted(continuations.items()):
+            width, height = src_doc[source_page].rect.width, src_doc[source_page].rect.height
+            page, y = None, 0
+            margin = min(36.0, width * .1, height * .1)
+            for block in overflow_blocks:
+                block = copy.deepcopy(block)
+                # Pale/white source text may sit on a colored panel. Continuation
+                # pages are white, so darken those colors while retaining styles.
+                for style in [block.setdefault("style", {})] + [run for line in block.get("lines", [])
+                                                                  for run in line.get("runs", [])]:
+                    color = _resolve_color(style.get("color", 0))
+                    if sum(channel * weight for channel, weight in zip(color, (.2126, .7152, .0722))) > .65:
+                        style["color"] = 0
+                style = block.get("style", {})
+                size = max(10.0, min(float(style.get("font_size", 11) or 11), 24.0))
+                for paragraph in block["text"].split("\n"):
+                    # Resolve on a live page so font insertion belongs to that page.
+                    if page is None:
+                        page = doc.new_page(width=width, height=height)
+                        extras.setdefault(source_page, []).append(page.number)
+                        page.insert_text((margin, margin + 10),
+                                         continuation_title.format(source_page + 1), fontsize=9)
+                        y = margin + 28
+                    fontname, font = _resolve_line_font(style, page, paragraph)
+                    lines = _wrap_complete(paragraph, font, size, width - 2 * margin)
+                    ascent, descent, leading = _block_metrics(block, page, size)
+                    while lines:
+                        capacity = int((height - margin - y - (ascent - descent) * size)
+                                       / leading) + 1
+                        if capacity < 1:
+                            page = doc.new_page(width=width, height=height)
+                            extras.setdefault(source_page, []).append(page.number)
+                            page.insert_text((margin, margin + 10),
+                                             continuation_title.format(source_page + 1), fontsize=9)
+                            y = margin + 28
+                            continue
+                        part, lines = lines[:capacity], lines[capacity:]
+                        rect = fitz.Rect(margin, y, width - margin, height - margin)
+                        y = _place_lines(page, block, block["_render_index"], rect, part,
+                                         size, "continuation") + (6 if block.get("type") == "heading" else 4)
+                y += 4
+        order = []
+        for source_page in range(source_pages):
+            order.append(source_page)
+            order.extend(extras.get(source_page, []))
+        # Add navigation at the original location only where it fits legibly.
+        for source_page, overflow_blocks in continuations.items():
+            page = doc[source_page]
+            source_pix = src_doc[source_page].get_pixmap()
+            for block in overflow_blocks:
+                first_fragment = next(p for p in placements if p["block_index"] == block["_render_index"]
+                                      and p["action"] == "continuation")
+                target_page = next(p.number for p in doc if p.xref == first_fragment["page_xref"])
+                label = continuation_reference.format(order.index(target_page) + 1)
+                rect = fitz.Rect(block["lines"][0]["bbox"]) & page.rect
+                fn, font = _resolve_line_font({"font": "helv"}, page, label)
+                occupied_here = [fitz.Rect(p["rect"]) for p in placements if p["page_xref"] == page.xref]
+                if (rect.width >= _text_width(label, font, 8) and rect.height >= (font.ascender - font.descender) * 8
+                        and not any(rect.intersects(other) for other in occupied_here)):
+                    background = BackgroundSampler.sample(src_doc[source_page], tuple(rect), source_pix)
+                    color = block.get("style", {}).get("color", 0)
+                    if background is not None:
+                        color = 0xffffff if sum(channel * weight for channel, weight in
+                                                zip(background, (.2126, .7152, .0722))) < .5 else 0
+                    reference = {"text": label, "page": source_page,
+                                 "style": {"font": "helv", "color": color}, "lines": []}
+                    _place_lines(page, reference, block["_render_index"], rect, [label], 8, "reference")
+        if extras:
+            doc.select(order)
+        saved_pages = {page.xref: page.number for page in doc}
+        for placement in placements:
+            placement["page"] = saved_pages[placement["page_xref"]]
+        # Deflate/subset after all insertions, rather than embedding full fonts
+        # and uncompressed page streams in every translated PDF.
+        doc.subset_fonts()
+        doc.save(output_file, garbage=3, deflate=True)
+    finally:
+        doc.close()
+        src_doc.close()
 
-    for pn, iss in fallback_log.items():
-        print(f"  [Fallback] page {pn}: triggered by {iss}")
-    for pn, iss in still_failing.items():
-        print(f"  [Fallback] page {pn}: still failing after rebuild: {iss}")
+    from validators.translation_validator import validate_pdf_output, PDFValidationError
+    report = validate_pdf_output(output_file, placements, source_pages, blocks)
+    report["source_artifacts"] = source_artifacts
+    report["source_page_map"] = {str(page): order.index(page) for page in range(source_pages)}
+    for index, block in enumerate(original_blocks):
+        block["rendered_layout"] = {
+            "status": report["status"],
+            "fragments": [entry for entry in report["blocks"] if entry["block_index"] == index],
+        }
+    if report["status"] != "passed":
+        raise PDFValidationError(report)
+    return report
 
-    doc.save(output_file, incremental=False)
-    doc.close()
-    src_doc.close()
 
 def write_txt(blocks, output_file):
     """Write blocks to plain text."""
@@ -1911,7 +1960,7 @@ def reconstruct_document(blocks, output_file, original_file=None, original_ext=N
     if ext == ".docx":
         write_docx(blocks, output_file, original_file)
     elif ext == ".pdf" and original_file:
-        write_pdf_preserved(blocks, original_file, output_file,
+        return write_pdf_preserved(blocks, original_file, output_file,
                             layout_plan=layout_plan,
                             source_lang=source_lang, target_lang=target_lang)
     elif ext == ".pptx":

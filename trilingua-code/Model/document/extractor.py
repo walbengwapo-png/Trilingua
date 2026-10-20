@@ -394,6 +394,10 @@ def read_pdf(file_path, column_mode="auto"):
 
     for page_num in range(len(doc)):
         page = doc[page_num]
+        # Work in displayed coordinates once, for extraction and reconstruction.
+        # remove_rotation preserves artwork and annotation positions.
+        if page.rotation:
+            page.remove_rotation()
         pw = page.rect.width
         ph = page.rect.height
 
@@ -402,6 +406,11 @@ def read_pdf(file_path, column_mode="auto"):
             "dict",
             flags=fitz.TEXT_PRESERVE_WHITESPACE | fitz.TEXT_PRESERVE_LIGATURES
         )
+        from statistics import median
+        font_sizes = [span.get("size", 11) for raw in page_dict.get("blocks", [])
+                      for line in raw.get("lines", []) for span in line.get("spans", [])
+                      if span.get("text", "").strip()]
+        body_size = median(font_sizes) if font_sizes else 11
 
         page_links = _collect_page_links(page)
 
@@ -413,6 +422,23 @@ def read_pdf(file_path, column_mode="auto"):
             if not lines:
                 continue
 
+            # Some PDF lines contain adjacent headings with different sizes.
+            # Split those spans before assigning one role/style to the text.
+            expanded_lines = []
+            for line in lines:
+                segments = []
+                for span in line.get("spans", []):
+                    previous = segments[-1][-1] if segments else None
+                    if not segments or (previous and abs(span.get("size", 11) - previous.get("size", 11))
+                                        > max(1, previous.get("size", 11) * .2)):
+                        segments.append([])
+                    segments[-1].append(span)
+                for segment in segments:
+                    rect = fitz.Rect(segment[0]["bbox"])
+                    for span in segment[1:]:
+                        rect |= fitz.Rect(span["bbox"])
+                    expanded_lines.append(dict(line, spans=segment, bbox=list(rect)))
+            lines = expanded_lines
             parts = []
             line_records = []
             dom_size = 11.0
@@ -476,6 +502,7 @@ def read_pdf(file_path, column_mode="auto"):
                         "italic": sp_italic,
                     })
                 if lt.strip():
+                    lt = lt.translate({0xf07d: "•", 0xe601: "•"})
                     parts.append(lt.strip())
                     line_bbox = [float(v) for v in line.get("bbox", [0, 0, 0, 0])]
                     if baseline is None:
@@ -494,6 +521,7 @@ def read_pdf(file_path, column_mode="auto"):
                         }]
                     line_records.append({
                         "text": lt.strip(),
+                        "direction": list(line.get("dir", (1, 0))),
                         "bbox": line_bbox,
                         "baseline": round(baseline, 2),
                         "x0": round(line_x0, 2),
@@ -518,18 +546,45 @@ def read_pdf(file_path, column_mode="auto"):
 
             dom_size = max(6.0, min(float(dom_size or 11.0), 72.0))
 
-            raw_blocks_dict.append({
-                "type":     "paragraph",
-                "text":     block_text,
-                "position": bbox,
+            # Keep headings and bullet starts separate from adjacent body text.
+            groups = []
+            for record in line_records:
+                previous = groups[-1][-1] if groups else None
+                bullet_start = bool(re.match(r"^\s*(?:[•▪●–]|\d+[.)])\s+", record["text"]))
+                style_break = previous and (
+                    record["bold"] != previous["bold"] or
+                    abs(record["size"] - previous["size"]) > max(1, previous["size"] * .2))
+                if not groups or bullet_start or style_break:
+                    groups.append([])
+                groups[-1].append(record)
+            for group in groups:
+                first = group[0]
+                group_bbox = fitz.Rect(group[0]["bbox"])
+                for record in group[1:]:
+                    group_bbox |= fitz.Rect(record["bbox"])
+                group_text = " ".join(record["text"] for record in group)
+                role = "paragraph"
+                if re.match(r"^\s*(?:[•▪●–]|\d+[.)])\s+", group_text):
+                    role = "bullet"
+                elif (first["bold"] and first["size"] >= max(11.5, body_size * 1.15)
+                      and all(run.get("bold") for record in group for run in record.get("runs", []))
+                      and len(group_text.split()) <= 25):
+                    role = "heading"
+                elif group_bbox.y0 > ph * .94:
+                    role = "footer"
+                raw_blocks_dict.append({
+                "type":     role,
+                "text":     group_text,
+                "position": list(group_bbox),
                 "page":     page_num,
-                "alignment": _detect_block_alignment(bbox, pw, ph),
-                "style":    {"font_size": dom_size, "font": dom_font,
-                             "font_original": dom_font_orig or dom_font,
-                             "color": dom_color, "bold": dom_bold,
-                             "italic": dom_italic},
-                "lines":    line_records,
-                "links":    [l for l in page_links if _links_hit(l, bbox)],
+                "pdf_coordinates": "display",
+                "alignment": _detect_block_alignment(group_bbox, pw, ph),
+                "style":    {"font_size": first["size"], "font": first["font"],
+                             "font_original": first["font_original"],
+                             "color": first["color"], "bold": first["bold"],
+                             "italic": first["italic"]},
+                "lines":    group,
+                "links":    [l for l in page_links if _links_hit(l, group_bbox)],
             })
 
         # ── Method 2: blocks mode (catches text dict mode misses) ────────────
@@ -585,6 +640,7 @@ def read_pdf(file_path, column_mode="auto"):
                     "text":     b["text"],
                     "position": b["position"],
                     "page":     page_num,
+                    "pdf_coordinates": "display",
                     "style":    {"font_size": 11, "font": "helv", "color": 0, "bold": False},
                     "lines":    [{
                         "text":     b["text"],

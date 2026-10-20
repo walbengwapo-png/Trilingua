@@ -16,9 +16,17 @@
         </div>
     </div>
 
-    @if (!empty($error))
+    @if (session('status') === 'queue-job-retried')
+        <p class="notice notice--success" role="status">Job replayed — the worker will reconstruct input from the durable original.</p>
+    @elseif (session('status') === 'queue-job-not-recoverable')
+        <p class="notice notice--error" role="alert">This failed job cannot be retried: no durable original exists to reconstruct the input.</p>
+    @elseif (session('status') === 'queue-job-retry-failed')
+        <p class="notice notice--error" role="alert">Retry could not be queued. Check the application logs.</p>
+    @elseif (!empty($error))
         <p class="empty-state">Unable to load jobs. Please try again later.</p>
-    @else
+    @endif
+
+    @if (empty($error))
 
     <div class="review-table-card">
         {{-- Status summary chips --}}
@@ -97,7 +105,7 @@
         <div class="review-page-header">
             <div class="review-page-header__title">
                 <h3>Failed Queue Jobs <span class="count-badge">{{ $failed->count() }}</span></h3>
-                <p>Jobs that exhausted their attempts. Replay from here or via <code>php artisan queue:retry &lt;id&gt;</code>.</p>
+                <p>Jobs that exhausted their attempts. Retry only replays jobs whose input can be reconstructed from a durable original.</p>
             </div>
         </div>
         <table class="review-table">
@@ -107,6 +115,7 @@
                     <th>Job</th>
                     <th>Failed At</th>
                     <th>Exception</th>
+                    <th>Input</th>
                     <th></th>
                 </tr>
             </thead>
@@ -122,14 +131,25 @@
                     <td>{{ \Carbon\Carbon::parse($row->failed_at)->utc()->format('Y-m-d H:i') }} UTC</td>
                     <td title="{{ $row->exception }}">{{ \Illuminate\Support\Str::limit($row->exception, 80) }}</td>
                     <td>
-                        <form method="POST" action="{{ route('admin.jobs.retry', $row->id) }}">
-                            @csrf
-                            <button type="submit" class="review-btn">Retry</button>
-                        </form>
+                        @if (!empty($row->recoverable))
+                            <span class="type-badge">Recoverable</span>
+                        @else
+                            <span class="type-badge">Unavailable</span>
+                        @endif
+                    </td>
+                    <td>
+                        @if (!empty($row->recoverable))
+                            <form method="POST" action="{{ route('admin.jobs.retry', $row->id) }}">
+                                @csrf
+                                <button type="submit" class="review-btn">Retry</button>
+                            </form>
+                        @else
+                            <span title="No durable original exists; this job cannot be reconstructed.">—</span>
+                        @endif
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="5" class="empty-state">No failed jobs.</td></tr>
+                <tr><td colspan="6" class="empty-state">No failed jobs.</td></tr>
                 @endforelse
             </tbody>
         </table>

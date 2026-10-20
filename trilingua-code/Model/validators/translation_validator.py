@@ -7,6 +7,91 @@ Extracted from document_translator_v3.py BLEU_Reporter.
 """
 
 import os
+import re
+import unicodedata
+
+
+class PDFValidationError(ValueError):
+    """A generated PDF failed deterministic saved-output checks."""
+    def __init__(self, report):
+        self.report = report
+        issues = report.get("issues", [])
+        super().__init__("Saved PDF validation failed: " + "; ".join(issues[:8]))
+
+
+def validate_pdf_output(path, placements, source_pages, blocks=None):
+    """Reopen the saved file and check each placed fragment in its own region.
+
+    This is content coverage and geometry validation, not a linguistic score.
+    """
+    import fitz
+
+    def normalized(text):
+        text = unicodedata.normalize("NFKC", text)
+        text = re.sub(r"[\u00ad\u2010\u2011]", "-", text)
+        return re.sub(r"[\s\u200b]+", "", text)
+
+    issues, content_issues, layout_issues = [], [], []
+    content_findings = []
+    records = []
+    for index, block in enumerate(blocks or []):
+        if block.get("passthrough") or not block.get("text", "").strip():
+            continue
+        fragments = "".join(p["text"] for p in placements
+                            if p["block_index"] == index and p["action"] in {"fit", "continuation"})
+        if normalized(block["text"]) != normalized(fragments):
+            content_issues.append(f"Block {index}: incomplete block placement")
+    with fitz.open(path) as doc:
+        for placement in placements:
+            page_number = placement.get("page")
+            prefix = f"Block {placement['block_index']}"
+            if page_number is None or page_number >= len(doc):
+                content_issues.append(f"{prefix}: missing output page")
+                continue
+            page = doc[page_number]
+            rect = fitz.Rect(placement["rect"])
+            clip = rect + (-.5, -.5, .5, .5)
+            text = page.get_text("text", clip=clip, sort=True)
+            if normalized(placement["text"]) not in normalized(text):
+                content_issues.append(f"{prefix}: missing rendered text on page {page_number + 1}")
+                content_findings.append({"block_index": placement["block_index"],
+                                         "page": page_number, "rect": list(rect),
+                                         "expected": placement["text"], "observed": text})
+            if not (page.rect + (-.5, -.5, .5, .5)).contains(rect):
+                layout_issues.append(f"{prefix}: text outside page {page_number + 1}")
+            for block in page.get_text("dict", clip=clip)["blocks"]:
+                for line in block.get("lines", []):
+                    if placement["action"] != "passthrough" and (
+                            abs(line["dir"][0] - 1) > .01 or abs(line["dir"][1]) > .01):
+                        layout_issues.append(f"{prefix}: text orientation on page {page_number + 1}")
+            records.append({key: placement[key] for key in
+                            ("block_index", "source_page", "rect", "font_size", "action")}
+                           | {"page": page_number})
+        # ponytail: pairwise fragment rectangles; spatial index if document size warrants it.
+        for i, left in enumerate(records):
+            for right in records[i + 1:]:
+                if left["page"] != right["page"]:
+                    continue
+                if left["action"] == right["action"] == "passthrough":
+                    continue
+                overlap = fitz.Rect(left["rect"]) & fitz.Rect(right["rect"])
+                if not overlap.is_empty and overlap.get_area() > 2 and overlap.height > 1:
+                    layout_issues.append(
+                        f"Blocks {left['block_index']}/{right['block_index']}: overlap on page {left['page'] + 1}")
+        page_count = len(doc)
+    issues.extend(content_issues)
+    issues.extend(layout_issues)
+    return {
+        "status": "failed" if issues else "passed",
+        "content_coverage": "failed" if content_issues else "passed",
+        "layout": "failed" if layout_issues else "passed",
+        "linguistic_accuracy": "unverified",
+        "source_pages": source_pages, "output_pages": page_count,
+        "continuation_pages": max(0, page_count - source_pages),
+        "checked_fragments": len(placements), "issues": issues,
+        "content_findings": content_findings,
+        "blocks": records,
+    }
 
 
 class BLEUReporter:

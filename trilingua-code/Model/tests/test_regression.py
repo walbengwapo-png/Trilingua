@@ -592,7 +592,7 @@ def test_overflow_continuation_rescues_free_row():
         # Continuation rows must step downward by ~one line height each.
         ys = sorted(round(y, 1) for y, _ in lines)
         steps = [round(b - a, 1) for a, b in zip(ys, ys[1:])]
-        assert all(abs(s - 15.6) < 0.5 for s in steps), (
+        assert all(s >= 16.4 for s in steps) and max(steps) - min(steps) < .5, (
             f"continuation rows not evenly spaced: {steps}"
         )
     finally:
@@ -604,10 +604,9 @@ def test_overflow_continuation_rescues_free_row():
 @pytest.mark.golden
 @pytest.mark.font_regression
 def test_overflow_continuation_stops_at_occupied_row():
-    """The continuation loop must stop (and emit the overflow log) when the
-    candidate row collides with another block's content — it must not overwrite
-    or duplicate the colliding block."""
+    """Blocked overflow moves to a new page without overwriting its neighbor."""
     from document.reconstructor import write_pdf_preserved
+    import fitz
     import io
     import contextlib
 
@@ -630,8 +629,11 @@ def test_overflow_continuation_stops_at_occupied_row():
                                 source_lang="English", target_lang="Cebuano")
         log = buf.getvalue()
 
-        assert "Overflow" in log, "expected overflow log when free row is blocked"
-        assert "occupied@" in log, f"expected occupied stop reason: {log}"
+        assert "truncated" not in log
+        with fitz.open(out_path) as doc:
+            assert len(doc) > 1, "blocked text must move to a continuation page"
+            continued = " ".join(page.get_text() for page in list(doc)[1:])
+            assert Counter(continued.split()) >= Counter(text.split())
 
         lines, words = _page_text_lines(out_path)
         # Block 2 content fully present and NOT duplicated/corrupted.
@@ -640,18 +642,12 @@ def test_overflow_continuation_stops_at_occupied_row():
             f"occupier block duplicated or lost: {dict(words)}"
         )
         # No words may be invented by the continuation attempt.
-        allowed = Counter(text.split()) + Counter(["OCCUPIER-BLOCK-CONTENT"])
+        allowed = Counter(text.split()) + Counter(["OCCUPIER-BLOCK-CONTENT"]) + Counter("Padayon sa panid 2".split())
         assert words - allowed == Counter(), (
             f"unexpected added words: {dict(words - allowed)}"
         )
-        # Exactly the overflow words are missing (block 0 truncated), proving
-        # continuation stopped at the occupied row instead of overwriting it.
-        overflow_words = Counter(text.split()) - words
-        assert len(overflow_words) == len(text.split()) - 3, (
-            f"expected only block-0 overflow to be truncated, got "
-            f"{len(overflow_words)} missing of {len(text.split())} block words"
-        )
-        assert all(w != "OCCUPIER-BLOCK-CONTENT" for w in overflow_words)
+        # Overflow is preserved on a continuation page, never truncated.
+        assert not any(word in words for word in text.split())
     finally:
         for p in (src_path, out_path):
             if os.path.exists(p):
@@ -985,46 +981,50 @@ def test_echo_output_retries_once_then_succeeds():
 
 
 def test_echo_output_never_cached(tmp_path):
-    """An always-echoing provider must not write anything to the cache."""
+    """An always-echoing provider must never write the echo to the cache."""
     provider = _AlwaysEchoProvider()
     pipeline = TranslationPipeline(provider)
     cache = SQLiteTranslationCache(
         db_path=str(tmp_path / "t2.db"), ttl_days=30, enabled=True
     )
     pipeline._shared_cache = cache
+    source = "Please translate this sentence into Cebuano properly."
     try:
         result = pipeline.translate(TranslationRequest(
-            text="Please translate this sentence into Cebuano properly.",
+            text=source,
             source_lang="English", target_lang="Cebuano",
         ))
-        assert result.success is False, "echo output must be reported as a failure"
+        assert result.success, "echo fallback keeps the document flowing"
+        assert result.translated_text == source, "source text is kept as-is"
+        assert any("echoed" in w.lower() or "kept as-is" in w.lower()
+                   for w in result.warnings), "a warning explains the kept text"
         cached = cache.get(
-            "Please translate this sentence into Cebuano properly.",
-            "Cebuano", provider.name, source_lang="English",
+            source, "Cebuano", provider.name, source_lang="English",
         )
         assert cached is None, "echo output was cached"
     finally:
         cache.clear_all()
 
 
-def test_echo_output_retry_still_echoes_fails(tmp_path):
-    """If the retry also echoes, the result is a failure and nothing is cached."""
+def test_echo_output_retry_still_echoes_succeeds_soft(tmp_path):
+    """If the retry and fallback still echo, keep source, warn, and do not cache."""
     provider = _AlwaysEchoProvider()
     pipeline = TranslationPipeline(provider)
     cache = SQLiteTranslationCache(
         db_path=str(tmp_path / "t3.db"), ttl_days=30, enabled=True
     )
     pipeline._shared_cache = cache
+    source = "The quick brown fox jumps over the lazy dog."
     try:
         result = pipeline.translate(TranslationRequest(
-            text="The quick brown fox jumps over the lazy dog.",
+            text=source,
             source_lang="English", target_lang="Filipino",
         ))
-        assert result.success is False
-        assert "unchanged" in result.error_message.lower()
+        assert result.success
+        assert result.translated_text == source
+        assert result.warnings, "a warning explains the kept text"
         assert cache.get(
-            "The quick brown fox jumps over the lazy dog.",
-            "Filipino", provider.name, source_lang="English",
+            source, "Filipino", provider.name, source_lang="English",
         ) is None
     finally:
         cache.clear_all()
@@ -1082,6 +1082,8 @@ def test_run_pipeline_guarded_invokes_callable():
 def test_run_pipeline_guarded_rejects_when_saturated():
     server = _load_server_module()
     sem = server._translation_semaphore
+    original_wait = server._BUSY_WAIT_SECONDS
+    server._BUSY_WAIT_SECONDS = 0
 
     # Saturate the semaphore one slot at a time until exhausted.
     held = []
@@ -1094,6 +1096,7 @@ def test_run_pipeline_guarded_rejects_when_saturated():
         assert excinfo.value.status_code == 503
         assert "busy" in str(excinfo.value.detail).lower()
     finally:
+        server._BUSY_WAIT_SECONDS = original_wait
         for _ in held:
             sem.release()
 

@@ -35,7 +35,7 @@ class MockTranslationProvider:
 
     def translate(self, text: str, source_lang: str = "", target_lang: str = "",
                   block_type: str = "paragraph", context_hint: str = "",
-                  document_type: str = "") -> TranslationResponse:
+                  document_type: str = "", response_format: str = "text") -> TranslationResponse:
         if self._delay:
             time.sleep(self._delay)
 
@@ -47,7 +47,15 @@ class MockTranslationProvider:
                 success=True,
             )
 
-        translated = f"[MOCK:{len(text.split())}w] {text[::-1]}"
+        # Mock prose can reverse, but protected literals must obey the same
+        # acceptance contract as real providers.
+        from document.protected_spans import detect_protected_spans
+        pieces, start = [], 0
+        for span in detect_protected_spans(text):
+            pieces.extend((text[start:span.start][::-1], text[span.start:span.end]))
+            start = span.end
+        pieces.append(text[start:][::-1])
+        translated = f"[MOCK:{len(text.split())}w] {''.join(reversed(pieces))}"
 
         return TranslationResponse(
             translated_text=translated,

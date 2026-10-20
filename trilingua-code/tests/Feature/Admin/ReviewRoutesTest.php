@@ -101,12 +101,59 @@ class ReviewRoutesTest extends TestCase
             'status' => 'pending',
         ]);
 
+        // Fully published: review_status edited, no outstanding draft.
+        $record->update([
+            'review_status' => 'edited',
+            'draft_revision' => 1,
+            'published_revision' => 1,
+        ]);
+
         $this->actingAs($this->createAdmin())
             ->get("/admin/review/{$record->id}")
             ->assertOk()
             ->assertSee('Editable Document')
             ->assertSee('Block #0')
-            ->assertSee('Kumusta kalibutan');
+            ->assertSee('Kumusta kalibutan')
+            ->assertSee('>Published</span>', false)
+            ->assertDontSee('>Unpublished edits</span>', false)
+            ->assertDontSee('>Draft edit</span>', false)
+            ->assertDontSee('id="draft-warning"', false);
+    }
+
+    public function test_document_review_detail_shows_unpublished_draft_badges(): void
+    {
+        $submitter = $this->createUser();
+        $record = $this->createRecord($submitter, [
+            'translation_type' => 'document',
+            'original_filename' => 'sample.txt',
+            'translated_filename' => 'sample_translated.txt',
+        ]);
+
+        TranslationBlock::create([
+            'translation_history_id' => $record->id,
+            'block_index' => 0,
+            'block_type' => 'paragraph',
+            'source_text' => 'Hello world',
+            'ai_translated_text' => 'Kumusta kalibutan',
+            'current_text' => 'Kumusta kalibutan (draft)',
+            'quality_score' => 90,
+            'status' => 'edited',
+        ]);
+
+        $record->update([
+            'review_status' => 'edited',
+            'draft_revision' => 1,
+            'published_revision' => 0,
+        ]);
+
+        $this->actingAs($this->createAdmin())
+            ->get("/admin/review/{$record->id}")
+            ->assertOk()
+            ->assertSee('>Unpublished edits</span>', false)
+            ->assertSee('>Draft edit</span>', false)
+            ->assertSee('id="draft-warning"', false)
+            ->assertSee('Edits are saved as a')
+            ->assertDontSee('>Published</span>', false);
     }
 
     public function test_review_queue_supports_status_filter(): void
@@ -297,7 +344,7 @@ class ReviewRoutesTest extends TestCase
         ]);
 
         $storage = \Mockery::mock(\App\Services\StorageService::class);
-        $storage->shouldReceive('downloadFile')->once()->andReturn('%PDF-1.4 fake pdf bytes');
+        $storage->shouldReceive('read')->once()->andReturn('%PDF-1.4 fake pdf bytes');
         $this->app->instance(\App\Services\StorageService::class, $storage);
 
         $response = $this->actingAs($this->createAdmin())
@@ -322,7 +369,7 @@ class ReviewRoutesTest extends TestCase
         ]);
 
         $storage = \Mockery::mock(\App\Services\StorageService::class);
-        $storage->shouldReceive('downloadFile')->once()->andReturn('PK fake docx zip bytes');
+        $storage->shouldReceive('read')->once()->andReturn('PK fake docx zip bytes');
         $this->app->instance(\App\Services\StorageService::class, $storage);
 
         $response = $this->actingAs($this->createAdmin())

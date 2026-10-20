@@ -7,7 +7,7 @@ These providers handle non-translation AI tasks:
 - Quality review (translation validation)
 - Layout planning (expansion prediction)
 
-They are SEPARATE from translation providers (GPTOSSProvider, MistralProvider).
+They are SEPARATE from translation providers (GPTOSSProvider, GeminiProvider).
 Translation providers handle the actual text translation.
 Analysis providers handle reasoning about documents.
 

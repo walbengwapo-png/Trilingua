@@ -12,7 +12,7 @@ structured JSON responses. Uses a SEPARATE (typically smaller)
 model than the translation provider.
 
 This is NOT a translation provider. Translation is handled by
-Model/providers/gptoss.py and Model/providers/mistral.py.
+Model/providers/gptoss.py and Model/providers/gemini.py.
 """
 
 import os

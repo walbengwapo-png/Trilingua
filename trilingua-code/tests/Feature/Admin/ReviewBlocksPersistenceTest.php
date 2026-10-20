@@ -174,12 +174,15 @@ class ReviewBlocksPersistenceTest extends TestCase
             ]);
 
         $storage = \Mockery::mock(\App\Services\StorageService::class);
-        $storage->shouldReceive('downloadFile')->once()->andReturn('original-bytes');
-        $storage->shouldReceive('uploadFile')->once()->andReturn([
-            'storage_path' => '5/regenerated.txt',
+        // Original read (backend-aware) + readability verification of the new object.
+        $storage->shouldReceive('read')->andReturn('original-bytes');
+        $storage->shouldReceive('uploadWithFallback')->once()->andReturn([
+            'backend' => 'supabase',
+            'storage_path' => $history->user_id . '/translations/regenerated.txt',
             'signed_url' => 'https://example.test/regenerated',
             'signed_url_expires_at' => now()->toIso8601String(),
         ]);
+        $storage->shouldReceive('delete')->never();
 
         $this->app->instance(\App\Services\Translation\TranslationManager::class, $translationManager);
         $this->app->instance(\App\Services\StorageService::class, $storage);
@@ -189,7 +192,7 @@ class ReviewBlocksPersistenceTest extends TestCase
         $review->saveAndRegenerate(
             $history->id,
             $admin->id,
-            [0 => 'Kumusta kalibutan'],
+            [$block->id => 'Kumusta kalibutan'],
         );
 
         // The incoming override was probably consumed by a mocked translation
@@ -206,5 +209,21 @@ class ReviewBlocksPersistenceTest extends TestCase
         $this->assertSame('edit', $log->action);
         $this->assertSame('Kumusta kalibon', $log->previous_text);
         $this->assertSame('Kumusta kalibutan', $log->new_text);
+
+        // The success path published the draft: revisions match, the pointer
+        // moved to the canonical translations key, the backend was persisted,
+        // and a publish audit row was appended.
+        $fresh = $history->fresh();
+        $this->assertSame(1, (int) $fresh->draft_revision);
+        $this->assertSame(1, (int) $fresh->published_revision);
+        $this->assertFalse($fresh->hasUnpublishedEdits());
+        $this->assertSame('supabase', $fresh->storage_backend);
+        $this->assertStringContainsString(
+            $fresh->user_id . '/translations/',
+            (string) $fresh->storage_path,
+            'Regenerated outputs must use the canonical translations key.',
+        );
+        $publish = TranslationEditLog::where('translation_history_id', $history->id)->where('action', 'publish')->latest('id')->first();
+        $this->assertNotNull($publish);
     }
 }

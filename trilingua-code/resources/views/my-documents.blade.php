@@ -73,8 +73,8 @@
         <div class="docs-header-left">
             <h2 class="docs-title">
                 My Documents
-                @if (!$error && count($documents) > 0)
-                    <span class="docs-count">{{ count($documents) }}</span>
+                @if (!$error && $documents->total() > 0)
+                    <span class="docs-count">{{ $documents->total() }}</span>
                 @endif
             </h2>
         </div>
@@ -86,24 +86,24 @@
         <p class="docs-empty">Unable to load documents. Please try again later.</p>
 
     {{-- ── Empty state ──────────────────────────────────────────────────── --}}
-    @elseif (empty($documents))
+    @elseif ($documents->isEmpty())
         <div class="docs-empty-box">
             <p class="docs-empty">You have no documents yet.</p>
-            <a href="{{ route('translate') }}" class="btn primary" style="margin-top:12px">Translate your first document</a>
+            <a href="{{ route('translate') }}" class="btn primary" style="margin-top:12px;">Translate your first document</a>
         </div>
 
     {{-- ── Document grid ────────────────────────────────────────────────── --}}
     @else
         @php
-            // Compute tab counts from $documents
-            $allCount      = count($documents);
-            $recentCount   = count(array_filter($documents, fn($d) =>
+            // Tab counts and groupings describe the rows rendered on this
+            // page; the page header count is the true total across all pages.
+            $pageItems    = $documents->items();
+            $recentCount  = count(array_filter($pageItems, fn($d) =>
                 \Carbon\Carbon::parse($d['created_at'])->isCurrentMonth()));
 
-
             // Separate originals (no parent) from translations (have parent)
-            $originals = array_values(array_filter($documents, fn($d) => empty($d['parent_document_id'])));
-            $translations = array_values(array_filter($documents, fn($d) => !empty($d['parent_document_id'])));
+            $originals = array_values(array_filter($pageItems, fn($d) => empty($d['parent_document_id'])));
+            $translations = array_values(array_filter($pageItems, fn($d) => !empty($d['parent_document_id'])));
 
             // Group translations by parent_document_id
             $translationsByParent = [];
@@ -113,22 +113,23 @@
             }
         @endphp
 
+
         {{-- ── Toolbar: search, filters, view toggle ──────────────────── --}}
         <div class="docs-toolbar">
             <input type="search"
                    id="docs-search"
                    class="docs-search"
-                   placeholder="Search documents…"
-                   aria-label="Search documents">
+                   placeholder="Search this page…"
+                   aria-label="Search documents on this page">
 
-            <select id="docs-lang-filter" class="docs-filter-select" aria-label="Filter by language pair">
+            <select id="docs-lang-filter" class="docs-filter-select" aria-label="Filter this page by language pair">
                 <option value="">All Language Pairs</option>
                 @foreach ($langPairs as $pair)
                     <option value="{{ $pair }}">{{ $pair }}</option>
                 @endforeach
             </select>
 
-            <select id="docs-date-filter" class="docs-filter-select" aria-label="Filter by date">
+            <select id="docs-date-filter" class="docs-filter-select" aria-label="Filter this page by date">
                 <option value="">All Time</option>
                 <option value="today">Today</option>
                 <option value="week">This Week</option>
@@ -136,7 +137,7 @@
                 <option value="year">This Year</option>
             </select>
 
-            <select id="docs-filetype-filter" class="docs-filter-select" aria-label="Filter by file type">
+            <select id="docs-filetype-filter" class="docs-filter-select" aria-label="Filter this page by file type">
                 <option value="">All File Types</option>
                 <option value="pdf">PDF</option>
                 <option value="docx">Word (.docx)</option>
@@ -167,19 +168,22 @@
                 </button>
             </div>
         </div>
+        <p class="docs-filter-note">Showing {{ $documents->firstItem() }}–{{ $documents->lastItem() }} of {{ $documents->total() }} documents. Search and filters apply only to this page.</p>
 
         {{-- ── Tab filters ──────────────────────────────────────────────── --}}
-        <div class="docs-tabs" role="tablist" aria-label="Document filters">
-            <button class="tab-btn active" data-tab="all" role="tab" aria-selected="true">
-                All <span class="tab-count">{{ $allCount }}</span>
+        <div class="docs-tabs" role="group" aria-label="Filter documents on this page">
+            <button type="button" class="tab-btn active" data-tab="all" aria-pressed="true">
+                All on this page <span class="tab-count">{{ count($pageItems) }}</span>
             </button>
-            <button class="tab-btn" data-tab="recent" role="tab" aria-selected="false">
-                Recent <span class="tab-count">{{ $recentCount }}</span>
+            <button type="button" class="tab-btn" data-tab="recent" aria-pressed="false">
+                Recent on this page <span class="tab-count">{{ $recentCount }}</span>
             </button>
         </div>
+        <p id="docs-filter-summary" class="docs-filter-note" role="status" aria-live="polite">{{ count($pageItems) }} documents on this page</p>
+        <p id="docs-filter-empty" class="docs-empty" hidden>No documents match on this page. <button type="button" id="docs-clear-filters" class="docs-clear-filters">Clear filters</button> or try another page.</p>
 
         <div class="docs-grid" id="docs-grid">
-            @foreach ($documents as $doc)
+            @foreach ($pageItems as $doc)
                 @php
                     $isTranslated = !empty($doc['original_filename']) && !empty($doc['translated_filename']);
                     $isOriginal   = empty($doc['parent_document_id']);
@@ -326,6 +330,14 @@
                 </div>
             @endforeach
         </div>
+
+        {{-- Page links. Without these the list was a silent 200-row cut-off:
+             older documents were unreachable no matter how long the history. --}}
+        @if ($documents->hasPages())
+            <nav class="docs-pagination" role="navigation" aria-label="Documents pages">
+                {{ $documents->onEachSide(1)->links() }}
+            </nav>
+        @endif
     @endif
 
     <div id="redownload-error" class="error-message" style="display:none"></div>
@@ -557,6 +569,9 @@
     var gridBtn    = document.getElementById('docs-grid-btn');
     var listBtn    = document.getElementById('docs-list-btn');
     var tabBtns    = document.querySelectorAll('.tab-btn');
+    var filterSummary = document.getElementById('docs-filter-summary');
+    var filterEmpty = document.getElementById('docs-filter-empty');
+    var clearFilters = document.getElementById('docs-clear-filters');
 
     // Only run filter logic when the grid exists (i.e. not in empty/error state)
     if (!grid) { return; }
@@ -575,6 +590,7 @@
     function applyFilters() {
         var now = new Date();
         var todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        var visible = 0;
 
         cards.forEach(function (card) {
             var title    = card.getAttribute('data-title') || '';
@@ -604,8 +620,12 @@
             var matchTab = true;
             if (state.tab === 'recent')   { matchTab = recent; }
 
-            card.style.display = (matchSearch && matchLang && matchDate && matchFileType && matchTab) ? '' : 'none';
+            var matches = matchSearch && matchLang && matchDate && matchFileType && matchTab;
+            card.style.display = matches ? '' : 'none';
+            if (matches) visible++;
         });
+        filterSummary.textContent = visible + (visible === 1 ? ' document' : ' documents') + ' on this page';
+        filterEmpty.hidden = visible !== 0;
     }
 
     // Search input
@@ -645,13 +665,29 @@
         btn.addEventListener('click', function () {
             tabBtns.forEach(function (b) {
                 b.classList.remove('active');
-                b.setAttribute('aria-selected', 'false');
+                b.setAttribute('aria-pressed', 'false');
             });
             btn.classList.add('active');
-            btn.setAttribute('aria-selected', 'true');
+            btn.setAttribute('aria-pressed', 'true');
             state.tab = btn.getAttribute('data-tab') || 'all';
             applyFilters();
         });
+    });
+
+    clearFilters.addEventListener('click', function () {
+        searchEl.value = '';
+        langEl.value = '';
+        dateEl.value = '';
+        filetypeEl.value = '';
+        state.search = state.lang = state.date = state.filetype = '';
+        state.tab = 'all';
+        tabBtns.forEach(function (btn) {
+            var active = btn.getAttribute('data-tab') === 'all';
+            btn.classList.toggle('active', active);
+            btn.setAttribute('aria-pressed', String(active));
+        });
+        applyFilters();
+        searchEl.focus();
     });
 
     // Grid / list view toggle

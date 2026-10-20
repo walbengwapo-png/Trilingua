@@ -7,6 +7,7 @@ use App\Models\TranslationHistory;
 use App\Models\User;
 use App\Services\StorageService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -173,12 +174,7 @@ class ReviewController extends Controller
 
             $blocks = $blocksQuery->paginate(25)->withQueryString();
 
-            // Whole-document view: every block in document order so the page can
-            // render the translation as one continuous document (no badges or
-            // per-block categorization), independent of the paginated list.
-            $documentBlocks = $history->blocks()
-                ->orderBy('block_index')
-                ->get(['id', 'block_index', 'current_text', 'ai_translated_text']);
+
 
             // Per-record admin audit trail for the collapsible "Edit History".
             $editHistory = \App\Http\Controllers\Admin\AuditLogController::forRecord($history->id);
@@ -196,7 +192,6 @@ class ReviewController extends Controller
             return view('admin.review-document', [
                 'record'        => $history,
                 'blocks'        => $blocks,
-                'documentBlocks'=> $documentBlocks,
                 'totalBlocks'   => $history->blocks()->count(),
                 'blocksFilter'  => $request->query(),
                 'previewUrl'    => $previewUrl,
@@ -209,5 +204,31 @@ class ReviewController extends Controller
         $editHistory = \App\Http\Controllers\Admin\AuditLogController::forRecord($history->id);
 
         return view('admin.review-text', ['record' => $history, 'editHistory' => $editHistory]);
+    }
+
+    /**
+     * GET /admin/review/{translation}/blocks — return the ordered block content
+     * for the document, used by the "render from blocks" preview fallback.
+     */
+        public function blocks(TranslationHistory $translation): JsonResponse
+    {
+        // Admin endpoint: current_text is explicitly DRAFT, so a Final/Saved
+        // preview can never be mistaken for it; published_text is what the
+        // downloadable file actually contains (nullable when unknown).
+        $blocks = $translation->blocks()
+            ->orderBy('block_index')
+            ->get(['id', 'block_index', 'block_type', 'source_text', 'current_text', 'published_text', 'ai_translated_text'])
+            ->map(fn ($b) => [
+                'id' => $b->id,
+                'block_index' => $b->block_index,
+                'block_type' => $b->block_type,
+                'source_text' => $b->source_text,
+                'current_text' => $b->current_text,
+                'published_text' => $b->published_text,
+                'has_published' => $b->published_text !== null,
+                'ai_translated_text' => $b->ai_translated_text,
+            ]);
+
+        return response()->json(['blocks' => $blocks]);
     }
 }

@@ -144,7 +144,13 @@ class DocumentAnalyzer:
 
         # Parse the AI response into a DocumentProfile
         elapsed = (_time.time() - start_time) * 1000
-        profile = self._parse_response(result, total_blocks, total_words, elapsed)
+        try:
+            profile = self._parse_response(result, total_blocks, total_words, elapsed)
+        except (TypeError, ValueError, AttributeError) as error:
+            # Analysis is an enhancement.  A schema-incomplete response from
+            # Gemini must never prevent the document from reaching translation.
+            print(f"  [Analyzer] Invalid analysis response: {error}")
+            profile = self._default_profile(total_blocks, total_words, elapsed, error=str(error))
 
         print(f"  [Analyzer] Document type: {profile.document_type}")
         print(f"  [Analyzer] Writing style: {profile.writing_style}")
@@ -205,7 +211,14 @@ class DocumentAnalyzer:
             return profile, {"summary": "", "domain": "", "terms": []}
 
         elapsed = (_time.time() - start_time) * 1000
-        profile = self._parse_response(result, total_blocks, total_words, elapsed)
+        try:
+            profile = self._parse_response(result, total_blocks, total_words, elapsed)
+        except (TypeError, ValueError, AttributeError) as error:
+            # Keep the merged analyzer/prepass path fail-open too.  Without
+            # this guard, one malformed optional profile field aborts the
+            # entire document before any translation request is made.
+            print(f"  [Analyzer] Invalid merged analysis response: {error}")
+            profile = self._default_profile(total_blocks, total_words, elapsed, error=str(error))
 
         # Parse prepass fields from the same response
         summary = str(result.get("summary", ""))
@@ -389,6 +402,21 @@ class DocumentAnalyzer:
 
         Handles missing or invalid fields gracefully by providing defaults.
         """
+        if not isinstance(result, dict):
+            result = {}
+
+        def _safe_int(value: Any, default: int) -> int:
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return default
+
+        def _safe_float(value: Any, default: float) -> float:
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return default
+
         # Helper to safely get a list field
         def _safe_list(key: str, item_type: type = str) -> list:
             items = result.get(key, [])
@@ -403,9 +431,9 @@ class DocumentAnalyzer:
             for s in sections_raw:
                 if isinstance(s, dict):
                     sections.append(SectionInfo(
-                        level=int(s.get("level", 1)),
+                        level=_safe_int(s.get("level", 1), 1),
                         title=str(s.get("title", "")),
-                        start_block=int(s.get("start_block", 0)),
+                        start_block=_safe_int(s.get("start_block", 0), 0),
                     ))
 
         # Parse structure elements
@@ -416,7 +444,7 @@ class DocumentAnalyzer:
                 if isinstance(s, dict):
                     structure.append(StructureElement(
                         element_type=str(s.get("element_type", "unknown")),
-                        block_index=int(s.get("block_index", 0)),
+                        block_index=_safe_int(s.get("block_index", 0), 0),
                         text=str(s.get("text", "")),
                     ))
 
@@ -431,7 +459,7 @@ class DocumentAnalyzer:
                         full_form=str(a.get("full_form", "")),
                     ))
 
-        confidence = float(result.get("confidence", 0.0))
+        confidence = _safe_float(result.get("confidence", 0.0), 0.0)
         confidence = max(0.0, min(1.0, confidence))
 
         return DocumentProfile(

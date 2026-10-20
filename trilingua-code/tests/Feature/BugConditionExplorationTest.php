@@ -220,6 +220,9 @@ class BugConditionExplorationTest extends TestCase
         });
 
         $this->mock(StorageService::class, function ($mock) {
+            $mock->shouldReceive('exists')
+                ->andReturn(StorageService::PRESENCE_PRESENT);
+
             $mock->shouldReceive('generateSignedUrl')
                 ->once()
                 ->andReturn([
@@ -289,15 +292,15 @@ class BugConditionExplorationTest extends TestCase
         ];
 
         // Mock HistoryService to return the documents when called with the user's ID.
-        // getOriginalsWithTranslations is also consulted by DocumentsController::index,
-        // so it must be stubbed on the mocked instance.
+        // The page now paginates its document list, so the service call under
+        // test is getDocumentsPaginated rather than getHistory.
         $this->mock(HistoryService::class, function ($mock) use ($user, $documentRecords) {
-            $mock->shouldReceive('getHistory')
-                ->with($user->id)
+            $mock->shouldReceive('getDocumentsPaginated')
+                ->with($user->id, 24)
                 ->once()
-                ->andReturn($documentRecords);
+                ->andReturn(new LengthAwarePaginator($documentRecords, count($documentRecords), 24));
 
-            $mock->shouldReceive('getOriginalsWithTranslations')
+            $mock->shouldReceive('getDocumentLanguagePairs')
                 ->andReturn([]);
         });
 
@@ -398,6 +401,9 @@ class BugConditionExplorationTest extends TestCase
         });
 
         $this->mock(StorageService::class, function ($mock) {
+            $mock->shouldReceive('exists')
+                ->andReturn(StorageService::PRESENCE_PRESENT);
+
             $mock->shouldReceive('generateSignedUrl')
                 ->andReturn([
                     'signed_url' => 'https://storage.example.com/signed-url',
@@ -415,11 +421,11 @@ class BugConditionExplorationTest extends TestCase
 
         // ── Bug Condition 3: My Documents page empty after re-login ───────────
         $this->mock(HistoryService::class, function ($mock) use ($user, $documentRecords) {
-            $mock->shouldReceive('getHistory')
-                ->with($user->id)
-                ->andReturn($documentRecords);
+            $mock->shouldReceive('getDocumentsPaginated')
+                ->with($user->id, 24)
+                ->andReturn(new LengthAwarePaginator($documentRecords, count($documentRecords), 24));
 
-            $mock->shouldReceive('getOriginalsWithTranslations')
+            $mock->shouldReceive('getDocumentLanguagePairs')
                 ->andReturn([]);
         });
 

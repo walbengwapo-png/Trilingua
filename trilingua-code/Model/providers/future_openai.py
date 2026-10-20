@@ -31,7 +31,8 @@ class OpenAIProvider(TranslationProvider):
     def model_name(self) -> str:
         return "gpt-4o"
 
-    def translate(self, text, source_lang, target_lang, block_type="paragraph", context_hint=""):
+    def translate(self, text, source_lang, target_lang, block_type="paragraph",
+                  context_hint="", document_type="", response_format="text"):
         raise NotImplementedError
 
     def health(self):

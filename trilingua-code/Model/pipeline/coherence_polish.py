@@ -26,6 +26,7 @@ import os
 import re
 
 from pipeline.translation_pipeline import _is_echo_output, _parse_batch_response
+from validators.hallucination_detector import translation_content_issue
 
 _COHERENCE_POLISH_ENABLED = os.environ.get(
     "TRANSLATION_COHERENCE_POLISH", "false"
@@ -44,7 +45,8 @@ def _text_of(maybe_block) -> str:
     return str(maybe_block or "")
 
 
-def _pre_check_candidates(source_blocks, translated_blocks):
+def _pre_check_candidates(source_blocks, translated_blocks,
+                          source_lang: str = "", target_lang: str = ""):
     """Deterministic flagging: echo output + word-count ratio outliers.
 
     Returns a list of (block_index, source_text, translated_text).
@@ -55,7 +57,7 @@ def _pre_check_candidates(source_blocks, translated_blocks):
         tgt = _text_of(tb)
         if not src.strip() or not tgt.strip():
             continue
-        if _is_echo_output(src, tgt):
+        if _is_echo_output(src, tgt, source_lang=source_lang, target_lang=target_lang):
             candidates.append((idx, src, tgt))
             continue
         src_words = len(src.split())
@@ -90,7 +92,10 @@ class CoherencePolishPass:
         if not source_blocks or not translated_blocks:
             return translated_blocks
 
-        candidates = _pre_check_candidates(source_blocks, translated_blocks)
+        candidates = _pre_check_candidates(
+            source_blocks, translated_blocks,
+            source_lang=source_lang, target_lang=target_lang,
+        )
 
         # AI quality reviewer pre-check over every non-passthrough block.
         if self._reviewer is not None:
@@ -153,7 +158,8 @@ class CoherencePolishPass:
             if not new_text:
                 continue
             new_text = new_text.strip()
-            if not new_text or _is_echo_output(src, new_text):
+            if translation_content_issue(src, new_text) or _is_echo_output(
+                    src, new_text, source_lang=source_lang, target_lang=target_lang):
                 continue
             polished[idx]["text"] = new_text
             changed += 1

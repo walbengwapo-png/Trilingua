@@ -62,7 +62,7 @@
         </div>
 
         <div class="kpi-card">
-            <span class="kpi-card__label">Avg Quality Score</span>
+            <span class="kpi-card__label">Avg AI Review Signal</span>
             <div class="kpi-card__row">
                 <div class="kpi-card__value">{{ $avgQuality === null ? '—' : number_format($avgQuality, 0) }}</div>
                 @if ($avgQuality !== null)

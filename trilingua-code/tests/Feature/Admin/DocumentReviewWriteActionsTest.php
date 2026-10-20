@@ -6,6 +6,7 @@ use App\Models\TranslationBlock;
 use App\Models\TranslationEditLog;
 use App\Models\TranslationHistory;
 use App\Models\User;
+use App\Exceptions\TranslationException;
 use App\Services\Admin\ReviewService;
 use App\Support\ReviewStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -74,6 +75,28 @@ class DocumentReviewWriteActionsTest extends TestCase
         $this->assertNull($log->translation_block_id);
     }
 
+    public function test_verify_document_rejects_unpublished_draft_edits(): void
+    {
+        $admin = $this->makeAdmin();
+        $history = $this->makeDocRecord($this->makeUser());
+        $block = $this->makeBlock($history, 0);
+
+        // Persist a draft edit (Save Edit) — the file is not regenerated.
+        app(ReviewService::class)->updateBlock($history->id, $block->id, $admin->id, 'Draft only');
+        $this->assertTrue($history->fresh()->hasUnpublishedEdits());
+
+        try {
+            app(ReviewService::class)->verifyDocument($history->id, $admin->id);
+            $this->fail('verifyDocument must reject a document with unpublished draft edits.');
+        } catch (TranslationException $e) {
+            $this->assertStringContainsString('Save & Regenerate', $e->getMessage());
+        }
+
+        // Nothing was verified, no verify audit row was written.
+        $this->assertSame('edited', $history->fresh()->review_status);
+        $this->assertSame(0, TranslationEditLog::where('translation_history_id', $history->id)->where('action', 'verify')->count());
+    }
+
     public function test_update_block_audits_previous_and_preserves_ai_text(): void
     {
         $admin = $this->makeAdmin();
@@ -92,6 +115,12 @@ class DocumentReviewWriteActionsTest extends TestCase
         $this->assertSame('edit', $log->action);
         $this->assertSame('Ai text 0', $log->previous_text);
         $this->assertSame('Edited current text', $log->new_text);
+
+        // Save Edit is a DRAFT: draft revision advances, published does not.
+        $fresh = $history->fresh();
+        $this->assertSame(1, (int) $fresh->draft_revision);
+        $this->assertSame(0, (int) $fresh->published_revision);
+        $this->assertTrue($fresh->hasUnpublishedEdits());
     }
 
     public function test_update_block_no_op_when_unchanged(): void
@@ -181,6 +210,9 @@ class DocumentReviewWriteActionsTest extends TestCase
         $this->assertSame('edit', $logs[0]->action);
         $this->assertSame('Ai text 0', $logs[0]->previous_text);
         $this->assertSame('Bag-ong text A', $logs[0]->new_text);
+
+        $this->assertSame(1, (int) $history->fresh()->draft_revision);
+        $this->assertSame(0, (int) $history->fresh()->published_revision);
     }
 
     public function test_apply_block_edits_no_op_when_nothing_changes(): void

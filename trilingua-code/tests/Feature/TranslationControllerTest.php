@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Jobs\TranslateDocumentJob;
 use App\Models\TranslationHistory;
 use App\Models\TranslationJob;
+use App\Models\TranslationQuota;
 use App\Models\User;
 use App\Services\StorageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -113,14 +114,13 @@ class TranslationControllerTest extends TestCase
 
         $user = User::factory()->create();
 
-        // One document already counted today.
-        TranslationHistory::create([
+        // One accepted document already counted today (R6: the quota ledger,
+        // not history rows, is the source of truth).
+        TranslationQuota::create([
             'user_id' => $user->id,
-            'translation_type' => 'document',
-            'source_language' => 'English',
-            'target_language' => 'Cebuano',
-            'created_at' => now()->subMinute()->toIso8601String(),
-            'status' => 'completed',
+            'quota_day' => now()->toDateString(),
+            'files' => 1,
+            'bytes' => 1,
         ]);
 
         $file = UploadedFile::fake()->createWithContent('e.docx', 'PK'.random_bytes(64));

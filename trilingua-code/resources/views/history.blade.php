@@ -146,16 +146,14 @@
                             {{ $isDoc ? 'Document' : 'Text' }}
                         </span>
                         <span class="status-badge status-badge--{{ $reviewStatus }}">{{ ucfirst($reviewStatus) }}</span>
-                        @if (!empty($record['quality_score']))
-                            @php
-                                $score = (int) $record['quality_score'];
-                                $scoreClass = $score >= 80 ? 'high' : ($score >= 50 ? 'medium' : 'low');
-                            @endphp
-                            <span class="quality-score" title="Quality score: {{ $score }}/100">
-                                <span class="quality-score__dot quality-score__dot--{{ $scoreClass }}"></span>
-                                {{ $score }}
+                        @php
+                            $score = $record['quality_score'] ?? null;
+                            $scoreClass = $score === null ? '' : ($score >= 80 ? 'high' : ($score >= 50 ? 'medium' : 'low'));
+                        @endphp
+                            <span class="quality-score" title="Automated AI review signal (not human-verified)">
+                                <span class="quality-score__dot quality-score__dot--{{ $scoreClass }}" aria-hidden="true"></span>
+                                {{ $score === null ? 'Unavailable' : $score }}
                             </span>
-                        @endif
                     </div>
 
                     <div class="history-card__body">
@@ -230,6 +228,14 @@
         </section>
         @endforeach
     </div>
+
+    {{-- Page links. The page was already paginating at the service layer but
+         never rendered navigation, so only the first page was reachable. --}}
+    @if (!$error && $records->hasPages())
+        <nav class="history-pagination" role="navigation" aria-label="History pages">
+            {{ $records->onEachSide(1)->links() }}
+        </nav>
+    @endif
 
     @endif {{-- empty($records) --}}
     @endif {{-- $error --}}

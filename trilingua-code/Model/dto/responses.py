@@ -14,8 +14,8 @@ from typing import Optional
 class TranslationResponse:
     """Normalized response from any translation provider."""
     translated_text: str
-    provider: str = ""           # e.g. "gptoss", "mistral"
-    model: str = ""              # e.g. "gpt-oss:20b-cloud", "mistral-small-latest"
+    provider: str = ""           # e.g. "gptoss", "gemini"
+    model: str = ""              # e.g. "gpt-oss:20b-cloud", "gemini-2.5-flash"
     token_usage: dict = field(default_factory=dict)  # {"input": N, "output": N}
     execution_time_ms: float = 0.0
     warnings: list = field(default_factory=list)
@@ -49,6 +49,7 @@ class DocumentTranslationResponse:
     # document path produced per-block data.
     sidecar: Optional[dict] = None
     blocks: list = field(default_factory=list)
+    output_validation: dict = field(default_factory=dict)
 
     # ── Engine metrics ────────────────────────────────────────────────────
     # Captured from DocumentContext.summary() so Laravel can surface real AI

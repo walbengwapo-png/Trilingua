@@ -34,13 +34,25 @@ class MyDocumentsFilterTest extends TestCase
 
     private function mockService(array $documents): void
     {
-        $this->mock(HistoryService::class, function ($mock) use ($documents) {
-            $mock->shouldReceive('getOriginalsWithTranslations')
+        // The page now paginates its list and asks the service for the
+        // language pairs separately, so both calls are stubbed. The pairs are
+        // derived from the same rows the page renders, which is what the
+        // filter dropdown is meant to reflect.
+        $pairs = collect($documents)
+            ->filter(fn($d) => !empty($d['source_language']) && !empty($d['target_language']))
+            ->map(fn($d) => $d['source_language'] . ' → ' . $d['target_language'])
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        $this->mock(HistoryService::class, function ($mock) use ($documents, $pairs) {
+            $mock->shouldReceive('getDocumentsPaginated')
                  ->once()
-                 ->andReturn([]);
-            $mock->shouldReceive('getHistory')
+                 ->andReturn(new \Illuminate\Pagination\LengthAwarePaginator($documents, count($documents), 24));
+            $mock->shouldReceive('getDocumentLanguagePairs')
                  ->once()
-                 ->andReturn($documents);
+                 ->andReturn($pairs);
         });
     }
 

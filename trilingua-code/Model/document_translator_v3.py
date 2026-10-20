@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Document Translator v4 — Mistral AI Powered
+"""Document Translator v4 — Google Gemini Powered
 =============================================
-Replaces the NLLB-200 model with Mistral AI API for:
+Replaces the NLLB-200 model with Google Gemini API for:
   - 5-10x faster translation
   - Better translation quality
   - No GPU required
   - No 2.5GB model download
 
 Key improvements over v3:
-  - Mistral AI API as the sole translation engine (NLLB removed)
+  - Google Gemini API as the sole translation engine (NLLB removed)
   - Template-based DOCX writer (modifies original in-place → perfect layout)
   - PPTX support (read/write with python-pptx)
   - XLSX support (read/write with openpyxl)
@@ -33,31 +33,31 @@ import time
 import requests
 from pathlib import Path
 
-# ── Mistral AI Configuration ──────────────────────────────────────────────────
-MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
+# ── Google Gemini Configuration ──────────────────────────────────────────────────
+GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 
 
-def _get_mistral_api_key() -> str:
-    """Get Mistral API key from environment (checked at runtime, not import time)."""
-    key = os.environ.get("MISTRAL_API_KEY", "")
+def _get_gemini_api_key() -> str:
+    """Get Gemini API key from environment (checked at runtime, not import time)."""
+    key = os.environ.get("GEMINI_API_KEY", "")
     if not key:
         raise RuntimeError(
-            "MISTRAL_API_KEY environment variable is not set. "
+            "GEMINI_API_KEY environment variable is not set. "
             "Set it in your .env file or export it before starting the server."
         )
     return key
 
 
-def _get_mistral_model() -> str:
-    """Get Mistral model name from environment or use default."""
-    return os.environ.get("MISTRAL_MODEL", "mistral-small-latest")
+def _get_gemini_model() -> str:
+    """Get Gemini model name from environment or use default."""
+    return os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 def _sanitize_translation(translated_text, original_text):
     """
     Clean up a translated string by removing leaked context delimiters,
     stray markers, and detecting hallucinated repetition.
     
-    This is a safety net for edge cases where Mistral may output
+    This is a safety net for edge cases where Gemini may output
     fragments of previous context or repeated phrases.
     """
     # 1. Strip leaked `|||` delimiters (from old Context_Buffer usage or model leakage)
@@ -109,7 +109,7 @@ LANGUAGES = {
     "Filipino": "tgl_Latn",
 }
 
-# ── Mistral Translation ───────────────────────────────────────────────────────
+# ── Gemini Translation ───────────────────────────────────────────────────────
 
 def _detect_hallucination_in_output(translated_text, original_text):
     """
@@ -178,9 +178,9 @@ def _detect_hallucination_in_output(translated_text, original_text):
     return False, ""
 
 
-def _translate_with_mistral(text, source_lang, target_lang, block_type="paragraph"):
+def _translate_with_gemini(text, source_lang, target_lang, block_type="paragraph"):
     """
-    Translate a single text block using Mistral AI API.
+    Translate a single text block using Google Gemini API.
     
     Features:
       - Retry up to 3 times with exponential backoff on rate limits / errors
@@ -190,8 +190,8 @@ def _translate_with_mistral(text, source_lang, target_lang, block_type="paragrap
       - 30-second timeout per request
       - Block type hint for structural context
     """
-    api_key = _get_mistral_api_key()
-    model = _get_mistral_model()
+    api_key = _get_gemini_api_key()
+    model = _get_gemini_model()
 
     # Map block type to human-readable description
     type_descriptions = {
@@ -253,8 +253,8 @@ def _translate_with_mistral(text, source_lang, target_lang, block_type="paragrap
     if estimated_input_tokens > 3500:
         print(f"[TOKEN BUDGET] estimated_input={estimated_input_tokens} source={text[:60]!r}")
 
-    # Mistral Small 4 (mistral-small-latest) has 256K context window
-    _CONTEXT_WINDOW = 256_000
+    # Gemini Flash supports a large context window; retain a conservative output cap.
+    _CONTEXT_WINDOW = 1_000_000
     _MAX_OUTPUT = 8192
     available_for_output = _CONTEXT_WINDOW - estimated_input_tokens
     dynamic_max_tokens = max(1, min(available_for_output, _MAX_OUTPUT))
@@ -262,21 +262,17 @@ def _translate_with_mistral(text, source_lang, target_lang, block_type="paragrap
     for attempt in range(3):
         try:
             resp = requests.post(
-                MISTRAL_API_URL,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
+                f"{GEMINI_API_BASE_URL}/models/{model}:generateContent",
+                headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
                 json={
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": system_msg},
-                        {"role": "user", "content": user_msg},
-                    ],
-                    "temperature": 0.3,
-                    "max_tokens": dynamic_max_tokens,
+                    "systemInstruction": {"parts": [{"text": system_msg}]},
+                    "contents": [{"role": "user", "parts": [{"text": user_msg}]}],
+                    "generationConfig": {
+                        "temperature": 0.3,
+                        "maxOutputTokens": dynamic_max_tokens,
+                    },
                 },
-                timeout=30,
+                timeout=60,
             )
 
             if resp.status_code == 429:
@@ -287,7 +283,9 @@ def _translate_with_mistral(text, source_lang, target_lang, block_type="paragrap
                 continue
 
             resp.raise_for_status()
-            result = resp.json()["choices"][0]["message"]["content"].strip()
+            candidates = resp.json().get("candidates") or []
+            parts = candidates[0].get("content", {}).get("parts", []) if candidates else []
+            result = "".join(part.get("text", "") for part in parts if isinstance(part, dict)).strip()
             
             # Remove any accidental markdown code block wrapping
             if result.startswith("```"):
@@ -340,7 +338,7 @@ def _translate_with_mistral(text, source_lang, target_lang, block_type="paragrap
 
             # ── Output validation ────────────────────────────────────────────
             if not result:
-                raise RuntimeError(f"Mistral returned empty translation for: {text[:60]}...")
+                raise RuntimeError(f"Gemini returned empty translation for: {text[:60]}...")
             # Length ratio check — warn if suspiciously short or long
             src_len = len(text.split())
             tgt_len = len(result.split())
@@ -361,13 +359,13 @@ def _translate_with_mistral(text, source_lang, target_lang, block_type="paragrap
 
         except requests.exceptions.Timeout:
             if attempt == 2:
-                raise RuntimeError(f"Mistral API timed out after 3 attempts for text: {text[:50]}...")
+                raise RuntimeError(f"Gemini API timed out after 3 attempts for text: {text[:50]}...")
             print(f"  Warning: Timeout, retrying ({attempt + 1}/3)...")
             time.sleep(1)
 
         except requests.exceptions.RequestException as e:
             if attempt == 2:
-                raise RuntimeError(f"Mistral API error after 3 attempts: {e}")
+                raise RuntimeError(f"Gemini API error after 3 attempts: {e}")
             print(f"  Warning: API error: {e}, retrying ({attempt + 1}/3)...")
             time.sleep(1)
 
@@ -377,12 +375,12 @@ def _translate_with_mistral(text, source_lang, target_lang, block_type="paragrap
     # This ensures a single bad block doesn't crash the entire document translation.
     try:
         if result and isinstance(result, str):
-            print(f"  ⚠️  Using raw Mistral output after 3 failed sanitization attempts")
+            print(f"  ⚠️  Using raw Gemini output after 3 failed sanitization attempts")
             return result
     except UnboundLocalError:
         pass
     
-    raise RuntimeError("Mistral translation failed after 3 attempts.")
+    raise RuntimeError("Gemini translation failed after 3 attempts.")
 
 
 # ── File Readers ──────────────────────────────────────────────────────────────
@@ -1028,7 +1026,7 @@ def analyze_document(file_path, pdf_column_mode="auto"):
 
 def _translate_single(text, src_code, tgt_code, context_hint="", block_type="paragraph"):
     """
-    Translate a single piece of text using Mistral AI.
+    Translate a single piece of text using Google Gemini.
     
     The src_code/tgt_code are NLLB-style codes (eng_Latn, ceb_Latn, tgl_Latn)
     kept for backward compatibility. We map them back to language names.
@@ -1040,9 +1038,9 @@ def _translate_single(text, src_code, tgt_code, context_hint="", block_type="par
 
     # NOTE: Context hint is intentionally NOT prepended to the prompt.
     # Previous attempts to add context caused cascading hallucination where
-    # Mistral would repeat the context text as part of its translation output.
+    # Gemini would repeat the context text as part of its translation output.
     # Each block is translated independently for clean, isolated results.
-    return _translate_with_mistral(text, source_lang, target_lang, block_type=block_type)
+    return _translate_with_gemini(text, source_lang, target_lang, block_type=block_type)
 
 
 def batch_translate_blocks(blocks, source_lang, target_lang, batch_size=4,
@@ -1190,6 +1188,13 @@ class Chunk_Splitter:
 
     Uses a word-token model (one token = one whitespace-delimited word).
     Sentence boundaries are tokens that end with '.', '!', or '?'.
+
+    Spacing contract (normalized): every output chunk contains only
+    single-space-separated tokens, and joining the chunks with a single
+    space reproduces the input tokens in order once whitespace runs are
+    normalized — ``" ".join(chunks) == " ".join(text.split())``.
+    Layout fidelity is carried by block structure, order, and types, not by
+    intra-text whitespace, so we never pass raw repeated spaces to a model.
     """
 
     def split(
@@ -1212,8 +1217,9 @@ class Chunk_Splitter:
 
         Returns
         -------
-        A list of strings whose concatenated words reproduce *text* exactly
-        (round-trip property).
+        A list of strings whose concatenated words reproduce *text* in order
+        after normalising runs of whitespace to a single space (normalized
+        round-trip property).
         """
         # Edge-case: empty or whitespace-only input.
         if not text or not text.strip():
@@ -1225,9 +1231,13 @@ class Chunk_Splitter:
 
         tokens = text.split()
 
+        # Normalized form of the whole input; the single source of truth for
+        # every non-recursive return path below.
+        normalized = " ".join(tokens)
+
         # Step 1 — short-circuit: text already fits in one chunk.
         if len(tokens) <= max_tokens:
-            return [text]
+            return [normalized]
 
         # Steps 2-4 — find the best split boundary.
         # Collect candidate indices: tokens that end with '.', '!' or '?'
@@ -1253,7 +1263,7 @@ class Chunk_Splitter:
 
         # Step 5 — no candidate anywhere within hard_cap → return unsplit.
         if best_boundary is None:
-            return [text]
+            return [normalized]
 
         # Step 6 — split at the chosen boundary.
         first_tokens = tokens[:best_boundary + 1]
@@ -1261,7 +1271,7 @@ class Chunk_Splitter:
 
         # Step 7 — merge short tails back.
         if len(remainder_tokens) < min_tokens:
-            return [text]
+            return [normalized]
 
         # Step 8 — recurse on the remainder.
         first_chunk = " ".join(first_tokens)
@@ -1544,7 +1554,7 @@ def translate_docx_inplace(input_file, output_file, source_lang, target_lang,
     Unlike the old extract→translate→reconstruct pipeline, this function:
       - Opens the original document
       - Iterates EVERY paragraph in document order (preserving index correspondence)
-      - Translates each paragraph's text via Mistral
+      - Translates each paragraph's text via Gemini
       - Replaces text directly in the original paragraph (preserving all formatting)
       - Similarly iterates table cells by (table_idx, row, col)
       
@@ -1804,7 +1814,9 @@ def translate_pptx_inplace(input_file, output_file, source_lang, target_lang,
 
             # Detect placeholder type for better translation context
             block_type = "paragraph"
-            if hasattr(shape, "placeholder_format") and shape.placeholder_format is not None:
+            # python-pptx raises ValueError when ``placeholder_format`` is
+            # accessed on a regular text box, even though the attribute exists.
+            if shape.is_placeholder:
                 ph_idx = shape.placeholder_format.idx
                 if ph_idx == 0:
                     block_type = "header"
@@ -2587,7 +2599,7 @@ def run_pipeline(input_file, source_lang, target_lang,
                  output_file=None, pdf_column_mode="auto", glossary=None,
                  reference_file=None, progress_callback=None):
     """
-    Run the complete translation pipeline using Mistral AI.
+    Run the complete translation pipeline using Google Gemini.
     
     progress_callback: optional callable(completed, total) for frontend progress.
     """

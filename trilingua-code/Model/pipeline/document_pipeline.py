@@ -95,8 +95,16 @@ _TRANSLATION_COHERENCE_POLISH = os.environ.get(
     "TRANSLATION_COHERENCE_POLISH", "false"
 ).lower() == "true"
 
+# Provider-neutral unit pipeline (Phases 1-4). Default OFF: the legacy dict
+# pipeline stays the production path for one release. When enabled, only the
+# extract -> translate -> reconstruct flow is routed through the DTO unit
+# pipeline; the in-place office formats (DOCX/PPTX/XLSX) and CSV keep the
+# legacy dict path. The single source of truth for the env flag lives in
+# pipeline.translation_pipeline (unit_pipeline_enabled).
+from pipeline.translation_pipeline import unit_pipeline_enabled
 
-def _engine_metrics(ctx: DocumentContext) -> dict:
+
+def _engine_metrics(ctx: DocumentContext, provider=None) -> dict:
     """Flatten the actionable engine metrics for Laravel.
 
     Pulls the fields Laravel surfaces on its admin dashboard (latency, LLM
@@ -104,6 +112,7 @@ def _engine_metrics(ctx: DocumentContext) -> dict:
     the run) directly from the document context's summary.
     """
     s = ctx.summary()
+    route = provider.routing_state() if provider and hasattr(provider, "routing_state") else {}
     return {
         "provider": ctx.provider_name or s.get("provider", ""),
         "model": ctx.provider_model or s.get("model", ""),
@@ -111,14 +120,30 @@ def _engine_metrics(ctx: DocumentContext) -> dict:
         "total_time_ms": s.get("total_time_ms", 0),
         "llm_calls": s.get("llm_calls", 0),
         "llm_total_time_ms": s.get("llm_total_time_ms", 0),
+        "scheduler_wait_ms": s.get("scheduler_wait_ms", 0),
+        "scheduler_batches": s.get("scheduler_batches", 0),
+        "scheduler_slots": s.get("scheduler_slots", 0),
+        "echo_retries": s.get("echo_retries", 0),
+        "semantic_fallbacks": s.get("semantic_fallbacks", 0),
+        "batch_fallbacks": s.get("batch_fallbacks", 0),
         "total_blocks": s.get("total_blocks", 0),
         "blocks_translated": s.get("blocks_translated", 0),
+        "blocks_batched": s.get("blocks_batched", 0),
         "blocks_cached": s.get("blocks_cached", 0),
         "blocks_passthrough": s.get("blocks_passthrough", 0),
         "retranslated_chunks": s.get("retranslated_chunks", 0),
+        # Phase 5: GPT-OSS unit-pipeline execution metrics.
+        "provider_request_ms": s.get("provider_request_ms", 0),
+        "provider_retries": s.get("provider_retries", 0),
+        "provider_failures": s.get("provider_failures", {}),
+        "layout_preflight_blocks": s.get("layout_preflight_blocks", 0),
+        "phase_times": s.get("phase_times", {}),
         "cache_hits": s.get("cache_hits", 0),
         "cache_misses": s.get("cache_misses", 0),
         "document_type": s.get("document_type", ""),
+        "providers_used": s.get("providers_used", {}),
+        "provider_chain": list(getattr(provider, "provider_names", ())) if provider else [],
+        **route,
     }
 
 
@@ -199,7 +224,9 @@ class DocumentPipeline:
         ctx.source_file = request.file_path
         ctx.source_lang = request.source_lang
         ctx.target_lang = request.target_lang
-        ctx.concurrency_level = _TRANSLATION_CONCURRENCY
+        ctx.provider_name = self.translation_pipeline.provider.name
+        ctx.provider_model = self.translation_pipeline.provider.model_name
+        ctx.concurrency_level = self.translation_pipeline.concurrency_limit()
 
         # ── Determine processing mode ─────────────────────────────────────
         ctx.mode = self._determine_mode(request)
@@ -216,8 +243,14 @@ class DocumentPipeline:
         # Build glossary
         glossary_store = GlossaryStore(request.glossary_pairs) if request.glossary_pairs else None
 
-        # Build output path
-        output_file = choose_output_path(request.file_path)
+        # Keep the output beside this request's input. The FastAPI endpoint
+        # gives every upload a private temp directory; using a relative output
+        # path here previously wrote every request to Model/translated_input.*,
+        # causing cross-request collisions and leaving generated files in the
+        # repository.
+        output_file = choose_output_path(
+            request.file_path, os.path.dirname(os.path.abspath(request.file_path))
+        )
 
         # OPTIMIZATION: Get shared cache (Task 2)
         translation_cache = self._get_cache()
@@ -440,17 +473,32 @@ class DocumentPipeline:
 
         # OPTIMIZATION: Pass ctx to batch_translate_blocks for stats (Tasks 1-4)
         with phase_profile("translation", ctx):
-            translated_blocks = self.translation_pipeline.batch_translate_blocks(
-                blocks, request.source_lang, request.target_lang,
-                glossary_store=glossary_store,
-                document_memory=ctx.document_memory,
-                mode=ctx.mode,
-                translation_cache=translation_cache,
-                quality_reviewer=self._quality_reviewer if ctx.mode.ai_quality_review else None,
-                semantic_chunker=self._semantic_chunker if ctx.mode.semantic_chunking else None,
-                document_profile=ctx.document_profile,
-                ctx=ctx,
-            )
+            if unit_pipeline_enabled():
+                translated_blocks = self.translation_pipeline.batch_translate_units(
+                    blocks, request.source_lang, request.target_lang,
+                    glossary_store=glossary_store,
+                    document_memory=ctx.document_memory,
+                    mode=ctx.mode,
+                    translation_cache=translation_cache,
+                    quality_reviewer=self._quality_reviewer if ctx.mode.ai_quality_review else None,
+                    semantic_chunker=self._semantic_chunker if ctx.mode.semantic_chunking else None,
+                    document_profile=ctx.document_profile,
+                    context_preamble=prepass_preamble,
+                    ctx=ctx,
+                )
+            else:
+                translated_blocks = self.translation_pipeline.batch_translate_blocks(
+                    blocks, request.source_lang, request.target_lang,
+                    glossary_store=glossary_store,
+                    document_memory=ctx.document_memory,
+                    mode=ctx.mode,
+                    translation_cache=translation_cache,
+                    quality_reviewer=self._quality_reviewer if ctx.mode.ai_quality_review else None,
+                    semantic_chunker=self._semantic_chunker if ctx.mode.semantic_chunking else None,
+                    document_profile=ctx.document_profile,
+                    context_preamble=prepass_preamble,
+                    ctx=ctx,
+                )
         ctx.translation_time_ms = ctx.phase_times.get("translation", 0)
         ctx.translated_chunks = len(translated_blocks)
 
@@ -464,6 +512,8 @@ class DocumentPipeline:
         translated_blocks = self._coherence_polish_blocks(
             blocks, translated_blocks, request, ctx
         )
+        from validators.hallucination_detector import validate_translated_blocks
+        validate_translated_blocks(blocks, translated_blocks)
 
         # ── Phase 8: AI Layout Planning (PDF only) ───────────────────────
         if ctx.mode.layout_planner and self._layout_planner and ext == ".pdf":
@@ -479,7 +529,7 @@ class DocumentPipeline:
         # ── Reconstruct document ─────────────────────────────────────────
         print(f"[OUTPUT] Rebuilding document -> {output_file}")
         with phase_profile("reconstruction", ctx):
-            reconstruct_document(translated_blocks, output_file, request.file_path, detected_ext,
+            output_validation = reconstruct_document(translated_blocks, output_file, request.file_path, detected_ext,
                                  source_lang=request.source_lang, target_lang=request.target_lang,
                                  layout_plan=ctx.layout_plan)
         ctx.reconstruction_time_ms = ctx.phase_times.get("reconstruction", 0)
@@ -500,7 +550,8 @@ class DocumentPipeline:
             if src_text is None and idx < len(blocks):
                 src_text = blocks[idx].get("text", "")
             sidecar_entries.append(rich_block_entry(idx, tb, src_text or ""))
-        sidecar = finalize_sidecar(sidecar_entries, request, ctx.source_format, ctx)
+        sidecar = finalize_sidecar(sidecar_entries, request, ctx.source_format, ctx,
+                                   extra={"output_validation": output_validation or {}})
 
         # ── Finalize ─────────────────────────────────────────────────────
         ctx.stop_timer()
@@ -525,10 +576,73 @@ class DocumentPipeline:
             document_type=ctx.document_profile.document_type if ctx.document_profile else "",
             sidecar=sidecar,
             blocks=sidecar_entries,
-            metrics=_engine_metrics(ctx),
+            output_validation=output_validation or {},
+            metrics=_engine_metrics(ctx, self.translation_pipeline.provider),
         )
 
     # ── In-place Translation ────────────────────────────────────────────────
+
+    def _run_inplace_analysis(self, blocks, request, ctx):
+        """Populate AI document context for DOCX/PPTX/XLSX before translation.
+
+        The in-place formats collect their blocks with a format-preserving
+        walker, so they used to return before the common extract/analyze path.
+        That silently skipped Gemini document analysis, prepass terminology,
+        specialized prompts, semantic chunking and quality review for the most
+        common uploaded office formats.
+
+        Analysis is deliberately fail-open: it improves a translation but must
+        never make an otherwise translatable document fail.
+        """
+        if not (ctx.mode.document_analyzer and self._document_analyzer and blocks):
+            return
+
+        analyzer_mode = _TRANSLATION_ANALYZER_MODE
+        if analyzer_mode not in _VALID_ANALYZER_MODES:
+            print(f"  [Analyzer] Unknown mode '{analyzer_mode}', falling back to merged")
+            analyzer_mode = "merged"
+
+        try:
+            if analyzer_mode == "merged":
+                print("[ANALYZER] Running merged document analysis + prepass...")
+                with phase_profile("document_analyzer", ctx):
+                    with llm_call_profile(ctx):
+                        profile, prepass_data = self._document_analyzer.analyze_with_prepass(
+                            blocks, request.source_lang, request.target_lang
+                        )
+                ctx.document_profile = profile
+                ctx.analysis_time_ms = ctx.phase_times.get("document_analyzer", 0)
+                if _TRANSLATION_PREPASS_ENABLED and ctx.mode.prepass:
+                    ctx.prepass_summary = prepass_data.get("summary", "")
+                    ctx.prepass_domain = prepass_data.get("domain", "")
+                    ctx.prepass_terms = prepass_data.get("terms", [])
+                return
+
+            if analyzer_mode == "concurrent":
+                print("[ANALYZER] Running AI document analysis (concurrent)...")
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    analyzer = pool.submit(self._document_analyzer.analyze, blocks)
+                    prepass = None
+                    if _TRANSLATION_PREPASS_ENABLED and ctx.mode.prepass and self._ai_provider:
+                        prepass = pool.submit(self._execute_prepass_concurrent, blocks, request, ctx)
+                    ctx.document_profile = analyzer.result()
+                    if prepass:
+                        prepass.result()
+                ctx.analysis_time_ms = ctx.phase_times.get("document_analyzer", 0)
+                return
+
+            print("[ANALYZE] Running AI document analysis...")
+            with phase_profile("document_analyzer", ctx):
+                ctx.document_profile = self._document_analyzer.analyze(blocks)
+            ctx.analysis_time_ms = ctx.phase_times.get("document_analyzer", 0)
+            if _TRANSLATION_PREPASS_ENABLED and ctx.mode.prepass and self._ai_provider:
+                self._execute_prepass_concurrent(blocks, request, ctx)
+                ctx.analysis_time_ms += ctx.phase_times.get("prepass", 0)
+        except Exception as error:
+            # A bad response or temporary provider outage should degrade the
+            # enhancement, never stop document translation.
+            print(f"  [Analyzer] In-place analysis failed: {error}; continuing without AI context")
+            ctx.document_profile = None
 
     def _translate_inplace(self, request, ext, output_file, glossary_store, ctx):
         """Translate a document in-place (DOCX/PPTX/XLSX).
@@ -543,23 +657,6 @@ class DocumentPipeline:
            translate_fn (identical to admin regeneration) so per-run formatting
            is preserved.
         """
-        # Initialize document memory if enabled
-        if ctx.mode.document_memory:
-            memory = DocumentMemory()
-            ctx.document_memory = memory
-
-        # OPTIMIZATION: Get shared cache (Task 2)
-        translation_cache = self._get_cache()
-        if translation_cache:
-            ctx.translation_cache = translation_cache
-
-        # OPTIMIZATION: Build prepass injection once (Task 5)
-        prepass_preamble = ""
-        if ctx.prepass_summary or ctx.prepass_domain or ctx.prepass_terms:
-            prepass_preamble = build_prepass_injection(
-                ctx.prepass_summary, ctx.prepass_domain, ctx.prepass_terms
-            )
-
         # Choose the right in-place walker (collect and apply share it)
         if ext == ".docx":
             walker = _translate_docx_inplace_with_translator
@@ -580,17 +677,51 @@ class DocumentPipeline:
         walker(request.file_path, output_file, _recorder,
                glossary_store=None, save=False)
 
-        # ── Phase 2: Parallel translation ─────────────────────────────────
+        # The collected blocks are the in-place equivalent of extraction.
+        # Run analysis here, before building memory and sending translations.
         blocks = [{"type": bt, "text": src} for bt, src in collected]
-        translated_blocks = self.translation_pipeline.batch_translate_blocks(
-            blocks, request.source_lang, request.target_lang,
-            glossary_store=None,
-            document_memory=ctx.document_memory,
-            mode=ctx.mode,
-            translation_cache=translation_cache,
-            context_preamble=prepass_preamble,
-            ctx=ctx,
-        )
+        ctx.total_blocks = len(blocks)
+        if not blocks:
+            raise ValueError("No translatable text extracted from document.")
+        self._run_inplace_analysis(blocks, request, ctx)
+
+        # Initialize document memory from the profile (or deterministically
+        # from the blocks when analysis is unavailable).
+        if ctx.mode.document_memory:
+            memory = DocumentMemory()
+            if ctx.document_profile:
+                memory.store_profile(ctx.document_profile)
+            else:
+                memory.initialize_from_blocks(blocks)
+            ctx.document_memory = memory
+
+        # OPTIMIZATION: Get shared cache (Task 2)
+        translation_cache = self._get_cache()
+        if translation_cache:
+            ctx.translation_cache = translation_cache
+
+        prepass_preamble = ""
+        if ctx.prepass_summary or ctx.prepass_domain or ctx.prepass_terms:
+            prepass_preamble = build_prepass_injection(
+                ctx.prepass_summary, ctx.prepass_domain, ctx.prepass_terms
+            )
+
+        # ── Phase 2: Parallel translation ─────────────────────────────────
+        with phase_profile("translation", ctx):
+            translated_blocks = self.translation_pipeline.batch_translate_blocks(
+                blocks, request.source_lang, request.target_lang,
+                glossary_store=None,
+                document_memory=ctx.document_memory,
+                mode=ctx.mode,
+                translation_cache=translation_cache,
+                context_preamble=prepass_preamble,
+                quality_reviewer=self._quality_reviewer if ctx.mode.ai_quality_review else None,
+                semantic_chunker=self._semantic_chunker if ctx.mode.semantic_chunking else None,
+                document_profile=ctx.document_profile,
+                ctx=ctx,
+            )
+        ctx.translation_time_ms = ctx.phase_times.get("translation", 0)
+        ctx.translated_chunks = len(translated_blocks)
 
         # ── Phase 4b: Document-level coherence polish (opt-in) ────────────
         translated_blocks = self._coherence_polish_blocks(
@@ -599,6 +730,8 @@ class DocumentPipeline:
 
         # Admin review support: capture per-element block data with a stable
         # block_index = walk/call order, so an edit can be replayed in-place.
+        from validators.hallucination_detector import validate_translated_blocks
+        validate_translated_blocks(blocks, translated_blocks)
         lookup: dict[int, str] = {}
         _captured_blocks = []
         for i, (bt, src) in enumerate(collected):
@@ -607,8 +740,10 @@ class DocumentPipeline:
             _captured_blocks.append(inplace_block_entry(i, bt, src, translated))
 
         # ── Phase 3: Replay pass (preserve formatting) ────────────────────
-        walker(request.file_path, output_file, _make_inplace_translate_fn(lookup),
-               glossary_store=glossary_store, save=True)
+        with phase_profile("reconstruction", ctx):
+            walker(request.file_path, output_file, _make_inplace_translate_fn(lookup),
+                   glossary_store=glossary_store, save=True)
+        ctx.reconstruction_time_ms = ctx.phase_times.get("reconstruction", 0)
 
         ctx.total_time_ms = ctx.stop_timer()
         ctx.log_summary()
@@ -626,9 +761,10 @@ class DocumentPipeline:
             model=self.translation_pipeline.provider.model_name,
             total_execution_time_ms=ctx.total_time_ms,
             mode=ctx.mode.name,
+            document_type=ctx.document_profile.document_type if ctx.document_profile else "",
             sidecar=sidecar,
             blocks=_captured_blocks,
-            metrics=_engine_metrics(ctx),
+            metrics=_engine_metrics(ctx, self.translation_pipeline.provider),
         )
 
     # ── CSV Translation ─────────────────────────────────────────────────────
@@ -684,7 +820,7 @@ class DocumentPipeline:
             mode=ctx.mode.name,
             sidecar=sidecar,
             blocks=cell_blocks,
-            metrics=_engine_metrics(ctx),
+            metrics=_engine_metrics(ctx, self.translation_pipeline.provider),
         )
 
     # ── Single Block Translation Helper ─────────────────────────────────────
@@ -786,10 +922,15 @@ class DocumentPipeline:
             document_type=ctx.document_profile.document_type if ctx and ctx.document_profile else "",
         )
         response = self.translation_pipeline.translate(request)
+        if not response.success or not response.translated_text:
+            raise RuntimeError(response.error_message or "Translation provider failed")
+        if ctx and response.provider != "cache":
+            ctx.record_provider(response.provider, response.model)
         translated = response.translated_text
 
         # Cache the result
-        if translation_cache and not _is_echo_output(text, translated):
+        if translation_cache and not _is_echo_output(
+                text, translated, block_type, source_lang, target_lang):
             translation_cache.put(
                 text, target_lang,
                 self.translation_pipeline.provider.name, translated,

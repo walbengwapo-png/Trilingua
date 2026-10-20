@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\TranslationHistory;
 use App\Models\User;
 use App\Services\HistoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -103,20 +104,20 @@ class DashboardUiFixBugConditionTest extends TestCase
         $user = User::factory()->create(['name' => 'Test User']);
         $this->actingAs($user);
 
-        // Seed 3 document records via a mocked HistoryService
-        $sessionId = session()->getId();
-        $records = [
-            $this->makeDocumentRecord($sessionId),
-            $this->makeDocumentRecord($sessionId),
-            $this->makeDocumentRecord($sessionId),
-        ];
-
-        // Mock HistoryService to return exactly 3 document records
-        $this->mock(HistoryService::class, function ($mock) use ($records) {
-            $mock->shouldReceive('getHistory')
-                ->once()
-                ->andReturn($records);
-        });
+        // Seed 3 real document rows. The dashboard aggregates straight from
+        // translation_history now, so the count has to come from the database
+        // for this to mean anything.
+        for ($i = 0; $i < 3; $i++) {
+            TranslationHistory::create([
+                'user_id'            => $user->id,
+                'translation_type'   => 'document',
+                'original_filename'  => 'test-doc.docx',
+                'translated_filename'=> 'test-doc-translated.docx',
+                'source_language'    => 'English',
+                'target_language'    => 'Cebuano',
+                'created_at'         => now(),
+            ]);
+        }
 
         // Act: GET /dashboard
         $response = $this->get('/dashboard');
@@ -270,12 +271,11 @@ class DashboardUiFixBugConditionTest extends TestCase
         ];
 
         $this->mock(HistoryService::class, function ($mock) use ($records) {
-            $mock->shouldReceive('getHistory')
+            $mock->shouldReceive('getDocumentsPaginated')
                 ->once()
-                ->andReturn($records);
+                ->andReturn(new \Illuminate\Pagination\LengthAwarePaginator($records, count($records), 24));
 
-            // DocumentsController::index also queries originals on the same instance.
-            $mock->shouldReceive('getOriginalsWithTranslations')
+            $mock->shouldReceive('getDocumentLanguagePairs')
                 ->andReturn([]);
         });
 
@@ -364,10 +364,16 @@ class DashboardUiFixBugConditionTest extends TestCase
         ];
 
         // ── Bug 1 & 2: Dashboard ─────────────────────────────────────────────
-        $this->mock(HistoryService::class, function ($mock) use ($docRecords) {
-            $mock->shouldReceive('getHistory')
-                ->andReturn($docRecords);
-        });
+        // Real rows: the dashboard aggregates from translation_history, so a
+        // mocked service would no longer influence what it renders. Only the
+        // document rows are persisted, matching the set this assertion expects
+        // the dashboard to count (textRecords drive the History page below).
+        foreach ($docRecords as $record) {
+            unset($record['id'], $record['session_id']);
+            $record['user_id']    = $user->id;
+            $record['created_at'] = now();
+            TranslationHistory::create($record);
+        }
 
         $dashResponse = $this->get('/dashboard');
         $dashResponse->assertStatus(200);

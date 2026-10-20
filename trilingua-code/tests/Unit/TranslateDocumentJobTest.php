@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Jobs\TranslateDocumentJob;
 use App\Exceptions\TranslationException;
+use App\Models\TranslationHistory;
 use App\Models\TranslationJob;
 use App\Services\HistoryService;
 use App\Services\StorageService;
@@ -113,6 +114,8 @@ class TranslateDocumentJobTest extends TestCase
             'status'       => TranslationJob::STATUS_QUEUED,
         ]);
 
+        \App\Models\User::factory()->create(['id' => 42]);
+
         $translationManager = Mockery::mock(TranslationManager::class);
         $translationManager->shouldReceive('translateDocument')
             ->once()
@@ -135,13 +138,18 @@ class TranslateDocumentJobTest extends TestCase
             ]);
 
         $history = Mockery::mock(HistoryService::class);
-        $history->shouldReceive('insertRecord')->once()->andReturnNull();
+        $history->shouldReceive('insertRecord')
+            ->once()
+            ->andReturnUsing(fn (array $data) => TranslationHistory::create($data));
 
         $blocks = Mockery::mock(BlockService::class);
-        $blocks->shouldNotReceive('persistBlocks');
+        $blocks->shouldReceive('persistBlocks')
+            ->once()
+            ->with(Mockery::type(TranslationHistory::class), [], null)
+            ->andReturn(0);
 
         $metrics = Mockery::mock(MetricsService::class);
-        $metrics->shouldNotReceive('persistDocumentMetrics');
+        $metrics->shouldReceive('persistDocumentMetrics')->once()->andReturn(true);
 
         $job = new TranslateDocumentJob(
             'input.pdf', '.pdf', 16, 'English', 'Cebuano', 'auto',
