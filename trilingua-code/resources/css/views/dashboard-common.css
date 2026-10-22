@@ -182,9 +182,9 @@
     font-weight: 600;
     white-space: nowrap;
 }
-.quality-badge--good    { background: #dcfce7; color: #15803d; }
-.quality-badge--medium  { background: #fef3c7; color: #b45309; }
-.quality-badge--poor    { background: #fee2e2; color: #b91c1c; }
+.quality-badge--good,
+.quality-badge--medium,
+.quality-badge--poor { background: #f1f5f9; color: #64748b; }
 .quality-badge--empty   { background: #f1f5f9; color: #64748b; }
 .quality-badge__dot {
     width: 7px;

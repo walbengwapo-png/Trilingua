@@ -130,8 +130,10 @@ if (-not $found) { $lines += "APP_URL=$appUrl" }
 Set-Content -Path $envFile -Value $lines -Encoding ASCII
 
 Push-Location $root
-& $phpPath artisan migrate --force 2>&1 | Out-Null
+& $phpPath artisan migrate --force
 if ($LASTEXITCODE -ne 0) { Write-Bad 'Migration failed (is Supabase reachable?)'; exit 1 }
+& $phpPath artisan deployment:validate-timeouts --check-migrations
+if ($LASTEXITCODE -ne 0) { Write-Bad 'Deployment validation failed'; exit 1 }
 & $phpPath artisan config:clear 2>&1 | Out-Null
 & $phpPath artisan config:cache 2>&1 | Out-Null
 & $phpPath artisan view:cache   2>&1 | Out-Null
@@ -142,15 +144,19 @@ Write-Ok "APP_URL=$appUrl | migrations ran | config/view cached"
 # Python translation microservice (:5000)
 # ---------------------------------------------------------------------------
 Write-Step 'Starting Python translation server'
-$pyProc = Start-Process -FilePath 'python' -ArgumentList 'Model\server.py' `
-    -WorkingDirectory $root -WindowStyle Minimized -PassThru
+$pyProc = Start-Process -FilePath 'python' `
+    -ArgumentList '-m', 'uvicorn', 'server:app', '--app-dir', 'Model', '--host', '127.0.0.1', '--port', '5000', '--log-level', 'info' `
+    -WorkingDirectory $root -WindowStyle Hidden `
+    -RedirectStandardOutput (Join-Path $demoDir 'python.out.log') `
+    -RedirectStandardError (Join-Path $demoDir 'python.err.log') `
+    -PassThru
 $pyProc.Id | Set-Content (Join-Path $demoDir 'python.pid')
 
 $pyUp = $false
 $deadline = (Get-Date).AddSeconds(120)
 while ((Get-Date) -lt $deadline) {
     try {
-        $r = Invoke-WebRequest -Uri 'http://127.0.0.1:5000/docs' -TimeoutSec 2 -UseBasicParsing
+        $r = Invoke-WebRequest -Uri 'http://127.0.0.1:5000/health' -TimeoutSec 2 -UseBasicParsing
         if ($r.StatusCode -eq 200) { $pyUp = $true; break }
     } catch { Start-Sleep -Seconds 2 }
 }
@@ -158,18 +164,31 @@ if (-not $pyUp) { Write-Bad 'Python server did not become healthy. See its windo
 Write-Ok 'Translation API healthy on :5000'
 
 # ---------------------------------------------------------------------------
+# Timeout ladder validation (python < job < worker < retry < reconcile)
+# ---------------------------------------------------------------------------
+Push-Location $root
+& $phpPath artisan deployment:validate-timeouts 2>&1 | Out-Null
+$timeoutOk = $LASTEXITCODE
+Pop-Location
+if ($timeoutOk -ne 0) { Write-Bad 'Timeout configuration is unsafe. Fix .env then re-run.'; exit 1 }
+Write-Ok 'Timeout ladder validated (deployment:validate-timeouts)'
+
+# ---------------------------------------------------------------------------
 # Queue workers (documents translate via database queue)
 # ---------------------------------------------------------------------------
-Write-Step 'Starting queue workers (3 workers)'
+Write-Step 'Starting queue worker'
 $qPids = @()
-for ($i = 1; $i -le 3; $i++) {
+$queueWorkers = if ($env:DOCUMENT_QUEUE_WORKERS) {
+    [Math]::Max(1, [int]$env:DOCUMENT_QUEUE_WORKERS)
+} else { 2 }
+for ($i = 1; $i -le $queueWorkers; $i++) {
     $qProc = Start-Process -FilePath $phpPath `
-        -ArgumentList 'artisan', 'queue:work', '--tries=3', '--timeout=900', '--sleep=1' `
-        -WorkingDirectory $root -WindowStyle Minimized -PassThru
+        -ArgumentList 'artisan', 'queue:listen', 'database', '--tries=3', '--timeout=1500', '--sleep=1' `
+        -WorkingDirectory $root -WindowStyle Hidden -PassThru
     $qPids += $qProc.Id
 }
 ($qPids -join ',') | Set-Content (Join-Path $demoDir 'queue.pid')
-Write-Ok "Queue workers running (PIDs: $($qPids -join ', '))"
+Write-Ok "Queue worker running (PID: $($qPids -join ', '))"
 
 # ---------------------------------------------------------------------------
 # Laravel HTTP server

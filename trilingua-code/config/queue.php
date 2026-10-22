@@ -40,7 +40,10 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 900),
+            // Must exceed the effective worker timeout with margin. The timeout
+            // ladder is defined in config/timeouts.php and enforced by
+            // deployment:validate-timeouts at startup.
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 1800),
             'after_commit' => false,
         ],
 

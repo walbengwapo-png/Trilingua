@@ -231,6 +231,17 @@
     overflow-y: auto;
 }
 
+.translation-save-warning {
+    margin: 0 20px 16px;
+    padding: 10px 12px;
+    border: 1px solid var(--warning, #b45309);
+    border-radius: 8px;
+    color: var(--text);
+    background: var(--surface, #fff);
+}
+
+.translation-save-warning[hidden] { display: none; }
+
 /* Output placeholder */
 #output-text:empty::before {
     content: 'Translation will appear here…';
@@ -581,8 +592,17 @@ button[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
     font-variant-numeric: tabular-nums;
 }
 
+.translation-job-hint {
+    margin: 12px 0 0;
+    color: var(--muted);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+.translation-job-hint a { color: var(--primary); }
+
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
+    .translate-progress { top: 68px; max-width: calc(100vw - 24px); border-radius: 14px; }
     .translation-page {
         height: auto;
         gap: 16px;

@@ -1,4 +1,21 @@
 /* Authenticated App Layout — Fully Responsive */
+.skip-link {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 10001;
+    padding: 10px 14px;
+    background: #fff;
+    color: #111827;
+    border-radius: 8px;
+    transform: translateY(-150%);
+}
+.skip-link:focus { transform: none; }
+
+body.app-body :is(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 3px solid #f59e0b !important;
+    outline-offset: 3px;
+}
 
 /* ── Container ──────────────────────────────────────────────────────────── */
 .app-container {
@@ -84,6 +101,15 @@
 .nav-link:hover svg { opacity: 1; }
 .nav-link.active { background: var(--primary); color: #fff; }
 .nav-link.active svg { opacity: 1; }
+.nav-section-label {
+    margin: 18px 12px 6px;
+    color: #cbd5e1;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.nav-link--sub { padding-left: 40px; }
 
 /* Sidebar user section */
 .sidebar-user {
@@ -746,4 +772,11 @@
 @media (max-width: 480px) {
     .header .title { font-size: 1rem; }
     .main > div:last-child { padding: 16px 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-body *, .app-body *::before, .app-body *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
 }

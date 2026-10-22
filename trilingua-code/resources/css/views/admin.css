@@ -1,5 +1,20 @@
 /* Admin review view-specific stylesheet (read-only queue + detail views) */
 
+/* Screen-reader-only utility: keeps a programmatic label out of the visual
+   layout while remaining available to assistive technology. */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    overflow: hidden;
+    white-space: nowrap;
+}
+
 .stack > * + * { margin-top: 24px; }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -169,9 +184,9 @@
     border-radius: 50%;
     flex-shrink: 0;
 }
-.quality-score__dot--low    { background: #ef4444; }
-.quality-score__dot--medium { background: #f59e0b; }
-.quality-score__dot--high   { background: #10b981; }
+.quality-score__dot--low,
+.quality-score__dot--medium,
+.quality-score__dot--high { background: #64748b; }
 
 .review-link {
     display: inline-flex;
@@ -290,6 +305,16 @@
     text-align: center;
     padding: 32px 0;
 }
+
+/* ── Flash notices (jobs screen) ─────────────────────────────────────── */
+.notice {
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 0 0 14px;
+    font-size: 0.95rem;
+}
+.notice--success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+.notice--error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 
 /* ── Generic helpers (audit log) ─────────────────────────────────────── */
 .text-nowrap { white-space: nowrap; }
@@ -1069,4 +1094,21 @@
 @media (max-width: 1100px) {
     .review-split { grid-template-columns: 1fr; }
     .review-pane__body { max-height: none; }
+}
+
+/* Shared document preview (converter-host used by admin + history detail) */
+.converter-host {
+    width: 100%;
+    min-height: 160px;
+}
+
+/* pptx-preview renders its own wrapper inside the host */
+.pptx-preview-holder {
+    position: relative;
+    width: 100%;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.pptx-preview-holder .pptx-preview-wrapper {
+    border-radius: 10px;
 }

@@ -63,13 +63,22 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withSchedule(function (Schedule $schedule): void {
-        // Reconcile the durable job state machine and flag stuck workers.
-        $schedule->command('translations:reconcile --fail')
+        // Reconcile the durable job state machine. The processing timeout must
+        // exceed the queue retry_after (see config/timeouts.php); the reconciler
+        // checks for live worker/lease evidence before failing a job.
+        $schedule->command('translations:reconcile --fail --processing-timeout=' . config('timeouts.reconcile_processing'))
             ->everyFiveMinutes()
             ->withoutOverlapping();
 
-        // Surface queue jobs whose lease expired without completing.
-        $schedule->command('queue:check-stale --threshold=900')
+        // Retry storage-object cleanups left pending by history deletion
+        // (immediate best-effort runs in HistoryController::destroy).
+        $schedule->command('translations:cleanup-storage')
+            ->everyFiveMinutes()
+            ->withoutOverlapping();
+
+        // Surface queue jobs whose lease expired without completing
+        // (advisory only; reconciliation above is the terminal authority).
+        $schedule->command('queue:check-stale --threshold=' . config('timeouts.check_stale'))
             ->everyFifteenMinutes()
             ->withoutOverlapping();
     })

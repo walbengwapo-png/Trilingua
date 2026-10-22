@@ -20,9 +20,9 @@ Write-Host 'Stopping TriLingua demo...' -ForegroundColor Cyan
 Stop-PortListener 8000 'Laravel server'
 Stop-PortListener 5000  'Python translation server'
 
-# Queue worker: php.exe with queue:work in command line
+# Queue worker/listener: match both supported local launch modes.
 Get-CimInstance Win32_Process -Filter "Name='php.exe'" |
-    Where-Object { $_.CommandLine -match 'queue:work' } |
+    Where-Object { $_.CommandLine -match 'queue:(work|listen)' } |
     ForEach-Object { Write-Host "Stopping queue worker (PID $($_.ProcessId))" -ForegroundColor Yellow; Stop-Process -Id $_.ProcessId -Force }
 
 # Tunnel: cloudflared with --url arg (avoids killing unrelated cloudflared runs)

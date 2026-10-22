@@ -92,6 +92,7 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
     Route::get('/history/{id}/view', [HistoryController::class, 'view'])->name('history.view');
     Route::get('/history/{id}/file', [HistoryController::class, 'showFile'])->name('history.file');
     Route::get('/history/{id}/original-file', [HistoryController::class, 'showOriginalFile'])->name('history.original-file');
+    Route::get('/history/{id}/blocks', [HistoryController::class, 'blocks'])->name('history.blocks');
     Route::post('/history/redownload/{id}', [HistoryController::class, 'redownload'])->name('history.redownload');
     Route::post('/history/redownload-original/{id}', [HistoryController::class, 'redownloadOriginal'])->name('history.redownload-original');
     Route::post('/history/{id}/rename', [HistoryController::class, 'rename'])->name('history.rename');
@@ -111,6 +112,7 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
         // Read-only review queue + detail
         Route::get('/review', [ReviewController::class, 'index'])->name('review.index');
         Route::get('/review/{translation}', [ReviewController::class, 'show'])->name('review.show');
+        Route::get('/review/{translation}/blocks', [ReviewController::class, 'blocks'])->name('review.blocks');
 
         // Read-only audit trail viewer
         Route::get('/audit', [AuditLogController::class, 'index'])->name('audit');
@@ -135,5 +137,6 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
         Route::post('/review/{translation}/blocks/{block}/update', [DocumentReviewController::class, 'updateBlock'])->name('review.block.update');
         Route::post('/review/{translation}/save-regenerate', [DocumentReviewController::class, 'saveAndRegenerate'])->name('review.save-regenerate');
         Route::get('/review/{translation}/file', [DocumentReviewController::class, 'showTranslatedFile'])->name('review.document.file');
+        Route::get('/review/{translation}/original-file', [DocumentReviewController::class, 'showOriginalFile'])->name('review.original-file');
     });
 });
