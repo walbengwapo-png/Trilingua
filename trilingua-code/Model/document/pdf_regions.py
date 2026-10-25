@@ -97,8 +97,39 @@ def inventory_pdf(path, native_blocks, language, column_mode='auto'):
                 except OCRUnavailable as exc:
                     entry.update(reason='ocr_acceptance_hold', detail=str(exc))
                 else:
-                    # shortcut: classification ships before the safe pixel renderer; never reflow new PDFs.
-                    entry.update(reason='pixel_renderer_pending')
+                    from document.image_reconstructor import (ImageHold, occurrence_safety, source_image,
+                                                               estimate_style)
+                    from document.ocr_extractor import recognize_image
+                    try:
+                        occurrence_safety(doc, number, image['xref'])
+                        source = source_image(doc, image['xref'])
+                        found = recognize_image(source, require_ready(language, 'scan'), number, source.size)
+                        entry.update(status='container', reason=None)
+                        for recognized in found:
+                            words = recognized['ocr']['words']
+                            style = estimate_style(source, words, box.width/source.width)
+                            raw = recognized['position']
+                            sx, sy = box.width/source.width, box.height/source.height
+                            target = fitz.Rect(box.x0+raw[0]*sx-1, box.y0+raw[1]*sy-1,
+                                               box.x0+raw[2]*sx+1, box.y0+raw[3]*sy+style['initial_size']*.5) & box
+                            neighbors = [fitz.Rect(other['position']) for other in found if other is not recognized]
+                            pixel_target = fitz.Rect((target.x0-box.x0)/sx, (target.y0-box.y0)/sy,
+                                                      (target.x1-box.x0)/sx, (target.y1-box.y0)/sy)
+                            child = region('raster_text', target, parent_region_id=entry['region_id'])
+                            if recognized['ocr']['confidence'] < 80 or any(pixel_target.intersects(n) for n in neighbors):
+                                child['reason'] = 'low_confidence_or_neighbor_overlap'
+                                continue
+                            recognized.update(position=list(target), region_id=child['region_id'], ocr_reflow=False,
+                                              image_region={'xref':image['xref'], 'image_bbox':list(box),
+                                                            'estimated_style':style})
+                            matches = local_matches([b for b in blocks if b['page'] == number], [recognized])
+                            if matches:
+                                child.update(reason='ambiguous_native_ocr_overlap', dedup_matches=matches)
+                                continue
+                            child.update(status='pending', reason=None, block_index=len(blocks))
+                            blocks.append(recognized)
+                    except (ImageHold, OCRUnavailable, ImportError) as exc:
+                        entry.update(status='held', reason='image_safety_hold', detail=str(exc))
                 if uses[image['xref']] != 1:
                     entry['safety_hold'] = 'shared_or_unresolved_image'
             drawings = page.get_drawings()

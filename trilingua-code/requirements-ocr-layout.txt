@@ -1,0 +1,8 @@
+# Install into .venv-ocr-layout; no request-time downloads or live environment updates.
+-r Model/requirements.txt
+-r requirements-dev.txt
+PyMuPDF==1.27.2.3
+pillow==12.2.0
+pytesseract==0.3.13
+numpy==2.4.6
+opencv-python-headless==4.13.0.92

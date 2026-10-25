@@ -20,7 +20,7 @@ _STRUCT_KEYS = (
     "slide", "shape_id", "para_idx", "table_index",
     "row", "col", "row_span", "col_span", "sheet",
     "alignment", "passthrough",
-    "style", "pdf_coordinates", "rendered_layout", "ocr", "ocr_reflow", "region_id", "visible",
+    "style", "pdf_coordinates", "rendered_layout", "ocr", "ocr_reflow", "region_id", "visible", "image_region",
 )
 
 

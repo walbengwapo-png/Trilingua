@@ -776,7 +776,7 @@ _BASE14_RENDERABLE = frozenset(
 
 def write_pdf_preserved(blocks, original_pdf_path, output_file,
                         layout_plan=None,
-                        source_lang="", target_lang="", strict=False):
+                        source_lang="", target_lang="", strict=False, image_actions=()):
     """
     Replace original text in a PDF with translations while preserving layout.
 
@@ -1853,6 +1853,9 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
             placement["page"] = saved_pages[placement["page_xref"]]
         # Deflate/subset after all insertions, rather than embedding full fonts
         # and uncompressed page streams in every translated PDF.
+        if image_actions:
+            from document.image_reconstructor import apply_actions
+            apply_actions(doc, image_actions)
         doc.subset_fonts()
         doc.save(output_file, garbage=3, deflate=True)
     finally:
@@ -1860,6 +1863,9 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
         src_doc.close()
 
     from validators.translation_validator import validate_pdf_output, PDFValidationError
+    if image_actions:
+        from document.image_reconstructor import validate_output
+        validate_output(output_file, image_actions)
     report = validate_pdf_output(output_file, placements, source_pages, blocks)
     report["source_artifacts"] = source_artifacts
     report['held'] = strict_held

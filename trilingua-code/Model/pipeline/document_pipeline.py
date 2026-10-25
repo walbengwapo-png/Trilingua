@@ -522,8 +522,13 @@ class DocumentPipeline:
         with phase_profile("reconstruction", ctx):
             if ext == ".pdf":
                 from document.reconstructor import write_pdf_preserved
-                output_validation = write_pdf_preserved(translated_blocks, request.file_path, output_file,
-                    source_lang=request.source_lang, target_lang=request.target_lang, strict=True)
+                from document.image_reconstructor import plan_images
+                image_actions, image_held = plan_images(request.file_path, translated_blocks)
+                native = [b for b in translated_blocks if not b.get('image_region')]
+                output_validation = write_pdf_preserved(native, request.file_path, output_file,
+                    source_lang=request.source_lang, target_lang=request.target_lang, strict=True, image_actions=image_actions)
+                output_validation['held'].extend(image_held)
+                extraction['image_actions'] = image_actions
             else:
                 output_validation = reconstruct_document(translated_blocks, output_file, request.file_path, detected_ext,
                     source_lang=request.source_lang, target_lang=request.target_lang, layout_plan=ctx.layout_plan)
@@ -595,7 +600,8 @@ class DocumentPipeline:
         summary = content_summary(extraction['regions'])
         sidecar.update(version=3, content_summary=summary,
                        render_plan={'version': 1, 'original_sha256': extraction['original_sha256'],
-                                    'regions': extraction['regions'], 'pages': extraction['pages']})
+                                    'regions': extraction['regions'], 'pages': extraction['pages'],
+                                    'image_actions': extraction.get('image_actions', [])})
         if summary['status'] != 'complete':
             message = (f"{summary['status'].capitalize()}: {summary['translated']} translated, "
                        f"{summary['held']} held, {summary['passthrough']} passthrough regions. Held content retains its original language.")

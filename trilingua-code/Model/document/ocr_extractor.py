@@ -11,7 +11,7 @@ import subprocess
 PACKS = {"English": "eng", "Cebuano": "ceb", "Filipino": "fil"}
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg"}
 MAX_PIXELS = 40_000_000
-SETTINGS = {"version": 1, "dpi": 300, "psm": 3,
+SETTINGS = {"version": 2, "dpi": 300, "psm": 3, "grouping": "paragraph-with-word-geometry",
             "preprocessing": "exif-transpose,grayscale,autocontrast", "retain_uncertain_words": True}
 
 
@@ -135,8 +135,9 @@ def recognize_image(image, pack, page=0, page_size=None):
             confidence = -1
         x, y = data["left"][i] * sx, data["top"][i] * sy
         box = [x, y, x + data["width"][i] * sx, y + data["height"][i] * sy]
-        key = (data["block_num"][i], data["par_num"][i], data["line_num"][i])
-        groups.setdefault(key, []).append({"text": text, "confidence": confidence, "position": box})
+        key = (data["block_num"][i], data["par_num"][i])
+        groups.setdefault(key, []).append({"text": text, "confidence": confidence, "position": box,
+                                          "line": data['line_num'][i], 'paragraph': list(key)})
     blocks = []
     for words in groups.values():
         box = [min(w["position"][0] for w in words), min(w["position"][1] for w in words),
@@ -145,6 +146,7 @@ def recognize_image(image, pack, page=0, page_size=None):
                        "page": page, "position": box, "pdf_coordinates": "display",
                        "style": {"font": "helv", "font_size": 11, "color": 0, "bold": False},
                        "ocr": {"pack": pack, "confidence": sum(w["confidence"] for w in words) / len(words),
+                               "words": words, 'reading_order': len(blocks),
                                "uncertain_words": [w for w in words if w["confidence"] < 60]},
                        "ocr_reflow": True})
     if not blocks:

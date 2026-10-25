@@ -23,7 +23,16 @@ Branch: `codex/hybrid-pdf-p0-p4`.
 - Separate word accuracy, region recall, missed/false-positive regions and reading order. 95% minimum remains unchanged; no live acceptance settings modified.
 - Tests: 10 evaluator/contract tests passed. No corpus, scans or acceptance evidence created.
 
-## P3-P4 - pending
+## P3 - renderer/code complete; real end-to-end exit blocked
+- Added image_reconstructor.py: word-contained glyph masks, thin-rule/neighbor exclusions, multi-sample flatness/gradient checks, color extraction, residual checks, bounded 10 pt fit, source shape font estimates and per-asset validation.
+- Single PDF assembly updates only the pixel stream of an asset proven to have one simple opaque, unclipped, non-overlapping occurrence. No global replace_image and no color-overlay source-removal claim. Other assets retain byte invariants. Saved edited images are verified by decoded pixel hashes and visible searchable target text.
+- Eight Noto Sans/Serif family/weight font files and OFL source text pinned to upstream revision/hashes. Rights and PyMuPDF licensing review remain open; no legal determination made.
+- OpenCV headless 4.13.0.92 installed only into isolated venv; requirements-ocr-layout.txt records dependencies. No live environment change.
+- OCR now retains paragraph/word geometry; SETTINGS version 2 requires matching evidence for this changed extraction shape. 95% unchanged. Unknown capture origin requires all scan/photo/screenshot evidence scopes before OCR.
+- Tests: 48 focused tests passed. Fixed-geometry tests cover real pixel cleanup, searchability/diacritics, non-flat holds, rules/neighbors/confidence, fit, shared assets, mixed native/link/vector and unchanged asset preservation. These are not acceptance material.
+- Real scanned/mixed OCR acceptance and owner visual sign-off cannot be completed without genuine reviewed corpus; all real categories remain HOLD. P4 hardening continues independently.
+
+## P4 - pending
 
 ## Release holds
 No representative corpus, independent references, passing acceptance evidence, Linux runtime sign-off, visual release sign-off or licensing determination. No real category will be enabled.
