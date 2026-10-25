@@ -162,6 +162,10 @@ class ReviewService
         return DB::transaction(function () use ($historyId, $adminId, $note) {
             $history = TranslationHistory::whereKey($historyId)->lockForUpdate()->firstOrFail();
 
+            if (in_array($history->sidecar['content_summary']['status'] ?? null, ['partial', 'untranslated'], true)) {
+                throw new TranslationException('Held regions remain in the original language. This incomplete document cannot be verified.');
+            }
+
             // The published file is what a verification vouches for. Approved
             // contract: a document carrying edits the downloadable file does not
             // contain yet must be published (Save & Regenerate) before Verify.

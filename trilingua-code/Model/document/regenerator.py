@@ -20,7 +20,7 @@ _STRUCT_KEYS = (
     "slide", "shape_id", "para_idx", "table_index",
     "row", "col", "row_span", "col_span", "sheet",
     "alignment", "passthrough",
-    "style", "pdf_coordinates", "rendered_layout",
+    "style", "pdf_coordinates", "rendered_layout", "ocr", "ocr_reflow", "region_id", "visible",
 )
 
 
@@ -242,6 +242,30 @@ def reconstruct_from_sidecar(sidecar, overrides, original_file, output_file,
 
     # Blocks-based reconstruction (PDF, TXT, MD, RTF->DOCX, ODT->DOCX, CSV).
     edited_blocks = apply_overrides(blocks, overrides)
+
+    if sidecar.get('version') == 3:
+        from document.pdf_regions import sha256
+        from document.reconstructor import write_pdf_preserved
+        import tempfile
+        plan = sidecar.get('render_plan') or {}
+        if plan.get('version') != 1 or sha256(original_file) != plan.get('original_sha256'):
+            raise ValueError('Unsupported render plan or original hash mismatch')
+        held = {r.get('region_id') for r in plan['regions'] if r['status'] == 'held'}
+        edited_blocks = [b for b in edited_blocks if b.get('region_id') not in held]
+        handle, temporary = tempfile.mkstemp(suffix='.pdf', dir=os.path.dirname(os.path.abspath(output_file)))
+        os.close(handle)
+        try:
+            if edited_blocks:
+                validation = write_pdf_preserved(edited_blocks, original_file, temporary, strict=True)
+                if validation.get('held'):
+                    raise ValueError('Edited text does not fit; published file retained')
+            else:
+                import shutil
+                shutil.copyfile(original_file, temporary)
+            os.replace(temporary, output_file)
+        finally:
+            if os.path.exists(temporary): os.unlink(temporary)
+        return output_file
 
     if fmt == ".csv":
         _reconstruct_csv(edited_blocks, sidecar, output_file)

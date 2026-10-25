@@ -776,7 +776,7 @@ _BASE14_RENDERABLE = frozenset(
 
 def write_pdf_preserved(blocks, original_pdf_path, output_file,
                         layout_plan=None,
-                        source_lang="", target_lang=""):
+                        source_lang="", target_lang="", strict=False):
     """
     Replace original text in a PDF with translations while preserving layout.
 
@@ -1502,7 +1502,9 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
             y += leading
         return y
 
-    def _insert_block(page, block, page_width, page_height, occupied, block_index, layout_plan, recreated=None):
+    strict_held = []
+
+    def _insert_block(page, block, page_width, page_height, occupied, block_index, layout_plan, recreated=None, preflight=False):
         index = block["_render_index"]
         text = (block.get("text") or "").strip()
         if not text:
@@ -1546,11 +1548,17 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
             if any(tag != block_index and target.intersects(rect) and
                    (target & rect).get_area() > 1 for rect, tag in occupied):
                 continue
+            if preflight:
+                return True
             _place_lines(page, block, index, target, lines, size, "fit", recreated)
             occupied.append((target, block_index))
-            return
+            return True
         # Whole blocks move together to readable continuation pages. Nothing is
         # shortened, and source headings/bullets remain independent blocks.
+        if strict:
+            if preflight:
+                return False
+            raise ValueError("Strict PDF fit changed after preflight")
         continuations.setdefault(block.get("page", 0), []).append(block)
 
 
@@ -1566,6 +1574,17 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
         recreated = _Counter()
         try:
             imgs_before = _image_snapshot(page)
+            if strict:
+                accepted = []
+                for bi, b in enumerate(translatable):
+                    if _insert_block(page, b, page_width, page_height, list(occupied), bi, layout_plan, preflight=True):
+                        accepted.append(b)
+                    else:
+                        strict_held.append({'block_index': b['_render_index'],
+                                            'region_id': b.get('region_id'), 'reason': 'native_fit_hold'})
+                        b['passthrough'] = True
+                        b['text'] = b.get('_original_text', ' '.join(ln.get('text', '') for ln in b.get('lines', [])))
+                translatable = accepted
             redact_rects = []
             src_pix = src_page.get_pixmap() if src_page is not None else None
             protected = [fitz.Rect(line["bbox"]) for block in pages_blocks.get(page_num, [])
@@ -1843,6 +1862,7 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
     from validators.translation_validator import validate_pdf_output, PDFValidationError
     report = validate_pdf_output(output_file, placements, source_pages, blocks)
     report["source_artifacts"] = source_artifacts
+    report['held'] = strict_held
     report["source_page_map"] = {str(page): order.index(page) for page in range(source_pages)}
     for index, block in enumerate(original_blocks):
         block["rendered_layout"] = {
@@ -1945,10 +1965,49 @@ def choose_output_path(input_file, output_dir=""):
         ".pdf":  ".pdf",  ".csv": ".csv",
         ".rtf":  ".docx", ".odt": ".docx",
         ".pptx": ".pptx", ".xlsx": ".xlsx",
+        ".png": ".pdf", ".jpg": ".pdf", ".jpeg": ".pdf",
     }
     out_ext = WRITABLE_FORMATS.get(ext, ".docx")
     out_name = f"translated_{base}{out_ext}"
     return os.path.join(output_dir, out_name) if output_dir else out_name
+
+
+def write_ocr_pdf(blocks, output_file):
+    """Readable translation, separated from source scan pixels; never overlay them."""
+    import fitz
+    import html
+    import re
+    import unicodedata
+    from collections import defaultdict
+    from validators.translation_validator import PDFValidationError
+    pages = defaultdict(list)
+    for block in blocks:
+        pages[int(block.get("page", 0))].append(block)
+    page_rect = fitz.paper_rect("a4")
+    content_rect = page_rect + (40, 40, -40, -40)
+    expected = []
+    with fitz.DocumentWriter(output_file) as writer:
+        for number, page_blocks in sorted(pages.items()):
+            heading = f'Translated text: source page {number + 1}'
+            expected.extend([heading] + [b.get("text", "") for b in page_blocks])
+            body = f'<h2>{heading}</h2>'
+            body += ''.join('<p>' + html.escape(b.get("text", "")).replace('\n', '<br>') + '</p>' for b in page_blocks)
+            story = fitz.Story(html=body, user_css="body {font-family: sans-serif; font-size: 11pt;} p {margin: 0 0 6pt;}")
+            more = True
+            while more:
+                device = writer.begin_page(page_rect)
+                more, _ = story.place(content_rect)
+                story.draw(device)
+                writer.end_page()
+    with fitz.open(output_file) as saved:
+        observed = ''.join(page.get_text() for page in saved)
+        output_pages = len(saved)
+    def normalized(text):
+        return re.sub(r'[\s\u00ad\u200b]+', '', unicodedata.normalize('NFKC', text))
+    if normalized(''.join(expected)) != normalized(observed):
+        raise PDFValidationError({"status": "failed", "issues": ["Reflowed OCR PDF has missing or changed rendered text."]})
+    return {"status": "passed", "content_coverage": "passed", "layout": "separate_translated_text",
+            "linguistic_accuracy": "unverified", "source_pages": sorted(pages), "output_pages": output_pages}
 
 
 def reconstruct_document(blocks, output_file, original_file=None, original_ext=None,
@@ -1959,6 +2018,8 @@ def reconstruct_document(blocks, output_file, original_file=None, original_ext=N
 
     if ext == ".docx":
         write_docx(blocks, output_file, original_file)
+    elif ext == ".pdf" and any(b.get("ocr_reflow") for b in blocks):
+        return write_ocr_pdf(blocks, output_file)
     elif ext == ".pdf" and original_file:
         return write_pdf_preserved(blocks, original_file, output_file,
                             layout_plan=layout_plan,

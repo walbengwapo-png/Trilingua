@@ -50,9 +50,11 @@ class CompletedDownloadResolver
 
             return [
                 'status'                => 'completed',
+                'content_summary' => $history->sidecar['content_summary'] ?? null,
                 'download_url'          => $signedResult['signed_url'],
                 'download_filename'     => $history->translated_filename,
                 'signed_url_expires_at' => $signedResult['signed_url_expires_at'],
+                'warnings'              => $history->sidecar['extraction']['warnings'] ?? [],
             ];
         } catch (\Throwable $e) {
             Log::warning('Failed to generate signed URL for completed translation; verifying object before fallback', [
@@ -106,9 +108,11 @@ class CompletedDownloadResolver
 
         return [
             'status'             => 'completed',
+            'content_summary' => $history->sidecar['content_summary'] ?? null,
             'download_available' => false,
+            'warnings'           => $history->sidecar['extraction']['warnings'] ?? [],
             'download_filename'  => $history->translated_filename,
-            'message'            => 'Your translation is complete, but the download could not be verified right now. Please try again shortly.',
+            'message'            => 'Processing finished, but the download could not be verified right now. Please try again shortly.',
         ];
     }
 
@@ -121,7 +125,9 @@ class CompletedDownloadResolver
     {
         return [
             'status'            => 'completed',
+            'content_summary' => $history->sidecar['content_summary'] ?? null,
             'download_url'      => route('history.file', ['id' => $history->id]),
+            'warnings'          => $history->sidecar['extraction']['warnings'] ?? [],
             'download_filename' => $history->translated_filename,
         ];
     }

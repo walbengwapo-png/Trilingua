@@ -395,14 +395,18 @@
                     outputSaveWarning.hidden = true;
                     hideProgress();
                     documentJobHint.hidden = true;
-                    outputText.textContent = 'Your document has been translated. Download the translated file below to view the result.';
+                    const summary = data.content_summary;
+                    const incomplete = summary && summary.status !== 'complete';
+                    outputText.textContent = incomplete
+                        ? `${summary.status}: ${summary.translated} translated, ${summary.held} held regions. Held content remains in the original language.`
+                        : 'Your document has been translated. Download the translated file below to view the result.';
                     outputDownload.removeAttribute('hidden');
                     downloadLink.href = data.download_data || data.download_url;
                     downloadLink.download = data.download_filename || 'translated_document';
                     downloadLabel.textContent = 'Download: ' + (data.download_filename || 'translated_document');
                     copyBtn.setAttribute('aria-disabled', 'true');
                     saveBtn.setAttribute('aria-disabled', 'true');
-                    if (window.showToast) showToast('success', 'Document translated!', 'Your file is ready to download.');
+                    if (window.showToast) showToast(incomplete ? 'warning' : 'success', incomplete ? 'Incomplete translation' : 'Document translated!', outputText.textContent);
                 } else if (res.ok && data && data.translated) {
                     sessionStorage.removeItem(JOB_STORAGE_KEY);
                     hideProgress();
@@ -502,18 +506,26 @@
                 try { data = JSON.parse(raw); } catch (e) {}
 
                 if (data && data.status === 'completed' && (data.download_url || data.download_data)) {
+                    if (Array.isArray(data.warnings) && data.warnings.length) {
+                        workbookWarning.textContent = [workbookWarning.textContent].concat(data.warnings).filter(Boolean).join(' ');
+                        workbookWarning.hidden = false;
+                    }
                     stopPolling(true);
                     outputSaveWarning.hidden = true;
                     hideProgress();
                     documentJobHint.hidden = true;
-                    outputText.textContent = 'Your document has been translated. Download the translated file below to view the result.';
+                    const summary = data.content_summary;
+                    const incomplete = summary && summary.status !== 'complete';
+                    outputText.textContent = incomplete
+                        ? `${summary.status}: ${summary.translated} translated, ${summary.held} held regions. Held content remains in the original language.`
+                        : 'Your document has been translated. Download the translated file below to view the result.';
                     outputDownload.removeAttribute('hidden');
                     downloadLink.href = data.download_data || data.download_url;
                     downloadLink.download = data.download_filename || 'translated_document';
                     downloadLabel.textContent = 'Download: ' + (data.download_filename || 'translated_document');
                     copyBtn.setAttribute('aria-disabled', 'true');
                     saveBtn.setAttribute('aria-disabled', 'true');
-                    if (window.showToast) showToast('success', 'Document translated!', 'Your file is ready to download.');
+                    if (window.showToast) showToast(incomplete ? 'warning' : 'success', incomplete ? 'Incomplete translation' : 'Document translated!', outputText.textContent);
                     return;
                 }
 
@@ -605,6 +617,8 @@
     // ── Clear ─────────────────────────────────────────────────────────────────
     clearBtn.addEventListener('click', function () {
         sourceText.value = '';
+        workbookWarning.textContent = '';
+        workbookWarning.hidden = true;
         updateCounter();
         outputText.textContent = '';
         outputSaveWarning.hidden = true;

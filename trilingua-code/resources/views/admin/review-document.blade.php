@@ -9,6 +9,8 @@
 @section('content')
 @php
     $hasDraft = $record->hasUnpublishedEdits();
+    $ocrBlocks = collect($record->sidecar['blocks'] ?? [])->keyBy('block_index');
+    $contentSummary = $record->sidecar['content_summary'] ?? null;
 @endphp
 <div class="stack">
 
@@ -62,6 +64,27 @@
         </div>
 
         {{-- Document-level actions --}}
+        @if ($contentSummary)
+            <div class="review-form-card" role="note">
+                <h4>Content: {{ ucfirst($contentSummary['status']) }}</h4>
+                <p>{{ $contentSummary['translated'] }} translated, {{ $contentSummary['held'] }} held, {{ $contentSummary['passthrough'] }} passthrough regions.</p>
+                @foreach ($record->sidecar['render_plan']['regions'] ?? [] as $region)
+                    @if ($region['status'] === 'held')
+                        <p>Page {{ $region['page'] + 1 }} · {{ $region['source_kind'] }} · {{ $region['reason'] }} · {{ implode(', ', $region['bbox']) }}. Original content retained.</p>
+                    @endif
+                @endforeach
+            </div>
+        @endif
+        @if (!empty($record->sidecar['extraction']['warnings']))
+            <div class="review-form-card" role="note" aria-label="Extraction warnings">
+                <h4 class="review-form-card__title">Check extracted text against the original</h4>
+                <ul>
+                    @foreach ($record->sidecar['extraction']['warnings'] as $warning)
+                        <li>{{ $warning }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         <div class="review-form-card">
             <h4 class="review-form-card__title">Document Actions</h4>
 
@@ -77,7 +100,7 @@
                 <form method="POST" action="{{ route('admin.review.document.verify', $record->id) }}" class="review-inline-form"
                       data-review-form data-reload="true" data-confirm-dirty="true">
                     @csrf
-                    <button type="submit" class="review-btn review-btn--success">Verify Document</button>
+                    <button type="submit" class="review-btn review-btn--success" @disabled($contentSummary && $contentSummary['status'] !== 'complete')>Verify Document</button>
                 </form>
 
                 <form method="POST" action="{{ route('admin.review.document.flag', $record->id) }}" class="review-inline-form"
@@ -255,6 +278,17 @@
                                 <details class="doc-block__ref">
                                     <summary>Source &amp; AI reference</summary>
                                     <div class="doc-block__ref-content">
+                                        @if (!empty($ocrBlocks[$block->block_index]['ocr']))
+                                            @php($ocr = $ocrBlocks[$block->block_index]['ocr'])
+                                            <p class="review-form-note">
+                                                OCR confidence: {{ round($ocr['confidence'], 1) }} / 100.
+                                                This is a recognition signal, not measured accuracy or translation quality.
+                                                @if (!empty($ocr['uncertain_words']))
+                                                    Check uncertain words:
+                                                    {{ implode(', ', array_column($ocr['uncertain_words'], 'text')) }}.
+                                                @endif
+                                            </p>
+                                        @endif
                                         <div class="block-card__pair">
                                             <span class="block-card__pair-label">Source</span>
                                             <div class="block-card__text">{{ $block->source_text ?? '—' }}</div>

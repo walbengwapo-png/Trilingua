@@ -82,6 +82,7 @@ from pipeline.document_pipeline import DocumentPipeline
 from config.processing_modes import VALID_MODES, get_mode
 from validators.ai_quality_reviewer import AIQualityReviewer
 from validators.translation_validator import PDFValidationError
+from document.ocr_extractor import OCRUnavailable, IMAGE_EXTENSIONS
 
 # ---------------------------------------------------------------------------
 # Provider selection
@@ -426,6 +427,7 @@ EXTENSION_MAP = {
     ".docx": ".docx", ".pdf": ".pdf", ".txt": ".txt",
     ".md": ".md",     ".csv": ".csv", ".rtf": ".docx",
     ".odt": ".docx",  ".pptx": ".pptx", ".xlsx": ".xlsx",
+    ".png": ".pdf", ".jpg": ".pdf", ".jpeg": ".pdf",
 }
 
 
@@ -445,6 +447,22 @@ def _content_type_for_ext(ext: str) -> str:
 # ---------------------------------------------------------------------------
 # Health check
 # ---------------------------------------------------------------------------
+@app.get("/ocr/readiness", dependencies=[Depends(require_service_token)])
+def ocr_readiness():
+    from document.ocr_extractor import readiness, require_ready, PACKS, OCRUnavailable
+    state = readiness()
+    categories = {}
+    for language in PACKS:
+        for category in ("scan", "photo"):
+            try:
+                require_ready(language, category)
+                categories[f"{language} / {category}"] = "go"
+            except OCRUnavailable as exc:
+                categories[f"{language} / {category}"] = str(exc)
+    return {"ready": state["ready"], "installed_packs": state.get("installed_packs"),
+            "version": state.get("version"), "categories": categories}
+
+
 @app.get("/health")
 def health():
     provider = _get_active_provider()
@@ -464,6 +482,7 @@ def health():
         "available_providers": list(AVAILABLE_PROVIDERS.keys()),
         "languages": list(LANGUAGES.keys()),
         "formats": sorted(SUPPORTED_EXTENSIONS),
+        "quality_gated_image_formats": sorted(IMAGE_EXTENSIONS),
         "provider_status": provider_health,
         "analysis_status": _analysis_provider.health(),
     }
@@ -687,7 +706,10 @@ def translate_document(
             raise HTTPException(500, "Translation produced no output file.")
 
         original_stem = os.path.splitext(file.filename)[0]
-        download_name = f"{original_stem}_translated{out_ext}"
+        content_summary = (result.sidecar or {}).get('content_summary', {})
+        suffix = content_summary.get('status', 'translated')
+        if suffix == 'complete': suffix = 'translated'
+        download_name = f"{original_stem}_{suffix}{out_ext}"
 
         print(f"[SERVER] Translation complete. Output file ready at: {actual_output}")
         print(f"[SERVER] Provider: {result.provider}, Model: {result.model}")
@@ -707,10 +729,14 @@ def translate_document(
             "blocks": getattr(result, "blocks", None) or [],
             "sidecar": getattr(result, "sidecar", None),
             "download_filename": download_name,
+            "content_summary": content_summary,
             "mime_type": _content_type_for_ext(out_ext),
             "metrics": result.metrics or {},
             "validation": getattr(result, "output_validation", {}) or {},
         }
+    except OCRUnavailable as e:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise HTTPException(422, str(e))
     except PDFValidationError as e:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         raise HTTPException(422, {"message": str(e), "validation": e.report})
@@ -791,7 +817,7 @@ def translate_document_regenerate(
 
         return StreamingResponse(
             io.BytesIO(file_contents),
-            media_type="application/octet-stream",
+            media_type=_content_type_for_ext(out_ext),
             headers={"Content-Disposition": f"attachment; filename={download_name}"}
         )
     except PDFValidationError as e:

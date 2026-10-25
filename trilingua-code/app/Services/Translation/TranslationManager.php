@@ -206,6 +206,7 @@ class TranslationManager
                 'body' => $body,
                 'blocks' => $data['blocks'] ?? [],
                 'sidecar' => $data['sidecar'] ?? null,
+                'content_summary' => $data['content_summary'] ?? $data['sidecar']['content_summary'] ?? null,
                 'metrics' => $data['metrics'] ?? [],
                 'download_filename' => $downloadFilename,
                 'mime_type' => $data['mime_type'] ?? 'application/octet-stream',
@@ -311,7 +312,9 @@ class TranslationManager
             $ext = strtolower('.' . pathinfo($originalName, PATHINFO_EXTENSION));
             $outExt = config('translation.extension_map.' . ltrim($ext, '.'), $ext);
             $stem = pathinfo($originalName, PATHINFO_FILENAME);
-            $downloadFilename = $stem . '_regenerated.' . $outExt;
+            $contentStatus = $sidecar['content_summary']['status'] ?? 'complete';
+            $suffix = in_array($contentStatus, ['partial', 'untranslated'], true) ? '_regenerated_' . $contentStatus : '_regenerated';
+            $downloadFilename = $stem . $suffix . '.' . $outExt;
 
             return [
                 'body' => $body,

@@ -31,6 +31,7 @@ from config.processing_modes import MODES, VALID_MODES, get_mode
 from dto.requests import DocumentTranslationRequest, LANGUAGES
 from dto.responses import DocumentTranslationResponse
 from document.extractor import analyze_document
+from document.ocr_extractor import IMAGE_EXTENSIONS, complete_pdf, extract_image
 from pipeline.translation_pipeline import _is_echo_output
 from document.regenerator import (
     finalize_sidecar,
@@ -267,8 +268,21 @@ class DocumentPipeline:
 
         # ── Extract → Analyze → Translate → Reconstruct pipeline ──
         print("[INPUT] Reading document...")
+        extraction = {"pages": [], "warnings": []}
         with phase_profile("extraction", ctx):
-            data, detected_ext = analyze_document(request.file_path, pdf_column_mode=request.pdf_column_mode)
+            if ext in IMAGE_EXTENSIONS:
+                data, extraction = extract_image(request.file_path, request.source_lang)
+                detected_ext = ext
+            else:
+                data, detected_ext = analyze_document(request.file_path, pdf_column_mode=request.pdf_column_mode)
+                if ext == ".pdf":
+                    data, extraction = complete_pdf(request.file_path, data, request.source_lang, request.pdf_column_mode)
+        for warning in extraction["warnings"]:
+            ctx.add_warning(warning)
+        if any(block.get("ocr_reflow") for block in data if isinstance(block, dict)):
+            warning = "This document uses a separate translated text layout; original scan artwork and page layout are not reproduced."
+            extraction["warnings"].append(warning)
+            ctx.add_warning(warning)
         ctx.extraction_time_ms = ctx.phase_times.get("extraction", 0)
         ctx.total_blocks = len(data) if isinstance(data, list) else 0
 
@@ -279,32 +293,9 @@ class DocumentPipeline:
         blocks = data
         print(f"  Found {len(blocks)} text block(s) after filtering.")
 
-        if not blocks and ext == ".pdf":
-            # Attempt OCR fallback for image-based/scanned PDFs
-            print("[OCR] No text blocks found via PyMuPDF extraction.")
-            print("[OCR] Attempting OCR fallback...")
-            try:
-                from document.ocr_extractor import ocr_extract_pdf
-                ocr_blocks = ocr_extract_pdf(request.file_path)
-                if ocr_blocks:
-                    blocks = ocr_blocks
-                    print(f"  [OCR] Successfully extracted {len(blocks)} block(s) via OCR")
-                else:
-                    raise ValueError(
-                        "No translatable text extracted. OCR yielded no text. "
-                        "For bilingual PDFs, try pdf_column_mode='left' or 'right'."
-                    )
-            except ImportError:
-                raise ValueError(
-                    "No translatable text extracted from PDF. "
-                    "OCR fallback is not available (pytesseract not installed). "
-                    "Install: pip install pytesseract, and install Tesseract OCR."
-                )
-            except Exception as ocr_err:
-                raise ValueError(
-                    f"No translatable text extracted. OCR fallback also failed: {ocr_err}"
-                )
-        elif not blocks:
+        if ext == ".pdf" and not blocks:
+            return self._held_pdf(request, output_file, extraction, ctx)
+        if not blocks:
             raise ValueError(
                 "No translatable text extracted. "
                 "If this is a scanned PDF, OCR is required. "
@@ -529,9 +520,13 @@ class DocumentPipeline:
         # ── Reconstruct document ─────────────────────────────────────────
         print(f"[OUTPUT] Rebuilding document -> {output_file}")
         with phase_profile("reconstruction", ctx):
-            output_validation = reconstruct_document(translated_blocks, output_file, request.file_path, detected_ext,
-                                 source_lang=request.source_lang, target_lang=request.target_lang,
-                                 layout_plan=ctx.layout_plan)
+            if ext == ".pdf":
+                from document.reconstructor import write_pdf_preserved
+                output_validation = write_pdf_preserved(translated_blocks, request.file_path, output_file,
+                    source_lang=request.source_lang, target_lang=request.target_lang, strict=True)
+            else:
+                output_validation = reconstruct_document(translated_blocks, output_file, request.file_path, detected_ext,
+                    source_lang=request.source_lang, target_lang=request.target_lang, layout_plan=ctx.layout_plan)
         ctx.reconstruction_time_ms = ctx.phase_times.get("reconstruction", 0)
 
         # BLEU scoring
@@ -551,9 +546,12 @@ class DocumentPipeline:
                 src_text = blocks[idx].get("text", "")
             sidecar_entries.append(rich_block_entry(idx, tb, src_text or ""))
         sidecar = finalize_sidecar(sidecar_entries, request, ctx.source_format, ctx,
-                                   extra={"output_validation": output_validation or {}})
+                                   extra={"output_validation": output_validation or {}, "extraction": extraction})
 
         # ── Finalize ─────────────────────────────────────────────────────
+        if ext == ".pdf":
+            output_file = self._pdf_sidecar(sidecar, extraction, output_validation, output_file)
+
         ctx.stop_timer()
         ctx.log_summary()
 
@@ -581,6 +579,42 @@ class DocumentPipeline:
         )
 
     # ── In-place Translation ────────────────────────────────────────────────
+
+    def _pdf_sidecar(self, sidecar, extraction, validation, output_file):
+        from document.pdf_regions import content_summary
+        held = {r['region_id'] for r in (validation or {}).get('held', [])}
+        entries = {b.get('region_id'): b for b in sidecar['blocks']}
+        for region in extraction['regions']:
+            if region['status'] == 'pending':
+                entry = entries.get(region['region_id'], {})
+                region['status'] = ('held' if region['region_id'] in held else
+                                    'passthrough' if entry.get('passthrough') else 'translated')
+                region['reason'] = 'native_fit_hold' if region['status'] == 'held' else None
+                if region['status'] == 'held':
+                    entry.update(text=entry.get('source_text', ''), current_text=entry.get('source_text', ''), passthrough=True)
+        summary = content_summary(extraction['regions'])
+        sidecar.update(version=3, content_summary=summary,
+                       render_plan={'version': 1, 'original_sha256': extraction['original_sha256'],
+                                    'regions': extraction['regions'], 'pages': extraction['pages']})
+        if summary['status'] != 'complete':
+            message = (f"{summary['status'].capitalize()}: {summary['translated']} translated, "
+                       f"{summary['held']} held, {summary['passthrough']} passthrough regions. Held content retains its original language.")
+            extraction['warnings'].append(message)
+            renamed = os.path.splitext(output_file)[0] + '_' + summary['status'] + '.pdf'
+            os.replace(output_file, renamed)
+            return renamed
+        return output_file
+
+    def _held_pdf(self, request, output_file, extraction, ctx):
+        import shutil
+        shutil.copyfile(request.file_path, output_file)
+        sidecar = finalize_sidecar([], request, '.pdf', ctx, extra={'extraction': extraction})
+        output_file = self._pdf_sidecar(sidecar, extraction, {}, output_file)
+        ctx.stop_timer()
+        return DocumentTranslationResponse(output_path=output_file, translated_blocks=[],
+            provider=self.translation_pipeline.provider.name, model=self.translation_pipeline.provider.model_name,
+            total_chunks=0, sidecar=sidecar, blocks=[], warnings=extraction['warnings'],
+            metrics=_engine_metrics(ctx, self.translation_pipeline.provider))
 
     def _run_inplace_analysis(self, blocks, request, ctx):
         """Populate AI document context for DOCX/PPTX/XLSX before translation.

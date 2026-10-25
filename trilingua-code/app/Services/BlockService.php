@@ -34,7 +34,13 @@ class BlockService
     public function persistBlocks(TranslationHistory $history, array $blocks, ?array $sidecar = null): int
     {
         if ($blocks === []) {
-            return 0;
+            return DB::transaction(function () use ($history, $sidecar) {
+                if ($sidecar !== null) {
+                    $history->sidecar = $sidecar;
+                    $history->save();
+                }
+                return 0;
+            });
         }
 
         $count = DB::transaction(function () use ($history, $blocks, $sidecar) {
