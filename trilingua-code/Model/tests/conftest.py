@@ -19,6 +19,15 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 import io
 
 
+@pytest.fixture(autouse=True)
+def ephemeral_plan_key(tmp_path, monkeypatch):
+    """Isolated operational plan key; never an acceptance key or live configuration."""
+    from document.artifact_auth import generate_key
+    path = tmp_path/'plan-key.json'
+    generate_key(path, 'render-plan')
+    monkeypatch.setenv('OCR_PLAN_KEY_FILE', str(path))
+
+
 FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 
 

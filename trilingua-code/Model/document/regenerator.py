@@ -229,6 +229,9 @@ def reconstruct_from_sidecar(sidecar, overrides, original_file, output_file,
         raise ValueError('Unsupported sidecar version')
     fmt = (sidecar.get("format") or "").lower()
     blocks = sidecar.get("blocks", [])
+    if sidecar.get('version') == 3:
+        from document.render_plan import validate_plan
+        validate_plan(sidecar.get('render_plan') or {}, original_file, blocks)
     layout_plan = layout_from_dict(sidecar.get("layout_plan"))
 
     # In-place formats reproduce the template from the ORIGINAL file by replaying
@@ -246,19 +249,12 @@ def reconstruct_from_sidecar(sidecar, overrides, original_file, output_file,
     edited_blocks = apply_overrides(blocks, overrides)
 
     if sidecar.get('version') == 3:
-        from document.pdf_regions import sha256
         from document.reconstructor import write_pdf_preserved
         from document.image_reconstructor import fit_text
-        from document.render_plan import validate_plan, check_bounds
+        from document.render_plan import check_bounds, sign_plan
         import tempfile
         import copy
         plan = sidecar.get('render_plan') or {}
-        if plan.get('version') == 1:
-            check_bounds(plan)
-            if plan.get('image_actions') or sha256(original_file) != plan.get('original_sha256'):
-                raise ValueError('Legacy native plan hash mismatch or unsupported pixel actions')
-        else:
-            validate_plan(plan, original_file)
         held = {r.get('region_id') for r in plan['regions'] if r['status'] == 'held'}
         if any(b.get('region_id') in held and b.get('text') != b.get('source_text') for b in edited_blocks):
             raise ValueError('Held regions cannot be published as translated')
@@ -285,7 +281,10 @@ def reconstruct_from_sidecar(sidecar, overrides, original_file, output_file,
                     shutil.copyfile(template, temporary)
             next_plan = dict(plan, image_actions=actions)
             next_plan['native_fit_decisions'] = {b['region_id']:b.get('rendered_layout', {}) for b in native if b.get('region_id')}
-            updated = dict(sidecar, blocks=edited_blocks, render_plan=next_plan)
+            next_plan = sign_plan(next_plan, edited_blocks)
+            from document.pdf_regions import content_summary
+            updated = dict(sidecar, blocks=edited_blocks, render_plan=next_plan,
+                           content_summary=content_summary(next_plan['regions']))
             check_bounds(next_plan)
             if len(json.dumps(updated,ensure_ascii=False).encode('utf-8')) > 24_000_000:
                 raise ValueError('Regenerated sidecar exceeds bounded payload')

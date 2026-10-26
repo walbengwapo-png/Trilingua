@@ -17,3 +17,5 @@ Real-document replacement remains HOLD. No real corpus, reviewer sign-off or pro
 Production loaders will reject fixture-marked keys and material unconditionally. The signed-fixture demonstration will use test-owned monkeypatches only, with no configuration flag enabling fixture evidence. HMAC protects against accidental/casual enablement, not an administrator holding the key.
 
 Private starting hashes and dirty snapshots are in `baseline/finish-start/`; .env is hash-only. Per-package suite logs and outcomes follow as work completes.
+
+P1 post-package:229 Python,52 PHP/254 assertions,4 browser passed. P2 full suites follow its commit.

@@ -69,6 +69,26 @@ def test_changed_font_file_is_rejected(tmp_path,frozen,monkeypatch):
     assert out.read_bytes()==b'old'
 
 
+@pytest.mark.parametrize('fault',['unsigned','wrong_key','retarget','stale','metadata'])
+def test_plan_provenance_rejects_untrusted_input_before_publication(tmp_path,frozen,monkeypatch,fault):
+    from document.artifact_auth import generate_key, sign
+    source,sidecar=frozen;out=tmp_path/'published.pdf';out.write_bytes(b'old')
+    plan=sidecar['render_plan']
+    if fault=='unsigned':plan.pop('signature')
+    if fault=='wrong_key':
+        key=tmp_path/'other-key';generate_key(key,'render-plan');monkeypatch.setenv('OCR_PLAN_KEY_FILE',str(key))
+    if fault=='retarget':
+        different=tmp_path/'other.pdf'
+        with fitz.open() as doc:doc.new_page();doc.save(different)
+        source=different
+    if fault=='stale':
+        import os
+        plan['version']=2;sidecar['render_plan']=sign(plan,os.environ['OCR_PLAN_KEY_FILE'],'render-plan')
+    if fault=='metadata':sidecar['blocks'][0]['position']=[1,1,2,2]
+    with pytest.raises(ValueError):reconstruct_from_sidecar(sidecar,{},str(source),str(out))
+    assert out.read_bytes()==b'old'
+
+
 def test_unfittable_edit_preserves_last_published_file(tmp_path,frozen):
     source,sidecar=frozen;out=tmp_path/'published.pdf';out.write_bytes(b'last-published')
     with pytest.raises(ImageHold,match='fit'):
