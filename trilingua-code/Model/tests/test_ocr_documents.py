@@ -110,11 +110,9 @@ def test_only_matching_accepted_evidence_enables_scan_category(tmp_path, monkeyp
     if change == 'calibration': report['cases'][0]['split'] = 'calibration'
     if change == 'legacy': report['schema_version'] = 1
     path.write_text(json.dumps(report))
-    if change == "none":
-        assert ocr.require_ready("English", "scan") == "eng"
-    else:
-        with pytest.raises(ocr.OCRUnavailable, match="on hold"):
-            ocr.require_ready("English", "scan")
+    # Even the former positive unsigned fixture must now fail closed.
+    with pytest.raises(ocr.OCRUnavailable, match="on hold"):
+        ocr.require_ready("English", "scan")
     with pytest.raises(ocr.OCRUnavailable, match="on hold"):
         ocr.require_ready("English", "photo")
 

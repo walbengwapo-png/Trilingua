@@ -1,5 +1,4 @@
 """Page-level OCR with explicit readiness, evidence gates and source geometry."""
-import json
 import hashlib
 import math
 import os
@@ -56,6 +55,7 @@ def inventory(binary):
         packs = [line.strip() for line in output.splitlines()
                  if re.fullmatch(r'[A-Za-z0-9_/]+', line.strip())]
         data = {'available': True, 'binary': resolved, 'version': (version.stdout or version.stderr).splitlines()[0],
+                'binary_sha256': hashlib.sha256(Path(resolved).read_bytes()).hexdigest(),
                 'installed_packs': packs, 'list_languages_output': output, 'pack_sha256': {}}
         match = re.search(r'"([^"]+)"', output)
         if match:
@@ -77,25 +77,13 @@ def require_ready(source_lang, category):
     if not pack or pack not in (state.get("installed_packs") or []):
         raise OCRUnavailable(f"OCR language pack unavailable for {source_lang}: required {pack}.")
     try:
-        report = json.loads(Path(os.environ.get("OCR_ACCEPTANCE_REPORT", "")).read_text(encoding="utf-8"))
-        group = report["categories"][f"{source_lang} / {category}"]
-        entries = [c for c in report["cases"] if c["id"] in group["cases"]]
-        accepted = (
-            report.get('schema_version') == 2
-            and report["minimum_word_accuracy_percent"] >= 95
-            and report["sample_count_valid"] is True
-            and report["settings"] == SETTINGS
-            and group["decision"] == "go" and group["word_accuracy_percent"] >= 95
-            and entries and len(entries) == len(set(group['cases']))
-            and all(c.get("acceptance_eligible") is True and c["status"] == "measured"
-                    and c.get('split') == 'heldout' and c.get('language') == source_lang
-                    and c.get('input_category') == category and c.get('pack') == pack
-                    and c.get('contract_errors') == [] for c in entries)
-            and report["engine"]["version"] == state["version"]
-            and report["engine"]["pack_sha256"].get(pack) == state["pack_sha256"].get(pack)
-            and bool(state["pack_sha256"].get(pack))
-        )
-    except (OSError, ValueError, KeyError, TypeError):
+        from document.artifact_auth import load_json
+        from document.report_trust import verify_report
+        report = load_json(os.environ.get('OCR_ACCEPTANCE_REPORT', ''))
+        verify_report(report, os.environ.get('OCR_ACCEPTANCE_KEY_FILE', ''),
+                      os.environ.get('OCR_CORPUS_MANIFEST', ''), state, source_lang, category)
+        accepted = True
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, ZeroDivisionError):
         accepted = False
     if not accepted:
         raise OCRUnavailable(f"OCR {source_lang} / {category} is on hold: a representative, checked 95% acceptance report is required.")

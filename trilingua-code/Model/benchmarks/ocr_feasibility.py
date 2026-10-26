@@ -58,6 +58,7 @@ def evaluate(manifest_path, binary, minimum):
     contract_errors = validate(manifest, manifest_path.parent)
     engine = inventory(binary)
     report = {'schema_version': manifest.get('schema_version', 1),
+              'issuer': 'trilingua-evaluator-v1', 'material': manifest.get('material', 'diagnostic'),
               'source_manifest_sha256': hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
               'corpus_review': manifest.get('corpus_review'),
               'minimum_word_accuracy_percent': minimum, 'engine': engine,
@@ -162,8 +163,15 @@ def main():
     parser.add_argument('--tesseract', default=tesseract_command())
     parser.add_argument('--minimum-accuracy', type=float, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--sign-key-file', type=Path, help='Evaluator-only signing after full real corpus validation')
     args = parser.parse_args()
     result = evaluate(args.manifest, args.tesseract, args.minimum_accuracy)
+    if args.sign_key_file:
+        from document.artifact_auth import sign
+        from document.report_trust import validate_report, verify_report
+        validate_report(result, args.manifest)
+        result = sign(result, args.sign_key_file, 'acceptance')
+        verify_report(result, args.sign_key_file, args.manifest)
     args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding='utf-8')
     print(f"OCR spike: {result['outcome']}; {result['engine_requests']} OCR calls; 0 provider requests")
 
