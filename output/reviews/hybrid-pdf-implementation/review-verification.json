@@ -1,0 +1,70 @@
+{
+  "scope": {
+    "listed_paths": 59,
+    "phase_changed_paths": 59,
+    "outside_inventory": [],
+    "inventory_without_change": []
+  },
+  "preservation": {
+    "baseline_files": 557,
+    "unowned_hash_mismatches": [],
+    "live_env_unchanged": true,
+    "initial_dirty_files": 35,
+    "initial_dirty_byte_changes": [
+      "trilingua-code/Model/pipeline/document_pipeline.py"
+    ],
+    "mixed_pipeline_preexisting_function_preserved": true,
+    "mixed_pipeline_remaining_content_matches_review_commit": true
+  },
+  "fonts": [
+    {
+      "font": "NotoSans-Regular",
+      "sha256_matches": true,
+      "tables_in_bounds": true,
+      "embedding_fsType": 0
+    },
+    {
+      "font": "NotoSans-Bold",
+      "sha256_matches": true,
+      "tables_in_bounds": true,
+      "embedding_fsType": 0
+    },
+    {
+      "font": "NotoSans-Italic",
+      "sha256_matches": true,
+      "tables_in_bounds": true,
+      "embedding_fsType": 0
+    },
+    {
+      "font": "NotoSans-BoldItalic",
+      "sha256_matches": true,
+      "tables_in_bounds": true,
+      "embedding_fsType": 0
+    },
+    {
+      "font": "NotoSerif-Regular",
+      "sha256_matches": true,
+      "tables_in_bounds": true,
+      "embedding_fsType": 0
+    },
+    {
+      "font": "NotoSerif-Bold",
+      "sha256_matches": true,
+      "tables_in_bounds": true,
+      "embedding_fsType": 0
+    },
+    {
+      "font": "NotoSerif-Italic",
+      "sha256_matches": true,
+      "tables_in_bounds": true,
+      "embedding_fsType": 0
+    },
+    {
+      "font": "NotoSerif-BoldItalic",
+      "sha256_matches": true,
+      "tables_in_bounds": true,
+      "embedding_fsType": 0
+    }
+  ],
+  "license_hash_matches": true
+}
