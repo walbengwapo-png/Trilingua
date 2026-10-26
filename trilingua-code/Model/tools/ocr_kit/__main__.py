@@ -26,13 +26,18 @@ def main():
     prepare.add_argument('--output',required=True)
     resume=commands.add_parser('advance');resume.add_argument('--workspace',required=True)
     resume.add_argument('--sign-key-file')
+    advisor=commands.add_parser('coordinate');advisor.add_argument('--workspace',required=True)
     args=parser.parse_args();print(BANNER)
-    if args.command in {'prepare-review','advance'}:
+    if args.command in {'prepare-review','advance','coordinate'}:
         from config.environment import load_engine_environment
         from .workflow import prepare_review,advance
         load_engine_environment(Path(__file__).resolve().parents[3]/'.env')
-        result=(prepare_review(args.source,args.output,args.language) if args.command=='prepare-review'
-                else advance(args.workspace,args.sign_key_file))
+        if args.command=='coordinate':
+            from .coordinator import coordinate, configured_provider
+            result=coordinate(args.workspace,configured_provider())
+        else:
+            result=(prepare_review(args.source,args.output,args.language) if args.command=='prepare-review'
+                    else advance(args.workspace,args.sign_key_file))
         print(json.dumps(result,ensure_ascii=False,indent=2))
     elif args.command=='intake':
         result=intake(args.folder);save(args.output,result)

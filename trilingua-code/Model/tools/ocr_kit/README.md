@@ -23,6 +23,22 @@ After reviews and scope coverage are complete, `advance` freezes a new run, eval
 
 Source, transcript, metadata and region changes invalidate an existing review. Earlier intake/sheet formats without a region hash require a fresh intake and review sheet; preserve the old completed sheet, move it aside, and run `advance` to create a new blank one. A real review must then be completed again. This prevents boxes being changed after sign-off.
 
+## Connected AI coordinator (optional preparation)
+
+```powershell
+& $py -m tools.ocr_kit coordinate --workspace 'C:\OCR-work\review'
+```
+
+This explicitly requests one advisory decision through the existing configured analysis route (`ANALYSIS_PROVIDER`, with the existing Gemini/Ollama fallback choice). It does not import/start the server or change provider defaults. Configured cloud usage may incur its normal provider cost. Ordinary `prepare-review` and `advance` remain offline unless the operator separately runs this command.
+
+The coordinator sends bounded workflow facts and program-grounded observations about visible native PDF text absent from **calibration** drafts. It sends neither page images nor held-out text/geometry. It is text/geometry based, not a vision reviewer for scans/photos, and cannot certify translation meaning or OCR accuracy. Human identities, rights and capture classes are never inferred.
+
+Only three actions are accepted: prepare separate draft proposals from known candidate IDs, ask known workflow questions, or stop. Unknown actions/IDs/arguments are rejected. No action can execute commands, overwrite canonical references, score acceptance, sign, change settings or activate OCR. Current fingerprints must still match before a proposal can be written. Inputs/outputs must stay inside the selected workspace. Inspection caps are50 listed documents,50 calibration PDF pages,100 repair candidates,1MB per text/region file,10MB per source and20,000 prompt characters.
+
+Each run writes `coordinator-runs/<id>/coordinator.json` and a readable `review.html`. Accepted proposals are separate `.txt`/`.regions.json` drafts in that run; check their complete content, geometry and reading order before adopting them into intake and obtaining a fresh independent review. Existing references/review records remain unchanged. The program lists required human facts even if the AI omits them from its suggestion. No model response becomes approval.
+
+There is one analysis decision per invocation, with a90-second request-local transport allowance and a final late-response check. Gemini gets one attempt; the existing Ollama fallback retains its bounded retry behavior. Transport/DNS/OS behavior is not a hard process-cancellation guarantee. Provider failures and invalid/stale decisions produce `advice_unavailable`, with no accepted preparation action. This command does not monitor or retry later automatically.
+
 ## Collect and inspect
 
 Collect the [capture guide](CAPTURE_GUIDE.md) grid: English/Cebuano/Filipino x scan/photo/screenshot x 4 distinct documents. Keep document/content groups entirely within one split. A multi-page PDF remains one document. Use independent content for calibration and held-out; do not tune on held-out results.

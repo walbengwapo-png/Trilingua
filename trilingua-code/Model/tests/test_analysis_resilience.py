@@ -44,6 +44,12 @@ def http(monkeypatch):
     return post, sleep
 
 
+@pytest.fixture(autouse=True)
+def fixture_analysis_model(monkeypatch):
+    # These response() fixtures use GenerateContent, regardless of live app settings.
+    monkeypatch.setenv('GEMINI_ANALYSIS_MODEL','gemini-2.5-flash')
+
+
 def test_rate_limit_retries_honor_header_and_keep_error(http):
     post, sleep = http
     post.return_value = response(429, headers={"Retry-After": "12"})
