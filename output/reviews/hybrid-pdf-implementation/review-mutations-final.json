@@ -1,0 +1,32 @@
+[
+  {
+    "check": "gate_order",
+    "result": "killed",
+    "exit": 1,
+    "target": "tests/test_pdf_region_classification.py::test_gate_hold_does_not_call_recognition_and_keeps_mixed_regions"
+  },
+  {
+    "check": "shared_image",
+    "result": "killed",
+    "exit": 1,
+    "target": "tests/test_pdf_image_layout.py::test_fit_hold_and_shared_occurrences"
+  },
+  {
+    "check": "outside_mask",
+    "result": "killed",
+    "exit": 1,
+    "target": "tests/test_pdf_image_layout.py::test_failed_outside_mask_invariant_stops_before_pdf_mutation"
+  },
+  {
+    "check": "original_hash",
+    "result": "killed",
+    "exit": 1,
+    "target": "tests/test_pdf_hybrid_regeneration.py::test_mismatch_rejects_without_replacing_published_file[source]"
+  },
+  {
+    "check": "partial_status",
+    "result": "killed",
+    "exit": 1,
+    "target": "tests/test_pdf_region_classification.py::test_all_held_pipeline_and_regeneration_preserve_original"
+  }
+]

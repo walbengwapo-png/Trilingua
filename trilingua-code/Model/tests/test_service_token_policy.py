@@ -279,3 +279,15 @@ def test_image_regeneration_returns_pdf_without_recognition_or_translation(serve
         json.dumps(sidecar), '', '{"0":"Edited stored words."}', 'English', 'Cebuano', 'auto')
     assert response.media_type == 'application/pdf'
     assert 'worksheet_regenerated.pdf' in response.headers['Content-Disposition']
+
+
+def test_regeneration_rejects_oversized_sidecar_before_json_or_pdf_work(server_module,tmp_path,monkeypatch):
+    import io
+    from fastapi import UploadFile
+    folder=tmp_path/'private-upload';folder.mkdir()
+    monkeypatch.setattr(server_module.tempfile,'mkdtemp',lambda:str(folder))
+    with pytest.raises(HTTPException) as failure:
+        server_module.translate_document_regenerate(
+            UploadFile(filename='original.pdf',file=io.BytesIO(b'diagnostic framing only')),
+            ' ' * 24_000_001, '', '{}', 'English', 'Cebuano', 'auto')
+    assert failure.value.status_code==413 and not folder.exists()

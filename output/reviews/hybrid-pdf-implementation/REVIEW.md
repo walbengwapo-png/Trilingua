@@ -44,6 +44,7 @@ Four new cases failed against the original code (native survivor identity, late 
 | B: d8a135d |183 passed|50 /247 assertions (+1)|2 passed|
 | C: 3205baa |192 passed (+9)|50 /247 assertions|2 passed|
 | D: ec06a41 |195 passed (+3)|50 /247 assertions|2 passed|
+| E: fb4dd61 |195 passed|51 /251 assertions (+1)|4 passed (+2)|
 
 ## Cleanup theme B: alternate verification action
 The new HTTP regression returned200 before the fix. Generic verification now dispatches document rows to verifyDocument, preserving its completeness/draft checks and transaction/audit behavior. Focused PHP suite:4 tests/28 assertions passed. Existing text-controller exception status mapping remains unchanged (500); the route can no longer return successful verification or clear partial/untranslated state. Full suites follow this theme commit.
@@ -67,3 +68,14 @@ Both injected saved-image validation failures failed on the original writer: a n
 
 ## Cleanup theme E: complete status presentation
 The History regression found an unconditional100% badge; two browser cases found missing partial/untranslated status while a download is unavailable. New content-aware badges and completed-state warnings now remain explicit in both download branches. Focused PHP and four browser cases pass; full suites follow this theme commit. Stored/API state and legacy rows without the new summary are unchanged.
+
+## Additional hold/test audit
+- S7 (major), `trilingua-code/Model/document/image_reconstructor.py:219` (original drawing-overlap check): horizontal/vertical vector strokes have zero-area path rectangles, so the existing area-only overlap check misses a line painted across an image. The intended drawing-overlap hold needs actual stroke extent (including hairlines), without changing acceptance thresholds. Add a failing geometry test before correcting it.
+- Missing explicit hold tests at baseline: optional layers, embedded backups, forms, resource-only sharing, cropbox, nonuniform scaling, image rotation, native/vector overlap, outlines, uncertain font shape, curved baselines, and failure of the outside-mask invariant. Windows job assignment was exercised but descendant termination had no dedicated assertion. Fixed fixtures will cover these; they are not OCR/corpus evidence.
+
+## Cleanup theme F: hold, security and mutation coverage
+New deterministic tests cover resource-only aliases, optional layers, embedded backups, forms, cropbox/nonuniform scaling/image rotation, native/vector/clipped-bbox overlap, outlines, uncertain font shape, curved baselines, unapproved font IDs, overlapping masks/targets, and failed outside-mask invariants. The new vector-line case failed before its local geometry correction: actual stroke bounds and zero-area hairlines now trigger the already-intended drawing-overlap hold. No confidence/fit/acceptance threshold changed.
+
+Actual Windows containment now has an owned worker/descendant termination test; it opens the exact child handle before terminating its own worker, avoiding PID reuse and touching no application jobs. Added plan/sidecar cap and review-HTML escaping checks; saved PDF inspection checks the absence of obsolete source image objects and a prior incremental revision chain in fixed fixtures. These are geometry/security tests, not representative scan/photo evidence.
+
+All five final isolated mutations were killed: gate ordering, shared images, outside-mask guards, original hash, partial status. Every mutated export file was restored byte-for-byte; application code/config was never used as the mutation surface. The outside-mask negative tests use explicit invariant-failure injection in addition to actual decoded-pixel comparisons. Full suites follow this commit.

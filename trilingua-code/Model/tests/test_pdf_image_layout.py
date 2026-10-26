@@ -51,6 +51,9 @@ def test_true_pixel_cleanup_and_visible_searchable_target(tmp_path,target):
         assert 'SOURCE' not in doc[0].get_text()
         assert target in doc[0].get_text()
         assert image_digest(source_image(doc,doc[0].get_images()[0][0])) != image_digest(image)
+        assert doc.xref_get_key(-1,'Prev')[0]=='null'
+        assert all(image_digest(source_image(doc,xref))!=image_digest(image)
+                   for xref in range(1,doc.xref_length()) if doc.xref_is_image(xref))
 
 
 @pytest.mark.parametrize('background',['gradient','texture','photo'])
@@ -171,3 +174,95 @@ def test_preserved_writer_rejects_overwriting_its_source(tmp_path):
     with pytest.raises(ValueError, match='original source'):
         write_pdf_preserved([], str(source), str(source), strict=True)
     assert source.read_bytes() == original
+
+
+@pytest.mark.parametrize('kind,reason', [
+    ('resource_alias','Shared resources'), ('optional_layer','optional layers'),
+    ('embedded_backup','embedded backups'), ('cropbox','cropped'),
+    ('stretch','Nonuniform'), ('image_rotation','Non-axis'),
+    ('native_text','Native'), ('vector_line','Drawing'), ('clipped_bbox','Clipped'),
+])
+def test_remaining_occurrence_holds_have_explicit_coverage(kind,reason):
+    image,_=geometry();stream=io.BytesIO();image.save(stream,'PNG')
+    with fitz.open() as doc:
+        page=doc.new_page(width=600,height=400)
+        rect=fitz.Rect(-10,0,590,400) if kind=='clipped_bbox' else fitz.Rect(0,0,600,300 if kind=='stretch' else 400)
+        xref=page.insert_image(rect,stream=stream.getvalue(),rotate=90 if kind=='image_rotation' else 0,
+                               keep_proportion=kind!='stretch')
+        if kind=='resource_alias':
+            resources=int(doc.xref_get_key(page.xref,'Resources')[1].split()[0])
+            doc.xref_set_key(resources,'XObject/UnusedAlias',f'{xref} 0 R')
+            assert len(page.get_image_info(xrefs=True))==1
+        elif kind=='optional_layer':doc.add_ocg('Diagnostic layer')
+        elif kind=='embedded_backup':doc.embfile_add('diagnostic.bin',b'diagnostic')
+        elif kind=='cropbox':page.set_cropbox(fitz.Rect(0,0,550,350))
+        elif kind=='native_text':page.insert_text((40,100),'Native text')
+        elif kind=='vector_line':page.draw_line((0,200),(500,200),width=1)
+        with pytest.raises(ImageHold,match=reason):occurrence_safety(doc,0,xref)
+
+
+def test_form_image_occurrence_is_held(tmp_path):
+    image,_=geometry();source=document(tmp_path,image)
+    with fitz.open(source) as template, fitz.open() as doc:
+        page=doc.new_page(width=600,height=400)
+        page.show_pdf_page(page.rect,template,0)
+        xref=page.get_image_info(xrefs=True)[0]['xref']
+        with pytest.raises(ImageHold,match='form'):occurrence_safety(doc,0,xref)
+
+
+def test_curved_word_baseline_is_held():
+    image,_=geometry()
+    words=[{'text':'SOURCE','confidence':99,'line':1,'position':[40,70,100,90]},
+           {'text':'WORDS','confidence':99,'line':1,'position':[120,100,180,120]}]
+    with pytest.raises(ImageHold,match='curved baseline'):action_for(image,words)
+
+
+def test_uncertain_font_shape_is_held():
+    from document.image_reconstructor import estimate_style
+    image=Image.new('RGB',(600,400),'white')
+    words=[{'text':'SOURCE','position':[40,70,140,100]}]
+    with pytest.raises(ImageHold,match='uncertain'):estimate_style(image,words,1)
+
+
+def test_unapproved_font_id_cannot_be_used_as_a_path():
+    from document.image_reconstructor import font_asset
+    with pytest.raises(ImageHold,match='font ID'):font_asset('../../outside.ttf')
+
+
+@pytest.mark.parametrize('stage',['planning','assembly'])
+def test_failed_outside_mask_invariant_stops_before_pdf_mutation(tmp_path,monkeypatch,stage):
+    image,words=geometry()
+    action=action_for(image,words)
+    if stage=='planning':
+        monkeypatch.setattr(np,'array_equal',lambda *args:False)
+        with pytest.raises(ImageHold,match='Outside-mask'):action_for(image,words)
+    else:
+        source=document(tmp_path,image)
+        with fitz.open(source) as doc:
+            xref=doc[0].get_images()[0][0]
+            original=doc.xref_stream(xref)
+            action.update(page=0,xref=xref,region_id='fixed')
+            monkeypatch.setattr(np,'array_equal',lambda *args:False)
+            with pytest.raises(ImageHold,match='Outside-mask'):apply_actions(doc,[action])
+            assert doc.xref_stream(xref)==original
+
+
+@pytest.mark.parametrize('overlap',['masks','targets'])
+def test_overlapping_edit_plans_fail_before_any_image_stream_changes(tmp_path,overlap):
+    import copy
+    image,words=geometry()
+    if overlap=='targets':
+        font=ImageFont.truetype(str(FONT_ROOT/'NotoSans-Regular.ttf'),24)
+        draw=ImageDraw.Draw(image);draw.text((400,70),'SECOND',font=font,fill=(20,35,60))
+        second_words=[{'text':'SECOND','position':list(draw.textbbox((400,70),'SECOND',font=font)), 'confidence':99}]
+    source=document(tmp_path,image)
+    first=action_for(image,words)
+    second=copy.deepcopy(first) if overlap=='masks' else action_for(image,second_words)
+    if overlap=='masks':
+        second['fit']=fit_text(second['fit']['text'],[351,65,590,120],second['fit']['font_id'],18)
+    with fitz.open(source) as doc:
+        xref=doc[0].get_images()[0][0];original=doc.xref_stream(xref)
+        first.update(page=0,xref=xref,region_id='first');second.update(page=0,xref=xref,region_id='second')
+        with pytest.raises(ImageHold,match='Overlapping edit masks|Overlapping target boxes'):
+            apply_actions(doc,[first,second])
+        assert doc.xref_stream(xref)==original

@@ -152,3 +152,17 @@ def test_held_dto_blocks_show_source_instead_of_attempted_translation(tmp_path, 
     assert result.translated_blocks[0]['text'].strip() == 'Original source'
     assert result.translated_blocks[0]['passthrough'] is True
     assert result.blocks[0]['block_index'] == 0
+
+
+def test_outlined_candidates_remain_held(tmp_path,monkeypatch):
+    import document.ocr_extractor as ocr
+    path=tmp_path/'vector.pdf'
+    with fitz.open() as doc:
+        page=doc.new_page()
+        page.draw_rect(fitz.Rect(40,40,100,100),fill=(0,0,0))
+        doc.save(path)
+    recognize=Mock(side_effect=AssertionError('Outlined replacement is excluded'))
+    monkeypatch.setattr(ocr,'recognize_image',recognize)
+    blocks,report=inventory_pdf(path,[],'English')
+    assert not blocks and report['regions'][0]['reason']=='outlined_text_excluded'
+    assert report['regions'][0]['status']=='held' and not recognize.called

@@ -218,8 +218,15 @@ def occurrence_safety(doc, page_number, xref):
             raise ImageHold('Overlapping image')
     if any((box & fitz.Rect(t['bbox'])).get_area() > 0 for t in page.get_texttrace()):
         raise ImageHold('Native or hidden text overlaps image')
-    if any((box & drawing['rect']).get_area() > 0 for drawing in page.get_drawings()):
-        raise ImageHold('Drawing overlaps image')
+    for drawing in page.get_drawings():
+        bounds = fitz.Rect(drawing['rect'])
+        if drawing.get('type') in {'s','fs'}:
+            half_width = float(drawing.get('width') or 0)/2
+            bounds += (-half_width,-half_width,half_width,half_width)
+        # A PDF hairline still paints even when its path rectangle has zero area.
+        if (box & bounds).get_area() > 0 or (bounds.is_empty and
+                box.x0 <= bounds.x1 and bounds.x0 <= box.x1 and box.y0 <= bounds.y1 and bounds.y0 <= box.y1):
+            raise ImageHold('Drawing overlaps image')
     return info
 
 

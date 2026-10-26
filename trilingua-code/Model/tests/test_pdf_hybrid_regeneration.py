@@ -203,3 +203,54 @@ def test_oversized_image_metadata_is_rejected_before_any_pixel_decode(tmp_path, 
     with pytest.raises(ValueError, match='40 MP'):
         inventory_pdf(source, [], 'English')
     assert not decode.called
+
+
+def _contained_sleeping_descendant(connection):
+    import subprocess
+    import sys
+    from document.pdf_worker import _contain_children
+    containment = _contain_children()
+    child = subprocess.Popen([sys.executable,'-c','import time; time.sleep(30)'],
+                             stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    connection.send(child.pid)
+    time.sleep(30)
+
+
+@pytest.mark.skipif(__import__('os').name != 'nt',reason='Actual Windows job containment check')
+def test_windows_worker_exit_terminates_its_owned_descendant():
+    import ctypes
+    import multiprocessing
+    from ctypes import wintypes
+    kernel=ctypes.WinDLL('kernel32',use_last_error=True)
+    kernel.OpenProcess.argtypes=[wintypes.DWORD,wintypes.BOOL,wintypes.DWORD]
+    kernel.OpenProcess.restype=wintypes.HANDLE
+    kernel.WaitForSingleObject.argtypes=[wintypes.HANDLE,wintypes.DWORD]
+    kernel.TerminateProcess.argtypes=[wintypes.HANDLE,wintypes.UINT]
+    kernel.CloseHandle.argtypes=[wintypes.HANDLE]
+    context=multiprocessing.get_context('spawn')
+    receiving,sending=context.Pipe(duplex=False)
+    process=context.Process(target=_contained_sleeping_descendant,args=(sending,))
+    handle=None
+    try:
+        process.start();sending.close()
+        assert receiving.poll(15), 'Diagnostic worker did not start its child'
+        pid=receiving.recv()
+        # Hold this exact owned process handle so cleanup cannot hit a reused PID.
+        handle=kernel.OpenProcess(0x00100001,False,pid)
+        assert handle
+        process.terminate();process.join(timeout=3)
+        assert kernel.WaitForSingleObject(handle,5000)==0
+    finally:
+        if handle:
+            if kernel.WaitForSingleObject(handle,0)!=0:kernel.TerminateProcess(handle,1)
+            kernel.CloseHandle(handle)
+        if process.pid is not None:
+            if process.is_alive():process.kill();process.join(timeout=3)
+            process.close()
+        receiving.close();sending.close()
+
+
+def test_serialized_render_plan_cap_is_enforced_before_mask_work():
+    from document.render_plan import check_bounds
+    with pytest.raises(ValueError,match='16 MB'):
+        check_bounds({'diagnostic_padding':'x'*16_000_001})

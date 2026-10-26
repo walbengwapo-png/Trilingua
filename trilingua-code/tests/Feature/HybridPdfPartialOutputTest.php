@@ -104,4 +104,19 @@ class HybridPdfPartialOutputTest extends TestCase
             ->assertSee('Content: Partial')->assertSee('Content: Untranslated')
             ->assertDontSee('<span class="match-badge">100%</span>', false);
     }
+
+    public function test_region_reason_is_escaped_in_review_html(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $reason = '<img src=x onerror="window.marker=1">';
+        $history = TranslationHistory::create(['user_id' => $admin->id, 'translation_type' => 'document',
+            'original_filename' => 'source.pdf', 'status' => 'completed', 'review_status' => 'pending',
+            'source_language' => 'English', 'target_language' => 'Cebuano', 'sidecar' => [
+                'content_summary' => ['status' => 'untranslated', 'translated' => 0, 'held' => 1, 'passthrough' => 0],
+                'render_plan' => ['regions' => [['region_id' => 'fixed', 'page' => 0, 'source_kind' => 'raster',
+                    'bbox' => [0,0,100,100], 'status' => 'held', 'reason' => $reason]]],
+            ]]);
+        $this->actingAs($admin)->get(route('admin.review.show',$history->id))->assertOk()
+            ->assertSee($reason)->assertDontSee($reason,false);
+    }
 }
