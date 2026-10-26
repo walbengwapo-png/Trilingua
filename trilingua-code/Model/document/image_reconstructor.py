@@ -190,10 +190,13 @@ def prepare_action(image, words, target, image_bbox, target_bbox, font_id='NotoS
 
 def occurrence_safety(doc, page_number, xref):
     page = doc[page_number]
+    all_resources = [image for source_page in doc for image in source_page.get_images(full=True)]
+    if any(image[2]*image[3] > MAX_PIXELS for image in all_resources):
+        raise ImageHold('Source image exceeds 40 MP limit')
     occurrences = [(p.number, i) for p in doc for i in p.get_image_info(xrefs=True) if i['xref'] == xref]
     if len(occurrences) != 1 or occurrences[0][0] != page_number or not xref:
         raise ImageHold('Shared/unresolved image occurrence')
-    resources = [i for p in doc for i in p.get_images(full=True) if i[0] == xref]
+    resources = [image for image in all_resources if image[0] == xref]
     if len(resources) != 1 or doc.get_ocgs() or doc.embfile_count():
         raise ImageHold('Shared resources, optional layers or embedded backups excluded')
     if page.rotation or page.cropbox != page.mediabox or page.get_xobjects():

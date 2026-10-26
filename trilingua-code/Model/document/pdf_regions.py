@@ -53,6 +53,8 @@ def _visible(page, block, images):
 
 def inventory_pdf(path, native_blocks, language, column_mode='auto', source_identity=None):
     from document.ocr_extractor import OCRUnavailable, require_ready
+    from document.pdf_source import _check_pdf_limits
+    _check_pdf_limits(path)
     identity = source_identity or sha256(path)
     regions, pages, blocks, warnings = [], [], [], []
     with fitz.open(path) as doc:

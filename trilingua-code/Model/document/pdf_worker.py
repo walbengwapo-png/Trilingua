@@ -71,11 +71,6 @@ def _execute(connection, operation, args):
         if operation in {'extract','inspect','render','preserve'}:
             args=(stack.enter_context(original_pdf(original)),*args[1:])
         if operation in {'extract', 'inspect'}:
-            import fitz
-            with fitz.open(args[0]) as doc:
-                if len(doc) > 50: raise ValueError('Hybrid PDF limit is 50 pages')
-                if any(p.rect.get_area()*(300/72)**2 > 40_000_000 for p in doc):
-                    raise ValueError('Page exceeds 40 MP limit')
             from document.extractor import analyze_document
             path, language, column_mode = args
             blocks, ext = analyze_document(path, pdf_column_mode=column_mode)
@@ -101,6 +96,9 @@ def _execute(connection, operation, args):
             result = report, actions, native
         elif operation == 'regenerate':
             from document.regenerator import reconstruct_from_sidecar
+            if args[0].get('version') != 3 and Path(args[2] or '').suffix.lower() == '.pdf':
+                from document.pdf_source import _check_pdf_limits
+                _check_pdf_limits(args[2])
             output = reconstruct_from_sidecar(*args)
             result = {'output_path':output, 'sidecar':args[0]}
         else:
@@ -156,18 +154,29 @@ def run_pdf(operation, *args, deadline=None):
             raise ValueError(response['message'])
         return response['result']
     finally:
-        if process is not None and process.pid is not None:
-            process.join(timeout=.2)
-            if process.is_alive():
-                if os.name != 'nt':
-                    import signal
-                    try: os.killpg(process.pid,signal.SIGKILL)
-                    except ProcessLookupError: pass
-                else:
-                    process.terminate()
-                process.join(timeout=2)
-            process.close()
-        if receiving is not None: receiving.close()
-        if sending is not None: sending.close()
-        if lockfile is not None: lockfile.close()
-        _LOCK.release()
+        try:
+            if process is not None and process.pid is not None:
+                process.join(timeout=.2)
+                if process.is_alive():
+                    if os.name != 'nt':
+                        import signal
+                        try: os.killpg(process.pid,signal.SIGKILL)
+                        except ProcessLookupError: process.terminate()
+                    else:
+                        process.terminate()
+                    process.join(timeout=2)
+                if process.is_alive():
+                    process.kill()
+                    process.join(timeout=2)
+                process.close()
+        finally:
+            try:
+                if receiving is not None: receiving.close()
+            finally:
+                try:
+                    if sending is not None: sending.close()
+                finally:
+                    try:
+                        if lockfile is not None: lockfile.close()
+                    finally:
+                        _LOCK.release()

@@ -117,3 +117,89 @@ def test_concurrent_pdf_requests_use_at_most_one_isolated_worker(frozen):
             time.sleep(.01)
         results=[f.result() for f in futures]
     assert maximum==1 and results[0]==results[1]
+
+
+@pytest.mark.parametrize('operation', ['render', 'preserve', 'regenerate'])
+@pytest.mark.parametrize('limit', ['pages', 'pixels'])
+def test_all_strict_pdf_operations_validate_the_actual_template(tmp_path, operation, limit):
+    source, output = tmp_path/'oversized.pdf', tmp_path/'published.pdf'
+    with fitz.open() as doc:
+        for _ in range(51 if limit == 'pages' else 1):
+            doc.new_page(width=2500 if limit == 'pixels' else 100, height=2500 if limit == 'pixels' else 100)
+        doc.save(source)
+    output.write_bytes(b'last-published')
+    if operation == 'regenerate':
+        extraction = {'original_sha256':sha256(source), 'regions':[], 'pages':[], 'image_actions':[]}
+        sidecar = {'version':3, 'format':'.pdf', 'blocks':[], 'render_plan':make_plan(extraction, [])}
+        args = (sidecar, {}, str(source), str(output))
+    elif operation == 'render':
+        args = (str(source), [], str(output), 'English', 'Cebuano')
+    else:
+        args = (str(source), str(output))
+    with pytest.raises(ValueError, match='50 pages|40 MP'):
+        run_pdf(operation, *args)
+    assert output.read_bytes() == b'last-published'
+
+
+@pytest.mark.parametrize('close_failure', [False, True])
+def test_startup_timeout_terminates_owned_process_and_releases_locks(tmp_path, monkeypatch, close_failure):
+    import document.pdf_worker as worker
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    process = Mock(pid=123)
+    alive = [True]
+    process.is_alive.side_effect = lambda:alive[0]
+    process.terminate.side_effect = lambda:alive.__setitem__(0, False)
+    if close_failure: process.close.side_effect = OSError('Simulated close failure')
+    receiving, sending = Mock(), Mock()
+    receiving.poll.return_value = False
+    context = SimpleNamespace(Pipe=lambda **kwargs:(receiving,sending), Process=lambda **kwargs:process)
+    monkeypatch.setattr(worker.multiprocessing, 'get_context', lambda *args:context)
+    monkeypatch.setattr(worker, '_LOCK', __import__('threading').Lock())
+    # Exercise the pre-setsid POSIX race without starting or signalling a process.
+    fake_os = SimpleNamespace(name='posix', killpg=Mock(side_effect=ProcessLookupError), environ={})
+    monkeypatch.setattr(worker, 'os', fake_os)
+    monkeypatch.setattr(__import__('signal'), 'SIGKILL', 9, raising=False)
+    real_open = open
+    actual_lockfile = real_open(tmp_path/'lock', 'a+b')
+    lockfile = Mock(wraps=actual_lockfile)
+    monkeypatch.setattr(worker, 'open', lambda *args:lockfile, raising=False)
+    fake_fcntl = SimpleNamespace(LOCK_EX=2, LOCK_NB=4, flock=lambda *args:None)
+    monkeypatch.setitem(__import__('sys').modules, 'fcntl', fake_fcntl)
+    with pytest.raises((TimeoutError, OSError)):
+        worker.run_pdf('inspect', deadline=time.monotonic()+10)
+    process.terminate.assert_called_once()
+    receiving.close.assert_called_once()
+    sending.close.assert_called()
+    assert actual_lockfile.closed
+    assert worker._LOCK.acquire(blocking=False)
+    worker._LOCK.release()
+
+
+def test_oversized_image_metadata_is_rejected_before_any_pixel_decode(tmp_path, monkeypatch):
+    import io
+    from PIL import Image
+    from document.pdf_source import original_pdf
+    from document.image_reconstructor import occurrence_safety
+    stream = io.BytesIO()
+    Image.new('RGB', (2,2), 'white').save(stream, 'PNG')
+    source = tmp_path/'oversized-image.pdf'
+    with fitz.open() as doc:
+        page = doc.new_page(width=100, height=100)
+        xref = page.insert_image(page.rect, stream=stream.getvalue())
+        doc.xref_set_key(xref, 'Width', '10000')
+        doc.xref_set_key(xref, 'Height', '5000')
+        doc.save(source)
+    # The declared bitmap exceeds40MP; do not decode this malformed tiny stream.
+    decode = Mock(side_effect=AssertionError('Image info decoding ran before the metadata limit'))
+    monkeypatch.setattr(fitz.Page, 'get_image_info', decode)
+    with pytest.raises(ValueError, match='40 MP'):
+        with original_pdf(source):
+            raise AssertionError('Oversized source reached the rendering body')
+    with fitz.open(source) as doc:
+        with pytest.raises(ImageHold, match='40 MP'):
+            occurrence_safety(doc, 0, xref)
+    from document.pdf_regions import inventory_pdf
+    with pytest.raises(ValueError, match='40 MP'):
+        inventory_pdf(source, [], 'English')
+    assert not decode.called

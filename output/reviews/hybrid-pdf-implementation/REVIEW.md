@@ -15,8 +15,8 @@ Line anchors below refer to committed `7e953bf`, not unrelated dirty offsets. St
 | ID | Severity | File:line | Concrete problem | Smallest correction | State |
 |---|---|---|---|---|---|
 | S1 | major | `trilingua-code/Model/document/reconstructor.py:1585`, `:1658`, `:1754` | Holding the first native block renumbers later survivors while occupied boxes keep old tags; a later fitting block collides with itself after redaction. | Preserve each surviving block's original page-local obstacle tag; hold-first/fit-second regression. | FIXED theme A |
-| S2 | major | `trilingua-code/Model/document/pdf_worker.py:73`, `:102`; `document/render_plan.py:28` | Actual 50-page/40MP checks cover extract/inspect only. A matching v3 plan with a short pages list can regenerate an oversized original. | Reuse existing actual-template checks for strict source-preserving operations, unchanged caps. | Planned |
-| S3 | major | `trilingua-code/Model/document/pdf_worker.py:164` | Linux timeout before setsid can miss killpg; a live process.close exception can skip pipe/file/thread lock cleanup. | Terminate the owned process on a missing process group; finally-safe cleanup; startup-race test. | Planned; actual Linux still unrun |
+| S2 | major | `trilingua-code/Model/document/pdf_worker.py:73`, `:102`; `document/render_plan.py:28` | Actual 50-page/40MP checks cover extract/inspect only. A matching v3 plan with a short pages list can regenerate an oversized original. | Reuse existing actual-template checks for strict source-preserving operations, unchanged caps. | FIXED theme C |
+| S3 | major | `trilingua-code/Model/document/pdf_worker.py:164` | Linux timeout before setsid can miss killpg; a live process.close exception can skip pipe/file/thread lock cleanup. | Terminate the owned process on a missing process group; finally-safe cleanup; startup-race test. | FIXED theme C; real Linux unrun |
 | S4 | major | `trilingua-code/Model/document/image_reconstructor.py:321` | Font estimation scans the entire image up to64 times per paragraph for an invariant median. | Hoist the conversion/median outside both loops; conversion-count regression. | Planned |
 
 ### Spec
@@ -41,6 +41,15 @@ Four new cases failed against the original code (native survivor identity, late 
 |---|---:|---:|---:|
 | Baseline 7e953bf | 179 passed |49 /239 assertions|2 passed|
 | A: 1fc3bf6 |183 passed (+4)|49 /239 assertions|2 passed|
+| B: d8a135d |183 passed|50 /247 assertions (+1)|2 passed|
 
 ## Cleanup theme B: alternate verification action
 The new HTTP regression returned200 before the fix. Generic verification now dispatches document rows to verifyDocument, preserving its completeness/draft checks and transaction/audit behavior. Focused PHP suite:4 tests/28 assertions passed. Existing text-controller exception status mapping remains unchanged (500); the route can no longer return successful verification or clear partial/untranslated state. Full suites follow this theme commit.
+
+## Cleanup theme C: actual source limits and worker cleanup
+Six render/preserve/regeneration cases exceeded the existing page/pixel cap and failed before the fix; two corrected POSIX startup/close-failure cases also failed on the original committed worker in an isolated export. A ninth metadata test reached rendering with a declared50MP image; the new guard now rejects it before any image-info decode. All22 regeneration/resource tests pass. The initial POSIX test harness needed a mocked SIGKILL constant on Windows; the corrected tests were rerun against original code and failed for the intended missing termination.
+
+Actual-template limits now live in the shared template wrapper and apply before strict copying/rendering, including source-image metadata checks. Historical valid reflow layouts remain unchanged; over-limit legacy PDF sources are rejected in the worker using the same existing caps. Process group startup races fall back to terminating the owned Process; cleanup releases pipes/file/thread locks even when process closure raises. No real Linux signals were sent by the simulated race tests.
+
+## Mutation spot-check, first pass
+Mutations run only in a disposable source export, restored byte-for-byte after each. Gate order, shared image hold, source hash and partial-status mutations were killed. Removing the outside-mask checks survived the original happy-path pixel tests. Add invariant-failure injection while retaining the actual unchanged-pixel assertions, then rerun all five. No application gate or live file was mutated.
