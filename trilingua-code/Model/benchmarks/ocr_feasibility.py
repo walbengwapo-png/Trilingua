@@ -1,7 +1,7 @@
 """Offline OCR spike runner. Never enables application OCR or calls an LLM.
 
-Manifest cases require image, reference, language, pack, input_category,
-reference_checked and source_url. Relative file paths resolve from the manifest.
+Schema v2 records capture class, disjoint splits, checked regions and provenance.
+Legacy manifests are diagnostic only. Relative paths resolve from the manifest.
 """
 from __future__ import annotations
 
@@ -56,8 +56,6 @@ def evaluate(manifest_path, binary, minimum):
     cases = manifest['cases']
     from benchmarks.ocr_corpus import validate, region_metrics
     contract_errors = validate(manifest, manifest_path.parent)
-    if len({case['id'] for case in cases}) != len(cases):
-        raise ValueError('OCR case IDs must be unique')
     engine = inventory(binary)
     report = {'schema_version': manifest.get('schema_version', 1),
               'source_manifest_sha256': hashlib.sha256(manifest_path.read_bytes()).hexdigest(),

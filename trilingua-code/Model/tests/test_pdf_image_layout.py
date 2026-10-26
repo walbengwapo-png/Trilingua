@@ -266,3 +266,14 @@ def test_overlapping_edit_plans_fail_before_any_image_stream_changes(tmp_path,ov
         with pytest.raises(ImageHold,match='Overlapping edit masks|Overlapping target boxes'):
             apply_actions(doc,[first,second])
         assert doc.xref_stream(xref)==original
+
+
+def test_font_estimation_converts_the_whole_image_only_once(monkeypatch):
+    from unittest.mock import Mock
+    from document.image_reconstructor import estimate_style
+    image,words=geometry()
+    convert=Mock(wraps=image.convert)
+    monkeypatch.setattr(image,'convert',convert)
+    style=estimate_style(image,words,1)
+    assert style['font_id']=='NotoSans-Regular'
+    assert convert.call_count==1

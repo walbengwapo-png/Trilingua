@@ -31,7 +31,7 @@ from config.processing_modes import MODES, VALID_MODES, get_mode
 from dto.requests import DocumentTranslationRequest, LANGUAGES
 from dto.responses import DocumentTranslationResponse
 from document.extractor import analyze_document
-from document.ocr_extractor import IMAGE_EXTENSIONS, complete_pdf, extract_image
+from document.ocr_extractor import IMAGE_EXTENSIONS
 from pipeline.translation_pipeline import _is_echo_output
 from document.regenerator import (
     finalize_sidecar,

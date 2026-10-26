@@ -1,7 +1,6 @@
 """Flat-background pixel editing. Pure planning precedes any PDF mutation."""
 import base64
 import hashlib
-import io
 import json
 import math
 from pathlib import Path
@@ -321,6 +320,7 @@ def estimate_style(image, words, scale):
     scores = []
     samples = [w for w in words if len(w['text']) >= 3][:8]
     if not samples: raise ImageHold('Insufficient glyphs for family/weight estimate')
+    bg = np.median(np.array(image.convert('L')))
     for font_id in manifest['fonts']:
         path, item = font_asset(font_id)
         results, sizes = [], []
@@ -328,7 +328,6 @@ def estimate_style(image, words, scale):
             box = list(map(int, w['position']))
             source = image.crop(box).convert('L')
             array = np.array(source)
-            bg = np.median(np.array(image.convert('L')))
             actual = np.abs(array.astype(float)-bg) > 20
             font = ImageFont.truetype(str(path), max(10, source.height*2))
             bounds = font.getbbox(w['text'])

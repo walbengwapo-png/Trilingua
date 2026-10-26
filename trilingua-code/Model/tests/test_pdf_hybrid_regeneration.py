@@ -1,7 +1,5 @@
 """Frozen geometry tests. No OCR acceptance evidence and no provider calls."""
-import copy
 import json
-from pathlib import Path
 import shutil
 import time
 from unittest.mock import Mock
