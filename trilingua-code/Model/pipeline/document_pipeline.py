@@ -562,6 +562,9 @@ class DocumentPipeline:
         # ── Finalize ─────────────────────────────────────────────────────
         if ext in {'.pdf', *IMAGE_EXTENSIONS}:
             output_file = self._pdf_sidecar(sidecar, extraction, output_validation, output_file)
+            for block, entry in zip(translated_blocks, sidecar_entries):
+                if entry.get('passthrough'):
+                    block.update(text=entry['text'], passthrough=True)
             for warning in extraction['warnings']:
                 if warning not in ctx.warnings: ctx.add_warning(warning)
 

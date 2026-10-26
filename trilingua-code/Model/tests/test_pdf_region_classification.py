@@ -92,3 +92,63 @@ def test_strict_native_overflow_keeps_source_and_page_count(tmp_path):
     assert result['held'][0]['reason'] == 'native_fit_hold'
     with fitz.open(output) as doc:
         assert len(doc) == 1 and 'Source text' in doc[0].get_text()
+
+
+def test_native_hold_keeps_later_fitting_block_on_its_page(tmp_path):
+    from document.reconstructor import write_pdf_preserved
+    source, output = tmp_path/'native.pdf', tmp_path/'out.pdf'
+    with fitz.open() as doc:
+        page = doc.new_page(width=250, height=130)
+        page.insert_text((30, 40), 'First source')
+        page.insert_text((30, 90), 'Second source')
+        doc.save(source)
+    blocks = read_pdf(str(source))
+    assert len(blocks) == 2
+    blocks[0].update(text='Long translation ' * 500, _original_text='First source', region_id='held')
+    blocks[1].update(text='Fits', _original_text='Second source', region_id='fits')
+    validation = write_pdf_preserved(blocks, str(source), str(output), strict=True)
+    assert [entry['region_id'] for entry in validation['held']] == ['held']
+    with fitz.open(output) as doc:
+        assert len(doc) == 1
+        assert 'First source' in doc[0].get_text() and 'Fits' in doc[0].get_text()
+        assert 'Second source' not in doc[0].get_text()
+
+
+@pytest.mark.parametrize('failure', ['uncertain_style', 'missing_font'])
+def test_image_wide_hold_discards_earlier_candidate_paragraphs(tmp_path, monkeypatch, failure):
+    import document.ocr_extractor as ocr
+    import document.image_reconstructor as renderer
+    path = tmp_path/'source.pdf'
+    fixture(path)
+    original = path.read_bytes()
+    paragraphs = [{'text':text, 'position':[40, y, 180, y+20], 'page':0,
+                   'ocr':{'confidence':99, 'words':[{'text':text, 'position':[40,y,180,y+20], 'confidence':99}]}}
+                  for text,y in [('Alpha',50),('Beta',200)]]
+    # Pure routing fixture: no recognition or acceptance artifact is produced.
+    monkeypatch.setattr(ocr, 'require_ready', lambda *args: 'eng')
+    monkeypatch.setattr(ocr, 'recognize_image', Mock(return_value=paragraphs))
+    error = renderer.ImageHold('Uncertain source style') if failure == 'uncertain_style' else FileNotFoundError('Missing font asset')
+    monkeypatch.setattr(renderer, 'estimate_style', Mock(side_effect=[
+        {'font_id':'NotoSans-Regular', 'initial_size':14}, error]))
+    blocks, report = inventory_pdf(path, [], 'English')
+    assert blocks == []
+    assert len(report['regions']) == 1 and report['regions'][0]['status'] == 'held'
+    assert report['regions'][0]['reason'] == 'image_safety_hold'
+    assert path.read_bytes() == original
+
+
+def test_held_dto_blocks_show_source_instead_of_attempted_translation(tmp_path, document_pipeline, monkeypatch):
+    path = tmp_path/'native.pdf'
+    with fitz.open() as doc:
+        page = doc.new_page(width=250, height=100)
+        page.insert_text((30,45), 'Original source')
+        doc.save(path)
+    monkeypatch.setattr('pipeline.document_pipeline.unit_pipeline_enabled', lambda:False)
+    def translated(blocks, *args, **kwargs):
+        return [dict(block, text='Unfittable translation ' * 500, _original_text=block['text']) for block in blocks]
+    monkeypatch.setattr(document_pipeline.translation_pipeline, 'batch_translate_blocks', translated)
+    result = document_pipeline.translate(DocumentTranslationRequest(str(path), 'English', 'Cebuano', mode='fast'))
+    assert result.content_summary['translated'] == 0
+    assert result.translated_blocks[0]['text'].strip() == 'Original source'
+    assert result.translated_blocks[0]['passthrough'] is True
+    assert result.blocks[0]['block_index'] == 0

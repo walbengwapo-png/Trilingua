@@ -100,6 +100,7 @@ def inventory_pdf(path, native_blocks, language, column_mode='auto', source_iden
                     from document.image_reconstructor import (ImageHold, occurrence_safety, source_image,
                                                                estimate_style)
                     from document.ocr_extractor import recognize_image
+                    image_block_start, image_region_start = len(blocks), len(regions)
                     try:
                         occurrence_safety(doc, number, image['xref'])
                         source = source_image(doc, image['xref'])
@@ -128,7 +129,9 @@ def inventory_pdf(path, native_blocks, language, column_mode='auto', source_iden
                                 continue
                             child.update(status='pending', reason=None, block_index=len(blocks))
                             blocks.append(recognized)
-                    except (ImageHold, OCRUnavailable, ImportError) as exc:
+                    except (ImageHold, OCRUnavailable, ImportError, OSError) as exc:
+                        del blocks[image_block_start:]
+                        del regions[image_region_start:]
                         entry.update(status='held', reason='image_safety_hold', detail=str(exc))
                 if uses[image['xref']] != 1:
                     entry['safety_hold'] = 'shared_or_unresolved_image'

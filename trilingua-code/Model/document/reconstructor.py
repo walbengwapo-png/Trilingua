@@ -1582,6 +1582,8 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
         recreated = _Counter()
         try:
             imgs_before = _image_snapshot(page)
+            # Strict holds must not renumber the occupied-box ownership tags.
+            obstacle_tags = {id(block): index for index, block in enumerate(translatable)}
             if strict:
                 accepted = []
                 for bi, b in enumerate(translatable):
@@ -1655,8 +1657,8 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
             if leftover:
                 issues.append(f"I2:orig-spans-remain({leftover})")
 
-            for bi, b in enumerate(translatable):
-                _insert_block(page, b, page_width, page_height, occupied, bi, layout_plan, recreated)
+            for b in translatable:
+                _insert_block(page, b, page_width, page_height, occupied, obstacle_tags[id(b)], layout_plan, recreated)
         except Exception as e:
             issues.append(f"I4:exception:{str(e)[:90]}")
 
