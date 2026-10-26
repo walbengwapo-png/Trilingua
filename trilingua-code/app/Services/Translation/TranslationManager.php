@@ -294,6 +294,17 @@ class TranslationManager
 
             $body = $response->body();
             $elapsedMs = (microtime(true) - $startTime) * 1000;
+            $updatedSidecar = $sidecar;
+            $outputMime = $response->header('Content-Type', 'application/octet-stream');
+            if (($sidecar['version'] ?? null) === 3) {
+                $envelope = $response->json();
+                $body = base64_decode($envelope['file_base64'] ?? '', true);
+                if (!is_array($envelope['sidecar'] ?? null)) {
+                    throw new TranslationException('Regeneration did not return a persisted render plan.');
+                }
+                $updatedSidecar = $envelope['sidecar'];
+                $outputMime = $envelope['mime_type'] ?? 'application/pdf';
+            }
 
             if ($body === '' || $body === false) {
                 throw new TranslationException(
@@ -308,7 +319,7 @@ class TranslationManager
                 'execution_time_ms' => $elapsedMs,
             ]);
 
-            // The regenerate endpoint streams the binary file back.
+            // Hybrid replies include the updated render plan; legacy replies remain binary.
             $ext = strtolower('.' . pathinfo($originalName, PATHINFO_EXTENSION));
             $outExt = config('translation.extension_map.' . ltrim($ext, '.'), $ext);
             $stem = pathinfo($originalName, PATHINFO_FILENAME);
@@ -319,7 +330,8 @@ class TranslationManager
             return [
                 'body' => $body,
                 'download_filename' => $downloadFilename,
-                'mime_type' => $response->header('Content-Type', 'application/octet-stream'),
+                'mime_type' => $outputMime,
+                'sidecar' => $updatedSidecar,
             ];
 
         } catch (\Illuminate\Http\Client\ConnectionException $e) {

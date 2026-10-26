@@ -160,6 +160,9 @@
                         <p class="history-card__preview" title="{{ $preview }}">{{ $preview }}</p>
                         @if ($isDoc)
                             <p class="history-card__sub">→ {{ $record['translated_filename'] ?? '' }}</p>
+                            @if (!empty($record['sidecar']['content_summary']))
+                                <p role="note">Content: {{ ucfirst($record['sidecar']['content_summary']['status']) }} · {{ $record['sidecar']['content_summary']['held'] }} held regions.</p>
+                            @endif
                         @endif
                     </div>
 

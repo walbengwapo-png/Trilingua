@@ -223,6 +223,10 @@ class DocumentPipeline:
         ctx = DocumentContext()
         ctx.start_timer()
         ctx.source_file = request.file_path
+        ctx.pdf_deadline = None
+        if os.path.splitext(request.file_path)[1].lower() in {'.pdf', *IMAGE_EXTENSIONS}:
+            from document.pdf_worker import job_budget
+            ctx.pdf_deadline = _time.monotonic() + job_budget()
         ctx.source_lang = request.source_lang
         ctx.target_lang = request.target_lang
         ctx.provider_name = self.translation_pipeline.provider.name
@@ -230,7 +234,7 @@ class DocumentPipeline:
         ctx.concurrency_level = self.translation_pipeline.concurrency_limit()
 
         # ── Determine processing mode ─────────────────────────────────────
-        ctx.mode = self._determine_mode(request)
+        ctx.mode = self._determine_mode(request, ctx.pdf_deadline)
 
         ext = os.path.splitext(request.file_path)[1].lower()
         ctx.source_format = ext
@@ -270,13 +274,13 @@ class DocumentPipeline:
         print("[INPUT] Reading document...")
         extraction = {"pages": [], "warnings": []}
         with phase_profile("extraction", ctx):
-            if ext in IMAGE_EXTENSIONS:
-                data, extraction = extract_image(request.file_path, request.source_lang)
-                detected_ext = ext
+            if ext in {'.pdf', *IMAGE_EXTENSIONS}:
+                from document.pdf_worker import run_pdf
+                data, extraction = run_pdf('extract', request.file_path, request.source_lang,
+                                           request.pdf_column_mode, deadline=ctx.pdf_deadline)
+                detected_ext = '.pdf'
             else:
                 data, detected_ext = analyze_document(request.file_path, pdf_column_mode=request.pdf_column_mode)
-                if ext == ".pdf":
-                    data, extraction = complete_pdf(request.file_path, data, request.source_lang, request.pdf_column_mode)
         for warning in extraction["warnings"]:
             ctx.add_warning(warning)
         if any(block.get("ocr_reflow") for block in data if isinstance(block, dict)):
@@ -293,7 +297,7 @@ class DocumentPipeline:
         blocks = data
         print(f"  Found {len(blocks)} text block(s) after filtering.")
 
-        if ext == ".pdf" and not blocks:
+        if ext in {'.pdf', *IMAGE_EXTENSIONS} and not blocks:
             return self._held_pdf(request, output_file, extraction, ctx)
         if not blocks:
             raise ValueError(
@@ -454,6 +458,8 @@ class DocumentPipeline:
 
         # ── Phase 3: Semantic Chunking & Translation ─────────────────────
         print("[TRANSLATE] Translating...")
+        from document.pdf_worker import check_deadline
+        check_deadline(ctx.pdf_deadline)
 
         # OPTIMIZATION: Build prepass injection for context (Task 5)
         prepass_preamble = ""
@@ -520,14 +526,14 @@ class DocumentPipeline:
         # ── Reconstruct document ─────────────────────────────────────────
         print(f"[OUTPUT] Rebuilding document -> {output_file}")
         with phase_profile("reconstruction", ctx):
-            if ext == ".pdf":
-                from document.reconstructor import write_pdf_preserved
-                from document.image_reconstructor import plan_images
-                image_actions, image_held = plan_images(request.file_path, translated_blocks)
-                native = [b for b in translated_blocks if not b.get('image_region')]
-                output_validation = write_pdf_preserved(native, request.file_path, output_file,
-                    source_lang=request.source_lang, target_lang=request.target_lang, strict=True, image_actions=image_actions)
-                output_validation['held'].extend(image_held)
+            if ext in {'.pdf', *IMAGE_EXTENSIONS}:
+                from document.pdf_worker import run_pdf
+                output_validation, image_actions, native = run_pdf('render', request.file_path, translated_blocks,
+                    output_file, request.source_lang, request.target_lang, deadline=ctx.pdf_deadline)
+                layouts = {b.get('region_id'): b.get('rendered_layout') for b in native}
+                for block in translated_blocks:
+                    if block.get('region_id') in layouts:
+                        block['rendered_layout'] = layouts[block['region_id']]
                 extraction['image_actions'] = image_actions
             else:
                 output_validation = reconstruct_document(translated_blocks, output_file, request.file_path, detected_ext,
@@ -554,10 +560,13 @@ class DocumentPipeline:
                                    extra={"output_validation": output_validation or {}, "extraction": extraction})
 
         # ── Finalize ─────────────────────────────────────────────────────
-        if ext == ".pdf":
+        if ext in {'.pdf', *IMAGE_EXTENSIONS}:
             output_file = self._pdf_sidecar(sidecar, extraction, output_validation, output_file)
+            for warning in extraction['warnings']:
+                if warning not in ctx.warnings: ctx.add_warning(warning)
 
         ctx.stop_timer()
+        check_deadline(ctx.pdf_deadline)
         ctx.log_summary()
 
         # Cleanup memory
@@ -581,27 +590,31 @@ class DocumentPipeline:
             blocks=sidecar_entries,
             output_validation=output_validation or {},
             metrics=_engine_metrics(ctx, self.translation_pipeline.provider),
+            content_summary=sidecar.get('content_summary', {}),
         )
 
     # ── In-place Translation ────────────────────────────────────────────────
 
     def _pdf_sidecar(self, sidecar, extraction, validation, output_file):
         from document.pdf_regions import content_summary
-        held = {r['region_id'] for r in (validation or {}).get('held', [])}
+        held = {r['region_id']:r['reason'] for r in (validation or {}).get('held', [])}
         entries = {b.get('region_id'): b for b in sidecar['blocks']}
         for region in extraction['regions']:
             if region['status'] == 'pending':
                 entry = entries.get(region['region_id'], {})
                 region['status'] = ('held' if region['region_id'] in held else
                                     'passthrough' if entry.get('passthrough') else 'translated')
-                region['reason'] = 'native_fit_hold' if region['status'] == 'held' else None
+                region['reason'] = held.get(region['region_id'])
                 if region['status'] == 'held':
-                    entry.update(text=entry.get('source_text', ''), current_text=entry.get('source_text', ''), passthrough=True)
+                    extraction['warnings'].append(f"Page {region['page']+1}: original region retained ({region['reason']}).")
+                    entry.update(text=entry.get('source_text', ''), current_text=entry.get('source_text', ''),
+                                 ai_translated_text=entry.get('source_text', ''), passthrough=True)
         summary = content_summary(extraction['regions'])
-        sidecar.update(version=3, content_summary=summary,
-                       render_plan={'version': 1, 'original_sha256': extraction['original_sha256'],
-                                    'regions': extraction['regions'], 'pages': extraction['pages'],
-                                    'image_actions': extraction.get('image_actions', [])})
+        from document.render_plan import make_plan
+        sidecar.update(version=3, content_summary=summary, render_plan=make_plan(extraction,sidecar['blocks']))
+        extraction.pop('image_actions', None)
+        if len(json.dumps(sidecar,ensure_ascii=False).encode('utf-8')) > 24_000_000:
+            raise ValueError('PDF sidecar exceeds bounded payload')
         if summary['status'] != 'complete':
             message = (f"{summary['status'].capitalize()}: {summary['translated']} translated, "
                        f"{summary['held']} held, {summary['passthrough']} passthrough regions. Held content retains its original language.")
@@ -613,13 +626,21 @@ class DocumentPipeline:
 
     def _held_pdf(self, request, output_file, extraction, ctx):
         import shutil
-        shutil.copyfile(request.file_path, output_file)
-        sidecar = finalize_sidecar([], request, '.pdf', ctx, extra={'extraction': extraction})
+        from document.pdf_worker import check_deadline
+        check_deadline(ctx.pdf_deadline)
+        if request.file_path.lower().endswith('.pdf'):
+            shutil.copyfile(request.file_path, output_file)
+        else:
+            from document.pdf_worker import run_pdf
+            run_pdf('preserve',request.file_path,output_file,deadline=ctx.pdf_deadline)
+        sidecar = finalize_sidecar([], request, ctx.source_format, ctx, extra={'extraction': extraction})
         output_file = self._pdf_sidecar(sidecar, extraction, {}, output_file)
         ctx.stop_timer()
+        check_deadline(ctx.pdf_deadline)
         return DocumentTranslationResponse(output_path=output_file, translated_blocks=[],
             provider=self.translation_pipeline.provider.name, model=self.translation_pipeline.provider.model_name,
             total_chunks=0, sidecar=sidecar, blocks=[], warnings=extraction['warnings'],
+            content_summary=sidecar['content_summary'],
             metrics=_engine_metrics(ctx, self.translation_pipeline.provider))
 
     def _run_inplace_analysis(self, blocks, request, ctx):
@@ -984,7 +1005,7 @@ class DocumentPipeline:
 
     # ── Adaptive Mode Selection (Phase 9) ────────────────────────────────────
 
-    def _determine_mode(self, request: DocumentTranslationRequest):
+    def _determine_mode(self, request: DocumentTranslationRequest, deadline=None):
         """Automatically select processing mode based on document.
 
         If mode is 'auto', analyzes document characteristics to choose.
@@ -1003,8 +1024,11 @@ class DocumentPipeline:
         ext = os.path.splitext(request.file_path)[1].lower()
         blocks = []
         try:
-            data, _ = analyze_document(request.file_path,
-                                       pdf_column_mode=request.pdf_column_mode)
+            if ext in {'.pdf', *IMAGE_EXTENSIONS}:
+                from document.pdf_worker import run_pdf
+                data, _ = run_pdf('inspect', request.file_path, request.source_lang, request.pdf_column_mode, deadline=deadline)
+            else:
+                data, _ = analyze_document(request.file_path, pdf_column_mode=request.pdf_column_mode)
             if isinstance(data, list):
                 blocks = data
         except Exception:

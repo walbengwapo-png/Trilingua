@@ -32,10 +32,11 @@ def document(tmp_path, image):
     return path
 
 
-def test_true_pixel_cleanup_and_visible_searchable_target(tmp_path):
+@pytest.mark.parametrize('target',['English replacement: café, ñ.', 'Cebuano: maó, bag-ong hubad.', 'Filipino: bagong salin, ñ, á.'])
+def test_true_pixel_cleanup_and_visible_searchable_target(tmp_path,target):
     image, words = geometry()
     source = document(tmp_path, image)
-    action = action_for(image,words)
+    action = action_for(image,words,target)
     mask = decode_mask(action)
     with fitz.open(source) as doc:
         xref = doc[0].get_images()[0][0]
@@ -48,7 +49,7 @@ def test_true_pixel_cleanup_and_visible_searchable_target(tmp_path):
         assert np.array_equal(pixels[~mask],np.array(image)[~mask])
         assert (pixels[mask] == [245,245,245]).all()
         assert 'SOURCE' not in doc[0].get_text()
-        assert 'maó, ñ, á.' in doc[0].get_text()
+        assert target in doc[0].get_text()
         assert image_digest(source_image(doc,doc[0].get_images()[0][0])) != image_digest(image)
 
 
@@ -82,6 +83,23 @@ def test_fit_hold_and_shared_occurrences(tmp_path):
         xref=doc[0].get_images()[0][0]
         p=doc.new_page(width=600,height=400);p.insert_image(p.rect,xref=xref)
         with pytest.raises(ImageHold,match='Shared'): occurrence_safety(doc,0,xref)
+
+
+@pytest.mark.parametrize('kind',['alpha','clip','overlap','rotation'])
+def test_unsafe_occurrences_are_held_before_editing(tmp_path,kind):
+    image,_=geometry()
+    if kind=='alpha':image=image.convert('RGBA');image.putalpha(150)
+    source=document(tmp_path,image)
+    with fitz.open(source) as doc:
+        page=doc[0];xref=page.get_images()[0][0]
+        if kind=='clip':
+            stream=page.get_contents()[0]
+            doc.update_stream(stream,b'q 0 0 100 100 re W n\n'+doc.xref_stream(stream)+b'\nQ')
+        elif kind=='rotation':page.set_rotation(90)
+        elif kind=='overlap':
+            stream=io.BytesIO();Image.new('RGB',(20,20),'red').save(stream,'PNG')
+            page.insert_image(fitz.Rect(400,0,500,100),stream=stream.getvalue())
+        with pytest.raises(ImageHold):occurrence_safety(doc,0,xref)
 
 
 def test_single_assembly_keeps_page_geometry(tmp_path):

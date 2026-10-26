@@ -3,6 +3,7 @@ import base64
 import hashlib
 import io
 import json
+import math
 from pathlib import Path
 import re
 import unicodedata
@@ -39,6 +40,8 @@ def fit_text(text, bbox, font_id, initial_size, alignment=0):
     path, item = font_asset(font_id)
     font = fitz.Font(fontfile=str(path))
     box = fitz.Rect(bbox)
+    if not all(math.isfinite(v) for v in box) or box.is_empty or not math.isfinite(float(initial_size)):
+        raise ImageHold('Invalid text fit geometry')
     if not text.strip() or len(text) > 100_000 or alignment not in (0, 1, 2):
         raise ImageHold('Invalid target text/alignment')
     if any(not font.has_glyph(ord(c)) for c in text if not c.isspace()):
@@ -84,6 +87,8 @@ def decode_mask(action):
     raw = decoder.decompress(data, width*height + 1)
     if len(raw) != width*height or not decoder.eof or decoder.unused_data or decoder.unconsumed_tail:
         raise ImageHold('Invalid or unbounded mask payload')
+    if hashlib.sha256(raw).hexdigest() != action.get('mask_sha256'):
+        raise ImageHold('Mask hash mismatch')
     import numpy as np
     mask = np.frombuffer(raw, dtype=np.uint8).reshape(height, width)
     if not np.isin(mask, [0, 1]).all(): raise ImageHold('Mask is not binary')
@@ -121,7 +126,7 @@ def prepare_action(image, words, target, image_bbox, target_bbox, font_id='NotoS
     protected = np.zeros_like(geometry)
     for box in exclusions:
         x0, y0, x1, y1 = map(int, box)
-        protected[max(0,y0):y1, max(0,x0):x1] = 1
+        protected[max(0,y0-2):min(image.height,y1+2), max(0,x0-2):min(image.width,x1+2)] = 1
     # Sample many interior/boundary pixels outside the word boxes.
     background_pixels = pixels[(geometry == 0) & (protected == 0)]
     if len(background_pixels) < image.width*image.height*.4:
@@ -148,6 +153,12 @@ def prepare_action(image, words, target, image_bbox, target_bbox, font_id='NotoS
             if len(values): tiles.append(np.median(values, axis=0))
     if not tiles or np.max(np.ptp(np.array(tiles), axis=0)) > 2:
         raise ImageHold('Background spatial variation/gradient')
+    source_box, target_box = fitz.Rect(image_bbox), fitz.Rect(target_bbox)
+    sx,sy=image.width/source_box.width,image.height/source_box.height
+    tx0,ty0,tx1,ty1=[int(round(v)) for v in ((target_box.x0-source_box.x0)*sx,
+        (target_box.y0-source_box.y0)*sy,(target_box.x1-source_box.x0)*sx,(target_box.y1-source_box.y0)*sy)]
+    if rules[max(0,ty0+1):min(image.height,ty1-1),max(0,tx0+1):min(image.width,tx1-1)].any():
+        raise ImageHold('Target spans table rules or borders')
     glyphs = foreground & geometry
     if ((glyphs & protected) | (glyphs & rules)).any():
         raise ImageHold('Text intersects rules, borders or protected neighbors')
@@ -171,6 +182,8 @@ def prepare_action(image, words, target, image_bbox, target_bbox, font_id='NotoS
     foreground_color = np.median(pixels[glyphs.astype(bool)], axis=0).round().astype(int).tolist()
     return {'algorithm_version': ALGORITHM_VERSION, 'image_size': list(image.size),
             'source_image_sha256': image_digest(image), 'mask': base64.b64encode(encoded).decode('ascii'),
+            'mask_sha256':hashlib.sha256(mask.tobytes()).hexdigest(),
+            'word_geometry':[w['position'] for w in words], 'exclusions':list(exclusions),
             'background': fill.tolist(), 'foreground': foreground_color, 'image_bbox': list(image_bbox),
             'fit': fit, 'rotation': 0}
 
@@ -180,11 +193,16 @@ def occurrence_safety(doc, page_number, xref):
     occurrences = [(p.number, i) for p in doc for i in p.get_image_info(xrefs=True) if i['xref'] == xref]
     if len(occurrences) != 1 or occurrences[0][0] != page_number or not xref:
         raise ImageHold('Shared/unresolved image occurrence')
+    resources = [i for p in doc for i in p.get_images(full=True) if i[0] == xref]
+    if len(resources) != 1 or doc.get_ocgs() or doc.embfile_count():
+        raise ImageHold('Shared resources, optional layers or embedded backups excluded')
     if page.rotation or page.cropbox != page.mediabox or page.get_xobjects():
         raise ImageHold('Rotated/cropped/form image excluded')
     info = occurrences[0][1]
     a,b,c,d,e,f = info['transform']
     if b or c or a <= 0 or d <= 0: raise ImageHold('Non-axis-aligned image')
+    if abs(a/info['width']-d/info['height']) > .01*max(a/info['width'],d/info['height']):
+        raise ImageHold('Nonuniform image stretch excluded')
     if any(i[0] == xref and i[1] for i in page.get_images(full=True)):
         raise ImageHold('Transparent image')
     source = b'\n'.join(doc.xref_stream(x) for x in page.get_contents())
@@ -203,6 +221,10 @@ def occurrence_safety(doc, page_number, xref):
 
 
 def source_image(doc, xref):
+    width = int(doc.xref_get_key(xref,'Width')[1])
+    height = int(doc.xref_get_key(xref,'Height')[1])
+    if min(width,height) < 1 or width*height > MAX_PIXELS:
+        raise ImageHold('Source image exceeds 40 MP limit')
     pix = fitz.Pixmap(doc, xref)
     if pix.alpha: raise ImageHold('Alpha image')
     if pix.colorspace != fitz.csRGB: pix = fitz.Pixmap(fitz.csRGB, pix)
@@ -227,6 +249,14 @@ def apply_actions(doc, actions):
                 raise ImageHold('Source image hash/size mismatch')
             if list(info['bbox']) != action['image_bbox']: raise ImageHold('Image transform mismatch')
             mask = decode_mask(action)
+            allowed = np.zeros(mask.shape,bool)
+            for x0,y0,x1,y1 in action['word_geometry']:
+                x0,y0,x1,y1 = [int(round(v)) for v in (x0,y0,x1,y1)]
+                allowed[max(0,y0-2):min(mask.shape[0],y1+2),max(0,x0-2):min(mask.shape[1],x1+2)] = True
+            if (mask & ~allowed).any(): raise ImageHold('Mask outside approved word geometry')
+            for x0,y0,x1,y1 in action.get('exclusions',[]):
+                if mask[max(0,int(y0)-2):min(mask.shape[0],int(y1)+2),max(0,int(x0)-2):min(mask.shape[1],int(x1)+2)].any():
+                    raise ImageHold('Mask touches protected neighbor')
             if (combined & mask).any(): raise ImageHold('Overlapping edit masks')
             combined |= mask
             pixels[mask] = action['background']
@@ -323,6 +353,8 @@ def plan_images(original, blocks):
                 action = prepare_action(image, block['ocr']['words'], block['text'], region['image_bbox'],
                                         block['position'], style['font_id'], style['initial_size'], exclusions)
                 action.update(page=block['page'], xref=region['xref'], region_id=block['region_id'])
+                if sum(len(a['mask']) for a in actions) + len(action['mask']) > 8_000_000:
+                    raise ImageHold('Whole-plan mask budget exceeded')
                 actions.append(action)
             except (ImageHold, ImportError, OSError) as exc:
                 held.append({'region_id': block['region_id'], 'reason': str(exc)})

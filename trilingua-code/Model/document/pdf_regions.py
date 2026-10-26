@@ -51,9 +51,9 @@ def _visible(page, block, images):
     return bool(text.strip()) and sum(c == '\ufffd' or 0xe000 <= ord(c) <= 0xf8ff for c in text) / len(text) < .05
 
 
-def inventory_pdf(path, native_blocks, language, column_mode='auto'):
+def inventory_pdf(path, native_blocks, language, column_mode='auto', source_identity=None):
     from document.ocr_extractor import OCRUnavailable, require_ready
-    identity = sha256(path)
+    identity = source_identity or sha256(path)
     regions, pages, blocks, warnings = [], [], [], []
     with fitz.open(path) as doc:
         if len(doc) > MAX_PAGES:

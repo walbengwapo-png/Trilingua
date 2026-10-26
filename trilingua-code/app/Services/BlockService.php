@@ -33,16 +33,6 @@ class BlockService
      */
     public function persistBlocks(TranslationHistory $history, array $blocks, ?array $sidecar = null): int
     {
-        if ($blocks === []) {
-            return DB::transaction(function () use ($history, $sidecar) {
-                if ($sidecar !== null) {
-                    $history->sidecar = $sidecar;
-                    $history->save();
-                }
-                return 0;
-            });
-        }
-
         $count = DB::transaction(function () use ($history, $blocks, $sidecar) {
             $created = 0;
             $scores = [];
@@ -92,6 +82,16 @@ class BlockService
                 $history->sidecar = $sidecar;
             }
 
+            if (($sidecar['content_summary']['held'] ?? 0) > 0) {
+                $history->document_word_count = null;
+                if ($history->source_word_metadata !== null) {
+                    $metadata = $history->source_word_metadata;
+                    $metadata['count'] = null;
+                    $metadata['completeness'] = ($metadata['known_words'] ?? 0) > 0 ? 'partial' : 'missing';
+                    $metadata['extraction_coverage'] = 'unknown';
+                    $history->source_word_metadata = $metadata;
+                }
+            }
             $history->save();
 
             return $created;

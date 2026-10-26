@@ -991,6 +991,8 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
                                 "liberationmono", "courier", "courier new", "nimbusroman")
 
     def _original_system_font(name, bold, italic):
+        if strict:
+            return None
         lower = (name or "").lower()
         if any(c in lower for c in _BASE14_COMPAT_ORIGINALS):
             return None
@@ -1097,9 +1099,15 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
             except Exception:
                 return "helv", fitz.Font("helv")
 
-        preferred = _SYSTEM_FONT_FILES.get((family, bold, italic))
+        if strict:
+            from document.image_reconstructor import font_asset
+            font_id = ('NotoSerif' if family == 'tiro' else 'NotoSans') + '-' + (
+                'BoldItalic' if bold and italic else 'Bold' if bold else 'Italic' if italic else 'Regular')
+            preferred = str(font_asset(font_id)[0])
+        else:
+            preferred = _SYSTEM_FONT_FILES.get((family, bold, italic))
         candidates = [preferred] if preferred else []
-        for _p in _SYSTEM_FALLBACK_LIST:
+        for _p in ([] if strict else _SYSTEM_FALLBACK_LIST):
             if _p not in candidates:
                 candidates.append(_p)
         for _path in candidates:
@@ -1632,6 +1640,9 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file,
             if not redact_rects:
                 return True, issues
             page.apply_redactions(images=0, graphics=0, text=0)
+            # Redaction can discard unused fonts registered during strict preflight.
+            if strict:
+                _font_cache.pop((id(page.parent), page.xref), None)
 
             if os.environ.get("TRI_DEBUG"):
                 print(f"    [_process_page] page {page_num} redacted "

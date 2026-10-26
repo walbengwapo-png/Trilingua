@@ -18,6 +18,23 @@ class TranslationManagerRegenerateTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_hybrid_reply_keeps_binary_file_and_updated_render_plan(): void
+    {
+        $updated = ['version' => 3, 'render_plan' => ['version' => 2, 'native_fit_decisions' => []],
+            'content_summary' => ['status' => 'partial', 'translated' => 1, 'held' => 1]];
+        Http::fake(['*/translate/document/regenerate' => Http::response([
+            'file_base64' => base64_encode('fixed-file-bytes'), 'sidecar' => $updated, 'mime_type' => 'application/pdf',
+        ])]);
+        $result = app(TranslationManager::class)->regenerateDocument(
+            originalBytes: 'original-bytes', originalName: 'contract.pdf',
+            sidecar: ['version' => 3, 'content_summary' => $updated['content_summary']], overrides: [],
+        );
+        $this->assertSame('fixed-file-bytes', $result['body']);
+        $this->assertSame($updated, $result['sidecar']);
+        $this->assertSame('application/pdf', $result['mime_type']);
+        $this->assertSame('contract_regenerated_partial.pdf', $result['download_filename']);
+    }
+
     public function test_regenerate_sends_overrides_as_json_object(): void
     {
         Http::fake([

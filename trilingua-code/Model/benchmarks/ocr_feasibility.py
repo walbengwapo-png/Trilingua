@@ -60,6 +60,7 @@ def evaluate(manifest_path, binary, minimum):
         raise ValueError('OCR case IDs must be unique')
     engine = inventory(binary)
     report = {'schema_version': manifest.get('schema_version', 1),
+              'source_manifest_sha256': hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
               'corpus_review': manifest.get('corpus_review'),
               'minimum_word_accuracy_percent': minimum, 'engine': engine,
               'source_cases': len(cases), 'cases': [], 'categories': {},

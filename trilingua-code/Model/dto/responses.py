@@ -50,6 +50,7 @@ class DocumentTranslationResponse:
     sidecar: Optional[dict] = None
     blocks: list = field(default_factory=list)
     output_validation: dict = field(default_factory=dict)
+    content_summary: dict = field(default_factory=dict)
 
     # ── Engine metrics ────────────────────────────────────────────────────
     # Captured from DocumentContext.summary() so Laravel can surface real AI

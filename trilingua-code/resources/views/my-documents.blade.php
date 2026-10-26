@@ -186,6 +186,8 @@
             @foreach ($pageItems as $doc)
                 @php
                     $isTranslated = !empty($doc['original_filename']) && !empty($doc['translated_filename']);
+                    $contentSummary = $doc['sidecar']['content_summary'] ?? null;
+                    $incompleteContent = $contentSummary && $contentSummary['status'] !== 'complete';
                     $isOriginal   = empty($doc['parent_document_id']);
                     $hasParent    = !empty($doc['parent_document_id']);
                     // Get child translations for this record
@@ -256,6 +258,9 @@
                         </div>
 
                         {{-- Translation progress bar --}}
+                        @if ($incompleteContent)
+                            <p class="doc-card__progress-label" role="note">{{ ucfirst($contentSummary['status']) }}: {{ $contentSummary['held'] }} held regions retain their original language.</p>
+                        @else
                         <div class="doc-card__progress">
                             <div class="doc-card__progress-bar"
                                  style="width: {{ $isTranslated ? 100 : 0 }}%"
@@ -265,6 +270,7 @@
                                  aria-valuemax="100"></div>
                         </div>
                         <span class="doc-card__progress-label">{{ $isTranslated ? '100%' : '0%' }} Complete</span>
+                        @endif
 
                         {{-- Translations sub-list (for original documents) --}}
                         @if ($isOriginal && $translationCount > 0)
@@ -273,6 +279,9 @@
                             @foreach ($childTranslations as $child)
                                 <div class="doc-card__translation-row">
                                     <span class="doc-card__translation-name" title="{{ $child['translated_filename'] }}">{{ \Illuminate\Support\Str::limit($child['translated_filename'], 35) }}</span>
+                                    @if (!empty($child['sidecar']['content_summary']))
+                                        <span>{{ ucfirst($child['sidecar']['content_summary']['status']) }}</span>
+                                    @endif
                                     <span class="doc-card__translation-lang">{{ $child['target_language'] ?? '—' }}</span>
                                     <button class="doc-action-link doc-card__translation-download"
                                             data-id="{{ $child['id'] }}"
@@ -866,6 +875,8 @@
         document.getElementById('detail-date').textContent = formatDate(data.created_at);
         document.getElementById('detail-type').textContent = isDoc ? 'Document Translation' : 'Text Translation';
         document.getElementById('detail-status').textContent = (data.status || 'completed').charAt(0).toUpperCase() + (data.status || 'completed').slice(1);
+        var content = data.sidecar && data.sidecar.content_summary;
+        if (content) document.getElementById('detail-status').textContent += '; content: ' + content.status + ' (' + content.held + ' held regions)';
         document.getElementById('detail-review-status').textContent = (data.review_status || 'pending').charAt(0).toUpperCase() + (data.review_status || 'pending').slice(1);
 
         var filesizeWrap = document.getElementById('detail-filesize-wrap');

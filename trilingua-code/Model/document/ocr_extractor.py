@@ -81,11 +81,16 @@ def require_ready(source_lang, category):
         group = report["categories"][f"{source_lang} / {category}"]
         entries = [c for c in report["cases"] if c["id"] in group["cases"]]
         accepted = (
-            report["minimum_word_accuracy_percent"] >= 95
-            and report["sample_count_valid"]
+            report.get('schema_version') == 2
+            and report["minimum_word_accuracy_percent"] >= 95
+            and report["sample_count_valid"] is True
             and report["settings"] == SETTINGS
             and group["decision"] == "go" and group["word_accuracy_percent"] >= 95
-            and entries and all(c.get("acceptance_eligible") and c["status"] == "measured" for c in entries)
+            and entries and len(entries) == len(set(group['cases']))
+            and all(c.get("acceptance_eligible") is True and c["status"] == "measured"
+                    and c.get('split') == 'heldout' and c.get('language') == source_lang
+                    and c.get('input_category') == category and c.get('pack') == pack
+                    and c.get('contract_errors') == [] for c in entries)
             and report["engine"]["version"] == state["version"]
             and report["engine"]["pack_sha256"].get(pack) == state["pack_sha256"].get(pack)
             and bool(state["pack_sha256"].get(pack))

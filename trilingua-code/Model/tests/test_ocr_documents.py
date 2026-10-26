@@ -87,16 +87,19 @@ def accepted_report(tmp_path, monkeypatch):
     state = {"ready": True, "version": "test-engine", "installed_packs": ["eng"],
              "pack_sha256": {"eng": "test-hash"}}
     monkeypatch.setattr(ocr, "readiness", lambda: state)
-    report = {"minimum_word_accuracy_percent": 95, "sample_count_valid": True,
+    # Contract fixture under a mocked engine, never installed as application evidence.
+    report = {"schema_version": 2, "minimum_word_accuracy_percent": 95, "sample_count_valid": True,
               "settings": ocr.SETTINGS, "engine": state,
               "categories": {"English / scan": {"cases": ["scan"], "decision": "go", "word_accuracy_percent": 99}},
-              "cases": [{"id": "scan", "status": "measured", "acceptance_eligible": True}]}
+              "cases": [{"id": "scan", "status": "measured", "acceptance_eligible": True,
+                         'split':'heldout', 'language':'English', 'pack':'eng', 'input_category':'scan',
+                         'contract_errors':[]}]}
     path = tmp_path / "acceptance.json"
     monkeypatch.setenv("OCR_ACCEPTANCE_REPORT", str(path))
     return report, path
 
 
-@pytest.mark.parametrize("change", ["none", "synthetic", "engine", "threshold", "pack", "settings"])
+@pytest.mark.parametrize("change", ["none", "synthetic", "engine", "threshold", "pack", "settings", 'calibration', 'legacy'])
 def test_only_matching_accepted_evidence_enables_scan_category(tmp_path, monkeypatch, change):
     report, path = accepted_report(tmp_path, monkeypatch)
     if change == "synthetic": report["cases"][0]["acceptance_eligible"] = False
@@ -104,6 +107,8 @@ def test_only_matching_accepted_evidence_enables_scan_category(tmp_path, monkeyp
     if change == "threshold": report["minimum_word_accuracy_percent"] = 90
     if change == "pack": report["engine"] = {**report["engine"], "pack_sha256": {"eng": "different"}}
     if change == "settings": report["settings"] = {}
+    if change == 'calibration': report['cases'][0]['split'] = 'calibration'
+    if change == 'legacy': report['schema_version'] = 1
     path.write_text(json.dumps(report))
     if change == "none":
         assert ocr.require_ready("English", "scan") == "eng"
@@ -121,21 +126,18 @@ def test_image_upload_output_and_sidecar_regeneration(tmp_path, monkeypatch, doc
     monkeypatch.setattr('pipeline.translation_pipeline.unit_pipeline_enabled', lambda: unit_mode)
     path = tmp_path / f"worksheet.{extension}"
     Image.new("RGB", (600, 800), "white").save(path)
-    monkeypatch.setattr(ocr, "require_ready", lambda language, category: "eng")
-    recognize = Mock(return_value=[block()])
+    recognize = Mock(side_effect=AssertionError('No recognition while gate held'))
     monkeypatch.setattr(ocr, "recognize_image", recognize)
+    monkeypatch.setenv('OCR_ACCEPTANCE_REPORT', str(tmp_path/'no-evidence.json'))
     response = document_pipeline.translate(DocumentTranslationRequest(str(path), "English", "Cebuano", mode="fast"))
-    assert response.success
-    assert Path(response.output_path).suffix == ".pdf"
-    assert response.sidecar["blocks"][0]["ocr"]["confidence"] == 55.5
-    assert response.sidecar["extraction"]["warnings"]
-    edited = tmp_path / "edited.pdf"
-    reconstruct_from_sidecar(response.sidecar, {0: "Ang bag-ong hubad: ñ, á, é."}, str(path), str(edited))
+    assert response.success and Path(response.output_path).suffix == '.pdf'
+    assert not response.blocks and response.sidecar['content_summary']['status'] == 'untranslated'
+    assert response.sidecar['extraction']['warnings']
+    edited = tmp_path/'edited.pdf'
+    reconstruct_from_sidecar(response.sidecar, {}, str(path), str(edited))
     with fitz.open(edited) as pdf:
-        text = ''.join(p.get_text() for p in pdf)
-        assert "Ang bag-ong hubad" in text and "ñ, á, é" in text
-        assert not any(page.get_images() for page in pdf)
-    assert recognize.call_count == 1
+        assert len(pdf) == 1 and pdf[0].get_images() and not pdf[0].get_text().strip()
+    assert not recognize.called
 
 
 def test_mixed_document_pipeline_retains_original_pages_without_reflow(tmp_path, document_pipeline):

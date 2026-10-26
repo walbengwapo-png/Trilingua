@@ -453,7 +453,7 @@ def ocr_readiness():
     state = readiness()
     categories = {}
     for language in PACKS:
-        for category in ("scan", "photo"):
+        for category in ("scan", "photo", "screenshot"):
             try:
                 require_ready(language, category)
                 categories[f"{language} / {category}"] = "go"
@@ -740,6 +740,9 @@ def translate_document(
     except PDFValidationError as e:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         raise HTTPException(422, {"message": str(e), "validation": e.report})
+    except (ValueError, TimeoutError) as e:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise HTTPException(422, str(e))
     except HTTPException:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         raise
@@ -773,6 +776,8 @@ def translate_document_regenerate(
         with open(input_path, "wb") as f:
             f.write(contents)
 
+        if len(sidecar.encode('utf-8')) > 24_000_000:
+            raise HTTPException(413, 'Sidecar payload limit exceeded')
         try:
             decoded = _json.loads(sidecar)
         except Exception:
@@ -794,16 +799,16 @@ def translate_document_regenerate(
         out_ext = fmt if fmt in EXTENSION_MAP.values() else ".pdf"
         output_path = os.path.join(tmp_dir, f"regenerated{out_ext}")
 
-        from document.regenerator import reconstruct_from_sidecar
-        _run_pipeline_guarded(lambda: reconstruct_from_sidecar(
-            decoded,
-            overrides=overrides_dict,
-            original_file=input_path,
-            output_file=output_path,
-            source_lang=source_lang or decoded.get("source_lang", ""),
-            target_lang=target_lang or decoded.get("target_lang", ""),
-            pdf_column_mode=pdf_column_mode or decoded.get("pdf_column_mode", "auto"),
-        ))
+        if fmt == '.pdf' or decoded.get('version') == 3:
+            from document.pdf_worker import run_pdf
+            regenerated = _run_pipeline_guarded(lambda: run_pdf('regenerate', decoded, overrides_dict, input_path,
+                output_path, source_lang or decoded.get('source_lang', ''),
+                target_lang or decoded.get('target_lang', ''), pdf_column_mode or decoded.get('pdf_column_mode', 'auto')))
+            decoded = regenerated['sidecar']
+        else:
+            from document.regenerator import reconstruct_from_sidecar
+            _run_pipeline_guarded(lambda: reconstruct_from_sidecar(decoded, overrides_dict,
+                input_path, output_path, source_lang, target_lang, pdf_column_mode))
 
         if not os.path.exists(output_path):
             raise HTTPException(500, "Regeneration produced no output file.")
@@ -812,14 +817,25 @@ def translate_document_regenerate(
             file_contents = f.read()
 
         original_stem = os.path.splitext(file.filename)[0]
-        download_name = f"{original_stem}_regenerated{out_ext}"
+        status = decoded.get('content_summary', {}).get('status', 'complete')
+        suffix = '_regenerated_' + status if status in {'partial','untranslated'} else '_regenerated'
+        download_name = f"{original_stem}{suffix}{out_ext}"
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+        if decoded.get('version') == 3:
+            import base64
+            return {'file_base64':base64.b64encode(file_contents).decode('ascii'),
+                    'sidecar':decoded, 'download_filename':download_name,
+                    'mime_type':_content_type_for_ext(out_ext)}
 
         return StreamingResponse(
             io.BytesIO(file_contents),
             media_type=_content_type_for_ext(out_ext),
             headers={"Content-Disposition": f"attachment; filename={download_name}"}
         )
+    except (ValueError, TimeoutError) as e:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise HTTPException(422, str(e))
     except PDFValidationError as e:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         raise HTTPException(422, {"message": str(e), "validation": e.report})

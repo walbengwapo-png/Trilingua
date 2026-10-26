@@ -282,6 +282,11 @@ class ReviewService
                 if ($block->current_text === $newText) {
                     continue;
                 }
+                $entry = collect($history->sidecar['blocks'] ?? [])->firstWhere('block_index', $block->block_index);
+                $region = collect($history->sidecar['render_plan']['regions'] ?? [])->firstWhere('region_id', $entry['region_id'] ?? null);
+                if (($region['status'] ?? null) === 'held') {
+                    throw new TranslationException('This region is held and retains its original content. Its text cannot be published.');
+                }
 
                 $this->log($history->id, $block->id, $adminId, 'edit', $block->current_text, $newText, $note);
 
@@ -566,6 +571,9 @@ class ReviewService
                 $history->storage_path = $newPath;
                 $history->storage_backend = $newBackend;
                 $history->translated_filename = $result['download_filename'];
+                if (isset($result['sidecar'])) {
+                    $history->sidecar = $result['sidecar'];
+                }
                 $history->signed_url_expires_at = $storageResult['signed_url_expires_at'];
                 $history->reviewed_by = $adminId;
                 $history->reviewed_at = now();

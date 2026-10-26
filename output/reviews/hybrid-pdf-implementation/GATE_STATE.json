@@ -1,0 +1,21 @@
+{
+  "settings": {
+    "version": 2,
+    "dpi": 300,
+    "psm": 3,
+    "grouping": "paragraph-with-word-geometry",
+    "preprocessing": "exif-transpose,grayscale,autocontrast",
+    "retain_uncertain_words": true
+  },
+  "categories": {
+    "English / scan": "HOLD",
+    "English / photo": "HOLD",
+    "English / screenshot": "HOLD",
+    "Cebuano / scan": "HOLD",
+    "Cebuano / photo": "HOLD",
+    "Cebuano / screenshot": "HOLD",
+    "Filipino / scan": "HOLD",
+    "Filipino / photo": "HOLD",
+    "Filipino / screenshot": "HOLD"
+  }
+}

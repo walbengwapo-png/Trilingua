@@ -17,5 +17,6 @@ socket.socket.connect = denied
 socket.socketpair = socketpair
 os.environ['PYTHONIOENCODING'] = 'utf-8'
 if hasattr(sys.stdout, 'reconfigure'): sys.stdout.reconfigure(encoding='utf-8')
-import pytest
-raise SystemExit(pytest.main(sys.argv[1:]))
+if __name__ == '__main__':
+    import pytest
+    raise SystemExit(pytest.main(sys.argv[1:]))

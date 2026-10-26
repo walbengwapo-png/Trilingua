@@ -11,6 +11,7 @@
     $hasDraft = $record->hasUnpublishedEdits();
     $ocrBlocks = collect($record->sidecar['blocks'] ?? [])->keyBy('block_index');
     $contentSummary = $record->sidecar['content_summary'] ?? null;
+    $regionsById = collect($record->sidecar['render_plan']['regions'] ?? [])->keyBy('region_id');
 @endphp
 <div class="stack">
 
@@ -73,6 +74,16 @@
                         <p>Page {{ $region['page'] + 1 }} · {{ $region['source_kind'] }} · {{ $region['reason'] }} · {{ implode(', ', $region['bbox']) }}. Original content retained.</p>
                     @endif
                 @endforeach
+                <details>
+                    <summary>Region placement and font decisions</summary>
+                    @foreach ($record->sidecar['render_plan']['image_actions'] ?? [] as $action)
+                        <p>Page {{ $action['page'] + 1 }} · Region {{ $action['region_id'] }} ·
+                            {{ $action['fit']['font_id'] }} at {{ $action['fit']['font_size'] }} pt ·
+                            Box {{ implode(', ', $action['fit']['bbox']) }} ·
+                            Text RGB {{ implode(', ', $action['foreground']) }} ·
+                            Background RGB {{ implode(', ', $action['background']) }}.</p>
+                    @endforeach
+                </details>
             </div>
         @endif
         @if (!empty($record->sidecar['extraction']['warnings']))
@@ -252,6 +263,8 @@
                                 $different = isset($block->current_text) && $block->current_text !== $block->ai_translated_text;
                                 $score     = $block->quality_score;
                                 $level     = $score === null ? '' : ($score < 60 ? 'low' : ($score < 80 ? 'medium' : 'high'));
+                                $regionId = $ocrBlocks[$block->block_index]['region_id'] ?? null;
+                                $regionHeld = ($regionsById[$regionId]['status'] ?? null) === 'held';
                             @endphp
                             <div class="doc-block" data-block-id="{{ $block->id }}" data-block-index="{{ $block->block_index }}">
                                 <div class="doc-block__head">
@@ -273,6 +286,7 @@
                                     Block #{{ $block->block_index }} ({{ $block->block_type ?? 'block' }}) — review translation text
                                 </label>
                                 <textarea id="block-editor-{{ $block->id }}" class="doc-block__editor" name="current_text" data-block-current
+                                          @disabled($regionHeld)
                                           data-saved="{{ htmlspecialchars($block->current_text ?? '', ENT_QUOTES) }}">{{ $block->current_text ?? '' }}</textarea>
 
                                 <details class="doc-block__ref">

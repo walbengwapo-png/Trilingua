@@ -46,6 +46,9 @@ class HybridPdfPartialOutputTest extends TestCase
         $this->assertSame('scan_untranslated.pdf', $payload['download_filename']);
         $this->assertNotEmpty($payload['warnings']);
         $this->actingAs($user)->get("/history/{$history->id}")->assertOk()->assertJsonPath('sidecar.content_summary.status', 'untranslated');
+        $this->get(route('history.view', $history->id))->assertOk()->assertSee('held regions retain the original language');
+        $this->get(route('admin.review.show', $history->id))->assertOk()->assertSee('ocr_acceptance_hold');
+        $this->get('/documents')->assertOk()->assertSee('held regions retain their original language')->assertDontSee('100% Complete');
         $this->expectException(TranslationException::class);
         app(ReviewService::class)->verifyDocument($history->id, $user->id);
     }
@@ -57,5 +60,20 @@ class HybridPdfPartialOutputTest extends TestCase
             'status' => 'completed', 'source_language' => 'English', 'target_language' => 'Cebuano', 'sidecar' => ['version' => 2, 'blocks' => []]]);
         app(BlockService::class)->persistBlocks($history, []);
         $this->assertSame(2, $history->refresh()->sidecar['version']);
+    }
+
+    public function test_partial_extraction_is_not_counted_as_complete_document_volume(): void
+    {
+        $user = User::factory()->create();
+        $history = TranslationHistory::create(['user_id' => $user->id, 'translation_type' => 'document',
+            'status' => 'completed', 'source_language' => 'English', 'target_language' => 'Cebuano']);
+        app(BlockService::class)->persistBlocks($history, [
+            ['block_index' => 0, 'source_text' => 'Known native words', 'ai_translated_text' => 'Fixed translation'],
+        ], ['content_summary' => ['status' => 'partial', 'translated' => 1, 'held' => 1]]);
+        $this->assertNull($history->refresh()->document_word_count);
+        if ($history->source_word_metadata !== null) {
+            $this->assertNull($history->source_word_metadata['count']);
+            $this->assertSame('partial', $history->source_word_metadata['completeness']);
+        }
     }
 }

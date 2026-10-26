@@ -32,7 +32,16 @@ Branch: `codex/hybrid-pdf-p0-p4`.
 - Tests: 48 focused tests passed. Fixed-geometry tests cover real pixel cleanup, searchability/diacritics, non-flat holds, rules/neighbors/confidence, fit, shared assets, mixed native/link/vector and unchanged asset preservation. These are not acceptance material.
 - Real scanned/mixed OCR acceptance and owner visual sign-off cannot be completed without genuine reviewed corpus; all real categories remain HOLD. P4 hardening continues independently.
 
-## P4 - pending
+## P4 - code/Windows checks complete; release exits held
+- Sidecar v3 / render plan v2 freezes original, runtime, algorithm, font and mask hashes, geometry, fill colors and fit decisions. Regeneration uses saved masks and current block text with zero recognition/translation; rejects mismatches or unfittable edits before atomic publication. Updated fit plans persist with the published file through the PHP envelope/transaction.
+- New PDF and image-upload jobs use strict image-preserving output. v1/v2 historical reflow sidecars retain their reconstruction path. Held native entries retain source text, are not editable as translations, and incomplete documents cannot be verified.
+- Partial/untranslated labels propagate through response/status/download names, history/detail, My Documents (no false 100% label), admin region/font review and regeneration. Incomplete extraction does not become a full document word count.
+- One isolated PDF process per operation, serialized across threads/processes with a file lock. PDF/OCR descendants are contained on timeout. 50 pages, 40 MP, 60 s Tesseract calls, 8 MB aggregate encoded masks, 16 MB plan and 24 MB sidecar/result bounds. Default 900 s deadline is reduced against service/job/worker budgets; late output is refused. In-flight provider requests retain existing transport timeouts.
+- Windows verification: 179 Python tests passed; final affected-renderer/service checks 48 passed; PHP 49 tests / 239 assertions passed; browser 2 passed with all routes intercepted and no app server; pip check passed. A stale six-category readiness expectation was updated for screenshot support after the first final run failed.
+- Font tests cover all eight packaged family/weights and English/Cebuano/Filipino glyph roundtrips, combining accents and strict native punctuation without host fonts. Actual Linux execution remains unverified.
+- Index-only Python snapshot (without unrelated dirty hunks): 178 passed, 1 skipped; full working-tree suite: 179 passed. The private export contains Model files, not all external test fixtures.
+- Preservation: unrelated tracked source hashes and .env match the starting snapshots. Pre-existing Phase A hunks stay unstaged. Git emitted a pre-existing stale-worktree metadata cleanup permission warning; commits succeeded, and no checkout was removed.
+- Real OCR acceptance, independent reference review, Linux execution, visual sign-off and licensing/embedding review remain release holds. No live service or acceptance settings changed; no real category enabled.
 
 ## Release holds
 No representative corpus, independent references, passing acceptance evidence, Linux runtime sign-off, visual release sign-off or licensing determination. No real category will be enabled.

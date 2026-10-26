@@ -26,6 +26,30 @@ class ReviewDraftPublishIntegrityTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_engine_render_plan_is_persisted_with_published_file(): void
+    {
+        $admin = $this->makeAdmin();
+        $record = $this->makeDocRecord($this->makeUser());
+        $updated = ['version' => 3, 'content_summary' => ['status' => 'complete', 'held' => 0],
+            'render_plan' => ['version' => 2, 'native_fit_decisions' => ['fixed' => ['status' => 'passed']]]];
+        $storage = $this->anonStorageMock();
+        $storage->shouldReceive('read')->andReturn('fixed-bytes');
+        $storage->shouldReceive('uploadWithFallback')->once()->andReturn([
+            'backend' => StorageService::BACKEND_LOCAL, 'storage_path' => '1/translations/new.pdf',
+            'signed_url' => null, 'signed_url_expires_at' => null,
+        ]);
+        $this->app->instance(StorageService::class, $storage);
+        $manager = \Mockery::mock(TranslationManager::class);
+        $manager->shouldReceive('regenerateDocument')->once()->andReturn([
+            'body' => 'fixed-pdf-bytes', 'download_filename' => 'contract_regenerated.pdf',
+            'mime_type' => 'application/pdf', 'sidecar' => $updated,
+        ]);
+        $this->app->instance(TranslationManager::class, $manager);
+        app(ReviewService::class)->saveAndRegenerate($record->id, $admin->id, []);
+        $this->assertSame($updated, $record->fresh()->sidecar);
+        $this->assertSame('1/translations/new.pdf', $record->fresh()->storage_path);
+    }
+
     private function makeAdmin(): User
     {
         return User::factory()->create(['is_admin' => true]);

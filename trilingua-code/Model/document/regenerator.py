@@ -225,6 +225,8 @@ def reconstruct_from_sidecar(sidecar, overrides, original_file, output_file,
 
     No extraction, analysis, prepass, or translation runs here.
     """
+    if sidecar.get('version', 2) not in (1, 2, 3):
+        raise ValueError('Unsupported sidecar version')
     fmt = (sidecar.get("format") or "").lower()
     blocks = sidecar.get("blocks", [])
     layout_plan = layout_from_dict(sidecar.get("layout_plan"))
@@ -246,23 +248,49 @@ def reconstruct_from_sidecar(sidecar, overrides, original_file, output_file,
     if sidecar.get('version') == 3:
         from document.pdf_regions import sha256
         from document.reconstructor import write_pdf_preserved
+        from document.image_reconstructor import fit_text
+        from document.render_plan import validate_plan, check_bounds
         import tempfile
+        import copy
         plan = sidecar.get('render_plan') or {}
-        if plan.get('version') != 1 or sha256(original_file) != plan.get('original_sha256'):
-            raise ValueError('Unsupported render plan or original hash mismatch')
+        if plan.get('version') == 1:
+            check_bounds(plan)
+            if plan.get('image_actions') or sha256(original_file) != plan.get('original_sha256'):
+                raise ValueError('Legacy native plan hash mismatch or unsupported pixel actions')
+        else:
+            validate_plan(plan, original_file)
         held = {r.get('region_id') for r in plan['regions'] if r['status'] == 'held'}
-        edited_blocks = [b for b in edited_blocks if b.get('region_id') not in held]
+        if any(b.get('region_id') in held and b.get('text') != b.get('source_text') for b in edited_blocks):
+            raise ValueError('Held regions cannot be published as translated')
+        by_id = {b.get('region_id'):b for b in edited_blocks}
+        actions = copy.deepcopy(plan.get('image_actions', []))
+        for action in actions:
+            if action['region_id'] in held or action['region_id'] not in by_id:
+                raise ValueError('Pixel action has no eligible translated block')
+            fit = action['fit']
+            action['fit'] = fit_text(by_id[action['region_id']]['text'], fit['bbox'], fit['font_id'],
+                                     fit['initial_size'], fit['alignment'])
+        native = [b for b in edited_blocks if b.get('region_id') not in held and not b.get('image_region')]
         handle, temporary = tempfile.mkstemp(suffix='.pdf', dir=os.path.dirname(os.path.abspath(output_file)))
         os.close(handle)
         try:
-            if edited_blocks:
-                validation = write_pdf_preserved(edited_blocks, original_file, temporary, strict=True)
-                if validation.get('held'):
-                    raise ValueError('Edited text does not fit; published file retained')
-            else:
-                import shutil
-                shutil.copyfile(original_file, temporary)
+            from document.pdf_source import original_pdf
+            with original_pdf(original_file) as template:
+                if native or actions:
+                    validation = write_pdf_preserved(native, template, temporary, strict=True, image_actions=actions)
+                    if validation.get('held'):
+                        raise ValueError('Edited text does not fit; published file retained')
+                else:
+                    import shutil
+                    shutil.copyfile(template, temporary)
+            next_plan = dict(plan, image_actions=actions)
+            next_plan['native_fit_decisions'] = {b['region_id']:b.get('rendered_layout', {}) for b in native if b.get('region_id')}
+            updated = dict(sidecar, blocks=edited_blocks, render_plan=next_plan)
+            check_bounds(next_plan)
+            if len(json.dumps(updated,ensure_ascii=False).encode('utf-8')) > 24_000_000:
+                raise ValueError('Regenerated sidecar exceeds bounded payload')
             os.replace(temporary, output_file)
+            sidecar.update(updated)
         finally:
             if os.path.exists(temporary): os.unlink(temporary)
         return output_file
