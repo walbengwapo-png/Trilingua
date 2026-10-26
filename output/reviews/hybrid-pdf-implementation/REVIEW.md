@@ -43,6 +43,7 @@ Four new cases failed against the original code (native survivor identity, late 
 | A: 1fc3bf6 |183 passed (+4)|49 /239 assertions|2 passed|
 | B: d8a135d |183 passed|50 /247 assertions (+1)|2 passed|
 | C: 3205baa |192 passed (+9)|50 /247 assertions|2 passed|
+| D: ec06a41 |195 passed (+3)|50 /247 assertions|2 passed|
 
 ## Cleanup theme B: alternate verification action
 The new HTTP regression returned200 before the fix. Generic verification now dispatches document rows to verifyDocument, preserving its completeness/draft checks and transaction/audit behavior. Focused PHP suite:4 tests/28 assertions passed. Existing text-controller exception status mapping remains unchanged (500); the route can no longer return successful verification or clear partial/untranslated state. Full suites follow this theme commit.
@@ -63,3 +64,6 @@ Mutations run only in a disposable source export, restored byte-for-byte after e
 
 ## Cleanup theme D: atomic first-render output
 Both injected saved-image validation failures failed on the original writer: a new invalid output remained and an existing destination was overwritten. The public writer now stages privately, validates fully, then replaces the destination. Its call signature and render-plan shape are unchanged; same-file source destinations are rejected. All17 image-layout tests pass, including preservation of old/no output on failure and immutable original-source protection. Full suites follow this commit.
+
+## Cleanup theme E: complete status presentation
+The History regression found an unconditional100% badge; two browser cases found missing partial/untranslated status while a download is unavailable. New content-aware badges and completed-state warnings now remain explicit in both download branches. Focused PHP and four browser cases pass; full suites follow this theme commit. Stored/API state and legacy rows without the new summary are unchanged.

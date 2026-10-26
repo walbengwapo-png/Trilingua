@@ -90,4 +90,18 @@ class HybridPdfPartialOutputTest extends TestCase
             $this->assertSame($status, $history->sidecar['content_summary']['status']);
         }
     }
+
+    public function test_history_does_not_show_100_percent_for_incomplete_documents(): void
+    {
+        $user = User::factory()->create();
+        foreach (['partial', 'untranslated'] as $status) {
+            TranslationHistory::create(['user_id' => $user->id, 'translation_type' => 'document',
+                'original_filename' => 'source.pdf', 'translated_filename' => $status . '.pdf',
+                'status' => 'completed', 'source_language' => 'English', 'target_language' => 'Cebuano',
+                'sidecar' => ['content_summary' => ['status' => $status, 'held' => 1]]]);
+        }
+        $this->actingAs($user)->get('/history')->assertOk()
+            ->assertSee('Content: Partial')->assertSee('Content: Untranslated')
+            ->assertDontSee('<span class="match-badge">100%</span>', false);
+    }
 }

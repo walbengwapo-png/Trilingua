@@ -50,3 +50,30 @@ for(const status of ['partial','untranslated']){
         }finally{await page.close();}
     });
 }
+
+for(const status of ['partial','untranslated']){
+    test(`unavailable download retains ${status} content warnings`,async()=>{
+        const page=await browser.newPage();
+        const html=translationHtml();
+        await page.route('**/*',async route=>{
+            const url=new URL(route.request().url());
+            if(url.pathname==='/')return route.fulfill({contentType:'text/html',body:`<meta name="csrf-token" content="test">${html}`});
+            if(url.pathname==='/translate')return route.fulfill({json:{status:'processing',job_id:'held-job'}});
+            if(url.pathname==='/translate/status/held-job')return route.fulfill({json:{status:'completed',download_available:false,
+                content_summary:{status,translated:status==='partial'?1:0,held:2,passthrough:0},
+                warnings:['Held regions retain original content.'],message:'Download temporarily unavailable.'}});
+            return route.abort();
+        });
+        try{
+            await page.goto('https://hybrid.test/');
+            await page.locator('#file-input').setInputFiles(resolve(root,'tests/testPDFs/M1_Q1_ENGLISH 8.pdf'));
+            await page.locator('#translate-btn').click();
+            await page.waitForFunction(()=>document.querySelector('#output-text').textContent.includes('Download temporarily unavailable.'));
+            const text=await page.locator('#output-text').innerText();
+            assert.match(text,new RegExp(status));assert.match(text,/2 held regions/);
+            assert.match(await page.locator('#workbook-warning').innerText(),/original content/);
+            assert.doesNotMatch(await page.locator('#translate-progress-stage').innerText(),/Translation complete/);
+            assert.equal(await page.locator('#output-download').getAttribute('hidden'),'');
+        }finally{await page.close();}
+    });
+}

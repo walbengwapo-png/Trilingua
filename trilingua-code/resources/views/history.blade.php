@@ -118,6 +118,7 @@
                 @foreach ($groupRecords as $record)
                 @php
                     $isDoc    = ($record['translation_type'] ?? 'document') === 'document';
+                    $contentStatus = $record['sidecar']['content_summary']['status'] ?? null;
                     $matchPct = $isDoc
                         ? 100
                         : min(100, (int)(
@@ -141,7 +142,7 @@
                      data-id="{{ $record['id'] }}">
 
                     <div class="history-card__header">
-                        <span class="match-badge">{{ $matchPct }}%</span>
+                        <span class="match-badge">{{ $contentStatus ? ucfirst($contentStatus) : $matchPct . '%' }}</span>
                         <span class="type-badge type-badge--{{ $isDoc ? 'doc' : 'text' }}">
                             {{ $isDoc ? 'Document' : 'Text' }}
                         </span>

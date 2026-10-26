@@ -505,11 +505,11 @@
                 var data = null;
                 try { data = JSON.parse(raw); } catch (e) {}
 
+                if (data && data.status === 'completed' && Array.isArray(data.warnings) && data.warnings.length) {
+                    workbookWarning.textContent = [workbookWarning.textContent].concat(data.warnings).filter(Boolean).join(' ');
+                    workbookWarning.hidden = false;
+                }
                 if (data && data.status === 'completed' && (data.download_url || data.download_data)) {
-                    if (Array.isArray(data.warnings) && data.warnings.length) {
-                        workbookWarning.textContent = [workbookWarning.textContent].concat(data.warnings).filter(Boolean).join(' ');
-                        workbookWarning.hidden = false;
-                    }
                     stopPolling(true);
                     outputSaveWarning.hidden = true;
                     hideProgress();
@@ -531,8 +531,12 @@
 
                 if (data && data.status === 'completed' && data.download_available === false) {
                     outputDownload.setAttribute('hidden', '');
-                    outputText.textContent = data.message || 'Translation complete. Download temporarily unavailable; checking again shortly.';
-                    setProgressStage('Translation complete — checking download availability…');
+                    const summary = data.content_summary;
+                    const incomplete = summary && summary.status !== 'complete';
+                    outputText.textContent = incomplete
+                        ? `${summary.status}: ${summary.translated} translated, ${summary.held} held regions. Held content remains in the original language. ${data.message || 'Download temporarily unavailable.'}`
+                        : data.message || 'Translation complete. Download temporarily unavailable; checking again shortly.';
+                    setProgressStage(incomplete ? 'Held content — checking download availability…' : 'Translation complete — checking download availability…');
                     return;
                 }
 
