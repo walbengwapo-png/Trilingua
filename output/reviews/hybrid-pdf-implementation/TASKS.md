@@ -17,6 +17,6 @@ Excluded: P5/outlined replacement, corpus creation, live providers, services, li
 - [x] Diagnostic intake/variant/reference/manifest tooling and capture guide
 - [x] Service held-state smoke and isolated signed synthetic demonstration
 - [x] Four isolated mutations killed and restored
-- [ ] Final after-cleanup suites and preservation report (see FINISH.md)
+- [x] Final after-cleanup suites and preservation report:254 Python,52 PHP/255 assertions,4 browser passed (see FINISH.md)
 
 Real corpus/reviewer/signing deployment, Linux execution, visual sign-off and licensing remain owner holds.

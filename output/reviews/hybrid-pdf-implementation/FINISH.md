@@ -12,7 +12,7 @@
 | 3 Memory/scratch/timeouts |120 MP configurable default aggregate admission before hash-based decode; over-budget images held. Cleaned arrays stage to disk and are released per image. Parent-owned scratch leases/finally cleanup and startup stale sweep. Request-local remaining-budget transport/retry caps across translation/analysis providers. |72e9953|234 ->242 /52(255) /4|
 | 4 Feasibility kit | Hashed intake/metadata, split checks, 300/400 DPI/deskew/binarize diagnostics, blank independent-review sheets, reference import and evaluator v2 manifest preparation. Missing geometry yields no invented layout scores. Capture guide and exact commands below. |36cc837|242 ->246 /52(255) /4|
 | 5 Service smoke | Synthetic upload-equivalent image-only output is untranslated; mixed output is partial with zero translated raster regions (user-confirmed interpretation). Original pixels intact. Signed fixture replacement is demonstrated only under test-owned injection; every report body leaf is tamper-tested. |14e228f|246 ->250 /52(255) /4|
-| 6 Cleanup/integration | Real PHP JSON round-trip regression, canonical HMAC representation, stricter reference/geometry checks, image-conversion admission and failed-lease cleanup; docs/inventory/preservation. |final cleanup commit|Before 250 /52(255) /4; final full suites running|
+| 6 Cleanup/integration | Real PHP JSON round-trip regression, canonical HMAC representation, stricter reference/geometry checks, image-conversion admission and failed-lease cleanup; docs/inventory/preservation. |a410a7a|250 ->254 /52(255) /4|
 
 Every package's after-suites also form the next package's before-suites; no intervening code change was omitted. All suites use the preserved local working tree, not a clean deployment. Expanded Python handoff command adds `test_ocr_trust.py`, `test_pdf_finish_resources.py`, `test_provider_job_budget.py`, `test_ocr_kit.py`, `test_hybrid_finish_smoke.py`. Raw `finish-<package>-{python,php,browser}.log` files stay local/uncommitted.
 
@@ -66,6 +66,8 @@ New-Item -ItemType Directory -Force $work, $keys | Out-Null
 
 Recorded transient checks: one floating-point comparison tolerance in a new test; two new Gemini mocks initially used the wrong response format for the imported configuration; initial smoke assertions used the wrong warning-envelope path and overly broad test key policy. These were corrected without production configuration changes. The PHP round-trip check exposed and fixed a real canonicalization bug. Git's existing stale-worktree cleanup permission warning remains; commits succeed and no checkout was removed.
 
-Result: engineering packages implemented; final cleanup suites pending below.
-Checked: per-package full suites, four safety mutations, synthetic memory/scratch/service smoke and preservation.
+Result: all six engineering packages completed and committed; real-document replacement remains HOLD.
+Checked: final 254 Python tests, 52 PHP tests/255 assertions, 4 browser tests passed; per-package suites, four mutations, synthetic memory/scratch/service smoke and preservation.
 Remaining: genuine signed held-out evidence and deployment configuration; Linux, visual and licensing owner approval.
+
+Final cleanup verification: 254 Python passed (81.94 s), 52 PHP/255 assertions passed, 4 browser passed. No skipped tests in these final suites. Cleanup source commit: a410a7a; this final report update changes documentation/evidence only. A transient index lock was removed only after confirming no Git process was running; no source reset/stash operation was used.

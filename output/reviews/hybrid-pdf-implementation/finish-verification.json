@@ -13,5 +13,14 @@
   "acceptance_settings_unchanged": true,
   "genuine_corpus_or_production_report_created": false,
   "services_started": false,
-  "real_provider_or_network_connections_made": false
+  "real_provider_or_network_connections_made": false,
+  "final_source_commit": "a410a7a",
+  "final_tests": {
+    "python_passed": 254,
+    "php_tests": 52,
+    "php_assertions": 255,
+    "browser_passed": 4,
+    "skipped": 0
+  },
+  "final_mutations_killed_and_restored": 4
 }

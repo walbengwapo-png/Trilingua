@@ -48,3 +48,5 @@ No representative corpus, independent references, passing acceptance evidence, L
 
 ## Engineering finish
 Follow-up implementation on `codex/hybrid-pdf-finish`: report HMAC and evaluator issuance, signed plan v3 with immutable block metadata and PHP JSON canonicalization,120 MP default aggregate admission, disk-staged cleaned images, parent scratch cleanup/stale leases, provider timeout/retry caps, diagnostic OCR kit, and held/signed-fixture service smoke. All four requested safety mutations were killed in a private export and restored. Current package results, owner commands and remaining real-evidence/Linux/rights holds are in `FINISH.md`. No real input was processed or acceptance setting changed.
+
+Final engineering-finish source commit `a410a7a`: **254 Python tests passed;52 PHP tests/255 assertions passed;4 browser tests passed**. All4 requested final mutations were killed/restored. See `FINISH.md` for the exact collection/key/evaluator commands and remaining genuine-evidence/Linux/visual/licensing holds.

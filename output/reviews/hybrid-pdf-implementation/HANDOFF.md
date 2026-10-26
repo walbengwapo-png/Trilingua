@@ -79,3 +79,5 @@ Unrelated initial Phase A/provider/admin changes remain uncommitted. Mixed files
 
 ## Engineering finish (26 October 2026)
 The follow-up branch is `codex/hybrid-pdf-finish`, based on reviewed `eb8dff7`. Signed evaluator reports and signed plan v3 replace the previous self-asserted trust boundary. Aggregate pixel admission, per-image disk staging, parent scratch leases/sweep and request-local transport caps are implemented. The diagnostic collection/reference kit and exact owner commands are in `trilingua-code/Model/tools/ocr_kit/README.md`. See `FINISH.md` for package commits, current tests and limitations. Earlier counts/version descriptions above describe the original P0-P4 handoff, not the final protocol. Real replacement remains HOLD; no genuine corpus/report, live setting, key deployment or service start was performed.
+
+Final engineering-finish source commit `a410a7a`: **254 Python tests passed;52 PHP tests/255 assertions passed;4 browser tests passed**. All4 requested final mutations were killed/restored. See `FINISH.md` for the exact collection/key/evaluator commands and remaining genuine-evidence/Linux/visual/licensing holds.
