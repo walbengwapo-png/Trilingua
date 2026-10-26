@@ -599,14 +599,14 @@ class DocumentPipeline:
     # ── In-place Translation ────────────────────────────────────────────────
 
     def _pdf_sidecar(self, sidecar, extraction, validation, output_file):
-        from document.pdf_regions import content_summary
+        from document.pdf_regions import content_summary, completed_status
         held = {r['region_id']:r['reason'] for r in (validation or {}).get('held', [])}
         entries = {b.get('region_id'): b for b in sidecar['blocks']}
         for region in extraction['regions']:
             if region['status'] == 'pending':
                 entry = entries.get(region['region_id'], {})
                 region['status'] = ('held' if region['region_id'] in held else
-                                    'passthrough' if entry.get('passthrough') else 'translated')
+                                    completed_status(entry))
                 region['reason'] = held.get(region['region_id'])
                 if region['status'] == 'held':
                     extraction['warnings'].append(f"Page {region['page']+1}: original region retained ({region['reason']}).")

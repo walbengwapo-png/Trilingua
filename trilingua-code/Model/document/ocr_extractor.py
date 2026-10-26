@@ -6,12 +6,15 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import time
+import unicodedata
 
 PACKS = {"English": "eng", "Cebuano": "ceb", "Filipino": "fil"}
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg"}
 MAX_PIXELS = 40_000_000
-SETTINGS = {"version": 2, "dpi": 300, "psm": 3, "grouping": "paragraph-with-word-geometry",
-            "preprocessing": "exif-transpose,grayscale,autocontrast", "retain_uncertain_words": True}
+SETTINGS = {"version": 3, "dpi": 300, "psm": 3, "grouping": "hocr-paragraph-word-line-baseline-v1",
+            "preprocessing": "exif-transpose,grayscale,autocontrast", "retain_uncertain_words": True,
+            "retry": "uncertain-paragraph,32px-pad,min200,4/3-lanczos,exact-NFC-text,all-words80,60s-total,v1"}
 
 
 class OCRUnavailable(ValueError):
@@ -100,47 +103,85 @@ def prepare_image(image):
     return ImageOps.autocontrast(image.convert("L"))
 
 
-def recognize_image(image, pack, page=0, page_size=None):
-    """Shared production/evaluation path. Retain uncertain words for review."""
+def _recognize_pass(image, pack, page, timeout=60):
+    import pytesseract
+    from document.ocr_geometry import parse_hocr
+    try:
+        raw = pytesseract.image_to_pdf_or_hocr(image, lang=pack, extension='hocr',
+                                              config="--psm 3 --dpi 300", timeout=timeout)
+        return parse_hocr(raw, image.size)
+    except (RuntimeError, ValueError, pytesseract.TesseractError, pytesseract.TesseractNotFoundError) as exc:
+        raise OCRUnavailable(f"OCR failed on page {page + 1}: {exc}") from exc
+
+
+def _retry_uncertain(image, words, pack, page, budget, deadline):
+    from PIL import Image, ImageOps
+    from document.ocr_geometry import transform_words
+    if time.monotonic() >= deadline:return words, 'time_budget_hold'
+    x0 = max(0, math.floor(min(w['position'][0] for w in words))-32)
+    y0 = max(0, math.floor(min(w['position'][1] for w in words))-32)
+    x1 = min(image.width, math.ceil(max(w['position'][2] for w in words))+32)
+    y1 = min(image.height, math.ceil(max(w['position'][3] for w in words))+32)
+    width, height = max(200, x1-x0), max(200, y1-y0)
+    size = (math.ceil(width*4/3), math.ceil(height*4/3))
+    needed = (x1-x0)*(y1-y0) + width*height + size[0]*size[1]
+    if size[0]*size[1] > MAX_PIXELS or needed > budget['remaining']:
+        return words, 'pixel_budget_hold'
+    budget['remaining'] -= needed
+    crop = image.crop((x0,y0,x1,y1))
+    left, top = (width-crop.width)//2, (height-crop.height)//2
+    corners = [crop.getpixel(p) for p in ((0,0),(crop.width-1,0),(0,crop.height-1),(crop.width-1,crop.height-1))]
+    padded = ImageOps.expand(crop, (left,top,width-crop.width-left,height-crop.height-top), fill=sorted(corners)[2])
+    scaled = padded.resize(size, Image.Resampling.LANCZOS)
+    try:
+        remaining = deadline-time.monotonic()
+        if remaining <= 0:return words, 'time_budget_hold'
+        candidate = [w for group in _recognize_pass(scaled, pack, page, remaining).values() for w in group]
+    except OCRUnavailable:
+        return words, 'retry_failed'
+    def text(items):
+        return unicodedata.normalize('NFC', ' '.join(' '.join(w['text'].split()) for w in items))
+    if not candidate or text(candidate) != text(words):
+        return words, 'text_disagreement'
+    if any(w['confidence'] < 80 for w in candidate):
+        return words, 'confidence_hold'
+    mapped = transform_words(candidate, width/size[0], height/size[1], x0-left, y0-top)
+    if any(not (0 <= w['position'][0] < w['position'][2] <= image.width and
+                0 <= w['position'][1] < w['position'][3] <= image.height) for w in mapped):
+        return words, 'geometry_hold'
+    return mapped, 'accepted'
+
+
+def recognize_image(image, pack, page=0, page_size=None, retry_budget=None):
+    """Shared production/evaluation path, retaining actual line baselines."""
     try:
         import pytesseract
     except ImportError as exc:
         raise OCRUnavailable("OCR requires the pytesseract Python package.") from exc
+    from document.ocr_geometry import transform_words
     image = prepare_image(image)
     pytesseract.pytesseract.tesseract_cmd = tesseract_command()
-    try:
-        data = pytesseract.image_to_data(image, lang=pack, config="--psm 3 --dpi 300",
-                                        output_type=pytesseract.Output.DICT, timeout=60)
-    except (RuntimeError, pytesseract.TesseractError, pytesseract.TesseractNotFoundError) as exc:
-        raise OCRUnavailable(f"OCR failed on page {page + 1}: {exc}") from exc
+    deadline = time.monotonic()+60
+    groups = _recognize_pass(image, pack, page)
+    if retry_budget is None:
+        from document.pixel_budget import limit
+        retry_budget = {'remaining': max(0, limit()-image.width*image.height)}
     width, height = page_size or (image.width * 72 / 300, image.height * 72 / 300)
     sx, sy = width / image.width, height / image.height
-    groups = {}
-    for i, text in enumerate(data["text"]):
-        text = text.strip()
-        if not text:
-            continue
-        try:
-            confidence = float(data["conf"][i])
-            if not math.isfinite(confidence):
-                confidence = -1
-        except (ValueError, TypeError):
-            confidence = -1
-        x, y = data["left"][i] * sx, data["top"][i] * sy
-        box = [x, y, x + data["width"][i] * sx, y + data["height"][i] * sy]
-        key = (data["block_num"][i], data["par_num"][i])
-        groups.setdefault(key, []).append({"text": text, "confidence": confidence, "position": box,
-                                          "line": data['line_num'][i], 'paragraph': list(key)})
     blocks = []
     for words in groups.values():
+        retry = 'not_needed'
+        if any(w['confidence'] < 80 for w in words):
+            words, retry = _retry_uncertain(image, words, pack, page, retry_budget, deadline)
+        words = transform_words(words, sx, sy)
         box = [min(w["position"][0] for w in words), min(w["position"][1] for w in words),
                max(w["position"][2] for w in words), max(w["position"][3] for w in words)]
         blocks.append({"type": "paragraph", "text": " ".join(w["text"] for w in words),
                        "page": page, "position": box, "pdf_coordinates": "display",
                        "style": {"font": "helv", "font_size": 11, "color": 0, "bold": False},
                        "ocr": {"pack": pack, "confidence": sum(w["confidence"] for w in words) / len(words),
-                               "words": words, 'reading_order': len(blocks),
-                               "uncertain_words": [w for w in words if w["confidence"] < 60]},
+                               "words": words, 'reading_order': len(blocks), 'retry': retry,
+                               "uncertain_words": [w for w in words if w["confidence"] < 80]},
                        "ocr_reflow": True})
     if not blocks:
         raise OCRUnavailable(f"OCR found no readable text on page {page + 1}; the page was not silently omitted.")

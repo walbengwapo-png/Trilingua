@@ -59,8 +59,9 @@ def inventory_pdf(path, native_blocks, language, column_mode='auto', source_iden
     with fitz.open(path) as doc:
         if len(doc) > MAX_PAGES:
             raise ValueError('Hybrid PDF limit is 50 pages')
-        from document.pixel_budget import image_inventory, BUDGET_REASON
+        from document.pixel_budget import image_inventory, BUDGET_REASON, limit
         all_images = image_inventory(doc)
+        retry_budget = {'remaining': max(0, limit()-doc._hybrid_pixels_used)}
         uses = Counter(i['xref'] for page_images in all_images for i in page_images)
         for number, page in enumerate(doc):
             if page.rect.get_area() * (300 / 72) ** 2 > MAX_PIXELS:
@@ -109,7 +110,8 @@ def inventory_pdf(path, native_blocks, language, column_mode='auto', source_iden
                     try:
                         occurrence_safety(doc, number, image['xref'])
                         source = source_image(doc, image['xref'])
-                        found = recognize_image(source, require_ready(language, 'scan'), number, source.size)
+                        found = recognize_image(source, require_ready(language, 'scan'), number, source.size,
+                                                retry_budget=retry_budget)
                         entry.update(status='container', reason=None)
                         for recognized in found:
                             words = recognized['ocr']['words']
@@ -122,7 +124,8 @@ def inventory_pdf(path, native_blocks, language, column_mode='auto', source_iden
                             pixel_target = fitz.Rect((target.x0-box.x0)/sx, (target.y0-box.y0)/sy,
                                                       (target.x1-box.x0)/sx, (target.y1-box.y0)/sy)
                             child = region('raster_text', target, parent_region_id=entry['region_id'])
-                            if recognized['ocr']['confidence'] < 80 or any(pixel_target.intersects(n) for n in neighbors):
+                            if (recognized['ocr']['confidence'] < 80 or any(w['confidence'] < 80 for w in words)
+                                    or any(pixel_target.intersects(n) for n in neighbors)):
                                 child['reason'] = 'low_confidence_or_neighbor_overlap'
                                 continue
                             recognized.update(position=list(target), region_id=child['region_id'], ocr_reflow=False,
@@ -156,6 +159,11 @@ def inventory_pdf(path, native_blocks, language, column_mode='auto', source_iden
             warnings.append(f"Page {r['page'] + 1}: original region retained ({r['reason']}).")
     return blocks, {'pages': pages, 'regions': regions, 'warnings': warnings,
                     'original_sha256': identity, 'signals_version': SIGNALS_VERSION}
+
+
+def completed_status(block):
+    unchanged = bool(block.get('source_text')) and block.get('text') == block['source_text']
+    return 'passthrough' if block.get('passthrough') or unchanged else 'translated'
 
 
 def content_summary(regions):

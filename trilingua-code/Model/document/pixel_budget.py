@@ -37,6 +37,7 @@ def image_inventory(doc):
         pages.append(images)
     doc._hybrid_image_inventory = pages
     doc._hybrid_budget_held = held
+    doc._hybrid_pixels_used = used
     return pages
 
 

@@ -279,7 +279,11 @@ def reconstruct_from_sidecar(sidecar, overrides, original_file, output_file,
                 else:
                     import shutil
                     shutil.copyfile(template, temporary)
-            next_plan = dict(plan, image_actions=actions)
+            next_plan = dict(plan, image_actions=actions, regions=copy.deepcopy(plan['regions']))
+            from document.pdf_regions import completed_status
+            for region in next_plan['regions']:
+                if region['status'] in {'translated', 'passthrough'} and region['region_id'] in by_id:
+                    region['status'] = completed_status(by_id[region['region_id']])
             next_plan['native_fit_decisions'] = {b['region_id']:b.get('rendered_layout', {}) for b in native if b.get('region_id')}
             next_plan = sign_plan(next_plan, edited_blocks)
             from document.pdf_regions import content_summary

@@ -272,11 +272,20 @@ def _is_garbage_block(text, bbox, page_width, page_height):
     return False
 
 
-def _detect_block_alignment(bbox, page_width, page_height):
-    """Detect text alignment from bounding box position.
-
-    Returns 'left', 'center', 'right', or 'justify'.
-    """
+def _detect_block_alignment(bbox, page_width, page_height, lines=()):
+    """Prefer line-edge evidence over the position of a paragraph's union box."""
+    if len(lines) > 1:
+        left = [line['x0'] for line in lines]
+        right = [line['text_x1'] for line in lines]
+        centers = [(a+b)/2 for a,b in zip(left,right)]
+        tolerance = 2
+        aligned = lambda edges: max(edges)-min(edges) <= tolerance
+        if aligned(left):
+            if (len(lines) > 2 and aligned(right[:-1]) and right[-1] < min(right[:-1])-tolerance):
+                return 'justify'
+            return 'left'
+        if aligned(right):return 'right'
+        if aligned(centers):return 'center'
     x0, y0, x1, y1 = bbox
     block_width = x1 - x0
     left_margin = x0
@@ -578,7 +587,7 @@ def read_pdf(file_path, column_mode="auto"):
                 "position": list(group_bbox),
                 "page":     page_num,
                 "pdf_coordinates": "display",
-                "alignment": _detect_block_alignment(group_bbox, pw, ph),
+                "alignment": _detect_block_alignment(group_bbox, pw, ph, group),
                 "style":    {"font_size": first["size"], "font": first["font"],
                              "font_original": first["font_original"],
                              "color": first["color"], "bold": first["bold"],

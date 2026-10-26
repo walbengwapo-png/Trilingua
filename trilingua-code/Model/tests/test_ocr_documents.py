@@ -37,12 +37,10 @@ def mixed_pdf(path):
 
 def test_decimal_confidence_and_uncertain_words_are_retained(monkeypatch):
     import pytesseract
-    data = {"text": ["", "Clear", "uncertain", "unknown"],
-            "conf": [-1, "98.25", "22.5", "nan"],
-            "left": [0, 100, 300, 500], "top": [0, 200, 200, 200],
-            "width": [0, 150, 150, 150], "height": [0, 30, 30, 30],
-            "block_num": [0, 1, 1, 1], "par_num": [0, 1, 1, 1], "line_num": [0, 1, 1, 1]}
-    monkeypatch.setattr(pytesseract, "image_to_data", Mock(return_value=data))
+    from .test_ocr_functional import hocr
+    data=hocr([('Clear',98.25,[100,200,250,230]),('uncertain',22.5,[300,200,450,230]),
+               ('unknown','nan',[500,200,650,230])],box='100 200 650 230')
+    monkeypatch.setattr(pytesseract, "image_to_pdf_or_hocr", Mock(return_value=data))
     blocks = ocr.recognize_image(Image.new("RGB", (1000, 1000)), "eng", page=2, page_size=(500, 500))
     assert blocks[0]["text"] == "Clear uncertain unknown"
     assert blocks[0]["position"] == [50, 100, 325, 115]
@@ -53,7 +51,7 @@ def test_decimal_confidence_and_uncertain_words_are_retained(monkeypatch):
 
 def test_empty_recognition_is_an_explicit_failure(monkeypatch):
     import pytesseract
-    monkeypatch.setattr(pytesseract, "image_to_data", lambda *a, **k: {"text": []})
+    monkeypatch.setattr(pytesseract, "image_to_pdf_or_hocr", lambda *a, **k: b"<html></html>")
     with pytest.raises(ocr.OCRUnavailable, match="not silently omitted"):
         ocr.recognize_image(Image.new("RGB", (300, 300)), "eng")
 

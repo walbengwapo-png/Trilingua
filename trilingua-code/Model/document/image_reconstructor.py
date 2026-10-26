@@ -12,7 +12,7 @@ import fitz
 from PIL import Image
 
 FONT_ROOT = Path(__file__).resolve().parents[1] / 'assets' / 'fonts'
-ALGORITHM_VERSION = 1
+ALGORITHM_VERSION = 2
 MAX_PIXELS = 40_000_000
 MAX_MASK_BYTES = 16_000_000
 
@@ -115,13 +115,9 @@ def prepare_action(image, words, target, image_bbox, target_bbox, font_id='NotoS
             raise ImageHold('Low confidence word geometry')
         geometry[max(0,y0-2):min(image.height,y1+2), max(0,x0-2):min(image.width,x1+2)] = 1
     if not geometry.any(): raise ImageHold('No verified word geometry')
-    lines = {}
-    for word in words:
-        lines.setdefault(word.get('line', 0), []).append(word['position'])
-    for boxes in lines.values():
-        heights = [b[3]-b[1] for b in boxes]
-        if len(boxes) > 1 and np.ptp([b[3] for b in boxes]) > max(2, np.median(heights)*.3):
-            raise ImageHold('Rotated/curved baseline is unsupported')
+    from document.ocr_geometry import validate_baselines
+    try:validate_baselines(words)
+    except ValueError as exc:raise ImageHold(str(exc)) from exc
     protected = np.zeros_like(geometry)
     for box in exclusions:
         x0, y0, x1, y1 = map(int, box)
@@ -136,7 +132,10 @@ def prepare_action(image, words, target, image_bbox, target_bbox, font_id='NotoS
         delta[row:row+64] = np.max(np.abs(np.subtract(pixels[row:row+64], background, dtype=np.float32)), axis=2)
     foreground = (delta > 8).astype(np.uint8)
     horizontal = cv2.morphologyEx(foreground, cv2.MORPH_OPEN, np.ones((1, max(25,image.width//8)), np.uint8))
-    vertical = cv2.morphologyEx(foreground, cv2.MORPH_OPEN, np.ones((max(25,image.height//8),1), np.uint8))
+    # Short image strips otherwise mistake tall letter stems for table rules.
+    glyph_height = float(np.median([w['position'][3]-w['position'][1] for w in words]))
+    vertical = cv2.morphologyEx(foreground, cv2.MORPH_OPEN,
+                               np.ones((max(25,image.height//8,math.ceil(glyph_height*1.5)),1), np.uint8))
     rules = np.zeros_like(geometry)
     for opened in (horizontal, vertical):
         n, labels, stats, _ = cv2.connectedComponentsWithStats(opened, connectivity=8)
@@ -352,14 +351,18 @@ def estimate_style(image, words, scale):
             source = image.crop(box).convert('L')
             array = np.array(source)
             actual = np.abs(array.astype(float)-bg) > 20
+            ink = Image.fromarray(actual.astype('uint8')*255).getbbox()
+            if not ink:continue
+            actual = actual[ink[1]:ink[3],ink[0]:ink[2]]
             font = ImageFont.truetype(str(path), max(10, source.height*2))
             bounds = font.getbbox(w['text'])
             if bounds[2] <= bounds[0] or bounds[3] <= bounds[1]: continue
             sample = Image.new('L', (bounds[2]-bounds[0],bounds[3]-bounds[1]), 0)
             ImageDraw.Draw(sample).text((-bounds[0],-bounds[1]), w['text'], font=font, fill=255)
-            candidate = np.array(sample.resize(source.size)) > 100
+            sample = sample.crop(sample.getbbox())
+            candidate = np.array(sample.resize((actual.shape[1],actual.shape[0]))) > 100
             results.append(2*(candidate & actual).sum()/max(1,candidate.sum()+actual.sum()))
-            sizes.append(source.height * font.size/(bounds[3]-bounds[1]) * scale)
+            sizes.append(actual.shape[0] * font.size/sample.height * scale)
         if results: scores.append((sum(results)/len(results),font_id,float(np.median(sizes))))
     scores.sort(reverse=True)
     if not scores or scores[0][0] < .6:
