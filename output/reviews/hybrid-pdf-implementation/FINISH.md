@@ -7,7 +7,7 @@ Real-document replacement remains HOLD. No real corpus, reviewer sign-off or pro
 1. Report HMAC trust, evaluator issuance, key/verify CLI: implemented. P1 full suites:229 Python,52 PHP/254 assertions,4 browser passed.
 2. Signed render-plan provenance and PHP persistence: implemented. P2 full suites:234 Python,52 PHP/255 assertions,4 browser passed.
 3. Aggregate pixel budget, bounded assembly, parent scratch and provider deadline cap: implemented; focused72 tests passed. Full suites follow its commit.
-4. Diagnostic intake/feasibility/reference/manifest kit — pending.
+4. Diagnostic intake/feasibility/reference/manifest kit: implemented; focused26 tests passed and both CLIs help-smoked. Kit output is diagnostic; checked geometry is required for layout scores; blank reviewer sheets create no sign-off. Exact commands and capture guide are in Model/tools/ocr_kit/README.md.
 5. Held-state service smoke and isolated signed-fixture test — pending.
 6. Mutation checks, inventory/docs/preservation — pending.
 
@@ -23,3 +23,5 @@ P1 post-package:229 Python,52 PHP/254 assertions,4 browser passed. P2 full suite
 Resource probe:16 synthetic images x240,000 pixels,720,000-pixel test budget:3 admitted,13 held before hash lookup. Peak19,523,120 bytes via tracemalloc (does not include MuPDF native heap); arrays stage per image to owned scratch before any stream mutation. Hard-kill scratch cleanup and active/stale lease tests pass. Provider transport caps and retry waits use request-local remaining deadlines; no provider call was made. First focused run had one floating-point assertion boundary failure, corrected with a1-microsecond comparison tolerance.
 
 First resource full run:240 passed,2 mock failures. Server import selected the configured Interactions model while new mocks supplied generateContent responses. Tests now select their mocked model explicitly; no production model/configuration change. Full rerun follows.
+
+Resource post-package:242 Python,52 PHP/255 assertions,4 browser passed. Package4 also replaces deterministic fixture-key test literals with random temporary secrets; no key is checked in. No real collection/reference/manifest was created.

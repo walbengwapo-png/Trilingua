@@ -1,5 +1,6 @@
 """HMAC/score contract tests on explicitly non-production synthetic material."""
 import json
+import secrets
 import pytest
 from tests.ocr_fixture_trust import fixture_report
 from document import artifact_auth as auth, report_trust as trust, ocr_extractor as ocr
@@ -38,7 +39,7 @@ def test_invalid_signed_reports_fail_closed(tmp_path,monkeypatch,fault):
 
 
 def test_production_rejects_fixture_key_and_fixture_material_without_config_switch(tmp_path):
-    key=tmp_path/'key.json';key.write_text(json.dumps({'version':1,'purpose':'acceptance','material':'test_fixture','secret':'12'*32}))
+    key=tmp_path/'key.json';key.write_text(json.dumps({'version':1,'purpose':'acceptance','material':'test_fixture','secret':secrets.token_hex(32)}))
     with pytest.raises(ValueError,match='Fixture keys'):auth.sign({},key,'acceptance')
     with pytest.raises(ValueError,match='fixture'):trust.real_material({'material':'test_fixture'},{'material':'test_fixture'})
 

@@ -1,6 +1,7 @@
 """Synthetic-only trust harness. Production config cannot install these patches."""
 import hashlib
 import json
+import secrets
 from datetime import date
 from PIL import Image
 
@@ -13,7 +14,7 @@ def fixture_report(tmp_path, monkeypatch, categories=('scan',)):
              'installed_packs': ['eng'], 'pack_sha256': {'eng': 'fixture-not-a-real-pack'}}
     key = tmp_path/'fixture-key.json'
     key.write_text(json.dumps({'version': 1, 'purpose': 'acceptance', 'material': 'test_fixture',
-                               'secret': '12'*32}))
+                               'secret': secrets.token_hex(32)}))
     manifest = {'schema_version': 2, 'material': 'test_fixture', 'cases': [],
                 'corpus_review': {'reviewers': ['AUTOMATED TEST, NOT A HUMAN REVIEWER'],
                     'reviewer': 'AUTOMATED TEST', 'review_date': date.today().isoformat(),

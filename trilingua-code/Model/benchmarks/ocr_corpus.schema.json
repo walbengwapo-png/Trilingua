@@ -5,7 +5,8 @@
   "required": [
     "schema_version",
     "cases",
-    "corpus_review"
+    "corpus_review",
+    "material"
   ],
   "properties": {
     "schema_version": {
@@ -173,7 +174,10 @@
       "required": [
         "reviewer",
         "frozen_at",
-        "coverage_reviewed"
+        "coverage_reviewed",
+        "reviewers",
+        "review_date",
+        "attestation"
       ],
       "properties": {
         "reviewer": {
@@ -186,8 +190,31 @@
         },
         "coverage_reviewed": {
           "type": "boolean"
+        },
+        "reviewers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "review_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "attestation": {
+          "type": "string",
+          "minLength": 1
         }
       }
+    },
+    "material": {
+      "enum": [
+        "real",
+        "test_fixture",
+        "diagnostic"
+      ]
     }
   }
 }

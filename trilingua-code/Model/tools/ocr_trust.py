@@ -20,7 +20,13 @@ def main():
         generate_key(args.output, args.purpose)
         print('Key created outside repository; restrict access to the service/evaluator owner.')
     else:
-        scores = verify_report(load_json(args.report), args.key_file, args.manifest)
+        from document.ocr_extractor import readiness
+        report = load_json(args.report)
+        scores = verify_report(report, args.key_file, args.manifest)
+        state = readiness()
+        for scope in scores:
+            language, category = scope.split(' / ')
+            verify_report(report, args.key_file, args.manifest, state, language, category)
         print(json.dumps({'signature_and_contract_valid': True, 'scope_scores': scores}))
 
 
