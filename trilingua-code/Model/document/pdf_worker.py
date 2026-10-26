@@ -61,12 +61,14 @@ def check_deadline(deadline):
         raise TimeoutError('Whole PDF job deadline exceeded; no output published')
 
 
-def _execute(connection, operation, args):
+def _execute(connection, operation, args, scratch=None):
     from document.pdf_source import original_pdf
     from contextlib import ExitStack
     stack=ExitStack()
     try:
         containment = _contain_children()
+        if scratch:
+            os.environ['OCR_JOB_SCRATCH'] = scratch
         original = args[0] if operation != 'regenerate' else None
         if operation in {'extract','inspect','render','preserve'}:
             args=(stack.enter_context(original_pdf(original)),*args[1:])
@@ -121,6 +123,7 @@ def run_pdf(operation, *args, deadline=None):
     process = None
     receiving = sending = None
     lockfile = None
+    scratch = None
     try:
         check_deadline(deadline)
         lockfile = open(Path(tempfile.gettempdir())/'trilingua-pdf-worker.lock','a+b')
@@ -139,8 +142,11 @@ def run_pdf(operation, *args, deadline=None):
             except OSError:
                 time.sleep(min(.05,max(.001,deadline-time.monotonic())))
         context = multiprocessing.get_context('spawn')
+        from document.job_scratch import owned_scratch
+        scratch = owned_scratch()
+        directory = scratch.__enter__()
         receiving, sending = context.Pipe(duplex=False)
-        process = context.Process(target=_execute, args=(sending, operation, args), daemon=True)
+        process = context.Process(target=_execute, args=(sending, operation, args, directory), daemon=True)
         process.start()
         sending.close()
         if not receiving.poll(max(.001,deadline-time.monotonic())):
@@ -179,4 +185,7 @@ def run_pdf(operation, *args, deadline=None):
                     try:
                         if lockfile is not None: lockfile.close()
                     finally:
-                        _LOCK.release()
+                        try:
+                            if scratch is not None: scratch.__exit__(None, None, None)
+                        finally:
+                            _LOCK.release()

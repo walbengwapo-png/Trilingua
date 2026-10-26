@@ -17,6 +17,7 @@ from urllib.parse import urlsplit
 from dto.responses import TranslationResponse
 from dto.pipeline import ProviderCapabilities, TranslationUnitResult
 from .base import TranslationProvider
+from .request_budget import transport_timeout, retry_sleep
 
 
 # Opt-in metadata-only diagnostics (GPTOSS_DIAGNOSTIC=1). Fires only on EMPTY
@@ -160,7 +161,7 @@ class GPTOSSProvider(TranslationProvider):
                     self._api_url,
                     headers=self._headers,
                     json=payload,
-                    timeout=(10, request_timeout),
+                    timeout=transport_timeout(10, request_timeout),
                 )
 
                 if resp.status_code == 429:
@@ -184,7 +185,7 @@ class GPTOSSProvider(TranslationProvider):
                     if attempt < max_attempts - 1:
                         print(f"  [GPTOSS] Rate limited; retrying in "
                               f"{retry_after:.1f}s ({attempt + 1}/{max_attempts})")
-                        _time.sleep(retry_after)
+                        retry_sleep(retry_after)
                         continue
                     return TranslationResponse(
                         translated_text="",
@@ -223,7 +224,7 @@ class GPTOSSProvider(TranslationProvider):
                         print(f"  Warning: GPT-OSS returned empty response, retrying "
                               f"with a larger budget ({attempt + 2}/"
                               f"{max_attempts})...")
-                        _time.sleep(1)
+                        retry_sleep(1)
                         continue
                     raise RuntimeError(
                         f"GPT-OSS returned empty response for: {text[:60]}..."
@@ -241,7 +242,7 @@ class GPTOSSProvider(TranslationProvider):
                                 and attempt < max_attempts - 1):
                             print(f"  ⚠️  Repeated hallucination detected, retrying "
                                   f"({attempt + 1}/{max_attempts})...")
-                            _time.sleep(1)
+                            retry_sleep(1)
                             continue
                         elif "Hallucinated repetition" in str(sanitize_err):
                             print(f"  ⚠️  Using raw output after repetition hallucination")
@@ -250,7 +251,7 @@ class GPTOSSProvider(TranslationProvider):
                     if is_hallucinated and attempt < max_attempts - 1:
                         print(f"  ⚠️  Hallucination detected ({reason}), retrying "
                               f"({attempt + 1}/{max_attempts})...")
-                        _time.sleep(1)
+                        retry_sleep(1)
                         continue
 
                 # Estimate token usage from response
@@ -285,7 +286,7 @@ class GPTOSSProvider(TranslationProvider):
                     )
                 print(f"  Warning: Connection error, retrying "
                       f"({attempt + 1}/{max_attempts})...")
-                _time.sleep(1)
+                retry_sleep(1)
 
             except requests.exceptions.Timeout:
                 if attempt == max_attempts - 1:
@@ -299,8 +300,10 @@ class GPTOSSProvider(TranslationProvider):
                         execution_time_ms=elapsed_ms,
                     )
                 print(f"  Warning: Timeout, retrying ({attempt + 1}/{max_attempts})...")
-                _time.sleep(1)
+                retry_sleep(1)
 
+            except TimeoutError:
+                raise
             except Exception as e:
                 if attempt == max_attempts - 1:
                     elapsed_ms = (_time.time() - start_time) * 1000
@@ -314,7 +317,7 @@ class GPTOSSProvider(TranslationProvider):
                     )
                 print(f"  Warning: Error: {e}, retrying "
                       f"({attempt + 1}/{max_attempts})...")
-                _time.sleep(1)
+                retry_sleep(1)
 
         elapsed_ms = (_time.time() - start_time) * 1000
         return TranslationResponse(
@@ -554,7 +557,7 @@ class GPTOSSProvider(TranslationProvider):
                     self._api_url,
                     headers=self._headers,
                     json=payload,
-                    timeout=(10, request_timeout),
+                    timeout=transport_timeout(10, request_timeout),
                 )
 
                 if resp.status_code == 429:
@@ -566,7 +569,7 @@ class GPTOSSProvider(TranslationProvider):
                     if attempt < max_attempts - 1:
                         print(f"  [GPTOSS] Rate limited (batch); retrying in "
                               f"{retry_after:.1f}s ({attempt + 1}/{max_attempts})")
-                        _time.sleep(retry_after)
+                        retry_sleep(retry_after)
                         continue
                     _record_failure(ctx, "rate_limit")
                     raise GPTOSSProviderError(
@@ -586,7 +589,7 @@ class GPTOSSProvider(TranslationProvider):
                         print(f"  Warning: GPT-OSS returned empty batch response, "
                               f"retrying with a larger budget ({attempt + 2}/"
                               f"{max_attempts})...")
-                        _time.sleep(1)
+                        retry_sleep(1)
                         continue
                     _record_failure(ctx, "empty_response")
                     raise GPTOSSProviderError(
@@ -604,21 +607,23 @@ class GPTOSSProvider(TranslationProvider):
                     raise GPTOSSProviderError(message)
                 print(f"  Warning: Connection error (batch), retrying "
                       f"({attempt + 1}/{max_attempts})...")
-                _time.sleep(1)
+                retry_sleep(1)
             except requests.exceptions.Timeout:
                 if attempt == max_attempts - 1:
                     _record_failure(ctx, "timeout")
                     raise GPTOSSProviderError("GPT-OSS batch request timed out")
                 print(f"  Warning: Timeout (batch), retrying "
                       f"({attempt + 1}/{max_attempts})...")
-                _time.sleep(1)
+                retry_sleep(1)
+            except TimeoutError:
+                raise
             except Exception as e:
                 if attempt == max_attempts - 1:
                     _record_failure(ctx, "provider_error")
                     raise GPTOSSProviderError(f"GPT-OSS batch error: {str(e)}")
                 print(f"  Warning: Batch error: {e}, retrying "
                       f"({attempt + 1}/{max_attempts})...")
-                _time.sleep(1)
+                retry_sleep(1)
 
         _record_failure(ctx, "provider_error")
         raise GPTOSSProviderError(f"GPT-OSS batch request failed after {max_attempts} attempt(s).")

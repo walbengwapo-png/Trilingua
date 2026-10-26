@@ -24,10 +24,12 @@ def font_manifest_hash():
 
 
 def check_bounds(plan):
+    from document.pixel_budget import check_actions
     if len(json.dumps(plan,ensure_ascii=False).encode('utf-8')) > MAX_PLAN_BYTES:
         raise ValueError('Render plan exceeds 16 MB limit')
     if len(plan.get('pages', [])) > 50 or len(plan.get('regions', [])) > 10_000:
         raise ValueError('Render plan page/region limit exceeded')
+    check_actions(plan.get('image_actions', []))
     for action in plan.get('image_actions', []): decode_mask(action)
 
 

@@ -22,6 +22,7 @@ import requests
 from typing import Any
 
 from .base import AIAnalysisProvider
+from providers.request_budget import transport_timeout, retry_sleep
 
 
 class OllamaAnalysisProvider(AIAnalysisProvider):
@@ -93,13 +94,13 @@ class OllamaAnalysisProvider(AIAnalysisProvider):
                     self._api_url,
                     headers={"Content-Type": "application/json"},
                     json=payload,
-                    timeout=120,  # Analysis can take longer for large docs
+                    timeout=transport_timeout(10, 120),
                 )
 
                 if resp.status_code == 429:
                     wait = 2 ** attempt
                     print(f"  [OllamaAnalysis] Rate limited, retrying in {wait}s...")
-                    _time.sleep(wait)
+                    retry_sleep(wait)
                     continue
 
                 resp.raise_for_status()
@@ -151,7 +152,7 @@ class OllamaAnalysisProvider(AIAnalysisProvider):
                 )
                 if attempt < 2:
                     print(f"  [OllamaAnalysis] Connection error, retrying ({attempt + 1}/3)...")
-                    _time.sleep(2)
+                    retry_sleep(2)
                     continue
                 raise ConnectionError(last_error)
 
@@ -159,7 +160,7 @@ class OllamaAnalysisProvider(AIAnalysisProvider):
                 last_error = "Ollama analysis request timed out"
                 if attempt < 2:
                     print(f"  [OllamaAnalysis] Timeout, retrying ({attempt + 1}/3)...")
-                    _time.sleep(2)
+                    retry_sleep(2)
                     continue
                 raise RuntimeError(last_error)
 
@@ -167,7 +168,7 @@ class OllamaAnalysisProvider(AIAnalysisProvider):
                 last_error = str(e)
                 if attempt < 2:
                     print(f"  [OllamaAnalysis] Error: {e}, retrying ({attempt + 1}/3)...")
-                    _time.sleep(1)
+                    retry_sleep(1)
                     continue
                 raise RuntimeError(
                     f"Ollama analysis failed after 3 attempts: {last_error}"

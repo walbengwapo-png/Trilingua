@@ -321,6 +321,8 @@ async def _runtime_lifespan(app: FastAPI):
     """
     try:
         _enforce_startup_token_policy()
+        from document.job_scratch import sweep_stale
+        sweep_stale()
     except RuntimeError as exc:
         print(f"  [FATAL] {exc}")
         raise

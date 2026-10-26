@@ -59,7 +59,8 @@ def inventory_pdf(path, native_blocks, language, column_mode='auto', source_iden
     with fitz.open(path) as doc:
         if len(doc) > MAX_PAGES:
             raise ValueError('Hybrid PDF limit is 50 pages')
-        all_images = [p.get_image_info(xrefs=True) for p in doc]
+        from document.pixel_budget import image_inventory, BUDGET_REASON
+        all_images = image_inventory(doc)
         uses = Counter(i['xref'] for page_images in all_images for i in page_images)
         for number, page in enumerate(doc):
             if page.rect.get_area() * (300 / 72) ** 2 > MAX_PIXELS:
@@ -85,13 +86,16 @@ def inventory_pdf(path, native_blocks, language, column_mode='auto', source_iden
             for index, image in enumerate(images):
                 box = fitz.Rect(image['bbox'])
                 # Preview is evidence about pixels, never an OCR acceptance shortcut.
-                pix = page.get_pixmap(clip=box & page.rect, matrix=fitz.Matrix(1, 1), alpha=False)
-                samples = pix.samples
+                pix = None if image.get('budget_hold') else page.get_pixmap(clip=box & page.rect, matrix=fitz.Matrix(1, 1), alpha=False)
+                samples = pix.samples if pix else b''
                 variation = max(samples) - min(samples) if samples else 0
                 entry = region('raster', box, occurrence_id=f'{number}:{index}', xref=image['xref'],
                                transform=list(image['transform']), capture_scope=['scan', 'photo', 'screenshot'],
                                signals={'version': SIGNALS_VERSION, 'calibrated': False,
                                         'preview_range': variation}, occurrence_count=uses[image['xref']])
+                if image.get('budget_hold'):
+                    entry.update(reason=BUDGET_REASON)
+                    continue
                 try:
                     for category in entry['capture_scope']:
                         require_ready(language, category)

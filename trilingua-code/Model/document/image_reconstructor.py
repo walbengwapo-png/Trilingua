@@ -131,7 +131,9 @@ def prepare_action(image, words, target, image_bbox, target_bbox, font_id='NotoS
     if len(background_pixels) < image.width*image.height*.4:
         raise ImageHold('Insufficient background samples')
     background = np.median(background_pixels, axis=0)
-    delta = np.max(np.abs(pixels.astype(float)-background), axis=2)
+    delta = np.empty(pixels.shape[:2], dtype=np.float32)
+    for row in range(0, image.height, 64):
+        delta[row:row+64] = np.max(np.abs(np.subtract(pixels[row:row+64], background, dtype=np.float32)), axis=2)
     foreground = (delta > 8).astype(np.uint8)
     horizontal = cv2.morphologyEx(foreground, cv2.MORPH_OPEN, np.ones((1, max(25,image.width//8)), np.uint8))
     vertical = cv2.morphologyEx(foreground, cv2.MORPH_OPEN, np.ones((max(25,image.height//8),1), np.uint8))
@@ -172,8 +174,9 @@ def prepare_action(image, words, target, image_bbox, target_bbox, font_id='NotoS
     result = pixels.copy()
     fill = np.rint(background).astype(np.uint8)
     result[mask.astype(bool)] = fill
-    residual = np.max(np.abs(result.astype(float)-background), axis=2) > 8
-    if (residual & geometry.astype(bool)).any(): raise ImageHold('Residual source edges after cleanup')
+    for row in range(0, image.height, 64):
+        residual = np.max(np.abs(np.subtract(result[row:row+64], background, dtype=np.float32)), axis=2) > 8
+        if (residual & geometry[row:row+64].astype(bool)).any(): raise ImageHold('Residual source edges after cleanup')
     if not np.array_equal(result[mask == 0], pixels[mask == 0]): raise ImageHold('Outside-mask damage')
     encoded = zlib.compress(mask.tobytes(), 9)
     if len(encoded) > MAX_MASK_BYTES: raise ImageHold('Mask limit exceeded')
@@ -188,11 +191,15 @@ def prepare_action(image, words, target, image_bbox, target_bbox, font_id='NotoS
 
 
 def occurrence_safety(doc, page_number, xref):
+    from document.pixel_budget import image_inventory, BUDGET_REASON
     page = doc[page_number]
     all_resources = [image for source_page in doc for image in source_page.get_images(full=True)]
     if any(image[2]*image[3] > MAX_PIXELS for image in all_resources):
         raise ImageHold('Source image exceeds 40 MP limit')
-    occurrences = [(p.number, i) for p in doc for i in p.get_image_info(xrefs=True) if i['xref'] == xref]
+    inventory = image_inventory(doc)
+    if xref in doc._hybrid_budget_held:
+        raise ImageHold(BUDGET_REASON)
+    occurrences = [(number, i) for number,images in enumerate(inventory) for i in images if i['xref'] == xref]
     if len(occurrences) != 1 or occurrences[0][0] != page_number or not xref:
         raise ImageHold('Shared/unresolved image occurrence')
     resources = [image for image in all_resources if image[0] == xref]
@@ -212,7 +219,7 @@ def occurrence_safety(doc, page_number, xref):
         raise ImageHold('Clipping/transparency state is not proven safe')
     box = fitz.Rect(info['bbox'])
     if not page.rect.contains(box): raise ImageHold('Clipped image')
-    for other in page.get_image_info(xrefs=True):
+    for other in inventory[page_number]:
         if other['xref'] != xref and (box & fitz.Rect(other['bbox'])).get_area() > 0:
             raise ImageHold('Overlapping image')
     if any((box & fitz.Rect(t['bbox'])).get_area() > 0 for t in page.get_texttrace()):
@@ -230,6 +237,10 @@ def occurrence_safety(doc, page_number, xref):
 
 
 def source_image(doc, xref):
+    from document.pixel_budget import image_inventory, BUDGET_REASON
+    image_inventory(doc)
+    if xref in doc._hybrid_budget_held:
+        raise ImageHold(BUDGET_REASON)
     width = int(doc.xref_get_key(xref,'Width')[1])
     height = int(doc.xref_get_key(xref,'Height')[1])
     if min(width,height) < 1 or width*height > MAX_PIXELS:
@@ -243,68 +254,80 @@ def source_image(doc, xref):
 def apply_actions(doc, actions):
     """Update only assets proven to have one occurrence; never global replace_image."""
     import numpy as np
+    from document.pixel_budget import check_actions
+    check_actions(actions)
     grouped = {}
     for action in actions:
         if action.get('algorithm_version') != ALGORITHM_VERSION: raise ImageHold('Mask version mismatch')
         grouped.setdefault((action['page'], action['xref']), []).append(action)
     prepared = []
-    for (page_number,xref), edits in grouped.items():
-        info = occurrence_safety(doc, page_number, xref)
-        original = source_image(doc, xref)
-        pixels = np.array(original)
-        combined = np.zeros(pixels.shape[:2], bool)
-        for action in edits:
-            if image_digest(original) != action['source_image_sha256'] or list(original.size) != action['image_size']:
-                raise ImageHold('Source image hash/size mismatch')
-            if list(info['bbox']) != action['image_bbox']: raise ImageHold('Image transform mismatch')
-            mask = decode_mask(action)
-            allowed = np.zeros(mask.shape,bool)
-            for x0,y0,x1,y1 in action['word_geometry']:
-                x0,y0,x1,y1 = [int(round(v)) for v in (x0,y0,x1,y1)]
-                allowed[max(0,y0-2):min(mask.shape[0],y1+2),max(0,x0-2):min(mask.shape[1],x1+2)] = True
-            if (mask & ~allowed).any(): raise ImageHold('Mask outside approved word geometry')
-            for x0,y0,x1,y1 in action.get('exclusions',[]):
-                if mask[max(0,int(y0)-2):min(mask.shape[0],int(y1)+2),max(0,int(x0)-2):min(mask.shape[1],int(x1)+2)].any():
-                    raise ImageHold('Mask touches protected neighbor')
-            if (combined & mask).any(): raise ImageHold('Overlapping edit masks')
-            combined |= mask
-            pixels[mask] = action['background']
-            fit = action['fit']
-            if not fitz.Rect(info['bbox']).contains(fitz.Rect(fit['bbox'])):
-                raise ImageHold('Target box outside image')
-            if any(other is not action and fitz.Rect(fit['bbox']).intersects(fitz.Rect(other['fit']['bbox'])) for other in edits):
-                raise ImageHold('Overlapping target boxes')
-            fresh = fit_text(fit['text'], fit['bbox'], fit['font_id'], fit['initial_size'], fit['alignment'])
-            if fresh != fit: raise ImageHold('Font/fit plan mismatch')
-        if not np.array_equal(pixels[~combined], np.array(original)[~combined]): raise ImageHold('Outside-mask damage')
-        prepared.append((page_number,xref,pixels,edits))
-    for page_number,xref,pixels,edits in prepared:
-        # Uniqueness is established across displayed pages and nested forms are excluded.
-        for key, value in {'ColorSpace':'/DeviceRGB','BitsPerComponent':'8','Filter':'null','DecodeParms':'null','Decode':'null'}.items():
-            doc.xref_set_key(xref, key, value)
-        doc.update_stream(xref, pixels.tobytes(), compress=True)
-        for action in edits:
-            action['cleaned_image_sha256'] = hashlib.sha256(pixels.tobytes()).hexdigest()
-        page = doc[page_number]
-        for action in edits:
-            fit = action['fit']
-            path, _ = font_asset(fit['font_id'])
-            name = 'hybrid' + hashlib.sha256(fit['font_id'].encode()).hexdigest()[:8]
-            page.insert_font(fontname=name, fontfile=str(path))
-            font = fitz.Font(fontfile=str(path))
-            box = fitz.Rect(fit['bbox'])
-            y = box.y0 + font.ascender*fit['font_size']
-            for line in fit['lines']:
-                offset = (box.width-font.text_length(line, fontsize=fit['font_size'])) * fit['alignment']/2
-                page.insert_text((box.x0+offset,y), line, fontname=name, fontsize=fit['font_size'],
-                                 color=tuple(c/255 for c in action['foreground']))
-                y += fit['leading']
+    import os, tempfile
+    with tempfile.TemporaryDirectory(prefix="clean-images-", dir=os.environ.get("OCR_JOB_SCRATCH")) as staging:
+        for (page_number,xref), edits in grouped.items():
+            info = occurrence_safety(doc, page_number, xref)
+            original = source_image(doc, xref)
+            pixels = np.array(original)
+            combined = np.zeros(pixels.shape[:2], bool)
+            for action in edits:
+                if image_digest(original) != action['source_image_sha256'] or list(original.size) != action['image_size']:
+                    raise ImageHold('Source image hash/size mismatch')
+                if list(info['bbox']) != action['image_bbox']: raise ImageHold('Image transform mismatch')
+                mask = decode_mask(action)
+                allowed = np.zeros(mask.shape,bool)
+                for x0,y0,x1,y1 in action['word_geometry']:
+                    x0,y0,x1,y1 = [int(round(v)) for v in (x0,y0,x1,y1)]
+                    allowed[max(0,y0-2):min(mask.shape[0],y1+2),max(0,x0-2):min(mask.shape[1],x1+2)] = True
+                if (mask & ~allowed).any(): raise ImageHold('Mask outside approved word geometry')
+                for x0,y0,x1,y1 in action.get('exclusions',[]):
+                    if mask[max(0,int(y0)-2):min(mask.shape[0],int(y1)+2),max(0,int(x0)-2):min(mask.shape[1],int(x1)+2)].any():
+                        raise ImageHold('Mask touches protected neighbor')
+                if (combined & mask).any(): raise ImageHold('Overlapping edit masks')
+                combined |= mask
+                pixels[mask] = action['background']
+                fit = action['fit']
+                if not fitz.Rect(info['bbox']).contains(fitz.Rect(fit['bbox'])):
+                    raise ImageHold('Target box outside image')
+                if any(other is not action and fitz.Rect(fit['bbox']).intersects(fitz.Rect(other['fit']['bbox'])) for other in edits):
+                    raise ImageHold('Overlapping target boxes')
+                fresh = fit_text(fit['text'], fit['bbox'], fit['font_id'], fit['initial_size'], fit['alignment'])
+                if fresh != fit: raise ImageHold('Font/fit plan mismatch')
+            if not np.array_equal(pixels[~combined], np.array(original)[~combined]): raise ImageHold('Outside-mask damage')
+            cleaned = Path(staging)/str(len(prepared))
+            cleaned.write_bytes(pixels.tobytes())
+            prepared.append((page_number,xref,cleaned,edits))
+            del pixels, original, combined, mask, allowed
+        for page_number,xref,cleaned,edits in prepared:
+            raw = cleaned.read_bytes()
+            # Uniqueness is established across displayed pages and nested forms are excluded.
+            for key, value in {'ColorSpace':'/DeviceRGB','BitsPerComponent':'8','Filter':'null','DecodeParms':'null','Decode':'null'}.items():
+                doc.xref_set_key(xref, key, value)
+            doc.update_stream(xref, raw, compress=True)
+            for action in edits:
+                action['cleaned_image_sha256'] = hashlib.sha256(raw).hexdigest()
+            del raw
+            cleaned.unlink()
+            page = doc[page_number]
+            for action in edits:
+                fit = action['fit']
+                path, _ = font_asset(fit['font_id'])
+                name = 'hybrid' + hashlib.sha256(fit['font_id'].encode()).hexdigest()[:8]
+                page.insert_font(fontname=name, fontfile=str(path))
+                font = fitz.Font(fontfile=str(path))
+                box = fitz.Rect(fit['bbox'])
+                y = box.y0 + font.ascender*fit['font_size']
+                for line in fit['lines']:
+                    offset = (box.width-font.text_length(line, fontsize=fit['font_size'])) * fit['alignment']/2
+                    page.insert_text((box.x0+offset,y), line, fontname=name, fontsize=fit['font_size'],
+                                     color=tuple(c/255 for c in action['foreground']))
+                    y += fit['leading']
 
 
 def validate_output(path, actions):
+    from document.pixel_budget import image_inventory
     with fitz.open(path) as doc:
+        inventory = image_inventory(doc)
         for action in actions:
-            images = [i for i in doc[action['page']].get_image_info(xrefs=True) if list(i['bbox']) == action['image_bbox']]
+            images = [i for i in inventory[action['page']] if list(i['bbox']) == action['image_bbox']]
             if len(images) != 1 or image_digest(source_image(doc, images[0]['xref'])) != action['cleaned_image_sha256']:
                 raise ImageHold('Saved image pixel validation failed')
             actual = doc[action['page']].get_text(clip=fitz.Rect(action['fit']['bbox']))
