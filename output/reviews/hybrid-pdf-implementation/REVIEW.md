@@ -25,7 +25,7 @@ Line anchors below refer to committed `7e953bf`, not unrelated dirty offsets. St
 | P1 | blocker | `trilingua-code/Model/document/ocr_extractor.py:80`; `Model/tests/test_ocr_documents.py:86` | Matching engine/pack hashes and self-asserted report booleans do not prove genuine corpus/reviewer provenance; the unit fixture omits corpus fields and is accepted under its mocked engine. | Owner chooses trusted report issuance/approval and artifact verification. No report will be fabricated to demonstrate this, and gate behavior is not changed. | OPEN: gate/contract decision |
 | P2 | blocker | `trilingua-code/Model/server.py:782`; `document/regenerator.py:248`; `document/render_plan.py:44` | An authenticated caller supplies a self-consistent pixel plan; hashes prove consistency, not that the plan originated from accepted OCR. Normal Laravel uses stored sidecars, so this is a service-boundary provenance gap, not an anonymous exploit. | Owner chooses trusted persisted-plan/approval provenance while keeping regeneration free of OCR/provider calls. | OPEN: schema/interface decision |
 | P3 | major | `trilingua-code/Model/document/pdf_regions.py:108` | If a later paragraph's style fails, the parent image becomes held but earlier pending children/blocks survive. Editing them changes a held parent. | Roll back that image's candidate children on the image-wide hold; deterministic failing test. | FIXED theme A |
-| P4 | major | `trilingua-code/app/Services/Admin/ReviewService.php:56`, `:165` | The text verification action still accepts a document ID and bypasses the document-only completeness guard. | Route document verification through the shared guarded document action; HTTP negative test. | Planned |
+| P4 | major | `trilingua-code/app/Services/Admin/ReviewService.php:56`, `:165` | The text verification action still accepts a document ID and bypasses the document-only completeness guard. | Route document verification through the shared guarded document action; HTTP negative test. | FIXED theme B |
 | P5 | major | `trilingua-code/Model/pipeline/document_pipeline.py:580`, `:610` | Sidecar held entries restore source text, but response.translated_blocks still returns attempted target text. | Synchronize held DTO text/flags without changing list/index shape; regression test. | FIXED theme A |
 
 No taste-only code-smell findings. Unused imports and a duplicated checked-ID validation may be cleaned only after full caller/source reads. No gate/95%/10pt/resource-cap/schema/interface changes are authorized.
@@ -35,3 +35,12 @@ Checklist verdicts, complete hold-test matrix, five mutation spot-checks, per-th
 
 ## Cleanup theme A: held-region correctness
 Four new cases failed against the original code (native survivor identity, late style hold, missing font hold, and held DTO text). All10 classification tests pass after local fixes. No gate, threshold, public field or sidecar shape changed; operational attempt counters remain separate from placed-region counts. Commit follows; full suites are rerun after it.
+
+## Post-commit suite results
+| Stage / commit | Python | PHP | Browser |
+|---|---:|---:|---:|
+| Baseline 7e953bf | 179 passed |49 /239 assertions|2 passed|
+| A: 1fc3bf6 |183 passed (+4)|49 /239 assertions|2 passed|
+
+## Cleanup theme B: alternate verification action
+The new HTTP regression returned200 before the fix. Generic verification now dispatches document rows to verifyDocument, preserving its completeness/draft checks and transaction/audit behavior. Focused PHP suite:4 tests/28 assertions passed. Existing text-controller exception status mapping remains unchanged (500); the route can no longer return successful verification or clear partial/untranslated state. Full suites follow this theme commit.

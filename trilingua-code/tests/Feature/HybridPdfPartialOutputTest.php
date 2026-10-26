@@ -76,4 +76,18 @@ class HybridPdfPartialOutputTest extends TestCase
             $this->assertSame('partial', $history->source_word_metadata['completeness']);
         }
     }
+
+    public function test_text_verification_action_cannot_clear_incomplete_document_status(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        foreach (['partial', 'untranslated'] as $status) {
+            $history = TranslationHistory::create(['user_id' => $admin->id, 'translation_type' => 'document',
+                'status' => 'completed', 'review_status' => 'pending', 'source_language' => 'English',
+                'target_language' => 'Cebuano', 'sidecar' => ['content_summary' => ['status' => $status, 'held' => 1]]]);
+            $this->actingAs($admin)->postJson("/admin/review/{$history->id}/verify")
+                ->assertStatus(500)->assertJsonMissing(['success' => true]);
+            $this->assertSame('pending', $history->refresh()->review_status);
+            $this->assertSame($status, $history->sidecar['content_summary']['status']);
+        }
+    }
 }

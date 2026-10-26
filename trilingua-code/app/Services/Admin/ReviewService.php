@@ -57,6 +57,9 @@ class ReviewService
     {
         return DB::transaction(function () use ($historyId, $adminId, $note) {
             $history = $this->findHistory($historyId);
+            if ($history->translation_type === 'document') {
+                return $this->verifyDocument($historyId, $adminId, $note);
+            }
 
             $history->review_status = ReviewStatus::VERIFIED;
             $history->reviewed_by = $adminId;
