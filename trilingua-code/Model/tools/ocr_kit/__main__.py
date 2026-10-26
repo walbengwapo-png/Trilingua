@@ -21,8 +21,20 @@ def main():
     check.add_argument('--sheet',required=True);check.add_argument('--ingest',action='store_true');check.add_argument('--output')
     build=commands.add_parser('build-manifest');build.add_argument('--intake',required=True)
     build.add_argument('--checks',required=True);build.add_argument('--approval',required=True);build.add_argument('--output',required=True)
+    prepare=commands.add_parser('prepare-review');prepare.add_argument('source')
+    prepare.add_argument('--language',choices=['English','Cebuano','Filipino'],required=True)
+    prepare.add_argument('--output',required=True)
+    resume=commands.add_parser('advance');resume.add_argument('--workspace',required=True)
+    resume.add_argument('--sign-key-file')
     args=parser.parse_args();print(BANNER)
-    if args.command=='intake':
+    if args.command in {'prepare-review','advance'}:
+        from config.environment import load_engine_environment
+        from .workflow import prepare_review,advance
+        load_engine_environment(Path(__file__).resolve().parents[3]/'.env')
+        result=(prepare_review(args.source,args.output,args.language) if args.command=='prepare-review'
+                else advance(args.workspace,args.sign_key_file))
+        print(json.dumps(result,ensure_ascii=False,indent=2))
+    elif args.command=='intake':
         result=intake(args.folder);save(args.output,result)
         print(json.dumps({'samples':len(result['samples']),'gaps':result['gaps']},ensure_ascii=False))
     elif args.command=='feasibility':

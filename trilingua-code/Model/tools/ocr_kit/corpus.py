@@ -69,6 +69,7 @@ def intake(folder):
         identity=hashlib.sha256(name.encode()).hexdigest()[:16]
         sample=dict(row,id=identity,split=split,pack=PACKS.get(row['language']),
             image_sha256=digest(source),reference=str(reference),regions_file=str(regions),
+            regions_sha256=digest(regions) if regions.is_file() else None,
             reference_sha256=digest(reference) if reference.is_file() else None)
         issues=[]
         try:
@@ -96,7 +97,7 @@ def intake(folder):
 
 def current(saved):
     fresh=intake(saved['root'])
-    fingerprint=lambda value:[(s['id'],s['image_sha256'],s['reference_sha256']) for s in value['samples']]
+    fingerprint=lambda value:[(s['id'],s['image_sha256'],s['reference_sha256'],s.get('regions_sha256')) for s in value['samples']]
     if fingerprint(saved)!=fingerprint(fresh) or saved.get('info_sha256')!=fresh['info_sha256']:
         raise ValueError('Intake bytes or metadata changed; rerun intake and independent review')
     return fresh
@@ -104,12 +105,13 @@ def current(saved):
 
 def reference_sheet(saved, output):
     saved=current(saved)
-    fields=['id','file','source_sha256','reference_sha256','reviewer','decision','corrected_text',
+    fields=['id','file','source_sha256','reference_sha256','regions_sha256','reviewer','decision','corrected_text',
             'review_date','attestation','rights_verified','representative','real_capture_confirmed']
     with Path(output).open('x',encoding='utf-8',newline='') as stream:
         writer=csv.DictWriter(stream,fieldnames=fields);writer.writeheader()
         for sample in saved['samples']:
             writer.writerow({'id':sample['id'],'file':sample['file'],'source_sha256':sample['image_sha256'],
+                             'regions_sha256':sample['regions_sha256'],
                              'reference_sha256':sample['reference_sha256']})
 
 
@@ -120,7 +122,8 @@ def ingest_checks(saved, sheet, output):
     checked=[];directory=Path(output).resolve().parent/'checked-references';directory.mkdir(parents=True,exist_ok=True)
     for row in rows:
         sample=source[row['id']]
-        if row['source_sha256']!=sample['image_sha256'] or row['reference_sha256']!=sample['reference_sha256']:
+        if (row['source_sha256']!=sample['image_sha256'] or row['reference_sha256']!=sample['reference_sha256']
+                or row.get('regions_sha256')!=sample['regions_sha256']):
             raise ValueError('Reference sheet source/reference hash mismatch')
         if not row['reviewer'].strip() or row['reviewer'].strip()==sample['author'].strip():raise ValueError('Independent second reviewer required')
         if row['decision'] not in {'confirmed','corrected'} or not row['attestation'].strip():raise ValueError('Completed reference decision/attestation required')
@@ -166,6 +169,7 @@ def build_manifest(saved, checks, approval, output):
             raise ValueError('Explicit real capture, rights and representativeness confirmation required')
         if (review['reviewer'] not in approval['reviewers'] or review['reviewer']==sample['author']
                 or review['source_sha256']!=sample['image_sha256'] or review['reference_sha256']!=sample['reference_sha256']
+                or review.get('regions_sha256')!=sample['regions_sha256']
                 or digest(review['checked_reference'])!=review['checked_reference_sha256']):raise ValueError('Reviewed provenance mismatch')
     output.mkdir(parents=True);cases=[]
     for sample in saved['samples']:

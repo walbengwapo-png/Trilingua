@@ -1,8 +1,27 @@
 # Local OCR feasibility and collection kit
 
-**DIAGNOSTIC, NOT ACCEPTANCE EVIDENCE.** This kit cannot sign or issue an acceptance report. Its verdict bands are suggestions. A 100% synthetic result proves no real OCR accuracy. No data, completed review, production key or acceptance report is bundled.
+**Drafts and diagnostic results are not acceptance evidence.** Diagnostic verdict bands are suggestions. The resumable workflow can invoke the existing evaluator and sign/verify its passing result only after genuine reviewed inputs are complete. A 100% synthetic result proves no real OCR accuracy. No completed review, production key or acceptance report is bundled.
 
-Use the existing isolated environment; no new dependency is required. Tesseract, Pillow, PyMuPDF, NumPy and OpenCV are already in that environment. These commands are instructions for the owner, not commands executed against real material during implementation. They make no provider/cloud calls. Keep source documents and keys outside Git.
+Use the existing isolated environment; no new dependency is required. Tesseract, Pillow, PyMuPDF, NumPy and OpenCV are already in that environment. Examples use owner-chosen folders and do not imply completed evaluation. They make no provider/cloud calls. Keep source documents and keys outside Git.
+
+## Prepare and resume a review packet
+
+From repository root (use a new output directory):
+
+```powershell
+$py = (Resolve-Path .\trilingua-code\.venv-ocr-layout\Scripts\python.exe).Path
+Set-Location .\trilingua-code\Model
+& $py -m tools.ocr_kit prepare-review 'C:\path\source.pdf' --language English --output 'C:\OCR-work\review'
+& $py -m tools.ocr_kit advance --workspace 'C:\OCR-work\review'
+```
+
+Preparation makes a source copy,300-DPI page previews, candidate text/region drafts, a local `review.html` with region overlays, `START_HERE.md`, blank rights/collector/capture fields and an unapproved corpus-review template. It does **not** compare OCR output with itself or assign accuracy. The seed is calibration-only, because it is already being inspected. The packet's source language determines its three required scan/photo/screenshot scopes; the translation target is irrelevant to recognition qualification. No provider/cloud request is made.
+
+Correct draft text and boxes, add actual document metadata and additional independent calibration/held-out sources to `incoming/info.csv`, then run `advance`. Once intake gaps are resolved it creates a blank `second-review.csv`. An independent person must check the originals and complete that sheet. Corpus coverage review also needs actual human statements in `corpus-review.json`. `workflow-status.json` lists the exact missing step; it never invents a reviewer, acquisition, permission or capture classification.
+
+After reviews and scope coverage are complete, `advance` freezes a new run, evaluates through the shared production OCR path at95%, and validates the report. If it passes, supply an existing private acceptance key with `--sign-key-file` to generate and verify a signed report. Key-generation commands appear below. Failed evaluations stay unsigned. Repeated runs preserve earlier frozen outputs. Live `.env` and service configuration are never changed automatically.
+
+Source, transcript, metadata and region changes invalidate an existing review. Earlier intake/sheet formats without a region hash require a fresh intake and review sheet; preserve the old completed sheet, move it aside, and run `advance` to create a new blank one. A real review must then be completed again. This prevents boxes being changed after sign-off.
 
 ## Collect and inspect
 
@@ -16,7 +35,7 @@ file,language,capture_class,content_group_id,split,author,rights_note
 
 Fill one row per actual document; split is `calibration` or `heldout` (`held_out` is normalized). Author means the actual acquirer, and rights_note records the owner's actual rights basis; neither is a legal determination by the tool. Synthetic material must include the optional `material` column set to `test_fixture`; it can never be built into real evaluator material.
 
-The geometry file is a JSON list of `{id,page,order,bbox,text}` records: zero-based page, unique region IDs/order, `[x0,y0,x1,y1]` in pixels, complete checked text. For PDF pages the coordinate basis is 300 DPI; for standalone images it is their full-resolution EXIF-transposed image at the 300 baseline. A second reviewer must check boxes, reading order and full text against the original. The kit does not invent geometry. Without it, feasibility reports word accuracy and `null` for layout scores.
+The geometry file is a JSON list of `{id,page,order,bbox,text}` records: zero-based page, unique region IDs/order, `[x0,y0,x1,y1]` in pixels, complete checked text. For PDF pages the coordinate basis is 300 DPI; for standalone images it is their full-resolution EXIF-transposed image at the 300 baseline. A second reviewer must check boxes, reading order and full text against the original. Preparation can propose OCR boxes, but never labels them checked. Without supplied geometry, feasibility reports word accuracy and `null` for layout scores.
 
 From repository root, set paths for your actual local folders:
 
@@ -41,7 +60,7 @@ Per-sample and per language/capture/split/variant slices report word accuracy, r
 & $py -m tools.ocr_kit reference-check --intake "$work\intake.json" --sheet "$work\second-review.csv" --ingest --output "$work\checks.json"
 ```
 
-The sheet starts blank: reviewer, confirmed/corrected decision, corrected_text, review_date (YYYY-MM-DD), attestation, rights_verified, representative and real_capture_confirmed. The three confirmations must be explicitly `true` before manifest creation. The reviewer must differ from the acquirer. Ingestion records supplied statements and checked text with source/reference hashes; it does not independently establish that the statements are true. Changed source/transcript bytes invalidate the intake. Corrected text must also match the reviewed region text before building.
+The sheet starts blank: reviewer, confirmed/corrected decision, corrected_text, review_date (YYYY-MM-DD), attestation, rights_verified, representative and real_capture_confirmed. The three confirmations must be explicitly `true` before manifest creation. The reviewer must differ from the acquirer. Ingestion records supplied statements and checked text with source/reference/region hashes; it does not independently establish that the statements are true. Changed source/transcript/region bytes invalidate the intake. Corrected text must also match the reviewed region text before building.
 
 The owner must supply `$work\corpus-review.json` with actual `reviewers` (array of names including all reference reviewers), `review_date`, a substantive `attestation`, and `coverage_reviewed:true`. Do not fill these from this README or from generated text. Review rights, representativeness, split isolation and complete region coverage before attesting.
 

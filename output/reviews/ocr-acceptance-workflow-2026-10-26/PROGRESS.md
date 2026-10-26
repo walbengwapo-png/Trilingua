@@ -1,0 +1,31 @@
+Technical workflow COMPLETE. Real acceptance evidence PENDING.
+
+{
+  "stage": "needs_source_metadata",
+  "acceptance_ready": false,
+  "banner": "DIAGNOSTIC, NOT ACCEPTANCE EVIDENCE",
+  "live_configuration_changed": false,
+  "required_scopes": [
+    "English / scan",
+    "English / photo",
+    "English / screenshot"
+  ],
+  "missing_splits": {
+    "English / scan": [
+      "calibration",
+      "heldout"
+    ],
+    "English / photo": [
+      "calibration",
+      "heldout"
+    ],
+    "English / screenshot": [
+      "calibration",
+      "heldout"
+    ]
+  },
+  "blockers": [
+    "Lion_and_Mouse_2_pages_10_blocks_2_image_text.pdf: unsupported language/capture class",
+    "Lion_and_Mouse_2_pages_10_blocks_2_image_text.pdf: author/rights note missing"
+  ]
+}
