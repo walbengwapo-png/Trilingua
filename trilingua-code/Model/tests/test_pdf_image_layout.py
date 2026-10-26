@@ -140,3 +140,34 @@ def test_mixed_assembly_retains_unmodified_asset_native_links_and_vectors(tmp_pa
         assert doc[0].get_drawings()
         keep=next(i['xref'] for i in doc[0].get_image_info(xrefs=True) if i['bbox']==(500.,500.,520.,520.))
         assert doc.extract_image(keep)['image']==expected
+
+
+@pytest.mark.parametrize('existing', [False, True])
+def test_failed_saved_image_validation_never_publishes_an_erased_artifact(tmp_path, monkeypatch, existing):
+    from document.reconstructor import write_pdf_preserved
+    import document.image_reconstructor as renderer
+    image, words = geometry()
+    source = document(tmp_path, image)
+    action = action_for(image, words)
+    with fitz.open(source) as doc:
+        action.update(page=0, xref=doc[0].get_images()[0][0], region_id='fixed')
+    output = tmp_path/'published.pdf'
+    if existing: output.write_bytes(b'last-published')
+    def reject(*args): raise ImageHold('Simulated saved image validation failure')
+    monkeypatch.setattr(renderer, 'validate_output', reject)
+    with pytest.raises(ImageHold, match='saved image validation'):
+        write_pdf_preserved([], str(source), str(output), strict=True, image_actions=[action])
+    if existing:
+        assert output.read_bytes() == b'last-published'
+    else:
+        assert not output.exists()
+
+
+def test_preserved_writer_rejects_overwriting_its_source(tmp_path):
+    from document.reconstructor import write_pdf_preserved
+    image, _ = geometry()
+    source = document(tmp_path, image)
+    original = source.read_bytes()
+    with pytest.raises(ValueError, match='original source'):
+        write_pdf_preserved([], str(source), str(source), strict=True)
+    assert source.read_bytes() == original

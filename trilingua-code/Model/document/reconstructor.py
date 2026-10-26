@@ -777,6 +777,25 @@ _BASE14_RENDERABLE = frozenset(
 def write_pdf_preserved(blocks, original_pdf_path, output_file,
                         layout_plan=None,
                         source_lang="", target_lang="", strict=False, image_actions=()):
+    """Publish only a fully validated PDF, preserving any earlier destination."""
+    original = os.path.normcase(os.path.abspath(original_pdf_path))
+    destination = os.path.normcase(os.path.abspath(output_file))
+    if original == destination or (os.path.exists(output_file) and os.path.samefile(original_pdf_path, output_file)):
+        raise ValueError('PDF output must not overwrite the original source')
+    handle, temporary = tempfile.mkstemp(suffix='.pdf', dir=os.path.dirname(destination))
+    os.close(handle)
+    try:
+        report = _write_pdf_preserved(blocks, original_pdf_path, temporary, layout_plan=layout_plan,
+            source_lang=source_lang, target_lang=target_lang, strict=strict, image_actions=image_actions)
+        os.replace(temporary, output_file)
+        return report
+    finally:
+        if os.path.exists(temporary): os.unlink(temporary)
+
+
+def _write_pdf_preserved(blocks, original_pdf_path, output_file,
+                         layout_plan=None,
+                         source_lang="", target_lang="", strict=False, image_actions=()):
     """
     Replace original text in a PDF with translations while preserving layout.
 

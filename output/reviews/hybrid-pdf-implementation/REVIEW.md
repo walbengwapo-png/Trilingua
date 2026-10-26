@@ -42,6 +42,7 @@ Four new cases failed against the original code (native survivor identity, late 
 | Baseline 7e953bf | 179 passed |49 /239 assertions|2 passed|
 | A: 1fc3bf6 |183 passed (+4)|49 /239 assertions|2 passed|
 | B: d8a135d |183 passed|50 /247 assertions (+1)|2 passed|
+| C: 3205baa |192 passed (+9)|50 /247 assertions|2 passed|
 
 ## Cleanup theme B: alternate verification action
 The new HTTP regression returned200 before the fix. Generic verification now dispatches document rows to verifyDocument, preserving its completeness/draft checks and transaction/audit behavior. Focused PHP suite:4 tests/28 assertions passed. Existing text-controller exception status mapping remains unchanged (500); the route can no longer return successful verification or clear partial/untranslated state. Full suites follow this theme commit.
@@ -53,3 +54,12 @@ Actual-template limits now live in the shared template wrapper and apply before 
 
 ## Mutation spot-check, first pass
 Mutations run only in a disposable source export, restored byte-for-byte after each. Gate order, shared image hold, source hash and partial-status mutations were killed. Removing the outside-mask checks survived the original happy-path pixel tests. Add invariant-failure injection while retaining the actual unchanged-pixel assertions, then rerun all five. No application gate or live file was mutated.
+
+## Additional reported findings (before cleanup)
+- S5 (major), `trilingua-code/Model/document/reconstructor.py:1872`: the new image validation runs after saving directly to the caller's destination. A saved-output validation failure can overwrite an earlier output or leave an erased invalid artifact for non-API callers. The API's private temp-directory cleanup prevents publication through Laravel, but does not make this writer atomic. Proposed small fix: a private validated staging file, then replace; preserve the public signature and reject aliases of the original source.
+- P6 (minor), `trilingua-code/resources/views/history.blade.php:120`, `:146`: an untranslated/partial document still gets the unconditional100% document badge. Proposed conditional content-status badge and rendered-view assertion.
+- P7 (minor), `trilingua-code/resources/views/translation.blade.php:528`: completed/download-unavailable polling ignores summary/warnings and says Translation complete. Proposed preservation of incomplete status in this branch and browser regression.
+- S6 (minor, test gap), `trilingua-code/Model/tests/test_pdf_image_layout.py:35`: the initial outside-mask guard mutation survived. Add a negative invariant-failure test in addition to real output pixel comparisons; rerun all five mutations in the disposable export.
+
+## Cleanup theme D: atomic first-render output
+Both injected saved-image validation failures failed on the original writer: a new invalid output remained and an existing destination was overwritten. The public writer now stages privately, validates fully, then replaces the destination. Its call signature and render-plan shape are unchanged; same-file source destinations are rejected. All17 image-layout tests pass, including preservation of old/no output on failure and immutable original-source protection. Full suites follow this commit.
