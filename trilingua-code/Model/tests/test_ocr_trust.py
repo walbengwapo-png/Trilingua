@@ -28,7 +28,7 @@ def test_invalid_signed_reports_fail_closed(tmp_path,monkeypatch,fault):
         monkeypatch.setattr(trust,'real_material',lambda *a: (_ for _ in ()).throw(ValueError('fixture rejected')))
     if fault=='manifest':report['source_manifest_sha256']='bad'
     if fault=='score':
-        report['cases'][-1].update(ocr_text='Wrong',word_errors=3,word_accuracy_percent=0)
+        report['cases'][-1].update(ocr_text='Wrong',word_errors=1,word_accuracy_percent=0)
         report['categories']['English / scan']['word_accuracy_percent']=0
     if fault=='engine':state={**state,'binary_sha256':'different'};monkeypatch.setattr(ocr,'readiness',lambda:state)
     if fault=='signature':report.pop('signature')
@@ -50,3 +50,20 @@ def test_key_creation_refuses_overwrite_and_repo_paths(tmp_path):
     with pytest.raises(FileExistsError):auth.generate_key(key,'acceptance')
     with pytest.raises(ValueError,match='outside'):auth.generate_key(auth.REPOSITORY/'forbidden.key','acceptance')
     with pytest.raises(ValueError,match='purpose'):auth.key_file(key,'render-plan')
+
+
+def test_every_report_body_field_is_covered_by_signature(tmp_path,monkeypatch):
+    report,path,key,manifest,state=fixture_report(tmp_path,monkeypatch)
+    def leaves(value,trail=()):
+        if isinstance(value,dict) and value:
+            for name,item in value.items():
+                if trail or name!='signature':yield from leaves(item,trail+(name,))
+        elif isinstance(value,list) and value:
+            for index,item in enumerate(value):yield from leaves(item,trail+(index,))
+        else:yield trail
+    for trail in leaves(report):
+        changed=json.loads(json.dumps(report));parent=changed
+        for key in trail[:-1]:parent=parent[key]
+        parent[trail[-1]]={'tampered':True}
+        path.write_text(json.dumps(changed))
+        with pytest.raises(ocr.OCRUnavailable):ocr.require_ready('English','scan')

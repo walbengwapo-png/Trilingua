@@ -8,7 +8,7 @@ Real-document replacement remains HOLD. No real corpus, reviewer sign-off or pro
 2. Signed render-plan provenance and PHP persistence: implemented. P2 full suites:234 Python,52 PHP/255 assertions,4 browser passed.
 3. Aggregate pixel budget, bounded assembly, parent scratch and provider deadline cap: implemented; focused72 tests passed. Full suites follow its commit.
 4. Diagnostic intake/feasibility/reference/manifest kit: implemented; focused26 tests passed and both CLIs help-smoked. Kit output is diagnostic; checked geometry is required for layout scores; blank reviewer sheets create no sign-off. Exact commands and capture guide are in Model/tools/ocr_kit/README.md.
-5. Held-state service smoke and isolated signed-fixture test — pending.
+5. Held-state service smoke and isolated signed-fixture test: implemented; full suites follow commit.
 6. Mutation checks, inventory/docs/preservation — pending.
 
 ## Baseline
@@ -25,3 +25,5 @@ Resource probe:16 synthetic images x240,000 pixels,720,000-pixel test budget:3 a
 First resource full run:240 passed,2 mock failures. Server import selected the configured Interactions model while new mocks supplied generateContent responses. Tests now select their mocked model explicitly; no production model/configuration change. Full rerun follows.
 
 Resource post-package:242 Python,52 PHP/255 assertions,4 browser passed. Package4 also replaces deterministic fixture-key test literals with random temporary secrets; no key is checked in. No real collection/reference/manifest was created.
+
+Package4 post-package:246 Python,52 PHP/255 assertions,4 browser passed. Package5 focused16 tests passed: real service-layer held smoke with synthetic source pixels, and a separately test-injected signed fixture path. Production fixture loading remains rejected. Every report body leaf is tamper-checked. The user clarified mixed=partial with zero translated raster regions; image-only=untranslated with zero total translated regions. First smoke assertions used the wrong warning-envelope path and an over-broad test key-policy injection; corrected test harness only.
