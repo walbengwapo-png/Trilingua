@@ -3,7 +3,7 @@ import csv
 import json
 from pathlib import Path
 import pytest
-from tools.ocr_kit.corpus import intake,reference_sheet,ingest_checks,build_manifest,save
+from tools.ocr_kit.corpus import intake,reference_sheet,ingest_checks,build_manifest,checked_page_regions
 from tools.ocr_kit.feasibility import feasibility,band,preprocess,transformed
 from .test_pdf_image_layout import geometry
 
@@ -23,6 +23,9 @@ def sample(tmp_path):
 def test_intake_hashes_and_group_split_leakage(tmp_path):
     saved=sample(tmp_path)
     assert not saved['gaps'] and len(saved['samples'][0]['image_sha256'])==64
+    info=tmp_path/'info.csv';original=info.read_bytes();info.write_bytes(original.replace(b'TEST CREATOR',b'CHANGED AUTHOR'))
+    with pytest.raises(ValueError,match='changed'):reference_sheet(saved,tmp_path/'stale.csv')
+    info.write_bytes(original)
     with (tmp_path/'info.csv').open('a',encoding='utf-8') as stream:
         stream.write('fixture.png,English,screenshot,synthetic-only,heldout,TEST,fixture,test_fixture\n')
     with pytest.raises(ValueError):intake(tmp_path)
@@ -44,6 +47,8 @@ def test_blank_second_review_sheet_and_unchanged_source_binding(tmp_path):
               'review_date':'2026-01-01','attestation':'TEST ONLY'}
     with pytest.raises(ValueError,match='Fixtures'):build_manifest(saved,checked,approval,tmp_path/'forbidden-corpus')
     assert not (tmp_path/'forbidden-corpus').exists()
+    checked['checks'][0]['decision']=''
+    with pytest.raises(ValueError,match='Incomplete'):build_manifest(saved,checked,approval,tmp_path/'forbidden-corpus')
     (tmp_path/'fixture.txt').write_text('changed')
     with pytest.raises(ValueError,match='changed'):ingest_checks(saved,sheet,tmp_path/'other.json')
 
@@ -67,3 +72,11 @@ def test_variant_geometry_uses_the_same_scale_as_raster(tmp_path):
     box=words[0]['position'];result=transformed([{'bbox':box}],matrix)[0]['bbox']
     assert result==pytest.approx([v*4/3 for v in box])
     assert processed.mode=='L'
+
+
+def test_checked_geometry_cannot_escape_source_or_invent_missing_pages():
+    regions=[{'page':0,'bbox':[1,2,20,30]}]
+    assert checked_page_regions(regions,0,(600,400))==regions
+    with pytest.raises(ValueError):checked_page_regions(regions,1,(600,400))
+    for box in ([0,0,601,400],[20,2,1,30],[0,0,float('nan'),30]):
+        with pytest.raises(ValueError):checked_page_regions([{'bbox':box}],0,(600,400))

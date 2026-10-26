@@ -45,3 +45,6 @@ Branch: `codex/hybrid-pdf-p0-p4`.
 
 ## Release holds
 No representative corpus, independent references, passing acceptance evidence, Linux runtime sign-off, visual release sign-off or licensing determination. No real category will be enabled.
+
+## Engineering finish
+Follow-up implementation on `codex/hybrid-pdf-finish`: report HMAC and evaluator issuance, signed plan v3 with immutable block metadata and PHP JSON canonicalization,120 MP default aggregate admission, disk-staged cleaned images, parent scratch cleanup/stale leases, provider timeout/retry caps, diagnostic OCR kit, and held/signed-fixture service smoke. All four requested safety mutations were killed in a private export and restored. Current package results, owner commands and remaining real-evidence/Linux/rights holds are in `FINISH.md`. No real input was processed or acceptance setting changed.

@@ -31,6 +31,9 @@ def original_pdf(path):
             raise ValueError('Upload a single PNG/JPEG matching its extension')
         if min(image.size) < 200 or image.width*image.height > MAX_PIXELS:
             raise ValueError('Image resolution must be at least 200 pixels per side and at most 40 MP')
+        from document.pixel_budget import limit, BUDGET_REASON
+        if image.width*image.height > limit():
+            raise ValueError(BUDGET_REASON)
     with tempfile.TemporaryDirectory(prefix='trilingua-pdf-source-', dir=os.environ.get('OCR_JOB_SCRATCH')) as directory:
         output=str(Path(directory)/'source.pdf')
         with fitz.open(path) as source:

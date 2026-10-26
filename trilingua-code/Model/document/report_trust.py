@@ -24,8 +24,8 @@ def validate_report(report, manifest_path):
         raise ValueError('Corpus manifest hash mismatch')
     review = manifest.get('corpus_review') or {}
     reviewers = review.get('reviewers')
-    if (not isinstance(reviewers, list) or not reviewers or not all(str(x).strip() for x in reviewers)
-            or not str(review.get('attestation', '')).strip() or review.get('coverage_reviewed') is not True
+    if (not isinstance(reviewers, list) or not reviewers or not all(isinstance(x,str) and x.strip() for x in reviewers)
+            or not isinstance(review.get('attestation'),str) or not review['attestation'].strip() or review.get('coverage_reviewed') is not True
             or report.get('corpus_review') != review):
         raise ValueError('Reviewer attestation missing or mismatched')
     if date.fromisoformat(review.get('review_date', '')) > date.today():
@@ -93,4 +93,3 @@ def verify_report(report, key_path, manifest_path, state=None, language=None, ca
         if scores.get(scope, 0) < max(95, report['minimum_word_accuracy_percent']) or report['categories'][scope]['decision'] != 'go':
             raise ValueError('Scope is below 95% or not accepted')
     return scores
-

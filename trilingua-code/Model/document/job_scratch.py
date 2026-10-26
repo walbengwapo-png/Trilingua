@@ -36,12 +36,13 @@ def remove(path, parent):
 def owned_scratch():
     parent = root()
     directory = Path(tempfile.mkdtemp(prefix='job-', dir=parent))
-    lease = (directory/'lease').open('w+b')
+    lease = None
     try:
+        lease = (directory/'lease').open('w+b')
         lease.write(b'0');lease.flush();_lease(lease)
         yield str(directory)
     finally:
-        lease.close()
+        if lease is not None:lease.close()
         remove(directory, parent)
 
 

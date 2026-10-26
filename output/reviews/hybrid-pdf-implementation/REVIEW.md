@@ -1,5 +1,7 @@
 # Hybrid PDF review and cleanup
 
+Historical review of `7e953bf`. The subsequent engineering finish is documented in `FINISH.md`; its protocol and tests supersede the open engineering items below. Real-document acceptance remains HOLD.
+
 **Verdict: real-document image replacement remains HOLD.** Local cleanup is complete on `codex/hybrid-pdf-review-fixes`. Passing fixtures establish implementation behavior, not OCR accuracy or production readiness.
 
 Reviewed phase commits: `4599e6f`, `ac36462`, `3c2ce0b`, `ef4479a`, `7e953bf`; base: `ed50c6b1e3bc9f1e1463a8066e6ca76337f1c763`. All 59 paths in `CHANGED_FILES.txt` were read, including binary font validation; standards/safety and spec reviews were performed separately. Findings were reported before fixes. Source anchors below refer to **7e953bf**, so later cleanup and unrelated dirty hunks can shift working-file lines. Paths are repository-relative; `Model/`, `app/`, `resources/` and `tests/` below are under `trilingua-code/`.

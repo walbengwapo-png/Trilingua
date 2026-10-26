@@ -90,13 +90,15 @@ def intake(folder):
         sample['gaps']=issues;samples.append(sample);gaps.extend(f'{name}: {x}' for x in issues)
     listed={str((folder/name).resolve()) for name in seen}
     gaps.extend(f'{p.name}: absent from info.csv' for p in folder.iterdir() if p.suffix.lower() in SUFFIXES and str(p.resolve()) not in listed)
-    return {'purpose':'diagnostic','banner':BANNER,'root':str(folder),'samples':samples,'gaps':gaps}
+    return {'purpose':'diagnostic','banner':BANNER,'root':str(folder),'info_sha256':digest(folder/'info.csv'),
+            'samples':samples,'gaps':gaps}
 
 
 def current(saved):
     fresh=intake(saved['root'])
     fingerprint=lambda value:[(s['id'],s['image_sha256'],s['reference_sha256']) for s in value['samples']]
-    if fingerprint(saved)!=fingerprint(fresh):raise ValueError('Intake bytes changed; rerun intake and independent review')
+    if fingerprint(saved)!=fingerprint(fresh) or saved.get('info_sha256')!=fresh['info_sha256']:
+        raise ValueError('Intake bytes or metadata changed; rerun intake and independent review')
     return fresh
 
 
@@ -131,6 +133,18 @@ def ingest_checks(saved, sheet, output):
     save(output,result);return result
 
 
+def checked_page_regions(regions, number, size):
+    import math
+    found=[r for r in regions if r.get('page',0)==number]
+    if not found:raise ValueError('Every page needs complete checked regions')
+    for region in found:
+        box=region['bbox']
+        if (len(box)!=4 or not all(isinstance(v,(int,float)) and math.isfinite(v) for v in box)
+                or not 0<=box[0]<box[2]<=size[0] or not 0<=box[1]<box[3]<=size[1]):
+            raise ValueError('Checked region geometry outside source raster')
+    return found
+
+
 def build_manifest(saved, checks, approval, output):
     saved=current(saved)
     if saved['gaps']:raise ValueError('Intake gaps must be resolved before manifest construction')
@@ -144,6 +158,9 @@ def build_manifest(saved, checks, approval, output):
     # Validate every attestation before creating any evaluator material.
     for sample in saved['samples']:
         review=reviews[sample['id']]
+        if (review.get('decision') not in {'confirmed','corrected'} or not review.get('attestation','').strip()
+                or not review.get('reviewer','').strip() or date.fromisoformat(review.get('review_date',''))>date.today()):
+            raise ValueError('Incomplete independent reference check')
         if sample.get('material')=='test_fixture':raise ValueError('Fixtures cannot become real evaluator material')
         if any(review.get(k,'').lower()!='true' for k in ('rights_verified','representative','real_capture_confirmed')):
             raise ValueError('Explicit real capture, rights and representativeness confirmation required')
@@ -158,8 +175,7 @@ def build_manifest(saved, checks, approval, output):
         if normalize(reference)!=normalize('\n'.join(r['text'] for r in ordered)):raise ValueError('Checked regions must cover the complete checked reference')
         seen_pages=set()
         for number,image in pages(Path(saved['root'])/sample['file']):
-            page_regions=[r for r in ordered if r.get('page',0)==number]
-            if not page_regions:raise ValueError('Every page needs complete checked regions')
+            page_regions=checked_page_regions(ordered,number,image.size)
             seen_pages.add(number);identity=sample['id']+'-p'+str(number)
             image_path=output/(identity+'.png');reference_path=output/(identity+'.txt')
             image.save(image_path,'PNG');reference_path.write_text('\n'.join(r['text'] for r in page_regions),encoding='utf-8')

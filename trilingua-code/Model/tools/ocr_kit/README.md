@@ -6,7 +6,7 @@ Use the existing isolated environment; no new dependency is required. Tesseract,
 
 ## Collect and inspect
 
-Collect the [capture guide](CAPTURE_GUIDE.md) grid: English/Cebuano/Filipino x scan/photo/screenshot x4 distinct documents. Keep document/content groups entirely within one split. A multi-page PDF remains one document. Use independent content for calibration and held-out; do not tune on held-out results.
+Collect the [capture guide](CAPTURE_GUIDE.md) grid: English/Cebuano/Filipino x scan/photo/screenshot x 4 distinct documents. Keep document/content groups entirely within one split. A multi-page PDF remains one document. Use independent content for calibration and held-out; do not tune on held-out results.
 
 Put each PDF/PNG/JPEG beside a matching UTF-8 `.txt` transcript. For `page.pdf`, use `page.txt` and `page.regions.json`. Do not use OCR output as an unchecked transcript. `info.csv` headers:
 
@@ -16,7 +16,7 @@ file,language,capture_class,content_group_id,split,author,rights_note
 
 Fill one row per actual document; split is `calibration` or `heldout` (`held_out` is normalized). Author means the actual acquirer, and rights_note records the owner's actual rights basis; neither is a legal determination by the tool. Synthetic material must include the optional `material` column set to `test_fixture`; it can never be built into real evaluator material.
 
-The geometry file is a JSON list of `{id,page,order,bbox,text}` records: zero-based page, unique region IDs/order, `[x0,y0,x1,y1]` in pixels, complete checked text. For PDF pages the coordinate basis is300 DPI; for standalone images it is their full-resolution EXIF-transposed image at the300 baseline. A second reviewer must check boxes, reading order and full text against the original. The kit does not invent geometry. Without it, feasibility reports word accuracy and `null` for layout scores.
+The geometry file is a JSON list of `{id,page,order,bbox,text}` records: zero-based page, unique region IDs/order, `[x0,y0,x1,y1]` in pixels, complete checked text. For PDF pages the coordinate basis is 300 DPI; for standalone images it is their full-resolution EXIF-transposed image at the 300 baseline. A second reviewer must check boxes, reading order and full text against the original. The kit does not invent geometry. Without it, feasibility reports word accuracy and `null` for layout scores.
 
 From repository root, set paths for your actual local folders:
 
@@ -31,7 +31,7 @@ New-Item -ItemType Directory -Force $work | Out-Null
 & $py -m tools.ocr_kit feasibility --intake "$work\intake.json" --dpi 300 400 --deskew --binarize --output "$work\preprocessed-diagnostic.json"
 ```
 
-Per-sample and per language/capture/split/variant slices report word accuracy, region recall and within-page reading order when checked geometry exists. Bands:>=95 reachable;85-95 try preprocessing;<85 engine problem. Missing or failed samples remain unmeasured and visible. Do not select the best held-out variant and call it unbiased evidence.400 DPI, deskew and binarization are diagnostic only; the production evaluator always uses the current fixed SETTINGS. Changing production preprocessing requires new matching evidence and a separate approved change.
+Per-sample and per language/capture/split/variant slices report word accuracy, region recall and within-page reading order when checked geometry exists. Bands: >=95 reachable; 85-95 try preprocessing; <85 engine problem. Missing or failed samples remain unmeasured and visible. Do not select the best held-out variant and call it unbiased evidence. 400 DPI, deskew and binarization are diagnostic only; the production evaluator always uses the current fixed SETTINGS. Changing production preprocessing requires new matching evidence and a separate approved change.
 
 ## Independent reference check and manifest
 
@@ -52,7 +52,7 @@ Use a new output directory. Build refuses incomplete checks, gaps or fixtures. I
 
 ## Evaluator, keys and signing
 
-HMAC stops accidental/casual enablement, **not a malicious administrator holding the signing key**. Protect the acceptance key for the evaluator owner, and a separate render-plan key for the service. Keys are32 random bytes in purpose-tagged key files, created exclusively outside the repository without overwrite. POSIX mode is0600; on Windows restrict the enclosing folder ACL to the intended account/service. Never commit, paste or send a key. Plan-key rotation invalidates existing signed plans. Old unsigned hybrid plans are rejected rather than silently trusted; historical v1/v2 reflow sidecars remain compatible.
+HMAC stops accidental/casual enablement, **not a malicious administrator holding the signing key**. Protect the acceptance key for the evaluator owner, and a separate render-plan key for the service. Keys are 32 random bytes in purpose-tagged key files, created exclusively outside the repository without overwrite. POSIX mode is 0600; on Windows restrict the enclosing folder ACL to the intended account/service. Never commit, paste or send a key. Plan-key rotation invalidates existing signed plans. Old unsigned hybrid plans are rejected rather than silently trusted; historical v1/v2 reflow sidecars remain compatible.
 
 ```powershell
 $keys = 'C:\OCR-private-keys'
@@ -66,10 +66,12 @@ New-Item -ItemType Directory -Force $keys | Out-Null
 & $py -m tools.ocr_trust verify --report "$work\signed-evaluator-report.json" --key-file "$keys\acceptance.json" --manifest "$work\frozen-corpus\manifest.json"
 ```
 
-Split-only outputs are diagnostic and cannot enable the gate. Final issuance validates the complete combined manifest, actual sample/reference hashes, review attestations, engine binary/pack/settings fingerprints and recomputed case/scope scores. Only held-out results count toward95%. A below-threshold scope remains rejected. Verification also compares the installed runtime. Review region recall, misses and order separately;95% spelling does not prove complete extraction.
+Split-only outputs are diagnostic and cannot enable the gate. Final issuance validates the complete combined manifest, actual sample/reference hashes, review attestations, engine binary/pack/settings fingerprints and recomputed case/scope scores. Only held-out results count toward 95%. A below-threshold scope remains rejected. Verification also compares the installed runtime. Review region recall, misses and order separately; 95% spelling does not prove complete extraction.
 
 After genuine evidence and owner approval, configure the service deployment's `OCR_ACCEPTANCE_REPORT`, `OCR_ACCEPTANCE_KEY_FILE`, `OCR_CORPUS_MANIFEST` and `OCR_PLAN_KEY_FILE` to durable local paths. This task did not set them or edit `.env`. Missing keys fail closed; no keys are generated on startup. Production always rejects fixture-marked material/keys; there is no test-mode configuration flag. The synthetic smoke uses test-owned dependency replacements only.
 
-Resource configuration: `OCR_JOB_PIXEL_BUDGET` defaults to120,000,000 decoded pixels, while40MP/image and50 pages remain unchanged. A page whose hash lookup would exceed the budget has all its images held with an explicit reason. `OCR_SCRATCH_ROOT` defaults to an owned temp folder; `OCR_SCRATCH_MAX_AGE_SECONDS` defaults to86400. Parent leases protect active jobs during startup stale-directory sweeps. Provider connect/read/total transport settings are capped to the remaining request-local PDF budget, and impossible retries are refused. Requests still use transport timeouts, not forced thread cancellation: slow response streaming/DNS/OS scheduling can exceed a wall-clock deadline; late publication is rejected. No absolute cancellation guarantee is claimed.
+Resource configuration: `OCR_JOB_PIXEL_BUDGET` defaults to 120,000,000 decoded pixels, while 40 MP/image and 50 pages remain unchanged. A page whose hash lookup would exceed the budget has all its images held with an explicit reason. `OCR_SCRATCH_ROOT` defaults to an owned temp folder; `OCR_SCRATCH_MAX_AGE_SECONDS` defaults to 86400. Parent leases protect active jobs during startup stale-directory sweeps. Provider connect/read/total transport settings are capped to the remaining request-local PDF budget, and impossible retries are refused. Requests still use transport timeouts, not forced thread cancellation: slow response streaming/DNS/OS scheduling can exceed a wall-clock deadline; late publication is rejected. No absolute cancellation guarantee is claimed.
 
 Real-document replacement remains HOLD until genuine signed held-out evidence passes, followed by Linux/font parity, visual sign-off and owner PyMuPDF/font-rights review.
+
+Plan/report HMAC canonicalization sorts keys and normalizes integral floats and empty JSON containers to the representations preserved by Laravel associative JSON decoding. Numeric value changes, geometry, status, source identity and block metadata remain authenticated; a real PHP encode/decode plus reconstruction regression covers this boundary. A standalone image larger than a deliberately reduced job budget is rejected before PDF conversion; it cannot safely produce a PDF template without decoding. Diagnostic Tesseract lookup uses the installed executable or the process OCR_TESSERACT_CMD override.

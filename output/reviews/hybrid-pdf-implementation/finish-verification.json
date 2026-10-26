@@ -1,0 +1,17 @@
+{
+  "base_commit": "eb8dff7",
+  "baseline_hash_entries": 561,
+  "unrelated_hash_mismatches": [],
+  "initial_dirty_files": 35,
+  "unchanged_dirty_files": 32,
+  "mixed_files_preexisting_hunks_preserved": [
+    "trilingua-code/Model/providers/gemini.py",
+    "trilingua-code/Model/providers/gptoss.py",
+    "trilingua-code/Model/server.py"
+  ],
+  "live_env_unchanged": true,
+  "acceptance_settings_unchanged": true,
+  "genuine_corpus_or_production_report_created": false,
+  "services_started": false,
+  "real_provider_or_network_connections_made": false
+}

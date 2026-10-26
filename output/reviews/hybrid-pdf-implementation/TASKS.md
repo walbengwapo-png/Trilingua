@@ -8,3 +8,15 @@
 - [x] Final: verification, phase commits and handoff; real image replacement remains HOLD
 
 Excluded: P5/outlined replacement, corpus creation, live providers, services, live environment/configuration.
+
+## Engineering finish follow-up
+- [x] P1: HMAC report issuance/verification and recomputed held-out scores
+- [x] P2: signed plan v3/source/metadata provenance and unchanged PHP transport
+- [x] S8/S9: aggregate pixel admission, bounded assembly and parent scratch recovery
+- [x] Remaining-budget provider transport/retry caps (no hard thread cancellation)
+- [x] Diagnostic intake/variant/reference/manifest tooling and capture guide
+- [x] Service held-state smoke and isolated signed synthetic demonstration
+- [x] Four isolated mutations killed and restored
+- [ ] Final after-cleanup suites and preservation report (see FINISH.md)
+
+Real corpus/reviewer/signing deployment, Linux execution, visual sign-off and licensing remain owner holds.

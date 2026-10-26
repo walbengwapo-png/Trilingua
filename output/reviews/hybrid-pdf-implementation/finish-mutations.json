@@ -1,0 +1,30 @@
+[
+  {
+    "check": "report_signature",
+    "result": "killed",
+    "exit": 1,
+    "target": "tests/test_ocr_trust.py::test_invalid_signed_reports_fail_closed[signature]",
+    "restored": true
+  },
+  {
+    "check": "plan_signature",
+    "result": "killed",
+    "exit": 1,
+    "target": "tests/test_pdf_hybrid_regeneration.py::test_plan_provenance_rejects_untrusted_input_before_publication[unsigned]",
+    "restored": true
+  },
+  {
+    "check": "pixel_budget",
+    "result": "killed",
+    "exit": 1,
+    "target": "tests/test_pdf_finish_resources.py::test_many_image_budget_holds_before_decode_and_bounds_peak_memory",
+    "restored": true
+  },
+  {
+    "check": "scratch_cleanup",
+    "result": "killed",
+    "exit": 1,
+    "target": "tests/test_pdf_finish_resources.py::test_parent_removes_scratch_after_hard_worker_timeout",
+    "restored": true
+  }
+]

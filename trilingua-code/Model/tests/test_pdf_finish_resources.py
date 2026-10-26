@@ -1,5 +1,4 @@
 """Synthetic memory probes and owned process/scratch cleanup, no real scans."""
-import json
 import os
 from pathlib import Path
 import time
@@ -76,3 +75,23 @@ def test_stale_sweeper_skips_live_lease_and_unowned_folders(tmp_path,monkeypatch
         assert Path(active).exists() and unrelated.exists()
         with pytest.raises(ValueError):job_scratch.remove(tmp_path,root)
 
+
+def test_failed_lease_creation_cleans_parent_owned_directory(tmp_path,monkeypatch):
+    root=tmp_path/'scratch';monkeypatch.setenv('OCR_SCRATCH_ROOT',str(root))
+    original=Path.open
+    def fail(path,*args,**kwargs):
+        if path.name=='lease':raise OSError('Injected disk/open failure')
+        return original(path,*args,**kwargs)
+    monkeypatch.setattr(Path,'open',fail)
+    with pytest.raises(OSError):
+        with job_scratch.owned_scratch():pass
+    assert list(root.iterdir())==[]
+
+
+def test_standalone_image_budget_is_checked_before_pdf_conversion(tmp_path,monkeypatch):
+    from document.pdf_source import original_pdf
+    image,_=geometry();path=tmp_path/'synthetic.png';image.save(path)
+    monkeypatch.setenv('OCR_JOB_PIXEL_BUDGET','100000')
+    monkeypatch.setattr(fitz.Document,'convert_to_pdf',lambda *a:pytest.fail('Conversion decoded over-budget template'))
+    with pytest.raises(ValueError,match=BUDGET_REASON):
+        with original_pdf(path):pass

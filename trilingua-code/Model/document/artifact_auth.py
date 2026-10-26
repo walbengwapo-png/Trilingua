@@ -11,7 +11,17 @@ MAX_ARTIFACT_BYTES = 24_000_000
 
 
 def canonical(value):
-    return json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False,
+    def normalized(item):
+        # Laravel's associative JSON decoding coalesces empty containers and
+        # integral floats; these representations must have the same signature.
+        if isinstance(item, dict):
+            return {k:normalized(v) for k,v in item.items()} if item else []
+        if isinstance(item, (list, tuple)):
+            return [normalized(v) for v in item]
+        if isinstance(item, float) and item.is_integer():
+            return int(item)
+        return item
+    return json.dumps(normalized(value), sort_keys=True, separators=(',', ':'), ensure_ascii=False,
                       allow_nan=False).encode('utf-8')
 
 
@@ -67,4 +77,3 @@ def verify(body, path, purpose):
     if (signature.get('algorithm') != expected['algorithm'] or signature.get('purpose') != purpose
             or not hmac.compare_digest(str(signature.get('value', '')), expected['value'])):
         raise ValueError('Invalid or missing artifact signature')
-

@@ -89,6 +89,19 @@ def test_plan_provenance_rejects_untrusted_input_before_publication(tmp_path,fro
     assert out.read_bytes()==b'old'
 
 
+def test_php_json_roundtrip_preserves_signed_plan_provenance(tmp_path,frozen):
+    import subprocess
+    php=shutil.which('php')
+    if not php:pytest.skip('PHP runtime required for the cross-language JSON boundary')
+    source,sidecar=frozen
+    result=subprocess.run([php,'-r','echo json_encode(json_decode(stream_get_contents(STDIN), true));'],
+        input=json.dumps(sidecar).encode('utf-8'),stdout=subprocess.PIPE,check=True)
+    restored=json.loads(result.stdout)
+    output=tmp_path/'php-roundtrip.pdf'
+    reconstruct_from_sidecar(restored,{0:'Edited target'},str(source),str(output))
+    with fitz.open(output) as doc:assert 'Edited target' in doc[0].get_text()
+
+
 def test_unfittable_edit_preserves_last_published_file(tmp_path,frozen):
     source,sidecar=frozen;out=tmp_path/'published.pdf';out.write_bytes(b'last-published')
     with pytest.raises(ImageHold,match='fit'):
