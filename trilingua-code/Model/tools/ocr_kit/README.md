@@ -36,7 +36,8 @@ Per-sample and per language/capture/split/variant slices report word accuracy, r
 ## Independent reference check and manifest
 
 ```powershell
-& $py -m tools.ocr_kit reference-check --intake "$work\intake.json" --sheet "$work\second-review.csv"+# STOP: an independent human completes the sheet after checking the actual originals.
+& $py -m tools.ocr_kit reference-check --intake "$work\intake.json" --sheet "$work\second-review.csv"
+# STOP: an independent human completes the sheet after checking the actual originals.
 & $py -m tools.ocr_kit reference-check --intake "$work\intake.json" --sheet "$work\second-review.csv" --ingest --output "$work\checks.json"
 ```
 
@@ -73,5 +74,7 @@ After genuine evidence and owner approval, configure the service deployment's `O
 Resource configuration: `OCR_JOB_PIXEL_BUDGET` defaults to 120,000,000 decoded pixels, while 40 MP/image and 50 pages remain unchanged. A page whose hash lookup would exceed the budget has all its images held with an explicit reason. `OCR_SCRATCH_ROOT` defaults to an owned temp folder; `OCR_SCRATCH_MAX_AGE_SECONDS` defaults to 86400. Parent leases protect active jobs during startup stale-directory sweeps. Provider connect/read/total transport settings are capped to the remaining request-local PDF budget, and impossible retries are refused. Requests still use transport timeouts, not forced thread cancellation: slow response streaming/DNS/OS scheduling can exceed a wall-clock deadline; late publication is rejected. No absolute cancellation guarantee is claimed.
 
 Real-document replacement remains HOLD until genuine signed held-out evidence passes, followed by Linux/font parity, visual sign-off and owner PyMuPDF/font-rights review.
+
+Current production SETTINGS v3 reads hOCR word/line geometry and allows one 4/3-scale retry per uncertain paragraph. A retry must agree on NFC-normalized text (including case, punctuation and diacritics), leave every word at confidence 80 or higher, and fit the shared decoded-pixel allowance and original 60-second OCR time allowance. The evaluator calls this same policy. Older settings reports cannot qualify it. Renderer algorithm v2 also invalidates earlier v3 render plans carrying algorithm v1; existing downloaded PDFs remain readable, but those plans require a fresh translation rather than silent regeneration under the new renderer.
 
 Plan/report HMAC canonicalization sorts keys and normalizes integral floats and empty JSON containers to the representations preserved by Laravel associative JSON decoding. Numeric value changes, geometry, status, source identity and block metadata remain authenticated; a real PHP encode/decode plus reconstruction regression covers this boundary. A standalone image larger than a deliberately reduced job budget is rejected before PDF conversion; it cannot safely produce a PDF template without decoding. Diagnostic Tesseract lookup uses the installed executable or the process OCR_TESSERACT_CMD override.
