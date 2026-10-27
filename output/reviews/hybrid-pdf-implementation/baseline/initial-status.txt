@@ -1,0 +1,83 @@
+ M SETUP.md
+ M TRILINGUA_COMPLETE_GUIDE.md
+ M translated_in.docx
+ M trilingua-code/.env.example
+ M trilingua-code/DEMO.md
+ M trilingua-code/Model/benchmarks/ocr_feasibility.py
+ M trilingua-code/Model/config/environment.py
+ M trilingua-code/Model/document/ocr_extractor.py
+ M trilingua-code/Model/document/reconstructor.py
+ M trilingua-code/Model/document/regenerator.py
+ M trilingua-code/Model/dto/responses.py
+ M trilingua-code/Model/pipeline/document_context.py
+ M trilingua-code/Model/pipeline/document_pipeline.py
+ M trilingua-code/Model/pipeline/translation_pipeline.py
+ M trilingua-code/Model/providers/gemini.py
+ M trilingua-code/Model/providers/gptoss.py
+ M trilingua-code/Model/requirements.txt
+ M trilingua-code/Model/server.py
+ M trilingua-code/Model/tests/test_ocr_feasibility.py
+ M trilingua-code/Model/tests/test_service_token_policy.py
+ M trilingua-code/Model/translated_input.docx
+ M trilingua-code/app/Http/Controllers/Admin/DashboardController.php
+ M trilingua-code/app/Http/Controllers/Admin/JobController.php
+ M trilingua-code/app/Http/Controllers/Admin/UserController.php
+ M trilingua-code/app/Http/Controllers/TranslationController.php
+ M trilingua-code/app/Models/TranslationHistory.php
+ M trilingua-code/app/Models/TranslationMetric.php
+ M trilingua-code/app/Services/BlockService.php
+ M trilingua-code/app/Services/HistoryService.php
+ M trilingua-code/app/Services/MetricsService.php
+ M trilingua-code/app/Services/StorageCleanupService.php
+ M trilingua-code/app/Services/Translation/CompletedDownloadResolver.php
+ M trilingua-code/app/Services/Translation/DTO/TranslationResponse.php
+ M trilingua-code/app/Services/TranslationService.php
+ M trilingua-code/app/Services/TranslationStatsService.php
+ M trilingua-code/config/translation.php
+ M trilingua-code/docs/ARCHITECTURAL_DESIGN.md
+ M trilingua-code/resources/views/admin/dashboard.blade.php
+ M trilingua-code/resources/views/admin/review-document.blade.php
+ M trilingua-code/resources/views/admin/user-detail.blade.php
+ M trilingua-code/resources/views/dashboard.blade.php
+ M trilingua-code/resources/views/translation.blade.php
+ M trilingua-code/tests/Feature/AuthCssRenderingTest.php
+ M trilingua-code/tests/Feature/DocumentPreviewTest.php
+ M trilingua-code/tests/Feature/TranslationControllerTest.php
+ M trilingua-code/tests/Feature/TranslationStatusDownloadIntegrityTest.php
+ M trilingua-code/translated_input.pdf
+?? .tmp_google_classroom_tests/
+?? Google Classroom Student Test Cases.docx
+?? TRILINGUA_PRODUCTION_STATE_REPORT_2026-10-09.md
+?? Testcases/
+?? TriLingua Provider Neutral Pipeline Improvement Report.docx
+?? chatgpt/Part2 test/
+?? chatgpt/test/
+?? chatgpt/test3/
+?? clip-studio-feasibility/
+?? codex/
+?? docs/CODEBASE_WALKTHROUGH_2026-10-15.md
+?? docs/CURRENT_SYSTEM_AUDIT_2026-09-28.md
+?? docs/CURRENT_SYSTEM_REEVALUATION_2026-09-29.md
+?? docs/DEPLOYMENT_STRATEGY_REPORT_2026-09-13.md
+?? docs/FEATURE_EVIDENCE_AUDIT.md
+?? docs/TRILINGUA_CURRENT_STANDING_2026-10-01.md
+?? docs/hosting-options-2026-10-19.md
+?? docs/production-state-2026-10-09/
+?? output/
+?? tmp/
+?? trilingua-code/Model/tests/concurrency_report.json
+?? trilingua-code/Model/tests/test_ocr_documents.py
+?? trilingua-code/Model/tests/test_phase_a_measurements.py
+?? trilingua-code/app/Services/EngineMetricsSummary.php
+?? trilingua-code/app/Support/MeasurementProvenance.php
+?? trilingua-code/app/Support/SourceWordCounter.php
+?? trilingua-code/database/migrations/2026_10_19_000001_correct_processing_measurements.php
+?? trilingua-code/docs/OCR_IMPLEMENTATION_2026-10-25.md
+?? trilingua-code/docs/implementation-records/
+?? trilingua-code/storage/local-check/
+?? trilingua-code/tests/Feature/PhaseADashboardTest.php
+?? trilingua-code/tests/Feature/PhaseAMetricsTest.php
+?? trilingua-code/tests/Feature/PhaseASourceWordsTest.php
+?? trilingua-code/tests/browser/processing-records.test.mjs
+?? trilingua-code/tests/fixtures/ocr-worksheet.png
+?? trilingua-code/tests/start-all-restart-check.ps1

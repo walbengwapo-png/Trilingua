@@ -1,0 +1,6 @@
+{
+  "text_request_accepts_9000_characters": true,
+  "laravel_default_limit": 8000,
+  "multipart_declared_in_runtime_requirements": false,
+  "missing_multipart_route_declaration": "Form data requires \"python-multipart\" to be installed. \nYou can install \"python-multipart\" with: \n\npip install python-multipart\n"
+}

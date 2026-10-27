@@ -1,0 +1,203 @@
+Between 1962 and late 1973, NASA’s Jet
+Propulsion Laboratory designed and built 10 space-
+craft named Mariner to explore the inner solar system
+-- visiting the planets Venus, Mars and Mercury for
+the first time, and returning to Venus and Mars for
+additional close observations. The final mission in the
+series, Mariner 10, flew past Venus before going on to
+encounter Mercury, after which it returned to Mercury
+for a total of three flybys.  The next-to-last, Mariner
+9, became the first ever to orbit another planet when
+it rached Mars for about a year of mapping and mea-
+surement.
+t
+Early Concept
+The Mariner program began in 1960 with a series
+of  JPL mission studies for small-scale, frequent
+exploration of the nearest planets.  They were to take
+advantage of the soon-to-be-available Atlas launch
+vehicles as well as the developing capability of JPL’s
+Deep Space Instrumentation Facility (later named the
+Deep Space Network), a global network of ground
+stations designed to communicate with spacecraft in
+deep space.
+Each spacecraft was to carry solar panels that
+would be pointed toward the Sun and a dish antenna
+that would be pointed at Earth.  Each would also
+carry a host of scientific instruments.  Some of the
+instruments, such as cameras, would need to be point-
+ed at the target body it was studying.  Other instru-
+ments were non-directional and studied phenomena
+such as magnetic fields and charged particles.  JPL
+engineers proposed to make the Mariners “three-axis-
+stabilized,” meaning that unlike other space probes
+they would not spin.
+Each of the Mariner projects was designed to have
+two spacecraft launched on separate rockets, in case
+of difficulties with the nearly untried launch vehicles.
+Mariner 1, Mariner 3, and Mariner 8 were in fact lost
+during launch, but their backups were successful.  No
+Mariners were lost in later flight to their destination
+planets or before completing their scientific missions.
+The Missions
+Mariner 2.  The first Mariner mission, which was
+to send two spacecraft to Venus, was authorized by
+NASA in August 1961.  The rocket carrying Mariner
+1 went off-course during launch on July 22, 1962, and
+the spacecraft was destroyed.  A month later, Mariner
+2 was launched successfully on August 27, 1962,
+sending it on a 3-1/2-month flight to Venus.  On the
+way it measured for the first time the solar wind, a
+constant stream of charged particles flowing outward
+from the Sun.  It also measured interplanetary dust,
+which turned out to be more scarce than predicted.  In
+addition, Mariner 2 detected high-energy charged par-
+ticles coming from the Sun, including several brief
+solar flares, as well as cosmic rays from outside the
+solar system.  As it flew by Venus on December 14,
+1962, Mariner 2 scanned the planet with infrared and
+microwave radiometers, revealing that Venus has cool
+Mariner to Mercury, Venus and Mars
+NASA Facts
+National Aeronautics and
+Space Administration
+Jet Propulsion Laboratory
+California Institute of Technology
+Pasadena, CA 91109
+
+clouds and an extremely hot surface (because the
+bright, opaque clouds hide the planet’s surface,
+Mariner 2 was not outfitted with a camera).
+Mariner 4 and 5.  The next Mariner project tar-
+geted the planet Mars with two spacecraft.  Mariner 3
+was launched on November 5, 1964, but the shroud
+encasing the spacecraft atop its rocket failed to open
+properly and Mariner 3 did not get to Mars.  Three
+weeks later, on November 28, 1964, Mariner 4 was
+launched successfully on an eight-month voyage to
+the red planet.  The spacecraft flew past Mars on July
+14, 1965, collecting the first close-up photographs of
+another planet.  The pictures, played back from a
+small tape recorder over a long period, showed lunar-
+type impact craters (just beginning to be pho-
+tographed at close range from the Moon), some of
+them touched with frost in the chill Martian evening.
+The Mariner 4 spacecraft, expected to survive some-
+thing more than the eight months to Mars encounter,
+actually lasted about three years in solar orbit, contin-
+uing long-term studies of the solar wind environment
+and making coordinated measurements with Mariner
+5, a sister ship launched to Venus in 1967.
+Mariner 6 and 7.  In 1969 Mariner 6 and
+Mariner 7 completed the first dual mission to Mars,
+flying by over the equator and south polar regions and
+analysing atmosphere and surface with remote sen-
+sors as well as recording and relaying hundreds of
+pictures.  By chance, both flew over cratered regions
+and missed both the giant northern volcanoes and the
+equatorial grand canyon discovered later. Their
+approach pictures did, however, show the dark fea-
+tures long seen from Earth, but no canals.
+Mariner 9.  The first artificial satellite of Mars
+was Mariner 9, launched in May 1971.  Its   launch
+mass was nearly doubled by the onboard rocket pro-
+pellant needed to thrust it into orbit around Mars, but
+otherwise it closely resembled its predecessors.
+Achieving orbit in November 1971, Mariner 9
+observed that a great dust storm had obscured the
+whole globe of the planet.  Since 1969, Mariner
+spacecraft operations such as science sequencing and
+pointing had been programmable, using simple flight
+computers with limited memory, and the spacecraft
+used a digital tape-recorder rather than film to store
+images and other science data.  The spacecraft was
+thus able to wait until the storm abated, the dust set-
+tled and the surface was clearly visible before compil-
+ing its global mosaic of high-quality images of the
+surface of Mars.  It also provided the first closeup
+pictures of Mars’ two small, irregular moons, Phobos
+and Deimos.
+Mariner 10.  Two years after Mariner 9’s orbital
+pioneering, the last Mariner took off on the first two-
+planet exploration.  With the scorched inner planet
+Mercury as its ultimate target, Mariner 10 pioneered
+the use of a “gravity assist” swing by the planet
+Venus to bend its flight path.  Using a near-ultraviolet
+filter, it produced the first clear pictures of the
+Venusian chevron clouds and performed other atmos-
+pheric studies before moving to the small, airless,
+cratered globe of Mercury.  Here a fortuitous gravity
+assist enabled the spacecraft to return at six-month
+intervals for close mapping passes over the planet,
+covering half the globe (Mercury’s slow rotation left
+the other half always in the dark when Mariner
+returned).  
+The Results
+What did we learn from the Mariner projects?
+First, JPL engineers learned that interplanetary
+flight and scientific exploration were feasible using
+relatively small, low-cost spacecraft launched by
+medium-sized launch vehicles based on the Atlas
+guided missile.  They could be developed in a few
+years, could survive in space for up to a few years,
+and could collect valuable scientific information
+about the Earth’s planetary neighbors and nearby
+interplanetary space.
+Second, scientists learned a great deal about the
+surfaces of Mars and Mercury, as well as some details
+about the atmospheres of  Mars and Venus and about
+the solar system environment.  All three of the planets
+visited proved to be greatly different from Earth.
+Venus, whose surface was not observable by the
+spacecraft, has a dense carbon dioxide atmosphere
+topped by marked, opaque clouds and covering a hot
+surface made even hotter by the atmosphere’s “green-
+house effect.”  Mercury, not quite so hot as Venus,
+has an airless, cratered surface like the Moon, but (so
+far as Mariner 10 could see) without the plains or
+“maria” which appear on the Moon.  Mars, looking
+strongly cratered to the earliest Mariners, revealed its
+other features, great volcanoes and valleys, to Mariner
+2
+
+9. It has a very thin, cold atmosphere, mostly of car-
+bon dioxide.  Magnetic fields of the three planets
+were negligible.
+Finally, the engineering and science learning from
+the Mariner projects laid the groundwork for all the
+solar sysem exploration that followed.
+Mariner Mission Summary
+q Mariner 2, launched 8/27/62, Venus flyby
+12/14/62; mass 203 kg (446 lb); microwave and
+infrared radiometers, cosmic dust, solar plasma and
+high-energy radiation, magnetic fields.
+q Mariner 4, launched 11/28/64, Mars flyby
+7/14/65; mass 261 kg (575 lb); camera with digital
+tape recorder (about 20 pictures), cosmic dust, solar
+plasma, trapped radiation, cosmic rays, magnetic
+fields, radio occultation and celestial mechanics.
+q Mariner 5, launched 6/14/67, Venus flyby
+10/19/67; mass 245 kg (540 lb); ultraviolet photome-
+ter, cosmic dust, solar plasma, trapped radiation, cos-
+mic rays, magnetic fields, radio occultation and celes-
+tial mechanics.
+q Mariner 6-7, launched 2/2469 and 3/27/69,
+Mars flybys 7/31/69 and 8/5/69; mass 413 kg (908 lb)
+each; wide- and narrow-angle cameras with digital
+tape recorder, infrared spectrometer and radiometer,
+ultraviolet spectrometer, radio occultation and celes-
+tial mechanics.
+q Mariner 9, launched 5/30/71, orbited Mars
+11/13/71 to 10/27/72; mass 998 kg (2,200 lb); wide-
+and narrow-angle cameras with digital tape recorder,
+infrared spectrometer and radiometer, ultraviolet spec-
+trometer, radio occultation and celestial mechanics.
+q Mariner 10, launched 11/3/73; Venus flyby
+2/5/74, Mercury flybys 3/29,74, 9/21/74 and 3/16/75;
+mass 433 kg (952 lb); twin narrow-angle cameras
+with digital tape recorder, ultraviolet spectrometer,
+infrared radiometer, solar plasma, charged particles,
+magnetic fields, radio occultation and celestial
+mechanics.
+5-96 JHW
+3

@@ -1,0 +1,39 @@
+
+> build
+> vite build
+
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 669 modules transformed.
+rendering chunks...
+computing gzip size...
+public/build/manifest.json                                     5.15 kB │ gzip:   0.90 kB
+public/build/assets/login-BpAn8K1p.css                         0.79 kB │ gzip:   0.40 kB
+public/build/assets/welcome-vFR1s7mm.css                       1.36 kB │ gzip:   0.55 kB
+public/build/assets/register-7Z02mnN1.css                      1.64 kB │ gzip:   0.63 kB
+public/build/assets/settings-KEVbaEo4.css                      2.00 kB │ gzip:   0.72 kB
+public/build/assets/base-CEMKm2vs.css                          2.29 kB │ gzip:   0.90 kB
+public/build/assets/notifications-9uBqk2w8.css                 3.83 kB │ gzip:   1.07 kB
+public/build/assets/dashboard-common-DTRGKnOj.css              4.00 kB │ gzip:   1.16 kB
+public/build/assets/profile-SPSuXZ75.css                       4.83 kB │ gzip:   1.27 kB
+public/build/assets/dashboard-CUiZ6Aiw.css                     4.83 kB │ gzip:   1.36 kB
+public/build/assets/my-documents-t3OHAbQg.css                  7.52 kB │ gzip:   1.80 kB
+public/build/assets/history-DZaFGUhq.css                       9.75 kB │ gzip:   2.26 kB
+public/build/assets/translation-B2sJGRNq.css                  11.45 kB │ gzip:   3.04 kB
+public/build/assets/guest-OOQiWqjP.css                        11.72 kB │ gzip:   2.88 kB
+public/build/assets/app-0eZw510e.css                          12.25 kB │ gzip:   2.84 kB
+public/build/assets/admin-BjPv5Mp2.css                        18.45 kB │ gzip:   3.68 kB
+public/build/assets/_commonjs-dynamic-modules-B9lKsKkd.js      0.47 kB │ gzip:   0.31 kB
+public/build/assets/review-document-B8o1LxGS.js                2.17 kB │ gzip:   0.94 kB
+public/build/assets/document-preview-XB3NRaPV.js               7.33 kB │ gzip:   3.09 kB
+public/build/assets/preview-sanitizer-nRKDBh4O.js             33.32 kB │ gzip:  12.60 kB
+public/build/assets/app-C_M3gdUw.js                           51.86 kB │ gzip:  19.68 kB
+public/build/assets/mammoth.browser-Bra1GcIt.js              499.48 kB │ gzip: 125.28 kB
+public/build/assets/xlsx-CKwrMZHi.js                         499.55 kB │ gzip: 162.96 kB
+public/build/assets/pptx-preview.es-C2jCwf0e.js            1,350.55 kB │ gzip: 430.41 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 9.83s

@@ -1,0 +1,40 @@
+{
+  "CheckedDate": "2026-10-05",
+  "CPU": {
+    "Name": "Intel(R) Core(TM) i5-14400",
+    "NumberOfCores": 10,
+    "NumberOfLogicalProcessors": 16
+  },
+  "OS": {
+    "Caption": "Microsoft Windows 11 Pro",
+    "Version": "10.0.26200",
+    "TotalRAMGiB": 15.79,
+    "AvailableRAMGiB": 2.11
+  },
+  "GPU": {
+    "Name": "Intel(R) UHD Graphics 730",
+    "DriverVersion": "32.0.101.7088"
+  },
+  "MemoryModules": [
+    {
+      "CapacityGiB": 8.0,
+      "ConfiguredClockSpeed": 3200
+    },
+    {
+      "CapacityGiB": 8.0,
+      "ConfiguredClockSpeed": 3200
+    }
+  ],
+  "LocalStorage": {
+    "DeviceID": "C:",
+    "SizeGiB": 475.97,
+    "FreeGiB": 212.35
+  },
+  "InitialAvailableRAMGiB": 1.02,
+  "InitialCPUUtilizationPercent": 30,
+  "Python": "3.11",
+  "PythonSQLite": "3.42.0",
+  "Ollama": "0.35.1",
+  "LocalOllamaModel": "llama3.2:1b Q8_0",
+  "BenchmarkArchiveSHA256": "60F467265B1E312373DBCD92200C2618A74850F98D3D078E94296BB3FA2047BA"
+}

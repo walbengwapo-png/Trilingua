@@ -1,0 +1,13 @@
+{
+  "changed_tracked_files": [
+    "trilingua-code/Model/tools/ocr_kit/README.md",
+    "trilingua-code/Model/tools/ocr_kit/__main__.py",
+    "trilingua-code/Model/tools/ocr_kit/corpus.py"
+  ],
+  "unexpected_changes": [],
+  "live_env_unchanged": true,
+  "new_production_acceptance_report": false,
+  "new_acceptance_key": false,
+  "provider_requests": 0,
+  "services_started": false
+}

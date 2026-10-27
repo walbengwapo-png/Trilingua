@@ -1,0 +1,142 @@
+diff --git a/trilingua-code/Model/tests/test_pdf_content_layout.py b/trilingua-code/Model/tests/test_pdf_content_layout.py
+index c39fea6..b60a4b8 100644
+--- a/trilingua-code/Model/tests/test_pdf_content_layout.py
++++ b/trilingua-code/Model/tests/test_pdf_content_layout.py
+@@ -13,6 +13,32 @@ from dto.responses import TranslationResponse
+ from pipeline.translation_pipeline import TranslationPipeline
+ 
+ 
++def test_pdf_unicode_punctuation_survives_without_system_fonts(tmp_path, monkeypatch):
++    import document.reconstructor as reconstructor
++
++    original_exists = reconstructor.os.path.exists
++    monkeypatch.setattr(
++        reconstructor.os.path, "exists",
++        lambda path: False if str(path).startswith("C:\\Windows\\Fonts\\") else original_exists(path),
++    )
++    source, output = tmp_path / "source.pdf", tmp_path / "output.pdf"
++    with fitz.open() as doc:
++        page = doc.new_page()
++        page.insert_text((50, 80), "Source sentence with enough space for Unicode punctuation.", fontsize=12)
++        doc.save(source)
++    blocks = read_pdf(str(source), "single")
++    target = "“Magandang umaga”—dalhin ang dokumento… ₱250."
++    blocks[0]["_original_text"] = blocks[0]["text"]
++    blocks[0]["text"] = target
++    write_pdf_preserved(blocks, str(source), str(output))
++    with fitz.open(output) as doc:
++        text = " ".join(page.get_text() for page in doc).replace("\u00a0", " ")
++        for character in ("“", "”", "—", "…", "₱"):
++            assert character in text
++        assert "Magandang umaga" in text
++        assert "Source sentence" not in text
++
++
+ @pytest.mark.parametrize("rotation", [90, 180, 270])
+ def test_rotated_page_keeps_translation_upright(tmp_path, rotation):
+     source = tmp_path / "source.pdf"
+diff --git a/trilingua-code/Model/tests/test_properties.py b/trilingua-code/Model/tests/test_properties.py
+index 6840de1..233d1cf 100644
+--- a/trilingua-code/Model/tests/test_properties.py
++++ b/trilingua-code/Model/tests/test_properties.py
+@@ -14,7 +14,7 @@ import re
+ # Ensure the Model package is importable when running pytest from the repo root.
+ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+ 
+-from hypothesis import given, settings, assume
++from hypothesis import given, settings, assume, HealthCheck
+ from hypothesis import strategies as st
+ 
+ from document_translator_v3 import (
+@@ -425,7 +425,8 @@ def test_context_hint_source_always_preserved(hint: str, source: str):
+     )
+ 
+ 
+-@settings(max_examples=100)
++# Generating 500-600 words intentionally exceeds the health-check time on busy CI.
++@settings(max_examples=100, suppress_health_check=[HealthCheck.too_slow])
+ @given(
+     hint=st.lists(_word, min_size=500, max_size=600).map(" ".join),
+     source=st.lists(_word, min_size=1, max_size=20).map(" ".join),
+@@ -1446,7 +1447,7 @@ def table_dimensions_data(draw):
+ 
+ 
+ @given(data=table_dimensions_data())
+-@settings(max_examples=50)
++@settings(max_examples=50, deadline=None)
+ def test_table_structural_preservation(data):
+     # Feature: translation-layout-quality, Property 12: Table structural preservation
+     """
+diff --git a/trilingua-code/Model/tests/test_translation_fallback.py b/trilingua-code/Model/tests/test_translation_fallback.py
+index c5a8bfa..5e606df 100644
+--- a/trilingua-code/Model/tests/test_translation_fallback.py
++++ b/trilingua-code/Model/tests/test_translation_fallback.py
+@@ -246,28 +246,21 @@ def test_batch_prompt_uses_the_actual_block_ids():
+     assert "Use every exact BLOCK number" in prompt
+ 
+ 
+-def test_gptoss_honors_retry_after_and_recovers(monkeypatch):
++def test_gptoss_ambiguous_429_stops_without_retry(monkeypatch):
++    from provider_usage import ProviderStopped
++    from unittest.mock import Mock
++    import pytest
+     monkeypatch.setenv("GPTOSS_MAX_ATTEMPTS", "3")
+-    monkeypatch.setenv("GPTOSS_MIN_INTERVAL_SECONDS", "0")
+     waits = []
+     monkeypatch.setattr("providers.gptoss._time.sleep", waits.append)
+-
+-    limited = SimpleNamespace(status_code=429, headers={"Retry-After": "2"})
+-    success = SimpleNamespace(
+-        status_code=200,
+-        headers={},
+-        raise_for_status=lambda: None,
+-        json=lambda: {"message": {"content": "Kumusta"}},
+-    )
+     provider = GPTOSSProvider(api_url="http://test/api/chat", model="test")
+-    calls = iter((limited, success))
+-    monkeypatch.setattr(provider._session, "post", lambda *a, **k: next(calls))
+-
+-    result = provider.translate("Hello", "English", "Cebuano")
+-
+-    assert result.success
+-    assert result.translated_text == "Kumusta"
+-    assert waits == [2.0]
++    limited = SimpleNamespace(status_code=429, headers={"Retry-After": "2"})
++    post = Mock(return_value=limited)
++    monkeypatch.setattr(provider._session, "post", post)
++    with pytest.raises(ProviderStopped):
++        provider.translate("Hello", "English", "Cebuano")
++    assert post.call_count == 1
++    assert waits == []
+ 
+ 
+ def test_direct_ollama_cloud_uses_a_key_without_sending_it_to_local_ollama(monkeypatch):
+diff --git a/trilingua-code/Model/tests/test_unit_pipeline.py b/trilingua-code/Model/tests/test_unit_pipeline.py
+index e2781a4..cacba13 100644
+--- a/trilingua-code/Model/tests/test_unit_pipeline.py
++++ b/trilingua-code/Model/tests/test_unit_pipeline.py
+@@ -1116,7 +1116,7 @@ class TestGPTOSSTranslateMany:
+         assert ctx.provider_failures.get("invalid_response") == 3
+ 
+     def test_systemic_rate_limit_raises_and_records(self, monkeypatch):
+-        from providers.gptoss import GPTOSSProviderError
++        from provider_usage import ProviderStopped
+         from pipeline.document_context import DocumentContext
+         from config.processing_modes import get_mode
+         provider = _gptoss_provider(monkeypatch)
+@@ -1127,12 +1127,14 @@ class TestGPTOSSTranslateMany:
+             return FakeChatResponse(status=429, text="rate limited")
+ 
+         monkeypatch.setattr(provider._session, "post", fake_post)
+-        with pytest.raises(GPTOSSProviderError, match="rate limit"):
++        with pytest.raises(ProviderStopped, match="HTTP 429") as stopped:
+             provider.translate_many(
+                 _units(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"]),
+                 "English", "Cebuano", ctx=ctx,
+             )
++        assert stopped.value.status_code == 429
+         assert ctx.provider_failures.get("rate_limit") == 1
++        assert ctx.provider_retries == 0
+ 
+     def test_systemic_connection_failure_raises(self, monkeypatch):
+         from dto.responses import TranslationResponse

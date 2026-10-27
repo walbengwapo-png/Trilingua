@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "iteration_title": "Iteration 2 — Current GPT-OSS",
+  "provider": "gptoss",
+  "generated_at": "2026-09-21T11:11:12.707232+00:00",
+  "server_url": "http://127.0.0.1:5001",
+  "health": {
+    "status": "ok",
+    "engine": "provider:gptoss",
+    "model": "gpt-oss:20b-cloud",
+    "active_provider": "gptoss",
+    "fallback_provider": null,
+    "available_providers": [
+      "gemini",
+      "gptoss",
+      "nllb"
+    ],
+    "languages": [
+      "English",
+      "Cebuano",
+      "Filipino"
+    ],
+    "formats": [
+      ".csv",
+      ".docx",
+      ".md",
+      ".odt",
+      ".pdf",
+      ".pptx",
+      ".rtf",
+      ".txt",
+      ".xlsx"
+    ],
+    "provider_status": {
+      "status": "ok",
+      "provider": "gptoss",
+      "model": "gpt-oss:20b-cloud",
+      "available_models": [
+        "llama3.2:1b",
+        "minimax-m3:cloud",
+        "qwen3.5:397b-cloud",
+        "gemma4:31b-cloud",
+        "gpt-oss:20b-cloud"
+      ]
+    },
+    "analysis_status": {
+      "status": "configured",
+      "provider": "gemini_analysis",
+      "model": "gemini-3.5-flash-lite",
+      "fallback_provider": "ollama_analysis",
+      "fallback_model": "gpt-oss:20b-cloud",
+      "primary_min_interval_seconds": 5.0,
+      "retry_after_seconds": 0,
+      "last_error": ""
+    }
+  },
+  "manifest_path": "C:\\dev\\Trilingua\\chatgpt\\test\\benchmark-manifest.json",
+  "full_runs": [
+    {
+      "source": "English PSF Brochure.pdf",
+      "source_sha256": "43c57fd7517cc9f7809a399f0172b7c302310e39408812f2cf2788c0c5efb0df",
+      "target_language": "Filipino",
+      "output_path": "C:\\dev\\Trilingua\\chatgpt\\test\\iteration-2-gptoss\\translated-files\\English PSF Brochure__en-to-fil.pdf",
+      "elapsed_ms": 688475.15,
+      "status": "failed",
+      "engine_response": {
+        "status": 500,
+        "error": "{\"detail\":\"Translation error: Translation failed for 1 block(s). block 56: Translation failed: providers returned the source text unchanged for target language Filipino.. The source document was not returned as a false successful translation.\"}"
+      },
+      "quality": {
+        "bleu": null,
+        "chrf": null,
+        "note": "Translation failed"
+      }
+    },
+    {
+      "source": "English PSF Brochure.pdf",
+      "source_sha256": "43c57fd7517cc9f7809a399f0172b7c302310e39408812f2cf2788c0c5efb0df",
+      "target_language": "Cebuano",
+      "output_path": "C:\\dev\\Trilingua\\chatgpt\\test\\iteration-2-gptoss\\translated-files\\English PSF Brochure__en-to-ceb.pdf",
+      "elapsed_ms": 1305834.41,
+      "status": "completed",
+      "engine_response": {
+        "download_filename": "English PSF Brochure_translated.pdf",
+        "mime_type": "application/pdf",
+        "metrics": {
+          "provider": "gptoss",
+          "model": "gpt-oss:20b-cloud",
+          "mode": "fast",
+          "total_time_ms": 1305476.6,
+          "llm_calls": 86,
+          "llm_total_time_ms": 1329388.8,
+          "scheduler_wait_ms": 53871920.0,
+          "scheduler_batches": 83,
+          "scheduler_slots": 1,
+          "echo_retries": 1,
+          "semantic_fallbacks": 0,
+          "batch_fallbacks": 0,
+          "total_blocks": 85,
+          "blocks_translated": 84,
+          "blocks_cached": 0,
+          "blocks_passthrough": 1,
+          "retranslated_chunks": 0,
+          "cache_hits": 0,
+          "cache_misses": 0,
+          "document_type": "unknown",
+          "providers_used": {
+            "gptoss": {
+              "model": "gpt-oss:20b-cloud",
+              "calls": 86
+            }
+          },
+          "provider_chain": [
+            "gptoss"
+          ]
+        }
+      },
+      "output_sha256": "a6a75e8111cbf697832db4eaa6438ada85903b1e60a3f124105925815f620ee6",
+      "output_bytes": 6970326,
+      "structure": {
+        "page_count": 2,
+        "text_characters": 5734,
+        "non_empty_text": true,
+        "page_count_matches_source": true,
+        "layout_validation": "pass"
+      },
+      "quality": {
+        "bleu": "N/A",
+        "chrf": "N/A",
+        "note": "No verified brochure reference translation"
+      }
+    },
+    {
+      "source": "SONA_2019_English.pdf",
+      "source_sha256": "e7f8dbfa9b314cc07ca7d8589cb7425477e82bf49edd79df592639543b18394a",
+      "target_language": "Filipino",
+      "output_path": "C:\\dev\\Trilingua\\chatgpt\\test\\iteration-2-gptoss\\translated-files\\SONA_2019_English__en-to-fil.pdf",
+      "elapsed_ms": 5390690.19,
+      "status": "failed",
+      "engine_response": {
+        "status": 500,
+        "error": "{\"detail\":\"Translation error: Translation failed for 2 block(s). block 3: Translation failed: providers returned the source text unchanged for target language Filipino.; block 187: Translation failed: providers returned the source text unchanged for target language Filipino.. The source document was not returned as a false successful translation.\"}"
+      },
+      "quality": {
+        "bleu": null,
+        "chrf": null,
+        "note": "Translation failed"
+      }
+    }
+  ],
+  "stability_runs": {}
+}

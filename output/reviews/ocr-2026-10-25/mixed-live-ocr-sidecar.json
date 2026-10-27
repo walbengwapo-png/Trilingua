@@ -1,0 +1,353 @@
+{
+  "version": 2,
+  "format": ".pdf",
+  "source_lang": "English",
+  "target_lang": "Cebuano",
+  "pdf_column_mode": "auto",
+  "mode": "fast",
+  "document_type": "",
+  "layout_plan": null,
+  "layout_preflight": null,
+  "blocks": [
+    {
+      "block_index": 0,
+      "block_type": "paragraph",
+      "source_text": "This native page must remain in the translated document.",
+      "ai_translated_text": "[MOCK:9w] .tnemucod detalsnart eht ni niamer tsum egap evitan sihT",
+      "current_text": "[MOCK:9w] .tnemucod detalsnart eht ni niamer tsum egap evitan sihT",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "[MOCK:9w] .tnemucod detalsnart eht ni niamer tsum egap evitan sihT",
+      "position": [
+        60.0,
+        88.17500305175781,
+        340.0159606933594,
+        103.28900146484375
+      ],
+      "page": 0,
+      "lines": [
+        {
+          "text": "This native page must remain in the translated document.",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            60.0,
+            88.17500305175781,
+            340.0159606933594,
+            103.28900146484375
+          ],
+          "baseline": 100.0,
+          "x0": 60.0,
+          "text_x1": 340.02,
+          "font": "helv",
+          "font_original": "Helvetica",
+          "size": 11.0,
+          "color": 0,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "This native page must remain in the translated document.",
+              "font": "helv",
+              "font_original": "Helvetica",
+              "size": 11.0,
+              "color": 0,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        }
+      ],
+      "links": [],
+      "alignment": "left",
+      "style": {
+        "font_size": 11.0,
+        "font": "helv",
+        "font_original": "Helvetica",
+        "color": 0,
+        "bold": false,
+        "italic": false
+      },
+      "pdf_coordinates": "display"
+    },
+    {
+      "block_index": 1,
+      "block_type": "paragraph",
+      "source_text": "This is a lot of 12 point text to test the",
+      "ai_translated_text": "[MOCK:11w] eht tset ot txet tniop 12 fo tol a si sihT",
+      "current_text": "[MOCK:11w] eht tset ot txet tniop 12 fo tol a si sihT",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "[MOCK:11w] eht tset ot txet tniop 12 fo tol a si sihT",
+      "position": [
+        17.280000686645508,
+        44.15999883015951,
+        278.40001106262207,
+        58.55999844868978
+      ],
+      "page": 1,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 95.81818181818181,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 2,
+      "block_type": "paragraph",
+      "source_text": "ocr code and see if it works on all types",
+      "ai_translated_text": "[MOCK:10w] sepyt lla no skrow ti fi ees dna edoc rco",
+      "current_text": "[MOCK:10w] sepyt lla no skrow ti fi ees dna edoc rco",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "[MOCK:10w] sepyt lla no skrow ti fi ees dna edoc rco",
+      "position": [
+        17.280000686645508,
+        60.47999839782715,
+        296.64001178741455,
+        75.35999800364176
+      ],
+      "page": 1,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 95.3,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 3,
+      "block_type": "paragraph",
+      "source_text": "of file format.",
+      "ai_translated_text": "[MOCK:3w] .tamrof elif fo",
+      "current_text": "[MOCK:3w] .tamrof elif fo",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "[MOCK:3w] .tamrof elif fo",
+      "position": [
+        17.280000686645508,
+        76.7999979654948,
+        107.04000425338745,
+        88.31999766031902
+      ],
+      "page": 1,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 95.33333333333333,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 4,
+      "block_type": "paragraph",
+      "source_text": "The quick brown dog jumped over the",
+      "ai_translated_text": "[MOCK:7w] eht revo depmuj god nworb kciuq ehT",
+      "current_text": "[MOCK:7w] eht revo depmuj god nworb kciuq ehT",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "[MOCK:7w] eht revo depmuj god nworb kciuq ehT",
+      "position": [
+        17.280000686645508,
+        93.11999753316243,
+        280.8000111579895,
+        107.99999713897705
+      ],
+      "page": 1,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 95.57142857142857,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 5,
+      "block_type": "paragraph",
+      "source_text": "lazy fox. The quick brown dog jumped",
+      "ai_translated_text": "[MOCK:7w] depmuj god nworb kciuq ehT .xof yzal",
+      "current_text": "[MOCK:7w] depmuj god nworb kciuq ehT .xof yzal",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "[MOCK:7w] depmuj god nworb kciuq ehT .xof yzal",
+      "position": [
+        17.760000705718994,
+        109.43999710083008,
+        280.8000111579895,
+        124.3199967066447
+      ],
+      "page": 1,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 95.71428571428571,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 6,
+      "block_type": "paragraph",
+      "source_text": "over the lazy fox. The quick brown dog",
+      "ai_translated_text": "[MOCK:8w] god nworb kciuq ehT .xof yzal eht revo",
+      "current_text": "[MOCK:8w] god nworb kciuq ehT .xof yzal eht revo",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "[MOCK:8w] god nworb kciuq ehT .xof yzal eht revo",
+      "position": [
+        17.280000686645508,
+        125.75999666849772,
+        286.56001138687134,
+        140.63999627431232
+      ],
+      "page": 1,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 95.625,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 7,
+      "block_type": "paragraph",
+      "source_text": "jumped over the lazy fox. The quick",
+      "ai_translated_text": "[MOCK:7w] kciuq ehT .xof yzal eht revo depmuj",
+      "current_text": "[MOCK:7w] kciuq ehT .xof yzal eht revo depmuj",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "[MOCK:7w] kciuq ehT .xof yzal eht revo depmuj",
+      "position": [
+        20.640000820159912,
+        142.07999623616536,
+        269.28001070022583,
+        156.95999584197997
+      ],
+      "page": 1,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 95.57142857142857,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 8,
+      "block_type": "paragraph",
+      "source_text": "brown dog jumped over the lazy fox.",
+      "ai_translated_text": "[MOCK:7w] .xof yzal eht revo depmuj god nworb",
+      "current_text": "[MOCK:7w] .xof yzal eht revo depmuj god nworb",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "[MOCK:7w] .xof yzal eht revo depmuj god nworb",
+      "position": [
+        17.760000705718994,
+        158.399995803833,
+        269.28001070022583,
+        173.27999540964763
+      ],
+      "page": 1,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 95.57142857142857,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    }
+  ],
+  "output_validation": {
+    "status": "passed",
+    "content_coverage": "passed",
+    "layout": "separate_translated_text",
+    "linguistic_accuracy": "unverified",
+    "source_pages": [
+      0,
+      1
+    ],
+    "output_pages": 2
+  },
+  "extraction": {
+    "pages": [
+      {
+        "page": 0,
+        "classification": "native"
+      },
+      {
+        "page": 1,
+        "classification": "ocr"
+      }
+    ],
+    "warnings": [
+      "Page 2: OCR text needs source review; translated text is reflowed separately from the scan.",
+      "This document uses a separate translated text layout; original scan artwork and page layout are not reproduced."
+    ]
+  }
+}

@@ -1,0 +1,321 @@
+{
+  "schema_version": 1,
+  "iteration_title": "Iteration 1 — Local NLLB-200 600M",
+  "provider": "nllb",
+  "generated_at": "2026-09-21T10:57:50.378475+00:00",
+  "server_url": "http://127.0.0.1:5000",
+  "health": {
+    "status": "ok",
+    "engine": "provider:nllb",
+    "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+    "active_provider": "nllb",
+    "fallback_provider": null,
+    "available_providers": [
+      "gemini",
+      "gptoss",
+      "nllb"
+    ],
+    "languages": [
+      "English",
+      "Cebuano",
+      "Filipino"
+    ],
+    "formats": [
+      ".csv",
+      ".docx",
+      ".md",
+      ".odt",
+      ".pdf",
+      ".pptx",
+      ".rtf",
+      ".txt",
+      ".xlsx"
+    ],
+    "provider_status": {
+      "status": "ok",
+      "provider": "nllb",
+      "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+      "loaded": true,
+      "local_files_only": true
+    },
+    "analysis_status": {
+      "status": "configured",
+      "provider": "gemini_analysis",
+      "model": "gemini-3.5-flash-lite",
+      "fallback_provider": "ollama_analysis",
+      "fallback_model": "gpt-oss:20b-cloud",
+      "primary_min_interval_seconds": 5.0,
+      "retry_after_seconds": 0,
+      "last_error": ""
+    }
+  },
+  "manifest_path": "C:\\dev\\Trilingua\\chatgpt\\test\\benchmark-manifest.json",
+  "full_runs": [
+    {
+      "source": "English PSF Brochure.pdf",
+      "source_sha256": "43c57fd7517cc9f7809a399f0172b7c302310e39408812f2cf2788c0c5efb0df",
+      "target_language": "Filipino",
+      "output_path": "C:\\dev\\Trilingua\\chatgpt\\test\\iteration-1-nllb-200-600m\\translated-files\\English PSF Brochure__en-to-fil.pdf",
+      "elapsed_ms": 281286.5,
+      "status": "completed",
+      "engine_response": {
+        "download_filename": "English PSF Brochure_translated.pdf",
+        "mime_type": "application/pdf",
+        "metrics": {
+          "provider": "nllb",
+          "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+          "mode": "fast",
+          "total_time_ms": 281077.4,
+          "llm_calls": 84,
+          "llm_total_time_ms": 275893.6,
+          "scheduler_wait_ms": 0.0,
+          "scheduler_batches": 0,
+          "scheduler_slots": 0,
+          "echo_retries": 0,
+          "semantic_fallbacks": 0,
+          "batch_fallbacks": 0,
+          "total_blocks": 85,
+          "blocks_translated": 84,
+          "blocks_cached": 0,
+          "blocks_passthrough": 1,
+          "retranslated_chunks": 0,
+          "cache_hits": 0,
+          "cache_misses": 0,
+          "document_type": "unknown",
+          "providers_used": {
+            "nllb": {
+              "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+              "calls": 84
+            }
+          },
+          "provider_chain": [
+            "nllb"
+          ]
+        }
+      },
+      "output_sha256": "b10b8423b4cfd6ee814a77b761932b074e1cb9376c7830ef0b52a11d6981bea4",
+      "output_bytes": 3901696,
+      "structure": {
+        "page_count": 2,
+        "text_characters": 5634,
+        "non_empty_text": true,
+        "page_count_matches_source": true,
+        "layout_validation": "pass"
+      },
+      "quality": {
+        "bleu": "N/A",
+        "chrf": "N/A",
+        "note": "No verified brochure reference translation"
+      }
+    },
+    {
+      "source": "English PSF Brochure.pdf",
+      "source_sha256": "43c57fd7517cc9f7809a399f0172b7c302310e39408812f2cf2788c0c5efb0df",
+      "target_language": "Cebuano",
+      "output_path": "C:\\dev\\Trilingua\\chatgpt\\test\\iteration-1-nllb-200-600m\\translated-files\\English PSF Brochure__en-to-ceb.pdf",
+      "elapsed_ms": 295157.03,
+      "status": "failed",
+      "engine_response": {
+        "status": 500,
+        "error": "{\"detail\":\"Translation error: Translation failed for 3 block(s). block 57: Translation failed: providers returned the source text unchanged for target language Cebuano.; block 71: Translation failed: providers returned the source text unchanged for target language Cebuano.; block 82: Translation failed: providers returned the source text unchanged for target language Cebuano.. The source document was not returned as a false successful translation.\"}"
+      },
+      "quality": {
+        "bleu": null,
+        "chrf": null,
+        "note": "Translation failed"
+      }
+    },
+    {
+      "source": "SONA_2019_English.pdf",
+      "source_sha256": "e7f8dbfa9b314cc07ca7d8589cb7425477e82bf49edd79df592639543b18394a",
+      "target_language": "Filipino",
+      "output_path": "C:\\dev\\Trilingua\\chatgpt\\test\\iteration-1-nllb-200-600m\\translated-files\\SONA_2019_English__en-to-fil.pdf",
+      "elapsed_ms": 1529123.51,
+      "status": "completed",
+      "engine_response": {
+        "download_filename": "SONA_2019_English_translated.pdf",
+        "mime_type": "application/pdf",
+        "metrics": {
+          "provider": "nllb",
+          "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+          "mode": "fast",
+          "total_time_ms": 1528975.1,
+          "llm_calls": 223,
+          "llm_total_time_ms": 1525097.1,
+          "scheduler_wait_ms": 0.0,
+          "scheduler_batches": 0,
+          "scheduler_slots": 0,
+          "echo_retries": 0,
+          "semantic_fallbacks": 0,
+          "batch_fallbacks": 0,
+          "total_blocks": 223,
+          "blocks_translated": 223,
+          "blocks_cached": 0,
+          "blocks_passthrough": 0,
+          "retranslated_chunks": 0,
+          "cache_hits": 0,
+          "cache_misses": 0,
+          "document_type": "unknown",
+          "providers_used": {
+            "nllb": {
+              "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+              "calls": 223
+            }
+          },
+          "provider_chain": [
+            "nllb"
+          ]
+        }
+      },
+      "output_sha256": "7f510e0ec7ab210f4f2968704d417aa04c2310f9c1721fee3da1eaa96183cd3e",
+      "output_bytes": 2050962,
+      "structure": {
+        "page_count": 20,
+        "text_characters": 49704,
+        "non_empty_text": true,
+        "page_count_matches_source": true,
+        "layout_validation": "pass"
+      },
+      "quality": {
+        "bleu": 29.42,
+        "chrf": 69.47,
+        "hypothesis_characters": 49616,
+        "reference_characters": 55226
+      }
+    },
+    {
+      "source": "SONA_2019_English.pdf",
+      "source_sha256": "e7f8dbfa9b314cc07ca7d8589cb7425477e82bf49edd79df592639543b18394a",
+      "target_language": "Cebuano",
+      "output_path": "C:\\dev\\Trilingua\\chatgpt\\test\\iteration-1-nllb-200-600m\\translated-files\\SONA_2019_English__en-to-ceb.pdf",
+      "elapsed_ms": 1763559.85,
+      "status": "completed",
+      "engine_response": {
+        "download_filename": "SONA_2019_English_translated.pdf",
+        "mime_type": "application/pdf",
+        "metrics": {
+          "provider": "nllb",
+          "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+          "mode": "fast",
+          "total_time_ms": 1763021.0,
+          "llm_calls": 223,
+          "llm_total_time_ms": 1756470.0,
+          "scheduler_wait_ms": 0.0,
+          "scheduler_batches": 0,
+          "scheduler_slots": 0,
+          "echo_retries": 0,
+          "semantic_fallbacks": 0,
+          "batch_fallbacks": 0,
+          "total_blocks": 223,
+          "blocks_translated": 223,
+          "blocks_cached": 0,
+          "blocks_passthrough": 0,
+          "retranslated_chunks": 0,
+          "cache_hits": 0,
+          "cache_misses": 0,
+          "document_type": "unknown",
+          "providers_used": {
+            "nllb": {
+              "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+              "calls": 223
+            }
+          },
+          "provider_chain": [
+            "nllb"
+          ]
+        }
+      },
+      "output_sha256": "41ecc25f83af9612c2d6eabfd3c495ace0737eb35290ca6a34aa3286b588be7c",
+      "output_bytes": 2047522,
+      "structure": {
+        "page_count": 20,
+        "text_characters": 48075,
+        "non_empty_text": true,
+        "page_count_matches_source": true,
+        "layout_validation": "pass"
+      },
+      "quality": {
+        "bleu": 19.08,
+        "chrf": 65.06,
+        "hypothesis_characters": 47991,
+        "reference_characters": 52779
+      }
+    }
+  ],
+  "stability_runs": {
+    "Filipino": {
+      "input_pages": [
+        3,
+        4
+      ],
+      "input_characters": 5131,
+      "samples": [
+        {
+          "run": 1,
+          "status": "completed",
+          "latency_ms": 89361.15,
+          "provider_reported_latency_ms": 89297.73330688477,
+          "output_sha256": "e1e0366d1598a4794110fb3106f5a89a2a4e48529585531b45f6127272fe35fe",
+          "output_characters": 719
+        },
+        {
+          "run": 2,
+          "status": "completed",
+          "latency_ms": 102858.58,
+          "provider_reported_latency_ms": 102842.22412109375,
+          "output_sha256": "e1e0366d1598a4794110fb3106f5a89a2a4e48529585531b45f6127272fe35fe",
+          "output_characters": 719
+        },
+        {
+          "run": 3,
+          "status": "completed",
+          "latency_ms": 96466.41,
+          "provider_reported_latency_ms": 96448.09579849243,
+          "output_sha256": "e1e0366d1598a4794110fb3106f5a89a2a4e48529585531b45f6127272fe35fe",
+          "output_characters": 719
+        }
+      ],
+      "median_latency_ms": 96466.41,
+      "successful_runs": 3,
+      "stable_output": true,
+      "distinct_output_hashes": 1
+    },
+    "Cebuano": {
+      "input_pages": [
+        3,
+        4
+      ],
+      "input_characters": 5131,
+      "samples": [
+        {
+          "run": 1,
+          "status": "completed",
+          "latency_ms": 97104.56,
+          "provider_reported_latency_ms": 97099.45321083069,
+          "output_sha256": "dbeb97cb2c92d22ed0f9930505afc07e4933020baeccacdb1869a14c339e26e3",
+          "output_characters": 1738
+        },
+        {
+          "run": 2,
+          "status": "completed",
+          "latency_ms": 91192.3,
+          "provider_reported_latency_ms": 91186.11693382263,
+          "output_sha256": "dbeb97cb2c92d22ed0f9930505afc07e4933020baeccacdb1869a14c339e26e3",
+          "output_characters": 1738
+        },
+        {
+          "run": 3,
+          "status": "completed",
+          "latency_ms": 91345.76,
+          "provider_reported_latency_ms": 91338.03915977478,
+          "output_sha256": "dbeb97cb2c92d22ed0f9930505afc07e4933020baeccacdb1869a14c339e26e3",
+          "output_characters": 1738
+        }
+      ],
+      "median_latency_ms": 91345.76,
+      "successful_runs": 3,
+      "stable_output": true,
+      "distinct_output_hashes": 1
+    }
+  }
+}

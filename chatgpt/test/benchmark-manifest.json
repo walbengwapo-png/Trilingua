@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "source_language": "English",
+  "targets": [
+    "Filipino",
+    "Cebuano"
+  ],
+  "processing_mode": "fast",
+  "fallback_disabled": true,
+  "original_files": [
+    {
+      "path": "C:\\dev\\Trilingua\\chatgpt\\test\\Original Files\\SONA_2019_English.pdf",
+      "sha256": "e7f8dbfa9b314cc07ca7d8589cb7425477e82bf49edd79df592639543b18394a",
+      "pages": 20
+    },
+    {
+      "path": "C:\\dev\\Trilingua\\chatgpt\\test\\Original Files\\English PSF Brochure.pdf",
+      "sha256": "43c57fd7517cc9f7809a399f0172b7c302310e39408812f2cf2788c0c5efb0df",
+      "pages": 2
+    }
+  ],
+  "sona_references": {
+    "Filipino": {
+      "path": "C:\\dev\\Trilingua\\output\\sona2019\\SONA_2019_Filipino.pdf",
+      "sha256": "de4c71874032ca77d69fec06a86b4e8de18b2a7d3f2e8f6228fc14a0d5de3c88",
+      "pages": 20
+    },
+    "Cebuano": {
+      "path": "C:\\dev\\Trilingua\\output\\sona2019\\SONA_2019_Cebuano.pdf",
+      "sha256": "74f294b1e91215a76ddfbaf8c9b0c693d24aabf75c865d24acb8a4542d7bebe2",
+      "pages": 19
+    }
+  },
+  "normalization": {
+    "skip_first_two_sona_pages": true,
+    "remove_page_number_lines": true,
+    "remove_repeated_sona_running_headers": true
+  }
+}

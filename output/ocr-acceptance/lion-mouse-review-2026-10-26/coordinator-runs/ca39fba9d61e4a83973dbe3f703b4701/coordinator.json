@@ -1,0 +1,60 @@
+{
+  "role": "advisory",
+  "approval_issued": false,
+  "live_configuration_changed": false,
+  "configured_provider": "gemini_analysis",
+  "questions": [
+    "Who supplied these samples, do we have permission to use them, and was each made as a scan, photo or screenshot?",
+    "Who, other than the collector, will check the complete text, boxes and reading order?",
+    "Which additional, previously unused documents may be used for the missing test categories?",
+    "Please check the separate proposed corrections against the original pages before accepting any of them."
+  ],
+  "source_fingerprints": {
+    "C:\\dev\\Trilingua\\output\\ocr-acceptance\\lion-mouse-review-2026-10-26\\incoming\\info.csv": "eef0c1487e7455448bcf359a3c3cc3046872aabcf4fca6a739901f0020de1a4f",
+    "C:\\dev\\Trilingua\\output\\ocr-acceptance\\lion-mouse-review-2026-10-26\\workflow.json": "3081c8c298a51a5aaf1388204074343267bc5bb5abdfc724a83b4f1bb8e1c34b",
+    "C:\\dev\\Trilingua\\output\\ocr-acceptance\\lion-mouse-review-2026-10-26\\incoming\\Lion_and_Mouse_2_pages_10_blocks_2_image_text.pdf": "df09eaad8e681a4c5792081db117b38d238f06a9bdadf7c8241b7b0c0b76e34f",
+    "C:\\dev\\Trilingua\\output\\ocr-acceptance\\lion-mouse-review-2026-10-26\\incoming\\Lion_and_Mouse_2_pages_10_blocks_2_image_text.txt": "182c7a16a77e365354418dce387f3830875f85e79ee1aa49133a05a2f36bcc7d",
+    "C:\\dev\\Trilingua\\output\\ocr-acceptance\\lion-mouse-review-2026-10-26\\incoming\\Lion_and_Mouse_2_pages_10_blocks_2_image_text.regions.json": "a74034731485dcf6d9b30127b681e8fac073f718a9be8dc6a509c7f13258ca6b"
+  },
+  "run": "C:\\dev\\Trilingua\\output\\ocr-acceptance\\lion-mouse-review-2026-10-26\\coordinator-runs\\ca39fba9d61e4a83973dbe3f703b4701",
+  "proposals": [
+    {
+      "id": "7d008e604ff83e9380f27e2b",
+      "sample_id": "861207a4a241dce4",
+      "page": 0,
+      "bbox": [
+        1166.6666666666667,
+        3141.6666666666665,
+        1189.8333231608074,
+        3198.9166259765625
+      ],
+      "text": "1",
+      "basis": "visible native PDF text missing from calibration draft"
+    },
+    {
+      "id": "17dabdedb1508d100a55edc8",
+      "sample_id": "861207a4a241dce4",
+      "page": 1,
+      "bbox": [
+        1166.6666666666667,
+        3141.6666666666665,
+        1189.8333231608074,
+        3198.9166259765625
+      ],
+      "text": "2",
+      "basis": "visible native PDF text missing from calibration draft"
+    }
+  ],
+  "status": "proposals_prepared",
+  "decision": {
+    "action": "prepare_proposals",
+    "reason": "Available calibration proposals can be prepared before addressing missing metadata.",
+    "candidate_ids": [
+      "7d008e604ff83e9380f27e2b",
+      "17dabdedb1508d100a55edc8"
+    ],
+    "question_ids": []
+  },
+  "response_model": "gemini-3.5-flash-lite",
+  "proposal_warning": "Unreviewed drafts. Check every line, box and reading-order change before adoption."
+}

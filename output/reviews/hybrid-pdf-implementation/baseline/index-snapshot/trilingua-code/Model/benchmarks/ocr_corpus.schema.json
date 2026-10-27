@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "trilingua:ocr-corpus:v2",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "cases",
+    "corpus_review"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "image",
+          "reference",
+          "document_id",
+          "content_group_id",
+          "reference_reviewer",
+          "image_sha256",
+          "reference_sha256",
+          "split",
+          "input_category",
+          "language",
+          "pack",
+          "reference_check_status",
+          "representative",
+          "rights_verified",
+          "provenance",
+          "regions"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "image": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reference": {
+            "type": "string",
+            "minLength": 1
+          },
+          "document_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content_group_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reference_reviewer": {
+            "type": "string",
+            "minLength": 1
+          },
+          "image_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "reference_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "split": {
+            "enum": [
+              "calibration",
+              "heldout"
+            ]
+          },
+          "input_category": {
+            "enum": [
+              "scan",
+              "photo",
+              "screenshot"
+            ]
+          },
+          "language": {
+            "enum": [
+              "English",
+              "Cebuano",
+              "Filipino"
+            ]
+          },
+          "pack": {
+            "enum": [
+              "eng",
+              "ceb",
+              "fil"
+            ]
+          },
+          "reference_check_status": {
+            "enum": [
+              "unverified",
+              "verified"
+            ]
+          },
+          "representative": {
+            "type": "boolean"
+          },
+          "rights_verified": {
+            "type": "boolean"
+          },
+          "provenance": {
+            "type": "object",
+            "required": [
+              "source",
+              "acquired_by",
+              "acquisition"
+            ],
+            "properties": {
+              "source": {
+                "type": "string"
+              },
+              "acquired_by": {
+                "type": "string"
+              },
+              "acquisition": {
+                "enum": [
+                  "real_scan",
+                  "real_photo",
+                  "real_screenshot"
+                ]
+              }
+            }
+          },
+          "regions": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Complete checked reference in image pixel coordinates; no omitted source regions.",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "text",
+                "bbox",
+                "order"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "bbox": {
+                  "type": "array",
+                  "items": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "minItems": 4,
+                  "maxItems": 4
+                },
+                "order": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "corpus_review": {
+      "type": "object",
+      "required": [
+        "reviewer",
+        "frozen_at",
+        "coverage_reviewed"
+      ],
+      "properties": {
+        "reviewer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frozen_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "coverage_reviewed": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,82 @@
+[
+  {
+    "file": "01_earth_2pages.pdf",
+    "pages": 2,
+    "page_1": {
+      "type": "image_only_poster",
+      "native_text_characters": 0,
+      "image_regions": 1,
+      "expected_text": "EARTH\nYOUR OASIS IN SPACE\nWHERE THE AIR IS FREE AND BREATHING IS EASY"
+    },
+    "page_2": {
+      "type": "selectable_text",
+      "authored_text_regions": 1,
+      "expected_text": "EARTH\nYOUR OASIS IN SPACE\nWHERE THE AIR IS FREE AND BREATHING IS EASY"
+    },
+    "source": "https://d2pn8kiwq2w21t.cloudfront.net/images/earth.width-1024.jpg"
+  },
+  {
+    "file": "02_venus_2pages.pdf",
+    "pages": 2,
+    "page_1": {
+      "type": "image_only_poster",
+      "native_text_characters": 0,
+      "image_regions": 1,
+      "expected_text": "VENUS\nSEE YOU AT THE CLOUD 9 OBSERVATORY\nVOTED BEST PLACE IN THE SOLAR SYSTEM\nTO WATCH THE MERCURY TRANSIT\nBOOK NOW!"
+    },
+    "page_2": {
+      "type": "selectable_text",
+      "authored_text_regions": 1,
+      "expected_text": "VENUS\nSEE YOU AT THE CLOUD 9 OBSERVATORY\nVOTED BEST PLACE IN THE SOLAR SYSTEM\nTO WATCH THE MERCURY TRANSIT\nBOOK NOW!"
+    },
+    "source": "https://d2pn8kiwq2w21t.cloudfront.net/images/venus.width-1024.jpg"
+  },
+  {
+    "file": "03_ceres_2pages.pdf",
+    "pages": 2,
+    "page_1": {
+      "type": "image_only_poster",
+      "native_text_characters": 0,
+      "image_regions": 1,
+      "expected_text": "CERES\nQUEEN OF THE ASTEROID BELT\nGATEWAY TO THE OUTER SOLAR SYSTEM\nLAST CHANCE FOR WATER UNTIL JUPITER"
+    },
+    "page_2": {
+      "type": "selectable_text",
+      "authored_text_regions": 1,
+      "expected_text": "CERES\nQUEEN OF THE ASTEROID BELT\nGATEWAY TO THE OUTER SOLAR SYSTEM\nLAST CHANCE FOR WATER UNTIL JUPITER"
+    },
+    "source": "https://d2pn8kiwq2w21t.cloudfront.net/images/ceres.width-1024.jpg"
+  },
+  {
+    "file": "04_enceladus_2pages.pdf",
+    "pages": 2,
+    "page_1": {
+      "type": "image_only_poster",
+      "native_text_characters": 0,
+      "image_regions": 1,
+      "expected_text": "VISIT BEAUTIFUL SOUTHERN\nENCELADUS\nMORE THAN 100 BREATHTAKING GEYSERS!\nTHE HOME OF \"COLD FAITHFUL\"\nBOOKING TOURS NOW"
+    },
+    "page_2": {
+      "type": "selectable_text",
+      "authored_text_regions": 1,
+      "expected_text": "VISIT BEAUTIFUL SOUTHERN\nENCELADUS\nMORE THAN 100 BREATHTAKING GEYSERS!\nTHE HOME OF \"COLD FAITHFUL\"\nBOOKING TOURS NOW"
+    },
+    "source": "https://d2pn8kiwq2w21t.cloudfront.net/images/enceladus.width-1024.jpg"
+  },
+  {
+    "file": "05_grand_tour_2pages.pdf",
+    "pages": 2,
+    "page_1": {
+      "type": "image_only_poster",
+      "native_text_characters": 0,
+      "image_regions": 1,
+      "expected_text": "A ONCE IN A LIFETIME GETAWAY\nTHE GRAND TOUR\nJUPITER / SATURN / URANUS / NEPTUNE\nEXPERIENCE THE CHARM OF GRAVITY ASSISTS\nEVERY 175 YEARS\nNOW BOARDING"
+    },
+    "page_2": {
+      "type": "selectable_text",
+      "authored_text_regions": 1,
+      "expected_text": "A ONCE IN A LIFETIME GETAWAY\nTHE GRAND TOUR\nJUPITER / SATURN / URANUS / NEPTUNE\nEXPERIENCE THE CHARM OF GRAVITY ASSISTS\nEVERY 175 YEARS\nNOW BOARDING"
+    },
+    "source": "https://d2pn8kiwq2w21t.cloudfront.net/images/grand_tour.width-1024.jpg"
+  }
+]

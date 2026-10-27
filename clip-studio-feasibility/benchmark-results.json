@@ -1,0 +1,74 @@
+{
+  "scope": "15-second synthetic 1080p30 source; static crop to 1080x1920, ASS captions, AAC audio. Single run per encoder; existing background workload remains running. Not ASR, LLM, visual quality equivalence or full-app throughput.",
+  "ffmpeg_version": "ffmpeg version 9.0.2-essentials_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+  "tests": [
+    {
+      "test": "prepare_source",
+      "exit_code": 0,
+      "wall_seconds": 2.332,
+      "source_duration_seconds": 15,
+      "duration_divided_by_wall": 6.43,
+      "ffmpeg_peak_working_set_MiB": 671.6,
+      "lowest_system_available_MiB": 910.3,
+      "log": "C:\\dev\\Trilingua\\clip-studio-feasibility\\prepare_source.log"
+    },
+    {
+      "test": "x264_captioned",
+      "exit_code": 0,
+      "wall_seconds": 5.457,
+      "source_duration_seconds": 15,
+      "duration_divided_by_wall": 2.75,
+      "ffmpeg_peak_working_set_MiB": 309.0,
+      "lowest_system_available_MiB": 1317.3,
+      "log": "C:\\dev\\Trilingua\\clip-studio-feasibility\\x264_captioned.log",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1080,
+            "height": 1920,
+            "r_frame_rate": "30/1"
+          },
+          {
+            "codec_name": "aac",
+            "r_frame_rate": "0/0"
+          }
+        ],
+        "format": {
+          "duration": "15.000000"
+        }
+      }
+    },
+    {
+      "test": "qsv_captioned",
+      "exit_code": 0,
+      "wall_seconds": 4.444,
+      "source_duration_seconds": 15,
+      "duration_divided_by_wall": 3.38,
+      "ffmpeg_peak_working_set_MiB": 215.1,
+      "lowest_system_available_MiB": 1392.0,
+      "log": "C:\\dev\\Trilingua\\clip-studio-feasibility\\qsv_captioned.log",
+      "probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "h264",
+            "width": 1080,
+            "height": 1920,
+            "r_frame_rate": "30/1"
+          },
+          {
+            "codec_name": "aac",
+            "r_frame_rate": "0/0"
+          }
+        ],
+        "format": {
+          "duration": "15.000000"
+        }
+      }
+    }
+  ]
+}

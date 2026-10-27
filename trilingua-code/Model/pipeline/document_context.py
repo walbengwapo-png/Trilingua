@@ -277,9 +277,12 @@ class DocumentContext:
             return
         with self._llm_lock:
             entry = self.providers_used.setdefault(
-                provider, {"model": model, "calls": 0}
+                provider, {"model": model, "models": [], "calls": 0}
             )
-            entry["model"] = model or entry.get("model", "")
+            # Keep the first model for legacy readers and all observed models separately.
+            models = entry.setdefault("models", [entry["model"]] if entry.get("model") else [])
+            if model and model not in models:
+                models.append(model)
             entry["calls"] += 1
 
     def add_warning(self, warning: str) -> None:
@@ -345,6 +348,12 @@ class DocumentContext:
             "provider": self.provider_name,
             "model": self.provider_model,
             "providers_used": dict(self.providers_used),
+            "observed_providers": [
+                {"provider": provider, "model": model}
+                for provider, entry in self.providers_used.items()
+                for model in entry.get("models", [entry.get("model", "")])
+                if model and provider != "cache"
+            ],
         }
 
     def log_summary(self) -> None:

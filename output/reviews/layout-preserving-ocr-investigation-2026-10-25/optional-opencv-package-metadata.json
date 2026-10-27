@@ -1,0 +1,12 @@
+{
+  "source": "https://pypi.org/pypi/opencv-python-headless/json",
+  "version": "5.0.0.93",
+  "requires_python": ">=3.6",
+  "requires_dist": [
+    "numpy<2.0; python_version < \"3.9\"",
+    "numpy>=2; python_version >= \"3.9\""
+  ],
+  "windows_wheels": [
+    "opencv_python_headless-5.0.0.93-cp37-abi3-win_amd64.whl"
+  ]
+}

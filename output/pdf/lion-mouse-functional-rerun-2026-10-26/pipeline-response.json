@@ -1,0 +1,3537 @@
+{
+  "blocks": [
+    {
+      "block_index": 0,
+      "block_type": "heading",
+      "source_text": "The Lion and the Mouse",
+      "ai_translated_text": "Ang Leong ug ang Mouse",
+      "current_text": "Ang Leong ug ang Mouse",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "heading",
+      "text": "Ang Leong ug ang Mouse",
+      "position": [
+        48.0,
+        33.99998092651367,
+        319.5960388183594,
+        70.00997924804688
+      ],
+      "page": 0,
+      "lines": [
+        {
+          "text": "The Lion and the Mouse",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            33.99998092651367,
+            319.5960388183594,
+            70.00997924804688
+          ],
+          "baseline": 61.14,
+          "x0": 48.0,
+          "text_x1": 319.6,
+          "font": "tiro",
+          "font_original": "Times-Bold",
+          "size": 26.0,
+          "color": 2700075,
+          "bold": true,
+          "italic": false,
+          "runs": [
+            {
+              "text": "The Lion and the Mouse",
+              "font": "tiro",
+              "font_original": "Times-Bold",
+              "size": 26.0,
+              "color": 2700075,
+              "bold": true,
+              "italic": false
+            }
+          ],
+          "links": []
+        }
+      ],
+      "links": [],
+      "alignment": "left",
+      "style": {
+        "font_size": 26.0,
+        "font": "tiro",
+        "font_original": "Times-Bold",
+        "color": 2700075,
+        "bold": true,
+        "italic": false
+      },
+      "pdf_coordinates": "display",
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 0,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              33.99998092651367,
+              302.8259996652603,
+              66.40898140072822
+            ],
+            "font_size": 23.400000000000002,
+            "action": "fit",
+            "page": 0
+          }
+        ]
+      },
+      "region_id": "85dbc31715eb371eca947b3c",
+      "visible": true
+    },
+    {
+      "block_index": 1,
+      "block_type": "paragraph",
+      "source_text": "A Lion lay asleep in the forest, his great head resting on his paws. A timid little Mouse came upon him unexpectedly, and in her fright and haste to get away, ran across the Lion's nose. Roused from his nap, the Lion laid his huge paw angrily on the tiny creature to kill her.",
+      "ai_translated_text": "Nagpahulay ang Leong sa kakahuyan, ang iyang dako nga ulo nagpahimutang sa iyang mga paa. Usa ka mahina nga gamay nga Mouse ang nakit-an siya sa wala damha, ug sa iyang kahadlok ug pagdali nga molayo, nagdagan siya sa ilong sa Leong. Gipukaw gikan sa iyang tulog, ang Leong nagbutang sa iyang dako nga paa sa gamay nga nilalang aron patyon siya.",
+      "current_text": "Nagpahulay ang Leong sa kakahuyan, ang iyang dako nga ulo nagpahimutang sa iyang mga paa. Usa ka mahina nga gamay nga Mouse ang nakit-an siya sa wala damha, ug sa iyang kahadlok ug pagdali nga molayo, nagdagan siya sa ilong sa Leong. Gipukaw gikan sa iyang tulog, ang Leong nagbutang sa iyang dako nga paa sa gamay nga nilalang aron patyon siya.",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "Nagpahulay ang Leong sa kakahuyan, ang iyang dako nga ulo nagpahimutang sa iyang mga paa. Usa ka mahina nga gamay nga Mouse ang nakit-an siya sa wala damha, ug sa iyang kahadlok ug pagdali nga molayo, nagdagan siya sa ilong sa Leong. Gipukaw gikan sa iyang tulog, ang Leong nagbutang sa iyang dako nga paa sa gamay nga nilalang aron patyon siya.",
+      "position": [
+        48.0,
+        380.0,
+        562.6581420898438,
+        475.17706298828125
+      ],
+      "page": 0,
+      "lines": [
+        {
+          "text": "A Lion lay asleep in the forest, his great head resting on his paws. A timid",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            380.0,
+            552.7471923828125,
+            402.6780090332031
+          ],
+          "baseline": 397.9,
+          "x0": 48.0,
+          "text_x1": 552.75,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "A Lion lay asleep in the forest, his great head resting on his paws. A timid",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        },
+        {
+          "text": "little Mouse came upon him unexpectedly, and in her fright and haste to get",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            404.1663513183594,
+            562.6581420898438,
+            426.8443603515625
+          ],
+          "baseline": 422.07,
+          "x0": 48.0,
+          "text_x1": 562.66,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "little Mouse came upon him unexpectedly, and in her fright and haste to get",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        },
+        {
+          "text": "away, ran across the Lion's nose. Roused from his nap, the Lion laid his",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            428.33270263671875,
+            536.444091796875,
+            451.0107116699219
+          ],
+          "baseline": 446.23,
+          "x0": 48.0,
+          "text_x1": 536.44,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "away, ran across the Lion's nose. Roused from his nap, the Lion laid his",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        },
+        {
+          "text": "huge paw angrily on the tiny creature to kill her.",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            452.4990539550781,
+            376.610107421875,
+            475.17706298828125
+          ],
+          "baseline": 470.4,
+          "x0": 48.0,
+          "text_x1": 376.61,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "huge paw angrily on the tiny creature to kill her.",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        }
+      ],
+      "links": [],
+      "alignment": "left",
+      "style": {
+        "font_size": 17.0,
+        "font": "tiro",
+        "font_original": "Times-Roman",
+        "color": 2700075,
+        "bold": false,
+        "italic": false
+      },
+      "pdf_coordinates": "display",
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              380.0,
+              470.07600116729736,
+              402.67799934744835
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              404.17799934744835,
+              541.8500012159348,
+              426.8559986948967
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              428.3559986948967,
+              525.3260011672974,
+              451.03399804234505
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              452.53399804234505,
+              544.7230007052422,
+              475.2119973897934
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              476.7119973897934,
+              539.9460014104843,
+              499.38999673724174
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              500.88999673724174,
+              130.16100007295609,
+              523.5679960846901
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          }
+        ]
+      },
+      "region_id": "8bbdc35cddb81fd373da7498",
+      "visible": true
+    },
+    {
+      "block_index": 2,
+      "block_type": "paragraph",
+      "source_text": "The Lion was much amused to think that a Mouse could ever help him. But he was generous and finally let the Mouse go.",
+      "ai_translated_text": "Nakalipay kaayo ang Leong nga maghunahuna nga ang Mouse makahatag siya og tabang. Apan siya malumo ug sa katapusan nagpahawa siya sa Mouse.",
+      "current_text": "Nakalipay kaayo ang Leong nga maghunahuna nga ang Mouse makahatag siya og tabang. Apan siya malumo ug sa katapusan nagpahawa siya sa Mouse.",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "Nakalipay kaayo ang Leong nga maghunahuna nga ang Mouse makahatag siya og tabang. Apan siya malumo ug sa katapusan nagpahawa siya sa Mouse.",
+      "position": [
+        48.0,
+        641.0,
+        561.26416015625,
+        687.8443603515625
+      ],
+      "page": 0,
+      "lines": [
+        {
+          "text": "The Lion was much amused to think that a Mouse could ever help him. But",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            641.0,
+            561.26416015625,
+            663.677978515625
+          ],
+          "baseline": 658.9,
+          "x0": 48.0,
+          "text_x1": 561.26,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "The Lion was much amused to think that a Mouse could ever help him. But",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        },
+        {
+          "text": "he was generous and finally let the Mouse go.",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            665.1663818359375,
+            360.0860595703125,
+            687.8443603515625
+          ],
+          "baseline": 683.07,
+          "x0": 48.0,
+          "text_x1": 360.09,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "he was generous and finally let the Mouse go.",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        }
+      ],
+      "links": [],
+      "alignment": "left",
+      "style": {
+        "font_size": 17.0,
+        "font": "tiro",
+        "font_original": "Times-Roman",
+        "color": 2700075,
+        "bold": false,
+        "italic": false
+      },
+      "pdf_coordinates": "display",
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 2,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              641.0,
+              553.6310015320778,
+              663.6779993474483
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 2,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              665.1779993474483,
+              525.80200111866,
+              687.8559986948967
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 2,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              689.3559986948967,
+              98.52400004863739,
+              712.033998042345
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          }
+        ]
+      },
+      "region_id": "b2b763db0d6adea917027abe",
+      "visible": true
+    },
+    {
+      "block_index": 3,
+      "block_type": "paragraph",
+      "source_text": "Some days later, while stalking his prey in the forest, the Lion was caught in the toils of a hunter's net. Unable to free himself, he filled the forest with his angry roaring. The Mouse knew the voice and quickly found the Lion struggling in the net. Running to one of the great ropes that bound him, she gnawed it until it parted, and soon the Lion was free.",
+      "ai_translated_text": "Pipila ka adlaw pagkahuman, samtang nagbantay sa iyang pangayam sa kakahuyan, ang Leong nadakpan sa mga kalisud sa usa ka net sa mangangayam. Walay mahimo nga makagawas, siya nagpatik sa kakahuyan sa iyang masuko nga pag-uyog. Ang Mouse nakahibalo sa tingog ug dali nga nakit-an ang Leong nga naglisod sa net. Nagdagan siya ngadto sa usa sa mga dakong tali nga nag-uban kaniya, siya nagkagat niini hangtod kini napartido, ug sa dali ra nga panahon ang Leong naglibre.",
+      "current_text": "Pipila ka adlaw pagkahuman, samtang nagbantay sa iyang pangayam sa kakahuyan, ang Leong nadakpan sa mga kalisud sa usa ka net sa mangangayam. Walay mahimo nga makagawas, siya nagpatik sa kakahuyan sa iyang masuko nga pag-uyog. Ang Mouse nakahibalo sa tingog ug dali nga nakit-an ang Leong nga naglisod sa net. Nagdagan siya ngadto sa usa sa mga dakong tali nga nag-uban kaniya, siya nagkagat niini hangtod kini napartido, ug sa dali ra nga panahon ang Leong naglibre.",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "Pipila ka adlaw pagkahuman, samtang nagbantay sa iyang pangayam sa kakahuyan, ang Leong nadakpan sa mga kalisud sa usa ka net sa mangangayam. Walay mahimo nga makagawas, siya nagpatik sa kakahuyan sa iyang masuko nga pag-uyog. Ang Mouse nakahibalo sa tingog ug dali nga nakit-an ang Leong nga naglisod sa net. Nagdagan siya ngadto sa usa sa mga dakong tali nga nag-uban kaniya, siya nagkagat niini hangtod kini napartido, ug sa dali ra nga panahon ang Leong naglibre.",
+      "position": [
+        48.0,
+        278.0,
+        560.5162353515625,
+        397.3434143066406
+      ],
+      "page": 1,
+      "lines": [
+        {
+          "text": "Some days later, while stalking his prey in the forest, the Lion was caught",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            278.0,
+            550.860107421875,
+            300.6780090332031
+          ],
+          "baseline": 295.9,
+          "x0": 48.0,
+          "text_x1": 550.86,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "Some days later, while stalking his prey in the forest, the Lion was caught",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        },
+        {
+          "text": "in the toils of a hunter's net. Unable to free himself, he filled the forest with",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            302.1663513183594,
+            560.5162353515625,
+            324.8443603515625
+          ],
+          "baseline": 320.07,
+          "x0": 48.0,
+          "text_x1": 560.52,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "in the toils of a hunter's net. Unable to free himself, he filled the forest with",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        },
+        {
+          "text": "his angry roaring. The Mouse knew the voice and quickly found the Lion",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            326.33270263671875,
+            546.1171875,
+            349.0107116699219
+          ],
+          "baseline": 344.23,
+          "x0": 48.0,
+          "text_x1": 546.12,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "his angry roaring. The Mouse knew the voice and quickly found the Lion",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        },
+        {
+          "text": "struggling in the net. Running to one of the great ropes that bound him, she",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            350.4990539550781,
+            558.9180908203125,
+            373.17706298828125
+          ],
+          "baseline": 368.4,
+          "x0": 48.0,
+          "text_x1": 558.92,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "struggling in the net. Running to one of the great ropes that bound him, she",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        },
+        {
+          "text": "gnawed it until it parted, and soon the Lion was free.",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            374.6654052734375,
+            406.8360595703125,
+            397.3434143066406
+          ],
+          "baseline": 392.57,
+          "x0": 48.0,
+          "text_x1": 406.84,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "gnawed it until it parted, and soon the Lion was free.",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        }
+      ],
+      "links": [],
+      "alignment": "left",
+      "style": {
+        "font_size": 17.0,
+        "font": "tiro",
+        "font_original": "Times-Roman",
+        "color": 2700075,
+        "bold": false,
+        "italic": false
+      },
+      "pdf_coordinates": "display",
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              278.0,
+              536.1890011429787,
+              300.67799934744835
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              302.17799934744835,
+              486.12400126457214,
+              324.8559986948967
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              326.3559986948967,
+              489.43900114297867,
+              349.03399804234505
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              350.53399804234505,
+              522.0280010700226,
+              373.2119973897934
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              374.7119973897934,
+              550.8430009484291,
+              397.38999673724174
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              398.88999673724174,
+              554.6170009970665,
+              421.5679960846901
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              423.0679960846901,
+              524.3910010457039,
+              445.74599543213844
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          }
+        ]
+      },
+      "region_id": "6f1b5cb77a352d29029346bf",
+      "visible": true
+    },
+    {
+      "block_index": 4,
+      "block_type": "heading",
+      "source_text": "A kindness is never wasted.",
+      "ai_translated_text": "Ang kabinantayon dili gayud malugaw.",
+      "current_text": "Ang kabinantayon dili gayud malugaw.",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "heading",
+      "text": "Ang kabinantayon dili gayud malugaw.",
+      "position": [
+        48.0,
+        617.0,
+        284.27105712890625,
+        644.2160034179688
+      ],
+      "page": 1,
+      "lines": [
+        {
+          "text": "A kindness is never wasted.",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            617.0,
+            284.27105712890625,
+            644.2160034179688
+          ],
+          "baseline": 637.41,
+          "x0": 48.0,
+          "text_x1": 284.27,
+          "font": "tiro",
+          "font_original": "Times-BoldItalic",
+          "size": 21.0,
+          "color": 2700075,
+          "bold": true,
+          "italic": true,
+          "runs": [
+            {
+              "text": "A kindness is never wasted.",
+              "font": "tiro",
+              "font_original": "Times-BoldItalic",
+              "size": 21.0,
+              "color": 2700075,
+              "bold": true,
+              "italic": true
+            }
+          ],
+          "links": []
+        }
+      ],
+      "links": [],
+      "alignment": "left",
+      "style": {
+        "font_size": 21.0,
+        "font": "tiro",
+        "font_original": "Times-BoldItalic",
+        "color": 2700075,
+        "bold": true,
+        "italic": true
+      },
+      "pdf_coordinates": "display",
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 4,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              617.0,
+              241.72499924898148,
+              644.2160000801086
+            ],
+            "font_size": 21.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 4,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              645.7160000801086,
+              190.35899966955185,
+              672.9320001602173
+            ],
+            "font_size": 21.0,
+            "action": "fit",
+            "page": 1
+          }
+        ]
+      },
+      "region_id": "c2cc580187dbf150a512062d",
+      "visible": true
+    },
+    {
+      "block_index": 5,
+      "block_type": "paragraph",
+      "source_text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+      "ai_translated_text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+      "current_text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+      "position": [
+        48.0,
+        691.0,
+        346.8089904785156,
+        703.365966796875
+      ],
+      "page": 1,
+      "lines": [
+        {
+          "text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            691.0,
+            346.8089904785156,
+            703.365966796875
+          ],
+          "baseline": 700.67,
+          "x0": 48.0,
+          "text_x1": 346.81,
+          "font": "helv",
+          "font_original": "Helvetica",
+          "size": 9.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+              "font": "helv",
+              "font_original": "Helvetica",
+              "size": 9.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        }
+      ],
+      "links": [],
+      "alignment": "left",
+      "style": {
+        "font_size": 9.0,
+        "font": "helv",
+        "font_original": "Helvetica",
+        "color": 2700075,
+        "bold": false,
+        "italic": false
+      },
+      "pdf_coordinates": "display",
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 5,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              691.0,
+              314.2829985022545,
+              703.3660003840923
+            ],
+            "font_size": 9.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 5,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              704.8660003840923,
+              78.02399969100952,
+              717.2320007681847
+            ],
+            "font_size": 9.0,
+            "action": "fit",
+            "page": 1
+          }
+        ]
+      },
+      "region_id": "8e13b444eb71d8530c137ab6",
+      "visible": true
+    }
+  ],
+  "sidecar": {
+    "version": 3,
+    "format": ".pdf",
+    "source_lang": "English",
+    "target_lang": "Cebuano",
+    "pdf_column_mode": "auto",
+    "mode": "fast",
+    "document_type": "",
+    "layout_plan": null,
+    "layout_preflight": null,
+    "blocks": [
+      {
+        "block_index": 0,
+        "block_type": "heading",
+        "source_text": "The Lion and the Mouse",
+        "ai_translated_text": "Ang Leong ug ang Mouse",
+        "current_text": "Ang Leong ug ang Mouse",
+        "quality_score": null,
+        "quality_issues": null,
+        "type": "heading",
+        "text": "Ang Leong ug ang Mouse",
+        "position": [
+          48.0,
+          33.99998092651367,
+          319.5960388183594,
+          70.00997924804688
+        ],
+        "page": 0,
+        "lines": [
+          {
+            "text": "The Lion and the Mouse",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              33.99998092651367,
+              319.5960388183594,
+              70.00997924804688
+            ],
+            "baseline": 61.14,
+            "x0": 48.0,
+            "text_x1": 319.6,
+            "font": "tiro",
+            "font_original": "Times-Bold",
+            "size": 26.0,
+            "color": 2700075,
+            "bold": true,
+            "italic": false,
+            "runs": [
+              {
+                "text": "The Lion and the Mouse",
+                "font": "tiro",
+                "font_original": "Times-Bold",
+                "size": 26.0,
+                "color": 2700075,
+                "bold": true,
+                "italic": false
+              }
+            ],
+            "links": []
+          }
+        ],
+        "links": [],
+        "alignment": "left",
+        "style": {
+          "font_size": 26.0,
+          "font": "tiro",
+          "font_original": "Times-Bold",
+          "color": 2700075,
+          "bold": true,
+          "italic": false
+        },
+        "pdf_coordinates": "display",
+        "rendered_layout": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 0,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                33.99998092651367,
+                302.8259996652603,
+                66.40898140072822
+              ],
+              "font_size": 23.400000000000002,
+              "action": "fit",
+              "page": 0
+            }
+          ]
+        },
+        "region_id": "85dbc31715eb371eca947b3c",
+        "visible": true
+      },
+      {
+        "block_index": 1,
+        "block_type": "paragraph",
+        "source_text": "A Lion lay asleep in the forest, his great head resting on his paws. A timid little Mouse came upon him unexpectedly, and in her fright and haste to get away, ran across the Lion's nose. Roused from his nap, the Lion laid his huge paw angrily on the tiny creature to kill her.",
+        "ai_translated_text": "Nagpahulay ang Leong sa kakahuyan, ang iyang dako nga ulo nagpahimutang sa iyang mga paa. Usa ka mahina nga gamay nga Mouse ang nakit-an siya sa wala damha, ug sa iyang kahadlok ug pagdali nga molayo, nagdagan siya sa ilong sa Leong. Gipukaw gikan sa iyang tulog, ang Leong nagbutang sa iyang dako nga paa sa gamay nga nilalang aron patyon siya.",
+        "current_text": "Nagpahulay ang Leong sa kakahuyan, ang iyang dako nga ulo nagpahimutang sa iyang mga paa. Usa ka mahina nga gamay nga Mouse ang nakit-an siya sa wala damha, ug sa iyang kahadlok ug pagdali nga molayo, nagdagan siya sa ilong sa Leong. Gipukaw gikan sa iyang tulog, ang Leong nagbutang sa iyang dako nga paa sa gamay nga nilalang aron patyon siya.",
+        "quality_score": null,
+        "quality_issues": null,
+        "type": "paragraph",
+        "text": "Nagpahulay ang Leong sa kakahuyan, ang iyang dako nga ulo nagpahimutang sa iyang mga paa. Usa ka mahina nga gamay nga Mouse ang nakit-an siya sa wala damha, ug sa iyang kahadlok ug pagdali nga molayo, nagdagan siya sa ilong sa Leong. Gipukaw gikan sa iyang tulog, ang Leong nagbutang sa iyang dako nga paa sa gamay nga nilalang aron patyon siya.",
+        "position": [
+          48.0,
+          380.0,
+          562.6581420898438,
+          475.17706298828125
+        ],
+        "page": 0,
+        "lines": [
+          {
+            "text": "A Lion lay asleep in the forest, his great head resting on his paws. A timid",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              380.0,
+              552.7471923828125,
+              402.6780090332031
+            ],
+            "baseline": 397.9,
+            "x0": 48.0,
+            "text_x1": 552.75,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "A Lion lay asleep in the forest, his great head resting on his paws. A timid",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          },
+          {
+            "text": "little Mouse came upon him unexpectedly, and in her fright and haste to get",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              404.1663513183594,
+              562.6581420898438,
+              426.8443603515625
+            ],
+            "baseline": 422.07,
+            "x0": 48.0,
+            "text_x1": 562.66,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "little Mouse came upon him unexpectedly, and in her fright and haste to get",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          },
+          {
+            "text": "away, ran across the Lion's nose. Roused from his nap, the Lion laid his",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              428.33270263671875,
+              536.444091796875,
+              451.0107116699219
+            ],
+            "baseline": 446.23,
+            "x0": 48.0,
+            "text_x1": 536.44,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "away, ran across the Lion's nose. Roused from his nap, the Lion laid his",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          },
+          {
+            "text": "huge paw angrily on the tiny creature to kill her.",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              452.4990539550781,
+              376.610107421875,
+              475.17706298828125
+            ],
+            "baseline": 470.4,
+            "x0": 48.0,
+            "text_x1": 376.61,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "huge paw angrily on the tiny creature to kill her.",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          }
+        ],
+        "links": [],
+        "alignment": "left",
+        "style": {
+          "font_size": 17.0,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "color": 2700075,
+          "bold": false,
+          "italic": false
+        },
+        "pdf_coordinates": "display",
+        "rendered_layout": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                380.0,
+                470.07600116729736,
+                402.67799934744835
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                404.17799934744835,
+                541.8500012159348,
+                426.8559986948967
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                428.3559986948967,
+                525.3260011672974,
+                451.03399804234505
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                452.53399804234505,
+                544.7230007052422,
+                475.2119973897934
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                476.7119973897934,
+                539.9460014104843,
+                499.38999673724174
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                500.88999673724174,
+                130.16100007295609,
+                523.5679960846901
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            }
+          ]
+        },
+        "region_id": "8bbdc35cddb81fd373da7498",
+        "visible": true
+      },
+      {
+        "block_index": 2,
+        "block_type": "paragraph",
+        "source_text": "The Lion was much amused to think that a Mouse could ever help him. But he was generous and finally let the Mouse go.",
+        "ai_translated_text": "Nakalipay kaayo ang Leong nga maghunahuna nga ang Mouse makahatag siya og tabang. Apan siya malumo ug sa katapusan nagpahawa siya sa Mouse.",
+        "current_text": "Nakalipay kaayo ang Leong nga maghunahuna nga ang Mouse makahatag siya og tabang. Apan siya malumo ug sa katapusan nagpahawa siya sa Mouse.",
+        "quality_score": null,
+        "quality_issues": null,
+        "type": "paragraph",
+        "text": "Nakalipay kaayo ang Leong nga maghunahuna nga ang Mouse makahatag siya og tabang. Apan siya malumo ug sa katapusan nagpahawa siya sa Mouse.",
+        "position": [
+          48.0,
+          641.0,
+          561.26416015625,
+          687.8443603515625
+        ],
+        "page": 0,
+        "lines": [
+          {
+            "text": "The Lion was much amused to think that a Mouse could ever help him. But",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              641.0,
+              561.26416015625,
+              663.677978515625
+            ],
+            "baseline": 658.9,
+            "x0": 48.0,
+            "text_x1": 561.26,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "The Lion was much amused to think that a Mouse could ever help him. But",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          },
+          {
+            "text": "he was generous and finally let the Mouse go.",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              665.1663818359375,
+              360.0860595703125,
+              687.8443603515625
+            ],
+            "baseline": 683.07,
+            "x0": 48.0,
+            "text_x1": 360.09,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "he was generous and finally let the Mouse go.",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          }
+        ],
+        "links": [],
+        "alignment": "left",
+        "style": {
+          "font_size": 17.0,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "color": 2700075,
+          "bold": false,
+          "italic": false
+        },
+        "pdf_coordinates": "display",
+        "rendered_layout": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 2,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                641.0,
+                553.6310015320778,
+                663.6779993474483
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 2,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                665.1779993474483,
+                525.80200111866,
+                687.8559986948967
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 2,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                689.3559986948967,
+                98.52400004863739,
+                712.033998042345
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            }
+          ]
+        },
+        "region_id": "b2b763db0d6adea917027abe",
+        "visible": true
+      },
+      {
+        "block_index": 3,
+        "block_type": "paragraph",
+        "source_text": "Some days later, while stalking his prey in the forest, the Lion was caught in the toils of a hunter's net. Unable to free himself, he filled the forest with his angry roaring. The Mouse knew the voice and quickly found the Lion struggling in the net. Running to one of the great ropes that bound him, she gnawed it until it parted, and soon the Lion was free.",
+        "ai_translated_text": "Pipila ka adlaw pagkahuman, samtang nagbantay sa iyang pangayam sa kakahuyan, ang Leong nadakpan sa mga kalisud sa usa ka net sa mangangayam. Walay mahimo nga makagawas, siya nagpatik sa kakahuyan sa iyang masuko nga pag-uyog. Ang Mouse nakahibalo sa tingog ug dali nga nakit-an ang Leong nga naglisod sa net. Nagdagan siya ngadto sa usa sa mga dakong tali nga nag-uban kaniya, siya nagkagat niini hangtod kini napartido, ug sa dali ra nga panahon ang Leong naglibre.",
+        "current_text": "Pipila ka adlaw pagkahuman, samtang nagbantay sa iyang pangayam sa kakahuyan, ang Leong nadakpan sa mga kalisud sa usa ka net sa mangangayam. Walay mahimo nga makagawas, siya nagpatik sa kakahuyan sa iyang masuko nga pag-uyog. Ang Mouse nakahibalo sa tingog ug dali nga nakit-an ang Leong nga naglisod sa net. Nagdagan siya ngadto sa usa sa mga dakong tali nga nag-uban kaniya, siya nagkagat niini hangtod kini napartido, ug sa dali ra nga panahon ang Leong naglibre.",
+        "quality_score": null,
+        "quality_issues": null,
+        "type": "paragraph",
+        "text": "Pipila ka adlaw pagkahuman, samtang nagbantay sa iyang pangayam sa kakahuyan, ang Leong nadakpan sa mga kalisud sa usa ka net sa mangangayam. Walay mahimo nga makagawas, siya nagpatik sa kakahuyan sa iyang masuko nga pag-uyog. Ang Mouse nakahibalo sa tingog ug dali nga nakit-an ang Leong nga naglisod sa net. Nagdagan siya ngadto sa usa sa mga dakong tali nga nag-uban kaniya, siya nagkagat niini hangtod kini napartido, ug sa dali ra nga panahon ang Leong naglibre.",
+        "position": [
+          48.0,
+          278.0,
+          560.5162353515625,
+          397.3434143066406
+        ],
+        "page": 1,
+        "lines": [
+          {
+            "text": "Some days later, while stalking his prey in the forest, the Lion was caught",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              278.0,
+              550.860107421875,
+              300.6780090332031
+            ],
+            "baseline": 295.9,
+            "x0": 48.0,
+            "text_x1": 550.86,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "Some days later, while stalking his prey in the forest, the Lion was caught",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          },
+          {
+            "text": "in the toils of a hunter's net. Unable to free himself, he filled the forest with",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              302.1663513183594,
+              560.5162353515625,
+              324.8443603515625
+            ],
+            "baseline": 320.07,
+            "x0": 48.0,
+            "text_x1": 560.52,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "in the toils of a hunter's net. Unable to free himself, he filled the forest with",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          },
+          {
+            "text": "his angry roaring. The Mouse knew the voice and quickly found the Lion",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              326.33270263671875,
+              546.1171875,
+              349.0107116699219
+            ],
+            "baseline": 344.23,
+            "x0": 48.0,
+            "text_x1": 546.12,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "his angry roaring. The Mouse knew the voice and quickly found the Lion",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          },
+          {
+            "text": "struggling in the net. Running to one of the great ropes that bound him, she",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              350.4990539550781,
+              558.9180908203125,
+              373.17706298828125
+            ],
+            "baseline": 368.4,
+            "x0": 48.0,
+            "text_x1": 558.92,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "struggling in the net. Running to one of the great ropes that bound him, she",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          },
+          {
+            "text": "gnawed it until it parted, and soon the Lion was free.",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              374.6654052734375,
+              406.8360595703125,
+              397.3434143066406
+            ],
+            "baseline": 392.57,
+            "x0": 48.0,
+            "text_x1": 406.84,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "gnawed it until it parted, and soon the Lion was free.",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          }
+        ],
+        "links": [],
+        "alignment": "left",
+        "style": {
+          "font_size": 17.0,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "color": 2700075,
+          "bold": false,
+          "italic": false
+        },
+        "pdf_coordinates": "display",
+        "rendered_layout": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                278.0,
+                536.1890011429787,
+                300.67799934744835
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                302.17799934744835,
+                486.12400126457214,
+                324.8559986948967
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                326.3559986948967,
+                489.43900114297867,
+                349.03399804234505
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                350.53399804234505,
+                522.0280010700226,
+                373.2119973897934
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                374.7119973897934,
+                550.8430009484291,
+                397.38999673724174
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                398.88999673724174,
+                554.6170009970665,
+                421.5679960846901
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                423.0679960846901,
+                524.3910010457039,
+                445.74599543213844
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            }
+          ]
+        },
+        "region_id": "6f1b5cb77a352d29029346bf",
+        "visible": true
+      },
+      {
+        "block_index": 4,
+        "block_type": "heading",
+        "source_text": "A kindness is never wasted.",
+        "ai_translated_text": "Ang kabinantayon dili gayud malugaw.",
+        "current_text": "Ang kabinantayon dili gayud malugaw.",
+        "quality_score": null,
+        "quality_issues": null,
+        "type": "heading",
+        "text": "Ang kabinantayon dili gayud malugaw.",
+        "position": [
+          48.0,
+          617.0,
+          284.27105712890625,
+          644.2160034179688
+        ],
+        "page": 1,
+        "lines": [
+          {
+            "text": "A kindness is never wasted.",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              617.0,
+              284.27105712890625,
+              644.2160034179688
+            ],
+            "baseline": 637.41,
+            "x0": 48.0,
+            "text_x1": 284.27,
+            "font": "tiro",
+            "font_original": "Times-BoldItalic",
+            "size": 21.0,
+            "color": 2700075,
+            "bold": true,
+            "italic": true,
+            "runs": [
+              {
+                "text": "A kindness is never wasted.",
+                "font": "tiro",
+                "font_original": "Times-BoldItalic",
+                "size": 21.0,
+                "color": 2700075,
+                "bold": true,
+                "italic": true
+              }
+            ],
+            "links": []
+          }
+        ],
+        "links": [],
+        "alignment": "left",
+        "style": {
+          "font_size": 21.0,
+          "font": "tiro",
+          "font_original": "Times-BoldItalic",
+          "color": 2700075,
+          "bold": true,
+          "italic": true
+        },
+        "pdf_coordinates": "display",
+        "rendered_layout": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 4,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                617.0,
+                241.72499924898148,
+                644.2160000801086
+              ],
+              "font_size": 21.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 4,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                645.7160000801086,
+                190.35899966955185,
+                672.9320001602173
+              ],
+              "font_size": 21.0,
+              "action": "fit",
+              "page": 1
+            }
+          ]
+        },
+        "region_id": "c2cc580187dbf150a512062d",
+        "visible": true
+      },
+      {
+        "block_index": 5,
+        "block_type": "paragraph",
+        "source_text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+        "ai_translated_text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+        "current_text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+        "quality_score": null,
+        "quality_issues": null,
+        "type": "paragraph",
+        "text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+        "position": [
+          48.0,
+          691.0,
+          346.8089904785156,
+          703.365966796875
+        ],
+        "page": 1,
+        "lines": [
+          {
+            "text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              691.0,
+              346.8089904785156,
+              703.365966796875
+            ],
+            "baseline": 700.67,
+            "x0": 48.0,
+            "text_x1": 346.81,
+            "font": "helv",
+            "font_original": "Helvetica",
+            "size": 9.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+                "font": "helv",
+                "font_original": "Helvetica",
+                "size": 9.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          }
+        ],
+        "links": [],
+        "alignment": "left",
+        "style": {
+          "font_size": 9.0,
+          "font": "helv",
+          "font_original": "Helvetica",
+          "color": 2700075,
+          "bold": false,
+          "italic": false
+        },
+        "pdf_coordinates": "display",
+        "rendered_layout": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 5,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                691.0,
+                314.2829985022545,
+                703.3660003840923
+              ],
+              "font_size": 9.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 5,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                704.8660003840923,
+                78.02399969100952,
+                717.2320007681847
+              ],
+              "font_size": 9.0,
+              "action": "fit",
+              "page": 1
+            }
+          ]
+        },
+        "region_id": "8e13b444eb71d8530c137ab6",
+        "visible": true
+      }
+    ],
+    "output_validation": {
+      "status": "passed",
+      "content_coverage": "passed",
+      "layout": "passed",
+      "linguistic_accuracy": "unverified",
+      "source_pages": 2,
+      "output_pages": 2,
+      "continuation_pages": 0,
+      "checked_fragments": 21,
+      "issues": [],
+      "content_findings": [],
+      "blocks": [
+        {
+          "block_index": 0,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            33.99998092651367,
+            302.8259996652603,
+            66.40898140072822
+          ],
+          "font_size": 23.400000000000002,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 1,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            380.0,
+            470.07600116729736,
+            402.67799934744835
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 1,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            404.17799934744835,
+            541.8500012159348,
+            426.8559986948967
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 1,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            428.3559986948967,
+            525.3260011672974,
+            451.03399804234505
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 1,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            452.53399804234505,
+            544.7230007052422,
+            475.2119973897934
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 1,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            476.7119973897934,
+            539.9460014104843,
+            499.38999673724174
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 1,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            500.88999673724174,
+            130.16100007295609,
+            523.5679960846901
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 2,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            641.0,
+            553.6310015320778,
+            663.6779993474483
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 2,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            665.1779993474483,
+            525.80200111866,
+            687.8559986948967
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 2,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            689.3559986948967,
+            98.52400004863739,
+            712.033998042345
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 3,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            278.0,
+            536.1890011429787,
+            300.67799934744835
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 3,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            302.17799934744835,
+            486.12400126457214,
+            324.8559986948967
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 3,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            326.3559986948967,
+            489.43900114297867,
+            349.03399804234505
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 3,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            350.53399804234505,
+            522.0280010700226,
+            373.2119973897934
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 3,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            374.7119973897934,
+            550.8430009484291,
+            397.38999673724174
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 3,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            398.88999673724174,
+            554.6170009970665,
+            421.5679960846901
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 3,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            423.0679960846901,
+            524.3910010457039,
+            445.74599543213844
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 4,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            617.0,
+            241.72499924898148,
+            644.2160000801086
+          ],
+          "font_size": 21.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 4,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            645.7160000801086,
+            190.35899966955185,
+            672.9320001602173
+          ],
+          "font_size": 21.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 5,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            691.0,
+            314.2829985022545,
+            703.3660003840923
+          ],
+          "font_size": 9.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 5,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            704.8660003840923,
+            78.02399969100952,
+            717.2320007681847
+          ],
+          "font_size": 9.0,
+          "action": "fit",
+          "page": 1
+        }
+      ],
+      "source_artifacts": [],
+      "held": [],
+      "source_page_map": {
+        "0": 0,
+        "1": 1
+      }
+    },
+    "extraction": {
+      "pages": [
+        {
+          "page": 0,
+          "classification": "mixed",
+          "mediabox": [
+            0.0,
+            0.0,
+            612.0,
+            792.0
+          ],
+          "cropbox": [
+            0.0,
+            0.0,
+            612.0,
+            792.0
+          ],
+          "rotation": 0,
+          "rotation_matrix": [
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "page": 1,
+          "classification": "mixed",
+          "mediabox": [
+            0.0,
+            0.0,
+            612.0,
+            792.0
+          ],
+          "cropbox": [
+            0.0,
+            0.0,
+            612.0,
+            792.0
+          ],
+          "rotation": 0,
+          "rotation_matrix": [
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "regions": [
+        {
+          "region_id": "85dbc31715eb371eca947b3c",
+          "page": 0,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            33.99998092651367,
+            319.5960388183594,
+            70.00997924804688
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 0
+        },
+        {
+          "region_id": "8bbdc35cddb81fd373da7498",
+          "page": 0,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            380.0,
+            562.6581420898438,
+            475.17706298828125
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 1
+        },
+        {
+          "region_id": "b2b763db0d6adea917027abe",
+          "page": 0,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            641.0,
+            561.26416015625,
+            687.8443603515625
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 2
+        },
+        {
+          "region_id": "15238ad3f4c6cbef28aa58a6",
+          "page": 0,
+          "source_kind": "raster",
+          "bbox": [
+            112.0,
+            90.16256713867188,
+            500.0,
+            355.8374328613281
+          ],
+          "status": "held",
+          "reason": "ocr_acceptance_hold",
+          "occurrence_id": "0:0",
+          "xref": 8,
+          "transform": [
+            388.0,
+            0.0,
+            -0.0,
+            265.67486572265625,
+            112.0,
+            90.16256713867188
+          ],
+          "capture_scope": [
+            "scan",
+            "photo",
+            "screenshot"
+          ],
+          "signals": {
+            "version": 1,
+            "calibrated": false,
+            "preview_range": 214
+          },
+          "occurrence_count": 2,
+          "detail": "OCR English / scan is on hold: a representative, checked 95% acceptance report is required.",
+          "safety_hold": "shared_or_unresolved_image"
+        },
+        {
+          "region_id": "ae08701268feae8b96e15910",
+          "page": 0,
+          "source_kind": "raster",
+          "bbox": [
+            48.0,
+            552.0,
+            564.0,
+            620.0
+          ],
+          "status": "held",
+          "reason": "ocr_acceptance_hold",
+          "occurrence_id": "0:1",
+          "xref": 14,
+          "transform": [
+            516.0,
+            0.0,
+            -0.0,
+            68.0,
+            48.0,
+            552.0
+          ],
+          "capture_scope": [
+            "scan",
+            "photo",
+            "screenshot"
+          ],
+          "signals": {
+            "version": 1,
+            "calibrated": false,
+            "preview_range": 214
+          },
+          "occurrence_count": 1,
+          "detail": "OCR English / scan is on hold: a representative, checked 95% acceptance report is required."
+        },
+        {
+          "region_id": "6f1b5cb77a352d29029346bf",
+          "page": 1,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            278.0,
+            560.5162353515625,
+            397.3434143066406
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 3
+        },
+        {
+          "region_id": "c2cc580187dbf150a512062d",
+          "page": 1,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            617.0,
+            284.27105712890625,
+            644.2160034179688
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 4
+        },
+        {
+          "region_id": "8e13b444eb71d8530c137ab6",
+          "page": 1,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            691.0,
+            346.8089904785156,
+            703.365966796875
+          ],
+          "status": "passthrough",
+          "reason": null,
+          "block_index": 5
+        },
+        {
+          "region_id": "0d6eda5eb3f955d7c590961a",
+          "page": 1,
+          "source_kind": "raster",
+          "bbox": [
+            158.0,
+            42.16009521484375,
+            454.0,
+            244.83990478515625
+          ],
+          "status": "held",
+          "reason": "ocr_acceptance_hold",
+          "occurrence_id": "1:0",
+          "xref": 8,
+          "transform": [
+            296.0,
+            0.0,
+            -0.0,
+            202.6798095703125,
+            158.0,
+            42.16009521484375
+          ],
+          "capture_scope": [
+            "scan",
+            "photo",
+            "screenshot"
+          ],
+          "signals": {
+            "version": 1,
+            "calibrated": false,
+            "preview_range": 208
+          },
+          "occurrence_count": 2,
+          "detail": "OCR English / scan is on hold: a representative, checked 95% acceptance report is required.",
+          "safety_hold": "shared_or_unresolved_image"
+        },
+        {
+          "region_id": "4585b2de9d4876b94e3fd1cc",
+          "page": 1,
+          "source_kind": "raster",
+          "bbox": [
+            48.0,
+            505.0,
+            564.0,
+            585.0
+          ],
+          "status": "held",
+          "reason": "ocr_acceptance_hold",
+          "occurrence_id": "1:1",
+          "xref": 23,
+          "transform": [
+            516.0,
+            0.0,
+            -0.0,
+            80.0,
+            48.0,
+            505.0
+          ],
+          "capture_scope": [
+            "scan",
+            "photo",
+            "screenshot"
+          ],
+          "signals": {
+            "version": 1,
+            "calibrated": false,
+            "preview_range": 215
+          },
+          "occurrence_count": 1,
+          "detail": "OCR English / scan is on hold: a representative, checked 95% acceptance report is required."
+        }
+      ],
+      "warnings": [
+        "Page 1: original region retained (ocr_acceptance_hold).",
+        "Page 1: original region retained (ocr_acceptance_hold).",
+        "Page 2: original region retained (ocr_acceptance_hold).",
+        "Page 2: original region retained (ocr_acceptance_hold).",
+        "Partial: 5 translated, 4 held, 1 passthrough regions. Held content retains its original language."
+      ],
+      "original_sha256": "df09eaad8e681a4c5792081db117b38d238f06a9bdadf7c8241b7b0c0b76e34f",
+      "signals_version": 1
+    },
+    "content_summary": {
+      "status": "partial",
+      "translated": 5,
+      "held": 4,
+      "passthrough": 1,
+      "source_coverage": "unknown",
+      "held_region_ids": [
+        "15238ad3f4c6cbef28aa58a6",
+        "ae08701268feae8b96e15910",
+        "0d6eda5eb3f955d7c590961a",
+        "4585b2de9d4876b94e3fd1cc"
+      ]
+    },
+    "render_plan": {
+      "version": 3,
+      "algorithm_version": 2,
+      "original_sha256": "df09eaad8e681a4c5792081db117b38d238f06a9bdadf7c8241b7b0c0b76e34f",
+      "font_manifest_sha256": "9ea6b12b4788ba6007767058dea57864f6fe004f5fce2d603492abb039ce65bd",
+      "runtime": {
+        "pymupdf": "1.27.2.3",
+        "pillow": "12.2.0",
+        "opencv-python-headless": "4.13.0.92"
+      },
+      "regions": [
+        {
+          "region_id": "85dbc31715eb371eca947b3c",
+          "page": 0,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            33.99998092651367,
+            319.5960388183594,
+            70.00997924804688
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 0
+        },
+        {
+          "region_id": "8bbdc35cddb81fd373da7498",
+          "page": 0,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            380.0,
+            562.6581420898438,
+            475.17706298828125
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 1
+        },
+        {
+          "region_id": "b2b763db0d6adea917027abe",
+          "page": 0,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            641.0,
+            561.26416015625,
+            687.8443603515625
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 2
+        },
+        {
+          "region_id": "15238ad3f4c6cbef28aa58a6",
+          "page": 0,
+          "source_kind": "raster",
+          "bbox": [
+            112.0,
+            90.16256713867188,
+            500.0,
+            355.8374328613281
+          ],
+          "status": "held",
+          "reason": "ocr_acceptance_hold",
+          "occurrence_id": "0:0",
+          "xref": 8,
+          "transform": [
+            388.0,
+            0.0,
+            -0.0,
+            265.67486572265625,
+            112.0,
+            90.16256713867188
+          ],
+          "capture_scope": [
+            "scan",
+            "photo",
+            "screenshot"
+          ],
+          "signals": {
+            "version": 1,
+            "calibrated": false,
+            "preview_range": 214
+          },
+          "occurrence_count": 2,
+          "detail": "OCR English / scan is on hold: a representative, checked 95% acceptance report is required.",
+          "safety_hold": "shared_or_unresolved_image"
+        },
+        {
+          "region_id": "ae08701268feae8b96e15910",
+          "page": 0,
+          "source_kind": "raster",
+          "bbox": [
+            48.0,
+            552.0,
+            564.0,
+            620.0
+          ],
+          "status": "held",
+          "reason": "ocr_acceptance_hold",
+          "occurrence_id": "0:1",
+          "xref": 14,
+          "transform": [
+            516.0,
+            0.0,
+            -0.0,
+            68.0,
+            48.0,
+            552.0
+          ],
+          "capture_scope": [
+            "scan",
+            "photo",
+            "screenshot"
+          ],
+          "signals": {
+            "version": 1,
+            "calibrated": false,
+            "preview_range": 214
+          },
+          "occurrence_count": 1,
+          "detail": "OCR English / scan is on hold: a representative, checked 95% acceptance report is required."
+        },
+        {
+          "region_id": "6f1b5cb77a352d29029346bf",
+          "page": 1,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            278.0,
+            560.5162353515625,
+            397.3434143066406
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 3
+        },
+        {
+          "region_id": "c2cc580187dbf150a512062d",
+          "page": 1,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            617.0,
+            284.27105712890625,
+            644.2160034179688
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 4
+        },
+        {
+          "region_id": "8e13b444eb71d8530c137ab6",
+          "page": 1,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            691.0,
+            346.8089904785156,
+            703.365966796875
+          ],
+          "status": "passthrough",
+          "reason": null,
+          "block_index": 5
+        },
+        {
+          "region_id": "0d6eda5eb3f955d7c590961a",
+          "page": 1,
+          "source_kind": "raster",
+          "bbox": [
+            158.0,
+            42.16009521484375,
+            454.0,
+            244.83990478515625
+          ],
+          "status": "held",
+          "reason": "ocr_acceptance_hold",
+          "occurrence_id": "1:0",
+          "xref": 8,
+          "transform": [
+            296.0,
+            0.0,
+            -0.0,
+            202.6798095703125,
+            158.0,
+            42.16009521484375
+          ],
+          "capture_scope": [
+            "scan",
+            "photo",
+            "screenshot"
+          ],
+          "signals": {
+            "version": 1,
+            "calibrated": false,
+            "preview_range": 208
+          },
+          "occurrence_count": 2,
+          "detail": "OCR English / scan is on hold: a representative, checked 95% acceptance report is required.",
+          "safety_hold": "shared_or_unresolved_image"
+        },
+        {
+          "region_id": "4585b2de9d4876b94e3fd1cc",
+          "page": 1,
+          "source_kind": "raster",
+          "bbox": [
+            48.0,
+            505.0,
+            564.0,
+            585.0
+          ],
+          "status": "held",
+          "reason": "ocr_acceptance_hold",
+          "occurrence_id": "1:1",
+          "xref": 23,
+          "transform": [
+            516.0,
+            0.0,
+            -0.0,
+            80.0,
+            48.0,
+            505.0
+          ],
+          "capture_scope": [
+            "scan",
+            "photo",
+            "screenshot"
+          ],
+          "signals": {
+            "version": 1,
+            "calibrated": false,
+            "preview_range": 215
+          },
+          "occurrence_count": 1,
+          "detail": "OCR English / scan is on hold: a representative, checked 95% acceptance report is required."
+        }
+      ],
+      "pages": [
+        {
+          "page": 0,
+          "classification": "mixed",
+          "mediabox": [
+            0.0,
+            0.0,
+            612.0,
+            792.0
+          ],
+          "cropbox": [
+            0.0,
+            0.0,
+            612.0,
+            792.0
+          ],
+          "rotation": 0,
+          "rotation_matrix": [
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "page": 1,
+          "classification": "mixed",
+          "mediabox": [
+            0.0,
+            0.0,
+            612.0,
+            792.0
+          ],
+          "cropbox": [
+            0.0,
+            0.0,
+            612.0,
+            792.0
+          ],
+          "rotation": 0,
+          "rotation_matrix": [
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "image_actions": [],
+      "native_fit_decisions": {
+        "85dbc31715eb371eca947b3c": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 0,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                33.99998092651367,
+                302.8259996652603,
+                66.40898140072822
+              ],
+              "font_size": 23.400000000000002,
+              "action": "fit",
+              "page": 0
+            }
+          ]
+        },
+        "8bbdc35cddb81fd373da7498": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                380.0,
+                470.07600116729736,
+                402.67799934744835
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                404.17799934744835,
+                541.8500012159348,
+                426.8559986948967
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                428.3559986948967,
+                525.3260011672974,
+                451.03399804234505
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                452.53399804234505,
+                544.7230007052422,
+                475.2119973897934
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                476.7119973897934,
+                539.9460014104843,
+                499.38999673724174
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                500.88999673724174,
+                130.16100007295609,
+                523.5679960846901
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            }
+          ]
+        },
+        "b2b763db0d6adea917027abe": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 2,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                641.0,
+                553.6310015320778,
+                663.6779993474483
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 2,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                665.1779993474483,
+                525.80200111866,
+                687.8559986948967
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 2,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                689.3559986948967,
+                98.52400004863739,
+                712.033998042345
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            }
+          ]
+        },
+        "6f1b5cb77a352d29029346bf": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                278.0,
+                536.1890011429787,
+                300.67799934744835
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                302.17799934744835,
+                486.12400126457214,
+                324.8559986948967
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                326.3559986948967,
+                489.43900114297867,
+                349.03399804234505
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                350.53399804234505,
+                522.0280010700226,
+                373.2119973897934
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                374.7119973897934,
+                550.8430009484291,
+                397.38999673724174
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                398.88999673724174,
+                554.6170009970665,
+                421.5679960846901
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                423.0679960846901,
+                524.3910010457039,
+                445.74599543213844
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            }
+          ]
+        },
+        "c2cc580187dbf150a512062d": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 4,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                617.0,
+                241.72499924898148,
+                644.2160000801086
+              ],
+              "font_size": 21.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 4,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                645.7160000801086,
+                190.35899966955185,
+                672.9320001602173
+              ],
+              "font_size": 21.0,
+              "action": "fit",
+              "page": 1
+            }
+          ]
+        },
+        "8e13b444eb71d8530c137ab6": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 5,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                691.0,
+                314.2829985022545,
+                703.3660003840923
+              ],
+              "font_size": 9.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 5,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                704.8660003840923,
+                78.02399969100952,
+                717.2320007681847
+              ],
+              "font_size": 9.0,
+              "action": "fit",
+              "page": 1
+            }
+          ]
+        }
+      },
+      "blocks_sha256": "e9898cace742394af787222d6d7001f39a63313488e2cee16f893fa5f1c0dab3",
+      "signature": {
+        "algorithm": "HMAC-SHA256",
+        "purpose": "render-plan",
+        "value": "4678f092675f2d1be2e59ff6e8f8498eddefa239a0be6b102655597ac10c3b7d"
+      }
+    }
+  },
+  "download_filename": "Lion_and_Mouse_2_pages_10_blocks_2_image_text_partial.pdf",
+  "content_summary": {
+    "status": "partial",
+    "translated": 5,
+    "held": 4,
+    "passthrough": 1,
+    "source_coverage": "unknown",
+    "held_region_ids": [
+      "15238ad3f4c6cbef28aa58a6",
+      "ae08701268feae8b96e15910",
+      "0d6eda5eb3f955d7c590961a",
+      "4585b2de9d4876b94e3fd1cc"
+    ]
+  },
+  "mime_type": "application/pdf",
+  "metrics": {
+    "provider": "gptoss_with_gemini_fallback",
+    "model": "gpt-oss:20b-cloud|gemini-3.5-flash-lite",
+    "mode": "fast",
+    "total_time_ms": 3448.7,
+    "llm_calls": 0,
+    "llm_total_time_ms": 0.0,
+    "scheduler_wait_ms": 0.0,
+    "scheduler_batches": 0,
+    "scheduler_slots": 0,
+    "echo_retries": 0,
+    "semantic_fallbacks": 0,
+    "batch_fallbacks": 0,
+    "total_blocks": 6,
+    "blocks_translated": 0,
+    "blocks_batched": 0,
+    "blocks_cached": 6,
+    "blocks_passthrough": 0,
+    "retranslated_chunks": 0,
+    "provider_request_ms": 0.0,
+    "provider_retries": 0,
+    "provider_failures": {},
+    "layout_preflight_blocks": 0,
+    "phase_times": {
+      "extraction": 1514.0,
+      "layout_validation": 0.0,
+      "reconstruction": 1836.7,
+      "translation": 72.2
+    },
+    "cache_hits": 6,
+    "cache_misses": 0,
+    "document_type": "unknown",
+    "providers_used": {},
+    "measurement_metadata": {
+      "schema_version": 1,
+      "observed_providers": [],
+      "calls_complete": false,
+      "calls_provenance": "unknown",
+      "timing_scope": "document_pipeline_elapsed",
+      "timing_observed": true,
+      "usage_provenance": {
+        "input": "unknown",
+        "output": "unknown"
+      },
+      "cache_complete": false,
+      "rework_complete": false
+    },
+    "provider_chain": [
+      "gptoss",
+      "gemini"
+    ],
+    "primary_provider": "gptoss",
+    "primary_model": "gpt-oss:20b-cloud",
+    "fallback_provider": "gemini",
+    "fallback_model": "gemini-3.5-flash-lite",
+    "retry_after_seconds": 0.0,
+    "last_error": ""
+  },
+  "validation": {
+    "status": "passed",
+    "content_coverage": "passed",
+    "layout": "passed",
+    "linguistic_accuracy": "unverified",
+    "source_pages": 2,
+    "output_pages": 2,
+    "continuation_pages": 0,
+    "checked_fragments": 21,
+    "issues": [],
+    "content_findings": [],
+    "blocks": [
+      {
+        "block_index": 0,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          33.99998092651367,
+          302.8259996652603,
+          66.40898140072822
+        ],
+        "font_size": 23.400000000000002,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 1,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          380.0,
+          470.07600116729736,
+          402.67799934744835
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 1,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          404.17799934744835,
+          541.8500012159348,
+          426.8559986948967
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 1,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          428.3559986948967,
+          525.3260011672974,
+          451.03399804234505
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 1,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          452.53399804234505,
+          544.7230007052422,
+          475.2119973897934
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 1,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          476.7119973897934,
+          539.9460014104843,
+          499.38999673724174
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 1,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          500.88999673724174,
+          130.16100007295609,
+          523.5679960846901
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 2,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          641.0,
+          553.6310015320778,
+          663.6779993474483
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 2,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          665.1779993474483,
+          525.80200111866,
+          687.8559986948967
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 2,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          689.3559986948967,
+          98.52400004863739,
+          712.033998042345
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          278.0,
+          536.1890011429787,
+          300.67799934744835
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          302.17799934744835,
+          486.12400126457214,
+          324.8559986948967
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          326.3559986948967,
+          489.43900114297867,
+          349.03399804234505
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          350.53399804234505,
+          522.0280010700226,
+          373.2119973897934
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          374.7119973897934,
+          550.8430009484291,
+          397.38999673724174
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          398.88999673724174,
+          554.6170009970665,
+          421.5679960846901
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          423.0679960846901,
+          524.3910010457039,
+          445.74599543213844
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 4,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          617.0,
+          241.72499924898148,
+          644.2160000801086
+        ],
+        "font_size": 21.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 4,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          645.7160000801086,
+          190.35899966955185,
+          672.9320001602173
+        ],
+        "font_size": 21.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 5,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          691.0,
+          314.2829985022545,
+          703.3660003840923
+        ],
+        "font_size": 9.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 5,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          704.8660003840923,
+          78.02399969100952,
+          717.2320007681847
+        ],
+        "font_size": 9.0,
+        "action": "fit",
+        "page": 1
+      }
+    ],
+    "source_artifacts": [],
+    "held": [],
+    "source_page_map": {
+      "0": 0,
+      "1": 1
+    }
+  }
+}

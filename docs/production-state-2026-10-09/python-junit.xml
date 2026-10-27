@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="5" skipped="0" tests="140" time="55.195" timestamp="2026-10-09T16:17:02.866995+08:00" hostname="walben"><properties><property name="hypothesis-statistics-Model/tests/test_properties.py::test_chunk_content_round_trip" value="TW9kZWwvdGVzdHMvdGVzdF9wcm9wZXJ0aWVzLnB5Ojp0ZXN0X2NodW5rX2NvbnRlbnRfcm91bmRfdHJpcDoKCiAgLSBkdXJpbmcgZ2VuZXJhdGUgcGhhc2UgKDAuMjAgc2Vjb25kcyk6CiAgICAtIFR5cGljYWwgcnVudGltZXM6IDwgMW1zLCBvZiB3aGljaCA8IDFtcyBpbiBkYXRhIGdlbmVyYXRpb24KICAgIC0gMjAwIHBhc3NpbmcgZXhhbXBsZXMsIDAgZmFpbGluZyBleGFtcGxlcywgMiBpbnZhbGlkIGV4YW1wbGVzCiAgICAtIEV2ZW50czoKICAgICAgKiAwLjUwJSwgaW52YWxpZCBiZWNhdXNlOiBmYWlsZWQgdG8gc2F0aXNmeSBhc3N1bWUoKSBpbiB0ZXN0X2NodW5rX2NvbnRlbnRfcm91bmRfdHJpcCAobGluZSAyNjApCiAgICAgICogMC41MCUsIGludmFsaWQgYmVjYXVzZTogZmFpbGVkIHRvIHNhdGlzZnkgYXNzdW1lKCkgaW4gdGVzdF9jaHVua19jb250ZW50X3JvdW5kX3RyaXAgKGxpbmUgMjY1KQoKICAtIFN0b3BwZWQgYmVjYXVzZSBzZXR0aW5ncy5tYXhfZXhhbXBsZXM9MjAw" /><property name="hypothesis-statistics-Model/tests/test_properties.py::test_context_hint_token_budget" value="TW9kZWwvdGVzdHMvdGVzdF9wcm9wZXJ0aWVzLnB5Ojp0ZXN0X2NvbnRleHRfaGludF90b2tlbl9idWRnZXQ6CgogIC0gZHVyaW5nIGdlbmVyYXRlIHBoYXNlICgxLjc2IHNlY29uZHMpOgogICAgLSBUeXBpY2FsIHJ1bnRpbWVzOiB+IDAtMTMgbXMsIG9mIHdoaWNoIH4gMC0xMiBtcyBpbiBkYXRhIGdlbmVyYXRpb24KICAgIC0gMjAwIHBhc3NpbmcgZXhhbXBsZXMsIDAgZmFpbGluZyBleGFtcGxlcywgMjcgaW52YWxpZCBleGFtcGxlcwoKICAtIFN0b3BwZWQgYmVjYXVzZSBzZXR0aW5ncy5tYXhfZXhhbXBsZXM9MjAw" /><property name="hypothesis-statistics-Model/tests/test_properties.py::test_context_hint_source_always_preserved" value="TW9kZWwvdGVzdHMvdGVzdF9wcm9wZXJ0aWVzLnB5Ojp0ZXN0X2NvbnRleHRfaGludF9zb3VyY2VfYWx3YXlzX3ByZXNlcnZlZDoKCiAgLSBkdXJpbmcgZ2VuZXJhdGUgcGhhc2UgKDAuODQgc2Vjb25kcyk6CiAgICAtIFR5cGljYWwgcnVudGltZXM6IH4gMC0xNCBtcywgb2Ygd2hpY2ggfiAwLTEzIG1zIGluIGRhdGEgZ2VuZXJhdGlvbgogICAgLSAxMDAgcGFzc2luZyBleGFtcGxlcywgMCBmYWlsaW5nIGV4YW1wbGVzLCAxMyBpbnZhbGlkIGV4YW1wbGVzCgogIC0gU3RvcHBlZCBiZWNhdXNlIHNldHRpbmdzLm1heF9leGFtcGxlcz0xMDA=" /><property name="hypothesis-statistics-Model/tests/test_properties.py::test_context_hint_truncation_triggered_for_long_hints" value="TW9kZWwvdGVzdHMvdGVzdF9wcm9wZXJ0aWVzLnB5Ojp0ZXN0X2NvbnRleHRfaGludF90cnVuY2F0aW9uX3RyaWdnZXJlZF9mb3JfbG9uZ19oaW50czoKCiAgLSBkdXJpbmcgZ2VuZXJhdGUgcGhhc2UgKDkuMjMgc2Vjb25kcyk6CiAgICAtIFR5cGljYWwgcnVudGltZXM6IH4gMS03OCBtcywgb2Ygd2hpY2ggfiAwLTY4IG1zIGluIGRhdGEgZ2VuZXJhdGlvbgogICAgLSAxMDAgcGFzc2luZyBleGFtcGxlcywgMCBmYWlsaW5nIGV4YW1wbGVzLCAzNCBpbnZhbGlkIGV4YW1wbGVzCgogIC0gU3RvcHBlZCBiZWNhdXNlIHNldHRpbmdzLm1heF9leGFtcGxlcz0xMDA=" /><property name="hypothesis-statistics-Model/tests/test_properties.py::test_glossary_match_case_capitalisation_preservation" value="TW9kZWwvdGVzdHMvdGVzdF9wcm9wZXJ0aWVzLnB5Ojp0ZXN0X2dsb3NzYXJ5X21hdGNoX2Nhc2VfY2FwaXRhbGlzYXRpb25fcHJlc2VydmF0aW9uOgoKICAtIGR1cmluZyBnZW5lcmF0ZSBwaGFzZSAoMC4yMCBzZWNvbmRzKToKICAgIC0gVHlwaWNhbCBydW50aW1lczogPCAxbXMsIG9mIHdoaWNoIDwgMW1zIGluIGRhdGEgZ2VuZXJhdGlvbgogICAgLSAyMDAgcGFzc2luZyBleGFtcGxlcywgMCBmYWlsaW5nIGV4YW1wbGVzLCAxMSBpbnZhbGlkIGV4YW1wbGVzCiAgICAtIEV2ZW50czoKICAgICAgKiA1LjIxJSwgaW52YWxpZCBiZWNhdXNlOiBmYWlsZWQgdG8gc2F0aXNmeSBhc3N1bWUoKSBpbiB0b2tlbl9hbmRfdGFyZ2V0IChsaW5lIDUwNCkKCiAgLSBTdG9wcGVkIGJlY2F1c2Ugc2V0dGluZ3MubWF4X2V4YW1wbGVzPTIwMA==" /><property name="hypothesis-statistics-Model/tests/test_properties.py::test_chunk_minimum_size" value="TW9kZWwvdGVzdHMvdGVzdF9wcm9wZXJ0aWVzLnB5Ojp0ZXN0X2NodW5rX21pbmltdW1fc2l6ZToKCiAgLSBkdXJpbmcgZ2VuZXJhdGUgcGhhc2UgKDAuMzcgc2Vjb25kcyk6CiAgICAtIFR5cGljYWwgcnVudGltZXM6IH4gMC0xIG1zLCBvZiB3aGljaCB+IDAtMSBtcyBpbiBkYXRhIGdlbmVyYXRpb24KICAgIC0gMjAwIHBhc3NpbmcgZXhhbXBsZXMsIDAgZmFpbGluZyBleGFtcGxlcywgMTMgaW52YWxpZCBleGFtcGxlcwoKICAtIFN0b3BwZWQgYmVjYXVzZSBzZXR0aW5ncy5tYXhfZXhhbXBsZXM9MjAw" /><property name="hypothesis-statistics-Model/tests/test_properties.py::test_glossary_whole_word_substitution" value="TW9kZWwvdGVzdHMvdGVzdF9wcm9wZXJ0aWVzLnB5Ojp0ZXN0X2dsb3NzYXJ5X3dob2xlX3dvcmRfc3Vic3RpdHV0aW9uOgoKICAtIGR1cmluZyBnZW5lcmF0ZSBwaGFzZSAoMC40OSBzZWNvbmRzKToKICAgIC0gVHlwaWNhbCBydW50aW1lczogfiAwLTEgbXMsIG9mIHdoaWNoIDwgMW1zIGluIGRhdGEgZ2VuZXJhdGlvbgogICAgLSAxMDAgcGFzc2luZyBleGFtcGxlcywgMCBmYWlsaW5nIGV4YW1wbGVzLCAxNjcgaW52YWxpZCBleGFtcGxlcwogICAgLSBFdmVudHM6CiAgICAgICogMy4wMCUsIGludmFsaWQgYmVjYXVzZTogZmFpbGVkIHRvIHNhdGlzZnkgYXNzdW1lKCkgaW4gZ2xvc3NhcnlfcGFpcnNfYW5kX3RleHQgKGxpbmUgNzM1KQoKICAtIFN0b3BwZWQgYmVjYXVzZSBzZXR0aW5ncy5tYXhfZXhhbXBsZXM9MTAw" /><property name="hypothesis-statistics-Model/tests/test_properties.py::test_overflow_resolution_does_not_move_other_blocks" value="TW9kZWwvdGVzdHMvdGVzdF9wcm9wZXJ0aWVzLnB5Ojp0ZXN0X292ZXJmbG93X3Jlc29sdXRpb25fZG9lc19ub3RfbW92ZV9vdGhlcl9ibG9ja3M6CgogIC0gZHVyaW5nIGdlbmVyYXRlIHBoYXNlICgwLjQ3IHNlY29uZHMpOgogICAgLSBUeXBpY2FsIHJ1bnRpbWVzOiB+IDEtMiBtcywgb2Ygd2hpY2ggPCAxbXMgaW4gZGF0YSBnZW5lcmF0aW9uCiAgICAtIDIwMCBwYXNzaW5nIGV4YW1wbGVzLCAwIGZhaWxpbmcgZXhhbXBsZXMsIDAgaW52YWxpZCBleGFtcGxlcwoKICAtIFN0b3BwZWQgYmVjYXVzZSBzZXR0aW5ncy5tYXhfZXhhbXBsZXM9MjAw" /><property name="hypothesis-statistics-Model/tests/test_properties.py::test_docx_paragraph_formatting_preservation" value="TW9kZWwvdGVzdHMvdGVzdF9wcm9wZXJ0aWVzLnB5Ojp0ZXN0X2RvY3hfcGFyYWdyYXBoX2Zvcm1hdHRpbmdfcHJlc2VydmF0aW9uOgoKICAtIGR1cmluZyBnZW5lcmF0ZSBwaGFzZSAoMy42OSBzZWNvbmRzKToKICAgIC0gVHlwaWNhbCBydW50aW1lczogfiAzMC00NiBtcywgb2Ygd2hpY2ggPCAxbXMgaW4gZGF0YSBnZW5lcmF0aW9uCiAgICAtIDEwMCBwYXNzaW5nIGV4YW1wbGVzLCAwIGZhaWxpbmcgZXhhbXBsZXMsIDAgaW52YWxpZCBleGFtcGxlcwoKICAtIFN0b3BwZWQgYmVjYXVzZSBzZXR0aW5ncy5tYXhfZXhhbXBsZXM9MTAw" /><property name="hypothesis-statistics-Model/tests/test_properties.py::test_docx_paragraph_style_round_trip" value="TW9kZWwvdGVzdHMvdGVzdF9wcm9wZXJ0aWVzLnB5Ojp0ZXN0X2RvY3hfcGFyYWdyYXBoX3N0eWxlX3JvdW5kX3RyaXA6CgogIC0gZHVyaW5nIGdlbmVyYXRlIHBoYXNlICg0LjM3IHNlY29uZHMpOgogICAgLSBUeXBpY2FsIHJ1bnRpbWVzOiB+IDAtNjkgbXMsIG9mIHdoaWNoIDwgMW1zIGluIGRhdGEgZ2VuZXJhdGlvbgogICAgLSAxMDAgcGFzc2luZyBleGFtcGxlcywgMCBmYWlsaW5nIGV4YW1wbGVzLCAxMiBpbnZhbGlkIGV4YW1wbGVzCgogIC0gU3RvcHBlZCBiZWNhdXNlIHNldHRpbmdzLm1heF9leGFtcGxlcz0xMDA=" /><property name="hypothesis-statistics-Model/tests/test_properties.py::test_docx_run_font_color_preservation" value="TW9kZWwvdGVzdHMvdGVzdF9wcm9wZXJ0aWVzLnB5Ojp0ZXN0X2RvY3hfcnVuX2ZvbnRfY29sb3JfcHJlc2VydmF0aW9uOgoKICAtIGR1cmluZyBnZW5lcmF0ZSBwaGFzZSAoNC4wMiBzZWNvbmRzKToKICAgIC0gVHlwaWNhbCBydW50aW1lczogfiAzMi01MSBtcywgb2Ygd2hpY2ggPCAxbXMgaW4gZGF0YSBnZW5lcmF0aW9uCiAgICAtIDEwMCBwYXNzaW5nIGV4YW1wbGVzLCAwIGZhaWxpbmcgZXhhbXBsZXMsIDAgaW52YWxpZCBleGFtcGxlcwoKICAtIFN0b3BwZWQgYmVjYXVzZSBzZXR0aW5ncy5tYXhfZXhhbXBsZXM9MTAw" /><property name="hypothesis-statistics-Model/tests/test_properties.py::test_table_cell_translation_completeness" value="TW9kZWwvdGVzdHMvdGVzdF9wcm9wZXJ0aWVzLnB5Ojp0ZXN0X3RhYmxlX2NlbGxfdHJhbnNsYXRpb25fY29tcGxldGVuZXNzOgoKICAtIGR1cmluZyBnZW5lcmF0ZSBwaGFzZSAoMy45OSBzZWNvbmRzKToKICAgIC0gVHlwaWNhbCBydW50aW1lczogfiAxLTQ3IG1zLCBvZiB3aGljaCB+IDAtNCBtcyBpbiBkYXRhIGdlbmVyYXRpb24KICAgIC0gMTAwIHBhc3NpbmcgZXhhbXBsZXMsIDAgZmFpbGluZyBleGFtcGxlcywgMTkgaW52YWxpZCBleGFtcGxlcwoKICAtIFN0b3BwZWQgYmVjYXVzZSBzZXR0aW5ncy5tYXhfZXhhbXBsZXM9MTAw" /><property name="hypothesis-statistics-Model/tests/test_properties.py::test_table_structural_preservation" value="TW9kZWwvdGVzdHMvdGVzdF9wcm9wZXJ0aWVzLnB5Ojp0ZXN0X3RhYmxlX3N0cnVjdHVyYWxfcHJlc2VydmF0aW9uOgoKICAtIGR1cmluZyBnZW5lcmF0ZSBwaGFzZSAoMi4yMyBzZWNvbmRzKToKICAgIC0gVHlwaWNhbCBydW50aW1lczogfiAyOS05NSBtcywgb2Ygd2hpY2ggPCAxbXMgaW4gZGF0YSBnZW5lcmF0aW9uCiAgICAtIDUwIHBhc3NpbmcgZXhhbXBsZXMsIDAgZmFpbGluZyBleGFtcGxlcywgMCBpbnZhbGlkIGV4YW1wbGVzCgogIC0gU3RvcHBlZCBiZWNhdXNlIHNldHRpbmdzLm1heF9leGFtcGxlcz01MA==" /><property name="hypothesis-statistics-Model/tests/test_properties.py::test_table_run_formatting_preservation" value="TW9kZWwvdGVzdHMvdGVzdF9wcm9wZXJ0aWVzLnB5Ojp0ZXN0X3RhYmxlX3J1bl9mb3JtYXR0aW5nX3ByZXNlcnZhdGlvbjoKCiAgLSBkdXJpbmcgZ2VuZXJhdGUgcGhhc2UgKDQuMDMgc2Vjb25kcyk6CiAgICAtIFR5cGljYWwgcnVudGltZXM6IH4gMzItNTAgbXMsIG9mIHdoaWNoIH4gMC0yIG1zIGluIGRhdGEgZ2VuZXJhdGlvbgogICAgLSAxMDAgcGFzc2luZyBleGFtcGxlcywgMCBmYWlsaW5nIGV4YW1wbGVzLCAwIGludmFsaWQgZXhhbXBsZXMKCiAgLSBTdG9wcGVkIGJlY2F1c2Ugc2V0dGluZ3MubWF4X2V4YW1wbGVzPTEwMA==" /><property name="hypothesis-statistics-Model/tests/test_properties.py::test_column_gap_threshold" value="TW9kZWwvdGVzdHMvdGVzdF9wcm9wZXJ0aWVzLnB5Ojp0ZXN0X2NvbHVtbl9nYXBfdGhyZXNob2xkOgoKICAtIGR1cmluZyBnZW5lcmF0ZSBwaGFzZSAoMC4yNyBzZWNvbmRzKToKICAgIC0gVHlwaWNhbCBydW50aW1lczogfiAwLTEgbXMsIG9mIHdoaWNoIH4gMC0xIG1zIGluIGRhdGEgZ2VuZXJhdGlvbgogICAgLSAyMDAgcGFzc2luZyBleGFtcGxlcywgMCBmYWlsaW5nIGV4YW1wbGVzLCA4IGludmFsaWQgZXhhbXBsZXMKCiAgLSBTdG9wcGVkIGJlY2F1c2Ugc2V0dGluZ3MubWF4X2V4YW1wbGVzPTIwMA==" /><property name="hypothesis-statistics-Model/tests/test_properties.py::test_column_reading_order" value="TW9kZWwvdGVzdHMvdGVzdF9wcm9wZXJ0aWVzLnB5Ojp0ZXN0X2NvbHVtbl9yZWFkaW5nX29yZGVyOgoKICAtIGR1cmluZyBnZW5lcmF0ZSBwaGFzZSAoMC4zOSBzZWNvbmRzKToKICAgIC0gVHlwaWNhbCBydW50aW1lczogfiAwLTEgbXMsIG9mIHdoaWNoIDwgMW1zIGluIGRhdGEgZ2VuZXJhdGlvbgogICAgLSAyMDAgcGFzc2luZyBleGFtcGxlcywgMCBmYWlsaW5nIGV4YW1wbGVzLCAxNTkgaW52YWxpZCBleGFtcGxlcwogICAgLSBFdmVudHM6CiAgICAgICogMzkuMjglLCBSZXRyaWVkIGRyYXcgZnJvbSBGbG9hdFN0cmF0ZWd5KG1pbl92YWx1ZT0wLjAsIG1heF92YWx1ZT03MDAuMCwgYWxsb3dfbmFuPUZhbHNlLCBzbWFsbGVzdF9ub256ZXJvX21hZ25pdHVkZT01ZS0zMjQpLmZpbHRlcihub3RfeWV0X2luX3VuaXF1ZV9saXN0KSB0byBzYXRpc2Z5IGZpbHRlcgogICAgICAqIDEuNjclLCBpbnZhbGlkIGJlY2F1c2U6IEFib3J0ZWQgdGVzdCBiZWNhdXNlIHVuYWJsZSB0byBzYXRpc2Z5IEZsb2F0U3RyYXRlZ3kobWluX3ZhbHVlPTAuMCwgbWF4X3ZhbHVlPTcwMC4wLCBhbGxvd19uYW49RmFsc2UsIHNtYWxsZXN0X25vbnplcm9fbWFnbml0dWRlPTVlLTMyNCkuZmlsdGVyKG5vdF95ZXRfaW5fdW5pcXVlX2xpc3QpCgogIC0gU3RvcHBlZCBiZWNhdXNlIHNldHRpbmdzLm1heF9leGFtcGxlcz0yMDA=" /><property name="hypothesis-statistics-Model/tests/test_properties.py::test_full_width_block_ordering" value="TW9kZWwvdGVzdHMvdGVzdF9wcm9wZXJ0aWVzLnB5Ojp0ZXN0X2Z1bGxfd2lkdGhfYmxvY2tfb3JkZXJpbmc6CgogIC0gZHVyaW5nIGdlbmVyYXRlIHBoYXNlICgwLjM4IHNlY29uZHMpOgogICAgLSBUeXBpY2FsIHJ1bnRpbWVzOiB+IDAtMSBtcywgb2Ygd2hpY2ggPCAxbXMgaW4gZGF0YSBnZW5lcmF0aW9uCiAgICAtIDIwMCBwYXNzaW5nIGV4YW1wbGVzLCAwIGZhaWxpbmcgZXhhbXBsZXMsIDEwMSBpbnZhbGlkIGV4YW1wbGVzCiAgICAtIEV2ZW50czoKICAgICAgKiAzOC44NyUsIFJldHJpZWQgZHJhdyBmcm9tIEZsb2F0U3RyYXRlZ3kobWluX3ZhbHVlPTAuMCwgbWF4X3ZhbHVlPTcwMC4wLCBhbGxvd19uYW49RmFsc2UsIHNtYWxsZXN0X25vbnplcm9fbWFnbml0dWRlPTVlLTMyNCkuZmlsdGVyKG5vdF95ZXRfaW5fdW5pcXVlX2xpc3QpIHRvIHNhdGlzZnkgZmlsdGVyCiAgICAgICogMS45OSUsIGludmFsaWQgYmVjYXVzZTogQWJvcnRlZCB0ZXN0IGJlY2F1c2UgdW5hYmxlIHRvIHNhdGlzZnkgRmxvYXRTdHJhdGVneShtaW5fdmFsdWU9MC4wLCBtYXhfdmFsdWU9NzAwLjAsIGFsbG93X25hbj1GYWxzZSwgc21hbGxlc3Rfbm9uemVyb19tYWduaXR1ZGU9NWUtMzI0KS5maWx0ZXIobm90X3lldF9pbl91bmlxdWVfbGlzdCkKCiAgLSBTdG9wcGVkIGJlY2F1c2Ugc2V0dGluZ3MubWF4X2V4YW1wbGVzPTIwMA==" /></properties><testcase classname="Model.tests.test_analysis_resilience" name="test_rate_limit_retries_honor_header_and_keep_error" time="0.003" /><testcase classname="Model.tests.test_analysis_resilience" name="test_rate_limit_without_header_uses_longer_backoff" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_permanent_error_is_not_retried[400]" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_permanent_error_is_not_retried[401]" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_permanent_error_is_not_retried[402]" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_permanent_error_is_not_retried[403]" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_permanent_error_is_not_retried[404]" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_permanent_error_is_not_retried[422]" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_missing_key_does_not_make_request" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_transient_error_can_recover[failure0]" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_transient_error_can_recover[failure1]" time="0.032" /><testcase classname="Model.tests.test_analysis_resilience" name="test_transient_error_can_recover[failure2]" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_json_mode_and_object_validation" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_gemini_3_analysis_uses_interactions_api_with_low_thinking" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_gemini_3_translation_uses_interactions_api" time="0.065" /><testcase classname="Model.tests.test_analysis_resilience" name="test_long_retry_after_does_not_block_worker" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_merged_analysis_fallback_cooldown_and_recovery" time="0.002" /><testcase classname="Model.tests.test_analysis_resilience" name="test_both_providers_fail_preserves_both_causes" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_no_fallback_preserves_independent_roles_and_opens_circuit" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_analysis_primary_calls_are_globally_paced" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_environment_loads_analysis_settings_and_preserves_overrides" time="0.017" /><testcase classname="Model.tests.test_analysis_resilience" name="test_environment_loads_provider_role_and_gptoss_settings" time="0.008" /><testcase classname="Model.tests.test_analysis_resilience" name="test_blind_quality_review_does_not_receive_analyzer_classification" time="0.010" /><testcase classname="Model.tests.test_analysis_resilience" name="test_failed_batch_review_does_not_create_per_block_ai_request_storm" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_failed_single_review_keeps_translation_unscored" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_nonfinite_review_score_is_unavailable" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_ollama_fallback_requests_json" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_malformed_optional_profile_fields_fail_open" time="0.001" /><testcase classname="Model.tests.test_analysis_resilience" name="test_docx_inplace_pipeline_runs_analysis_before_translation" time="0.004" /><testcase classname="Model.tests.test_analysis_resilience" name="test_txt_pipeline_forwards_prepass_preamble_to_batch" time="0.023" /><testcase classname="Model.tests.test_block_quality" name="test_record_block_quality_accepts_dataclass_issues" time="0.000" /><testcase classname="Model.tests.test_block_quality" name="test_record_block_quality_accepts_dataclass_without_optional_snippets" time="0.000" /><testcase classname="Model.tests.test_block_quality" name="test_record_block_quality_passes_through_dict_issues" time="0.000" /><testcase classname="Model.tests.test_block_quality" name="test_record_block_quality_handles_empty_issues" time="0.000" /><testcase classname="Model.tests.test_block_quality" name="test_record_block_quality_preserves_older_blocks" time="0.000" /><testcase classname="Model.tests.test_cache_namespace" name="test_cache_namespace_prevents_reusing_a_previous_prompt_result" time="0.032" /><testcase classname="Model.tests.test_cache_namespace" name="test_same_namespace_reuses_the_cached_translation" time="0.025" /><testcase classname="Model.tests.test_docx_inplace_parallel" name="test_inplace_uses_batch_translate_blocks" time="0.112" /><testcase classname="Model.tests.test_docx_inplace_parallel" name="test_inplace_output_stays_in_request_directory" time="0.061" /><testcase classname="Model.tests.test_docx_inplace_parallel" name="test_inplace_docx_roundtrip_content" time="0.083" /><testcase classname="Model.tests.test_docx_inplace_parallel" name="test_inplace_sidecar_block_order" time="0.069" /><testcase classname="Model.tests.test_docx_inplace_parallel" name="test_collect_pass_does_not_save" time="0.071" /><testcase classname="Model.tests.test_docx_inplace_parallel" name="test_context_preamble_injected_into_worker" time="0.001" /><testcase classname="Model.tests.test_docx_inplace_parallel" name="test_context_preamble_propagates_through_batch" time="0.002" /><testcase classname="Model.tests.test_docx_inplace_parallel" name="test_inplace_preserves_bold_run_formatting" time="0.079" /><testcase classname="Model.tests.test_fair_scheduler" name="test_scheduler_round_robins_pending_documents" time="0.011" /><testcase classname="Model.tests.test_instrumentation.TestDocumentContextProfiling" name="test_default_profiling_fields" time="0.001" /><testcase classname="Model.tests.test_instrumentation.TestDocumentContextProfiling" name="test_record_llm_call_increments_count" time="0.000" /><testcase classname="Model.tests.test_instrumentation.TestDocumentContextProfiling" name="test_record_llm_call_accumulates" time="0.000" /><testcase classname="Model.tests.test_instrumentation.TestDocumentContextProfiling" name="test_record_llm_call_uncategorized" time="0.000" /><testcase classname="Model.tests.test_instrumentation.TestDocumentContextProfiling" name="test_record_llm_call_attributed_to_phase" time="0.000" /><testcase classname="Model.tests.test_instrumentation.TestPhaseProfile" name="test_phase_profile_records_time" time="0.011" /><testcase classname="Model.tests.test_instrumentation.TestPhaseProfile" name="test_phase_profile_accumulates" time="0.012" /><testcase classname="Model.tests.test_instrumentation.TestPhaseProfile" name="test_phase_profile_sets_current_phase" time="0.000" /><testcase classname="Model.tests.test_instrumentation.TestLlmCallProfile" name="test_llm_call_profile_records_call" time="0.006" /><testcase classname="Model.tests.test_instrumentation.TestLlmCallProfile" name="test_llm_call_profile_attributed_to_phase" time="0.006" /><testcase classname="Model.tests.test_instrumentation.TestThreadSafety" name="test_concurrent_llm_calls" time="0.012" /><testcase classname="Model.tests.test_pdf_content_layout" name="test_rotated_page_keeps_translation_upright[90]" time="0.106" /><testcase classname="Model.tests.test_pdf_content_layout" name="test_rotated_page_keeps_translation_upright[180]" time="0.034" /><testcase classname="Model.tests.test_pdf_content_layout" name="test_rotated_page_keeps_translation_upright[270]" time="0.032" /><testcase classname="Model.tests.test_pdf_content_layout" name="test_overflow_preserves_all_words_on_readable_continuation" time="0.156" /><testcase classname="Model.tests.test_pdf_content_layout" name="test_short_block_rejects_conversational_response" time="0.000" /><testcase classname="Model.tests.test_pdf_content_layout" name="test_saved_output_gate_rejects_missing_or_unplaced_content" time="0.012" /><testcase classname="Model.tests.test_pdf_content_layout" name="test_redaction_padding_preserves_passthrough_neighbor" time="0.034" /><testcase classname="Model.tests.test_pdf_content_layout" name="test_reflow_avoids_vector_illustration" time="0.078" /><testcase classname="Model.tests.test_pdf_content_layout" name="test_continuation_darkens_white_panel_text" time="0.080" /><testcase classname="Model.tests.test_pdf_content_layout" name="test_invalid_quality_repair_keeps_valid_initial_translation" time="0.002" /><testcase classname="Model.tests.test_pdf_content_layout" name="test_coherence_repair_cannot_remove_protected_content" time="0.001" /><testcase classname="Model.tests.test_pdf_content_layout" name="test_protected_literals_and_block_count" time="0.001" /><testcase classname="Model.tests.test_pdf_content_layout" name="test_invalid_batch_cannot_be_promoted_to_passthrough" time="0.002" /><testcase classname="Model.tests.test_pdf_content_layout" name="test_glossary_cannot_remove_protected_numeric_content" time="0.002" /><testcase classname="Model.tests.test_pdf_content_layout" name="test_pdf_pipeline_exposes_saved_validation_in_response_and_sidecar" time="0.038" /><testcase classname="Model.tests.test_pdf_content_layout" name="test_document_endpoint_returns_structured_validation_failure[False]" time="1.469" /><testcase classname="Model.tests.test_pdf_content_layout" name="test_document_endpoint_returns_structured_validation_failure[True]" time="0.002" /><testcase classname="Model.tests.test_pptx_inplace" name="test_inplace_pptx_translates_regular_text_box" time="0.065" /><testcase classname="Model.tests.test_properties" name="test_importable_symbols" time="0.000" /><testcase classname="Model.tests.test_properties" name="test_chunk_boundaries_fall_at_sentence_endings" time="4.309"><failure message="hypothesis.errors.FailedHealthCheck: Input generation is slow: Hypothesis only generated 2 valid inputs after 3.80 seconds.&#10;&#10;         count | fraction |    slowest draws (seconds)&#10;  text |    2  |    100%  |      --      --      --   0.007,  3.791&#10;&#10;This could be for a few reasons:&#10;1. This strategy could be generating too much data per input. Try decreasing the amount of data generated, for example by decreasing the minimum size of collection strategies like st.lists().&#10;2. Some other expensive computation could be running during input generation. For example, if @st.composite or st.data() is interspersed with an expensive computation, HealthCheck.too_slow is likely to trigger. If this computation is unrelated to input generation, move it elsewhere. Otherwise, try making it more efficient, or disable this health check if that is not possible.&#10;&#10;If you expect input generation to take this long, you can disable this health check with @settings(suppress_health_check=[HealthCheck.too_slow]). See https://hypothesis.readthedocs.io/en/latest/reference/api.html#hypothesis.HealthCheck for details.">@given(text=text_with_sentence_endings())
+&gt;   @settings(max_examples=100)
+                   ^^^
+E   hypothesis.errors.FailedHealthCheck: Input generation is slow: Hypothesis only generated 2 valid inputs after 3.80 seconds.
+E   
+E            count | fraction |    slowest draws (seconds)
+E     text |    2  |    100%  |      --      --      --   0.007,  3.791
+E   
+E   This could be for a few reasons:
+E   1. This strategy could be generating too much data per input. Try decreasing the amount of data generated, for example by decreasing the minimum size of collection strategies like st.lists().
+E   2. Some other expensive computation could be running during input generation. For example, if @st.composite or st.data() is interspersed with an expensive computation, HealthCheck.too_slow is likely to trigger. If this computation is unrelated to input generation, move it elsewhere. Otherwise, try making it more efficient, or disable this health check if that is not possible.
+E   
+E   If you expect input generation to take this long, you can disable this health check with @settings(suppress_health_check=[HealthCheck.too_slow]). See https://hypothesis.readthedocs.io/en/latest/reference/api.html#hypothesis.HealthCheck for details.
+
+Model\tests\test_properties.py:191: FailedHealthCheck</failure></testcase><testcase classname="Model.tests.test_properties" name="test_chunk_content_round_trip" time="0.206" /><testcase classname="Model.tests.test_properties" name="test_chunk_repeated_spaces_are_normalized" time="0.000" /><testcase classname="Model.tests.test_properties" name="test_chunk_repeated_spaces_real_document_like_case" time="0.000" /><testcase classname="Model.tests.test_properties" name="test_chunk_no_sentence_boundary_still_normalizes" time="0.000" /><testcase classname="Model.tests.test_properties" name="test_chunk_multi_chunk_normalized_round_trip" time="0.000" /><testcase classname="Model.tests.test_properties" name="test_context_hint_token_budget" time="1.773" /><testcase classname="Model.tests.test_properties" name="test_context_hint_source_always_preserved" time="0.840" /><testcase classname="Model.tests.test_properties" name="test_context_hint_truncation_triggered_for_long_hints" time="9.239" /><testcase classname="Model.tests.test_properties" name="test_glossary_match_case_capitalisation_preservation" time="0.199" /><testcase classname="Model.tests.test_properties" name="test_chunk_minimum_size" time="0.375" /><testcase classname="Model.tests.test_properties" name="test_glossary_whole_word_substitution" time="0.493" /><testcase classname="Model.tests.test_properties" name="test_overflow_resolution_does_not_move_other_blocks" time="0.475" /><testcase classname="Model.tests.test_properties" name="test_docx_paragraph_formatting_preservation" time="3.696" /><testcase classname="Model.tests.test_properties" name="test_docx_paragraph_style_round_trip" time="4.376" /><testcase classname="Model.tests.test_properties" name="test_docx_run_font_color_preservation" time="4.027" /><testcase classname="Model.tests.test_properties" name="test_table_cell_translation_completeness" time="3.990" /><testcase classname="Model.tests.test_properties" name="test_table_structural_preservation" time="2.229" /><testcase classname="Model.tests.test_properties" name="test_table_run_formatting_preservation" time="4.029" /><testcase classname="Model.tests.test_properties" name="test_column_gap_threshold" time="0.278" /><testcase classname="Model.tests.test_properties" name="test_column_reading_order" time="0.389" /><testcase classname="Model.tests.test_properties" name="test_full_width_block_ordering" time="0.384" /><testcase classname="Model.tests.test_regeneration" name="test_response_carries_sidecar_and_blocks" time="0.012" /><testcase classname="Model.tests.test_regeneration" name="test_rich_block_entry_shape" time="0.004" /><testcase classname="Model.tests.test_regeneration" name="test_reconstruct_uses_only_reconstruction" time="0.011" /><testcase classname="Model.tests.test_regeneration" name="test_apply_overrides_is_pure" time="0.002" /><testcase classname="Model.tests.test_regeneration" name="test_rich_block_entry_carries_structure" time="0.000" /><testcase classname="Model.tests.test_regeneration" name="test_inplace_block_entry_no_structure" time="0.000" /><testcase classname="Model.tests.test_regression" name="test_cache_key_includes_source_lang" time="0.000" /><testcase classname="Model.tests.test_regression" name="test_cache_get_put_respect_source_lang" time="0.020" /><testcase classname="Model.tests.test_regression" name="test_echo_output_retries_once_then_succeeds" time="0.000" /><testcase classname="Model.tests.test_regression" name="test_echo_output_never_cached" time="0.017" /><testcase classname="Model.tests.test_regression" name="test_echo_output_retry_still_echoes_succeeds_soft" time="0.019" /><testcase classname="Model.tests.test_regression" name="test_proper_noun_identity_is_not_flagged_as_echo" time="0.000" /><testcase classname="Model.tests.test_regression" name="test_real_sentence_echo_is_flagged" time="0.000" /><testcase classname="Model.tests.test_regression" name="test_run_pipeline_guarded_invokes_callable" time="0.000" /><testcase classname="Model.tests.test_regression" name="test_run_pipeline_guarded_rejects_when_saturated" time="0.000" /><testcase classname="Model.tests.test_regression" name="test_run_pipeline_guarded_releases_slot_after_failure" time="0.000" /><testcase classname="Model.tests.test_regression" name="test_context_buffer_is_per_request" time="0.001" /><testcase classname="Model.tests.test_regression" name="test_translate_chunks_keeps_context_within_request" time="0.001" /><testcase classname="Model.tests.test_regression" name="test_doc_cache_is_thread_local_and_clear_crosses_threads" time="0.018" /><testcase classname="Model.tests.test_regression" name="test_paragraph_boundaries_split_on_blank_lines" time="0.000" /><testcase classname="Model.tests.test_regression" name="test_chunk_preserving_paragraphs_never_mixes_paragraphs" time="0.000" /><testcase classname="Model.tests.test_regression" name="test_translate_chunks_rejoins_paragraph_breaks" time="0.001" /><testcase classname="Model.tests.test_regression" name="test_translate_chunks_single_paragraph_stays_space_joined" time="0.001" /><testcase classname="Model.tests.test_regression" name="test_coherence_polish_flag_defaults_off" time="0.000" /><testcase classname="Model.tests.test_regression" name="test_coherence_polish_rewrites_only_flagged_entries" time="0.000" /><testcase classname="Model.tests.test_regression" name="test_coherence_polish_skips_llm_when_nothing_flagged" time="0.001" /><testcase classname="Model.tests.test_regression" name="test_coherence_polish_fails_open_on_provider_error" time="0.000" /><testcase classname="Model.tests.test_regression" name="test_coherence_polish_gated_by_flag_and_target" time="0.001" /><testcase classname="Model.tests.test_regression" name="test_system_prompt_has_coherence_rules" time="0.000" /><testcase classname="Model.tests.test_regression" name="test_translation_prompt_has_coherence_note" time="0.000" /><testcase classname="Model.tests.test_request_logging" name="test_translation_logs_before_processing_and_reports_status[/translate/text-200]" time="0.001"><failure message="OSError: AUDIT: outbound network disabled">path = '/translate/text', status = 200
+caplog = &lt;_pytest.logging.LogCaptureFixture object at 0x000001F88449E910&gt;
+
+    @pytest.mark.parametrize("path,status", [
+        ("/translate/text", 200),
+        ("/translate/document", 500),
+        ("/translate/document/regenerate", 401),
+    ])
+    def test_translation_logs_before_processing_and_reports_status(path, status, caplog):
+        import server
+    
+        request = Request({"type": "http", "method": "POST", "path": path,
+                           "headers": [], "query_string": b"secret=private"})
+    
+        async def process(_request):
+            assert "Translation request received" in caplog.text
+            return Response(status_code=status)
+    
+        with caplog.at_level(logging.INFO, logger="uvicorn.error"):
+&gt;           response = asyncio.run(server.log_translation_request(request, process))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Model\tests\test_request_logging.py:26: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Program Files\Python311\Lib\asyncio\runners.py:189: in run
+    with Runner(debug=debug) as runner:
+C:\Program Files\Python311\Lib\asyncio\runners.py:59: in __enter__
+    self._lazy_init()
+C:\Program Files\Python311\Lib\asyncio\runners.py:137: in _lazy_init
+    self._loop = events.new_event_loop()
+                 ^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\asyncio\events.py:806: in new_event_loop
+    return get_event_loop_policy().new_event_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\asyncio\events.py:695: in new_event_loop
+    return self._loop_factory()
+           ^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\asyncio\windows_events.py:315: in __init__
+    super().__init__(proactor)
+C:\Program Files\Python311\Lib\asyncio\proactor_events.py:639: in __init__
+    self._make_self_pipe()
+C:\Program Files\Python311\Lib\asyncio\proactor_events.py:784: in _make_self_pipe
+    self._ssock, self._csock = socket.socketpair()
+                               ^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\socket.py:641: in socketpair
+    csock.connect((addr, port))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;socket.socket [closed] fd=-1, family=2, type=1, proto=0&gt;
+address = ('127.0.0.1', 53200)
+
+    def blocked(self, address):
+        attempts.append(str(address))
+&gt;       raise OSError("AUDIT: outbound network disabled")
+E       OSError: AUDIT: outbound network disabled
+
+..\..\network-guard\sitecustomize.py:5: OSError</failure></testcase><testcase classname="Model.tests.test_request_logging" name="test_translation_logs_before_processing_and_reports_status[/translate/document-500]" time="0.001"><failure message="OSError: AUDIT: outbound network disabled">path = '/translate/document', status = 500
+caplog = &lt;_pytest.logging.LogCaptureFixture object at 0x000001F884763D10&gt;
+
+    @pytest.mark.parametrize("path,status", [
+        ("/translate/text", 200),
+        ("/translate/document", 500),
+        ("/translate/document/regenerate", 401),
+    ])
+    def test_translation_logs_before_processing_and_reports_status(path, status, caplog):
+        import server
+    
+        request = Request({"type": "http", "method": "POST", "path": path,
+                           "headers": [], "query_string": b"secret=private"})
+    
+        async def process(_request):
+            assert "Translation request received" in caplog.text
+            return Response(status_code=status)
+    
+        with caplog.at_level(logging.INFO, logger="uvicorn.error"):
+&gt;           response = asyncio.run(server.log_translation_request(request, process))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Model\tests\test_request_logging.py:26: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Program Files\Python311\Lib\asyncio\runners.py:189: in run
+    with Runner(debug=debug) as runner:
+C:\Program Files\Python311\Lib\asyncio\runners.py:59: in __enter__
+    self._lazy_init()
+C:\Program Files\Python311\Lib\asyncio\runners.py:137: in _lazy_init
+    self._loop = events.new_event_loop()
+                 ^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\asyncio\events.py:806: in new_event_loop
+    return get_event_loop_policy().new_event_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\asyncio\events.py:695: in new_event_loop
+    return self._loop_factory()
+           ^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\asyncio\windows_events.py:315: in __init__
+    super().__init__(proactor)
+C:\Program Files\Python311\Lib\asyncio\proactor_events.py:639: in __init__
+    self._make_self_pipe()
+C:\Program Files\Python311\Lib\asyncio\proactor_events.py:784: in _make_self_pipe
+    self._ssock, self._csock = socket.socketpair()
+                               ^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\socket.py:641: in socketpair
+    csock.connect((addr, port))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;socket.socket [closed] fd=-1, family=2, type=1, proto=0&gt;
+address = ('127.0.0.1', 53202)
+
+    def blocked(self, address):
+        attempts.append(str(address))
+&gt;       raise OSError("AUDIT: outbound network disabled")
+E       OSError: AUDIT: outbound network disabled
+
+..\..\network-guard\sitecustomize.py:5: OSError</failure></testcase><testcase classname="Model.tests.test_request_logging" name="test_translation_logs_before_processing_and_reports_status[/translate/document/regenerate-401]" time="0.001"><failure message="OSError: AUDIT: outbound network disabled">path = '/translate/document/regenerate', status = 401
+caplog = &lt;_pytest.logging.LogCaptureFixture object at 0x000001F883C21B10&gt;
+
+    @pytest.mark.parametrize("path,status", [
+        ("/translate/text", 200),
+        ("/translate/document", 500),
+        ("/translate/document/regenerate", 401),
+    ])
+    def test_translation_logs_before_processing_and_reports_status(path, status, caplog):
+        import server
+    
+        request = Request({"type": "http", "method": "POST", "path": path,
+                           "headers": [], "query_string": b"secret=private"})
+    
+        async def process(_request):
+            assert "Translation request received" in caplog.text
+            return Response(status_code=status)
+    
+        with caplog.at_level(logging.INFO, logger="uvicorn.error"):
+&gt;           response = asyncio.run(server.log_translation_request(request, process))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Model\tests\test_request_logging.py:26: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Program Files\Python311\Lib\asyncio\runners.py:189: in run
+    with Runner(debug=debug) as runner:
+C:\Program Files\Python311\Lib\asyncio\runners.py:59: in __enter__
+    self._lazy_init()
+C:\Program Files\Python311\Lib\asyncio\runners.py:137: in _lazy_init
+    self._loop = events.new_event_loop()
+                 ^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\asyncio\events.py:806: in new_event_loop
+    return get_event_loop_policy().new_event_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\asyncio\events.py:695: in new_event_loop
+    return self._loop_factory()
+           ^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\asyncio\windows_events.py:315: in __init__
+    super().__init__(proactor)
+C:\Program Files\Python311\Lib\asyncio\proactor_events.py:639: in __init__
+    self._make_self_pipe()
+C:\Program Files\Python311\Lib\asyncio\proactor_events.py:784: in _make_self_pipe
+    self._ssock, self._csock = socket.socketpair()
+                               ^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\socket.py:641: in socketpair
+    csock.connect((addr, port))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;socket.socket [closed] fd=-1, family=2, type=1, proto=0&gt;
+address = ('127.0.0.1', 53203)
+
+    def blocked(self, address):
+        attempts.append(str(address))
+&gt;       raise OSError("AUDIT: outbound network disabled")
+E       OSError: AUDIT: outbound network disabled
+
+..\..\network-guard\sitecustomize.py:5: OSError</failure></testcase><testcase classname="Model.tests.test_request_logging" name="test_unexpected_request_failure_is_logged_and_propagated" time="0.001"><failure message="OSError: AUDIT: outbound network disabled">caplog = &lt;_pytest.logging.LogCaptureFixture object at 0x000001F8824ECCD0&gt;
+
+    def test_unexpected_request_failure_is_logged_and_propagated(caplog):
+        import server
+    
+        request = Request({"type": "http", "method": "POST", "path": "/translate/text",
+                           "headers": [], "query_string": b""})
+    
+        async def fail(_request):
+            raise RuntimeError("simulated failure")
+    
+        with caplog.at_level(logging.INFO, logger="uvicorn.error"):
+            with pytest.raises(RuntimeError, match="simulated failure"):
+&gt;               asyncio.run(server.log_translation_request(request, fail))
+
+Model\tests\test_request_logging.py:43: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Program Files\Python311\Lib\asyncio\runners.py:189: in run
+    with Runner(debug=debug) as runner:
+C:\Program Files\Python311\Lib\asyncio\runners.py:59: in __enter__
+    self._lazy_init()
+C:\Program Files\Python311\Lib\asyncio\runners.py:137: in _lazy_init
+    self._loop = events.new_event_loop()
+                 ^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\asyncio\events.py:806: in new_event_loop
+    return get_event_loop_policy().new_event_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\asyncio\events.py:695: in new_event_loop
+    return self._loop_factory()
+           ^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\asyncio\windows_events.py:315: in __init__
+    super().__init__(proactor)
+C:\Program Files\Python311\Lib\asyncio\proactor_events.py:639: in __init__
+    self._make_self_pipe()
+C:\Program Files\Python311\Lib\asyncio\proactor_events.py:784: in _make_self_pipe
+    self._ssock, self._csock = socket.socketpair()
+                               ^^^^^^^^^^^^^^^^^^^
+C:\Program Files\Python311\Lib\socket.py:641: in socketpair
+    csock.connect((addr, port))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;socket.socket [closed] fd=-1, family=2, type=1, proto=0&gt;
+address = ('127.0.0.1', 53204)
+
+    def blocked(self, address):
+        attempts.append(str(address))
+&gt;       raise OSError("AUDIT: outbound network disabled")
+E       OSError: AUDIT: outbound network disabled
+
+..\..\network-guard\sitecustomize.py:5: OSError</failure></testcase><testcase classname="Model.tests.test_runtime_output" name="test_utf8_output_handles_pipeline_language_arrows" time="0.000" /><testcase classname="Model.tests.test_service_token_policy" name="test_env_loader_carries_the_python_service_token" time="0.008" /><testcase classname="Model.tests.test_service_token_policy" name="test_env_loader_does_not_override_a_real_environment_variable" time="0.007" /><testcase classname="Model.tests.test_service_token_policy" name="test_env_loader_ignores_unrelated_keys" time="0.006" /><testcase classname="Model.tests.test_service_token_policy" name="test_engine_reads_the_same_variable_name_laravel_writes" time="0.001" /><testcase classname="Model.tests.test_service_token_policy" name="test_legacy_variable_still_works_for_existing_local_setups" time="0.000" /><testcase classname="Model.tests.test_service_token_policy" name="test_canonical_name_wins_over_the_legacy_fallback" time="0.000" /><testcase time="0.000" /><testcase classname="pytest" name="internal" time="0.000"><error message="internal error">Traceback (most recent call last):
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\main.py", line 318, in wrap_session
+    session.exitstatus = doit(config, session) or 0
+                         ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\main.py", line 372, in _main
+    config.hook.pytest_runtestloop(session=session)
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_callers.py", line 167, in _multicall
+    raise exception
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\logging.py", line 801, in pytest_runtestloop
+    return (yield)  # Run all the tests.
+            ^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\terminal.py", line 707, in pytest_runtestloop
+    result = yield
+             ^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\main.py", line 396, in pytest_runtestloop
+    item.config.hook.pytest_runtest_protocol(item=item, nextitem=nextitem)
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_callers.py", line 167, in _multicall
+    raise exception
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\warnings.py", line 89, in pytest_runtest_protocol
+    return (yield)
+            ^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\assertion\__init__.py", line 192, in pytest_runtest_protocol
+    return (yield)
+            ^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\unittest.py", line 591, in pytest_runtest_protocol
+    return (yield)
+            ^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\faulthandler.py", line 102, in pytest_runtest_protocol
+    return (yield)
+            ^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\runner.py", line 118, in pytest_runtest_protocol
+    runtestprotocol(item, nextitem=nextitem)
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\runner.py", line 137, in runtestprotocol
+    reports.append(call_and_report(item, "call", log))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\runner.py", line 249, in call_and_report
+    report: TestReport = ihook.pytest_runtest_makereport(item=item, call=call)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_callers.py", line 167, in _multicall
+    raise exception
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\tmpdir.py", line 333, in pytest_runtest_makereport
+    rep = yield
+          ^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_callers.py", line 43, in run_old_style_hookwrapper
+    teardown.send(result)
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_hypothesis_pytestplugin.py", line 337, in pytest_runtest_makereport
+    report = (yield).get_result()
+             ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_result.py", line 103, in get_result
+    raise exc.with_traceback(tb)
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_callers.py", line 38, in run_old_style_hookwrapper
+    res = yield
+          ^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\skipping.py", line 280, in pytest_runtest_makereport
+    rep = yield
+          ^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\pluggy\_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\runner.py", line 377, in pytest_runtest_makereport
+    return TestReport.from_item_and_call(item, call)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\reports.py", line 438, in from_item_and_call
+    longrepr = _format_failed_longrepr(item, call, excinfo)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\reports.py", line 263, in _format_failed_longrepr
+    longrepr = item.repr_failure(excinfo)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\python.py", line 1762, in repr_failure
+    return self._repr_failure_py(excinfo, style=style)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\nodes.py", line 456, in _repr_failure_py
+    return excinfo.getrepr(
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\_code\code.py", line 765, in getrepr
+    return fmt.repr_excinfo(self)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\_code\code.py", line 1206, in repr_excinfo
+    reprtraceback = self.repr_traceback(excinfo_)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\_code\code.py", line 1132, in repr_traceback
+    entries = [
+              ^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\_code\code.py", line 1133, in &lt;listcomp&gt;
+    self.repr_traceback_entry(entry, excinfo if last == entry else None)
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\_code\code.py", line 1063, in repr_traceback_entry
+    source = self._getentrysource(entry)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\_code\code.py", line 901, in _getentrysource
+    source = entry.getsource(self.astcache)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\_code\code.py", line 299, in getsource
+    astnode, _, end = getstatementrange_ast(
+                      ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\walbe\AppData\Roaming\Python\Python311\site-packages\_pytest\_code\source.py", line 191, in getstatementrange_ast
+    astnode = ast.parse(content, "source", "exec")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python311\Lib\ast.py", line 50, in parse
+    return compile(source, filename, mode, flags,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+SystemError: AST constructor recursion depth mismatch (before=129, after=149)</error></testcase></testsuite></testsuites>

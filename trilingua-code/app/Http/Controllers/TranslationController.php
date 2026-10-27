@@ -169,6 +169,7 @@ class TranslationController extends Controller
                         'provider' => $result->provider,
                         'model' => $result->model,
                         'token_usage' => $result->tokenUsage,
+                        'measurement_metadata' => $result->measurementMetadata,
                         'execution_time_ms' => $result->executionTimeMs,
                         'mode' => $result->mode,
                         'quality_score' => $result->qualityScore,
@@ -789,6 +790,15 @@ class TranslationController extends Controller
 
         if ($ext === 'pdf') {
             return str_starts_with($head, '%PDF-');
+        }
+
+        if (in_array($ext, ['png', 'jpg', 'jpeg'], true)) {
+            $image = @getimagesize($path);
+            $type = $ext === 'png' ? IMAGETYPE_PNG : IMAGETYPE_JPEG;
+
+            return $image !== false && $image[2] === $type
+                && min($image[0], $image[1]) >= 200
+                && $image[0] * $image[1] <= 40000000;
         }
 
         // text-like formats must not contain NUL bytes (executable/binary check)

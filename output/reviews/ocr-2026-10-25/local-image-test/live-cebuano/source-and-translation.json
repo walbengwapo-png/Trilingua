@@ -1,0 +1,154 @@
+[
+  {
+    "index": 0,
+    "source": "(orerrat FRIDAY STUDIOS THE 5-SECOND rest )",
+    "translation": "(orerrat FRIDAY STUDIOS ANG 5-SECOND nga pahulay )",
+    "ocr": {
+      "pack": "eng",
+      "confidence": 80.0,
+      "uncertain_words": [
+        {
+          "text": "(orerrat",
+          "confidence": 33.0,
+          "position": [
+            11.28,
+            11.28,
+            46.08,
+            25.68
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "index": 1,
+    "source": "CAN PEOPLE TELL ©",
+    "translation": "MAKASUGOD BA ANG MGA TAO ©",
+    "ocr": {
+      "pack": "eng",
+      "confidence": 80.5,
+      "uncertain_words": [
+        {
+          "text": "©",
+          "confidence": 42.0,
+          "position": [
+            234.0,
+            70.8,
+            245.76,
+            77.03999999999999
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "index": 2,
+    "source": "WHAT YOU DO",
+    "translation": "ANO ANG IMONG GINABUHAT",
+    "ocr": {
+      "pack": "eng",
+      "confidence": 96.0,
+      "uncertain_words": []
+    }
+  },
+  {
+    "index": 3,
+    "source": "IN 5 SECONDS?",
+    "translation": "SA 5 KA SEKUNDO?",
+    "ocr": {
+      "pack": "eng",
+      "confidence": 77.66666666666667,
+      "uncertain_words": []
+    }
+  },
+  {
+    "index": 4,
+    "source": "YOUR FIRST SCREEN SHOULD ANSWER THREE THINGS — CLEARLY.",
+    "translation": "ANG IMONG UNANG SCREEN DAPAT MOTUBAG TULO KA BUTANG — KALARO",
+    "ocr": {
+      "pack": "eng",
+      "confidence": 95.22222222222223,
+      "uncertain_words": []
+    }
+  },
+  {
+    "index": 5,
+    "source": "01",
+    "translation": "01",
+    "ocr": {
+      "pack": "eng",
+      "confidence": 60.0,
+      "uncertain_words": []
+    }
+  },
+  {
+    "index": 6,
+    "source": "02",
+    "translation": "02",
+    "ocr": {
+      "pack": "eng",
+      "confidence": 95.0,
+      "uncertain_words": []
+    }
+  },
+  {
+    "index": 7,
+    "source": "03",
+    "translation": "03",
+    "ocr": {
+      "pack": "eng",
+      "confidence": 96.0,
+      "uncertain_words": []
+    }
+  },
+  {
+    "index": 8,
+    "source": "CLARITY BEFORE COMPLEXITY",
+    "translation": "KALARO UNA KAYANG KOMPILADO",
+    "ocr": {
+      "pack": "eng",
+      "confidence": 96.0,
+      "uncertain_words": []
+    }
+  },
+  {
+    "index": 9,
+    "source": "WHAT YOU OFFER",
+    "translation": "ANO ANG IMONG GIHATAG",
+    "ocr": {
+      "pack": "eng",
+      "confidence": 96.0,
+      "uncertain_words": []
+    }
+  },
+  {
+    "index": 10,
+    "source": "WHO IT’S FOR",
+    "translation": "KINIYA KINSA",
+    "ocr": {
+      "pack": "eng",
+      "confidence": 95.66666666666667,
+      "uncertain_words": []
+    }
+  },
+  {
+    "index": 11,
+    "source": "WHAT TO DO NEXT",
+    "translation": "ANO ANG SUNOD NGA GINABUHAT",
+    "ocr": {
+      "pack": "eng",
+      "confidence": 95.25,
+      "uncertain_words": []
+    }
+  },
+  {
+    "index": 12,
+    "source": "DAVAO CITY, PHILIPPINES",
+    "translation": "DAVAO CITY, PHILIPPINES",
+    "ocr": {
+      "pack": "eng",
+      "confidence": 95.66666666666667,
+      "uncertain_words": []
+    }
+  }
+]

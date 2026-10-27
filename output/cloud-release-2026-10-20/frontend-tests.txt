@@ -1,0 +1,36 @@
+✔ strict report-only script policy records violations while existing behavior runs (5175.2243ms)
+✔ real DOCX conversion removes unsafe links and retains safe content in the shared renderer (2671.7176ms)
+✔ policy removes active markup and enforces element-specific attributes (329.3496ms)
+✔ policy rejects encoded unsafe URLs and preserves permitted link forms (286.7051ms)
+✔ policy allows validated raster data and same-origin images only (292.2805ms)
+✔ actual XLSX preview shows uncached formulas and a recalculation notice (450.0585ms)
+✔ actual XLSX preview keeps a saved calculated result (359.4476ms)
+✔ openpyxl empty formula caches are stubs, not calculated zero values (361.419ms)
+✔ plain text and CSV content remain escaped (674.6902ms)
+✔ unsupported format falls back to escaped saved blocks (288.1992ms)
+✔ PPTX viewer treats embedded markup and unsafe hyperlink as inert (1130.7259ms)
+✔ fallback/error downloads reject unsafe URLs and protect blank targets (481.4878ms)
+✔ toast: actual renderer treats harmless attack marker as inert content (2460.8109ms)
+✔ notification: actual renderer treats harmless attack marker as inert content (504.5899ms)
+✔ regeneration: actual renderer treats harmless attack marker as inert content (565.3782ms)
+✔ dashboard KPI: actual renderer treats harmless attack marker as inert content (490.6966ms)
+✔ dashboard table: actual renderer treats harmless attack marker as inert content (469.8666ms)
+✔ sanitizer retains only safe targets and adds both rel protections (285.3877ms)
+✔ workbook processing warning is visible and renders warning text without markup (311.3729ms)
+✔ regeneration retains signed storage downloads while notifications stay same-origin (292.1793ms)
+✔ dashboard sanitization retains table rows and trusted badges/icons (315.134ms)
+✔ actual Blade PDF iframe history-detail.blade.php/translatedUrl rejects active URLs and escaped attributes (3353.9982ms)
+✔ actual Blade PDF iframe history-detail.blade.php/originalUrl rejects active URLs and escaped attributes (1754.5092ms)
+✔ actual Blade PDF iframe admin/review-document.blade.php/previewUrl rejects active URLs and escaped attributes (1547.2326ms)
+✔ actual performance panel labels samples and last observation without live-health claims (1822.5626ms)
+✔ unknown timing and rate values are unavailable instead of zero or an unlabeled dash (598.5129ms)
+✔ reported and estimated usage stay visibly distinct in the actual panel (491.0449ms)
+✔ new provider attribution remains escaped text (634.7934ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8552.2247

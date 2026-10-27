@@ -1,0 +1,122 @@
+[
+  {
+    "page": 1,
+    "label": "title",
+    "type": "selectable",
+    "text": "The Lion and the Mouse",
+    "rect": [
+      48.0,
+      34.0,
+      564.0,
+      78.0
+    ]
+  },
+  {
+    "page": 1,
+    "label": "story paragraph 1",
+    "type": "selectable",
+    "text": "A Lion lay asleep in the forest, his great head resting on his paws. A timid little Mouse came upon him unexpectedly, and in her fright and haste to get away, ran across the Lion's nose. Roused from his nap, the Lion laid his huge paw angrily on the tiny creature to kill her.",
+    "rect": [
+      48.0,
+      380.0,
+      564.0,
+      533.0
+    ]
+  },
+  {
+    "page": 1,
+    "label": "dialogue 1",
+    "type": "image-only",
+    "text": "\"Spare me!\" begged the poor Mouse. \"Please let me go and some day I will surely repay you.\"",
+    "rect": [
+      48.0,
+      552.0,
+      564.0,
+      620.0
+    ]
+  },
+  {
+    "page": 1,
+    "label": "story paragraph 3",
+    "type": "selectable",
+    "text": "The Lion was much amused to think that a Mouse could ever help him. But he was generous and finally let the Mouse go.",
+    "rect": [
+      48.0,
+      641.0,
+      564.0,
+      709.0
+    ]
+  },
+  {
+    "page": 1,
+    "label": "page number",
+    "type": "selectable",
+    "text": "1",
+    "rect": [
+      280.0,
+      754.0,
+      332.0,
+      776.0
+    ]
+  },
+  {
+    "page": 2,
+    "label": "story paragraph 4",
+    "type": "selectable",
+    "text": "Some days later, while stalking his prey in the forest, the Lion was caught in the toils of a hunter's net. Unable to free himself, he filled the forest with his angry roaring. The Mouse knew the voice and quickly found the Lion struggling in the net. Running to one of the great ropes that bound him, she gnawed it until it parted, and soon the Lion was free.",
+    "rect": [
+      48.0,
+      278.0,
+      564.0,
+      478.0
+    ]
+  },
+  {
+    "page": 2,
+    "label": "dialogue 2",
+    "type": "image-only",
+    "text": "\"You laughed when I said I would repay you,\" said the Mouse. \"Now you see that even a Mouse can help a Lion.\"",
+    "rect": [
+      48.0,
+      505.0,
+      564.0,
+      585.0
+    ]
+  },
+  {
+    "page": 2,
+    "label": "moral",
+    "type": "selectable",
+    "text": "A kindness is never wasted.",
+    "rect": [
+      48.0,
+      617.0,
+      564.0,
+      660.0
+    ]
+  },
+  {
+    "page": 2,
+    "label": "attribution",
+    "type": "selectable",
+    "text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+    "rect": [
+      48.0,
+      691.0,
+      564.0,
+      726.0
+    ]
+  },
+  {
+    "page": 2,
+    "label": "page number",
+    "type": "selectable",
+    "text": "2",
+    "rect": [
+      280.0,
+      754.0,
+      332.0,
+      776.0
+    ]
+  }
+]

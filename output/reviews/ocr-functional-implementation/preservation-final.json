@@ -1,0 +1,18 @@
+{
+  "unexpected_tracked_byte_changes": [],
+  "expected_changes": [
+    "trilingua-code/Model/document/extractor.py",
+    "trilingua-code/Model/document/image_reconstructor.py",
+    "trilingua-code/Model/document/ocr_extractor.py",
+    "trilingua-code/Model/document/pdf_regions.py",
+    "trilingua-code/Model/document/pixel_budget.py",
+    "trilingua-code/Model/document/regenerator.py",
+    "trilingua-code/Model/pipeline/document_pipeline.py",
+    "trilingua-code/Model/tests/test_ocr_documents.py",
+    "trilingua-code/Model/tools/ocr_kit/README.md"
+  ],
+  "live_env_unchanged": true,
+  "provider_prompts_match_starting_bytes": true,
+  "preexisting_mixed_pipeline_hunks_preserved": true,
+  "code_commit": "9d8d3af223ea38888811fab801efe43c1878a5b9"
+}

@@ -537,8 +537,10 @@ def translate_text(req: TextRequest):
     try:
         from dto.requests import TranslationRequest as TR
         source_text = req.text
+        review_attempted = False
 
         def _translate_and_review():
+            nonlocal review_attempted
             request = TR(
                 text=source_text,
                 source_lang=req.source_lang,
@@ -552,6 +554,7 @@ def translate_text(req: TextRequest):
             if not processing_mode.ai_quality_review:
                 return initial, None, warnings
 
+            review_attempted = True
             try:
                 review = _text_quality_reviewer.review(
                     source=source_text,
@@ -610,6 +613,13 @@ def translate_text(req: TextRequest):
         if review is not None and not review.available:
             warnings.append("AI quality review unavailable; translation was retained without a review score.")
 
+        measurement_metadata = dict(getattr(result, "measurement_metadata", {}) or {})
+        measurement_metadata.update({"schema_version": 1, "usage_scope": "retained_translation_result"})
+        if review_attempted:
+            # A translation cache hit does not establish zero review/repair requests.
+            measurement_metadata.update({"llm_calls": None, "calls_complete": False,
+                                         "calls_scope": "operation", "calls_provenance": "unknown"})
+
         return {
             "translated": result.translated_text,
             "provider": result.provider,
@@ -628,6 +638,7 @@ def translate_text(req: TextRequest):
             "warnings": warnings,
             "token_usage": result.token_usage,
             "execution_time_ms": result.execution_time_ms,
+            "measurement_metadata": measurement_metadata,
         }
     except HTTPException:
         raise

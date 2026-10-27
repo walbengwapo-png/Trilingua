@@ -1,0 +1,58 @@
+{
+  "entrypoint": "python -m tools.ocr_kit coordinate",
+  "elapsed_seconds": 22.375,
+  "observed_http_calls": [
+    {
+      "method": "post",
+      "host": "generativelanguage.googleapis.com",
+      "path": "/v1beta/interactions",
+      "http_status": 200,
+      "elapsed_seconds": 22.141
+    }
+  ],
+  "canonical_files_or_env_changed": [],
+  "new_runs": [
+    "C:\\dev\\Trilingua\\output\\ocr-acceptance\\lion-mouse-review-2026-10-26\\coordinator-runs\\ca39fba9d61e4a83973dbe3f703b4701"
+  ],
+  "status": "proposals_prepared",
+  "decision": {
+    "action": "prepare_proposals",
+    "reason": "Available calibration proposals can be prepared before addressing missing metadata.",
+    "candidate_ids": [
+      "7d008e604ff83e9380f27e2b",
+      "17dabdedb1508d100a55edc8"
+    ],
+    "question_ids": []
+  },
+  "response_model": "gemini-3.5-flash-lite",
+  "proposals": [
+    {
+      "id": "7d008e604ff83e9380f27e2b",
+      "sample_id": "861207a4a241dce4",
+      "page": 0,
+      "bbox": [
+        1166.6666666666667,
+        3141.6666666666665,
+        1189.8333231608074,
+        3198.9166259765625
+      ],
+      "text": "1",
+      "basis": "visible native PDF text missing from calibration draft"
+    },
+    {
+      "id": "17dabdedb1508d100a55edc8",
+      "sample_id": "861207a4a241dce4",
+      "page": 1,
+      "bbox": [
+        1166.6666666666667,
+        3141.6666666666665,
+        1189.8333231608074,
+        3198.9166259765625
+      ],
+      "text": "2",
+      "basis": "visible native PDF text missing from calibration draft"
+    }
+  ],
+  "approval_issued": false,
+  "live_configuration_changed": false
+}

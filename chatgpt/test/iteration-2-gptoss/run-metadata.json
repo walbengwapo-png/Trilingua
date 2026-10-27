@@ -1,0 +1,9 @@
+{
+  "provider": "gptoss",
+  "model": "gpt-oss:20b-cloud",
+  "execution_status": "stopped_by_user",
+  "completed_full_runs": 3,
+  "planned_full_runs": 4,
+  "stability_runs_completed": 0,
+  "note": "The remaining SONA Cebuano and all stability measurements were not run after the user requested a comprehensive current-state report."
+}

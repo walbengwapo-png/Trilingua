@@ -1,0 +1,21 @@
+{
+  "purpose": "diagnostic_only",
+  "acceptance_evidence": false,
+  "production_code_changed": false,
+  "line_geometry": [
+    {
+      "page": 1,
+      "line_geometry_from_actual_hocr": [
+        "bbox 4 19 1536 65; baseline -0.001 -10; x_size 46; x_descenders 10; x_ascenders 12",
+        "bbox 3 91 370 137; baseline 0.003 -11; x_size 45; x_descenders 10; x_ascenders 11"
+      ]
+    },
+    {
+      "page": 2,
+      "line_geometry_from_actual_hocr": [
+        "bbox 4 19 1504 65; baseline 0.001 -11; x_size 46; x_descenders 10; x_ascenders 12",
+        "bbox 3 91 809 137; baseline -0.001 -10; x_size 46; x_descenders 10; x_ascenders 12"
+      ]
+    }
+  ]
+}

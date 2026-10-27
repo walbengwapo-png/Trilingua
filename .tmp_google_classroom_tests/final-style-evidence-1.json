@@ -1,0 +1,170 @@
+{
+  "input": "C:\\dev\\Trilingua\\Google Classroom Student Test Cases.docx",
+  "fonts_by_char_count": {
+    "Arial": 10843
+  },
+  "direct_run_formatting_runs": 256,
+  "direct_paragraph_formatting_paragraphs": 368,
+  "heading_like_paragraphs_not_heading_style": [
+    {
+      "para_index": 21,
+      "text": "TEST CASE",
+      "style": "normal"
+    },
+    {
+      "para_index": 22,
+      "text": "PRE-CONDITION(S)",
+      "style": "normal"
+    },
+    {
+      "para_index": 23,
+      "text": "PROCEDURE(S)",
+      "style": "normal"
+    },
+    {
+      "para_index": 24,
+      "text": "TEST DATA",
+      "style": "normal"
+    },
+    {
+      "para_index": 25,
+      "text": "EXPECTED RESULT",
+      "style": "normal"
+    },
+    {
+      "para_index": 26,
+      "text": "ACTUAL RESULT",
+      "style": "normal"
+    },
+    {
+      "para_index": 27,
+      "text": "STATUS",
+      "style": "normal"
+    },
+    {
+      "para_index": 67,
+      "text": "TEST CASE",
+      "style": "normal"
+    },
+    {
+      "para_index": 68,
+      "text": "PRE-CONDITION(S)",
+      "style": "normal"
+    },
+    {
+      "para_index": 69,
+      "text": "PROCEDURE(S)",
+      "style": "normal"
+    },
+    {
+      "para_index": 70,
+      "text": "TEST DATA",
+      "style": "normal"
+    },
+    {
+      "para_index": 71,
+      "text": "EXPECTED RESULT",
+      "style": "normal"
+    },
+    {
+      "para_index": 72,
+      "text": "ACTUAL RESULT",
+      "style": "normal"
+    },
+    {
+      "para_index": 73,
+      "text": "STATUS",
+      "style": "normal"
+    },
+    {
+      "para_index": 113,
+      "text": "TEST CASE",
+      "style": "normal"
+    },
+    {
+      "para_index": 114,
+      "text": "PRE-CONDITION(S)",
+      "style": "normal"
+    },
+    {
+      "para_index": 115,
+      "text": "PROCEDURE(S)",
+      "style": "normal"
+    },
+    {
+      "para_index": 116,
+      "text": "TEST DATA",
+      "style": "normal"
+    },
+    {
+      "para_index": 117,
+      "text": "EXPECTED RESULT",
+      "style": "normal"
+    },
+    {
+      "para_index": 118,
+      "text": "ACTUAL RESULT",
+      "style": "normal"
+    }
+  ],
+  "examples": {
+    "direct_paragraph_formatting": [
+      {
+        "para_index": 17,
+        "text": "",
+        "style": "normal"
+      },
+      {
+        "para_index": 18,
+        "text": "",
+        "style": "normal"
+      },
+      {
+        "para_index": 19,
+        "text": "",
+        "style": "normal"
+      },
+      {
+        "para_index": 20,
+        "text": "",
+        "style": "normal"
+      },
+      {
+        "para_index": 21,
+        "text": "TEST CASE",
+        "style": "normal"
+      }
+    ],
+    "direct_run_formatting": [
+      {
+        "para_index": 21,
+        "run_text": "TEST CASE",
+        "style": "normal"
+      },
+      {
+        "para_index": 22,
+        "run_text": "PRE-CONDITION(S)",
+        "style": "normal"
+      },
+      {
+        "para_index": 23,
+        "run_text": "PROCEDURE(S)",
+        "style": "normal"
+      },
+      {
+        "para_index": 24,
+        "run_text": "TEST DATA",
+        "style": "normal"
+      },
+      {
+        "para_index": 25,
+        "run_text": "EXPECTED RESULT",
+        "style": "normal"
+      }
+    ]
+  },
+  "notes": [
+    "Direct formatting is not always wrong, but it often causes inconsistent output when templates change.",
+    "Heading-like paragraphs not using Heading styles can break TOC and accessibility."
+  ]
+}

@@ -1,0 +1,10 @@
+
+   PASS  Tests\Feature\AuditProbesTest
+  ✓ zero string is rejected                                                                                      0.28s  
+  ✓ empty success envelope creates completed history                                                             0.03s  
+  ✓ explicit failed envelope creates completed history                                                           0.01s  
+  ✓ internal python error is returned to user                                                                    0.01s  
+
+  Tests:    4 passed (13 assertions)
+  Duration: 0.46s
+

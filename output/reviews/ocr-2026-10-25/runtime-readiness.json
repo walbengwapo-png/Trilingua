@@ -1,0 +1,20 @@
+{
+  "available": true,
+  "binary": "C:/Program Files/Tesseract-OCR/tesseract.exe",
+  "version": "tesseract v5.4.0.20240606",
+  "installed_packs": [
+    "ceb",
+    "eng",
+    "fil",
+    "osd"
+  ],
+  "list_languages_output": "List of available languages in \"C:/Users/walbe/AppData/Local/TriLingua/ocr/tessdata/\" (4):\nceb\neng\nfil\nosd\n",
+  "pack_sha256": {
+    "ceb": "346a39de801495c93ece6656d018d7d19d298af7db42d82ebae99dfe8ee14961",
+    "eng": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+    "fil": "2b17f68014ab44b88b5e2334ebcd0ce0090d9af7c6fbef6fab22e0bbd9a934dd",
+    "osd": "9cf5d576fcc47564f11265841e5ca839001e7e6f38ff7f7aacf46d15a96b00ff"
+  },
+  "python_package_available": true,
+  "ready": true
+}

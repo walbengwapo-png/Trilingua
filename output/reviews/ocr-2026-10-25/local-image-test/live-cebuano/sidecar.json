@@ -1,0 +1,463 @@
+{
+  "version": 2,
+  "format": ".png",
+  "source_lang": "English",
+  "target_lang": "Cebuano",
+  "pdf_column_mode": "auto",
+  "mode": "fast",
+  "document_type": "",
+  "layout_plan": null,
+  "layout_preflight": null,
+  "blocks": [
+    {
+      "block_index": 0,
+      "block_type": "paragraph",
+      "source_text": "(orerrat FRIDAY STUDIOS THE 5-SECOND rest )",
+      "ai_translated_text": "(orerrat FRIDAY STUDIOS ANG 5-SECOND nga pahulay )",
+      "current_text": "(orerrat FRIDAY STUDIOS ANG 5-SECOND nga pahulay )",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "(orerrat FRIDAY STUDIOS ANG 5-SECOND nga pahulay )",
+      "position": [
+        11.28,
+        11.28,
+        247.92,
+        25.68
+      ],
+      "page": 0,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 80.0,
+        "uncertain_words": [
+          {
+            "text": "(orerrat",
+            "confidence": 33.0,
+            "position": [
+              11.28,
+              11.28,
+              46.08,
+              25.68
+            ]
+          }
+        ]
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 1,
+      "block_type": "paragraph",
+      "source_text": "CAN PEOPLE TELL ©",
+      "ai_translated_text": "MAKASUGOD BA ANG MGA TAO ©",
+      "current_text": "MAKASUGOD BA ANG MGA TAO ©",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "MAKASUGOD BA ANG MGA TAO ©",
+      "position": [
+        13.68,
+        70.8,
+        245.76,
+        92.64
+      ],
+      "page": 0,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 80.5,
+        "uncertain_words": [
+          {
+            "text": "©",
+            "confidence": 42.0,
+            "position": [
+              234.0,
+              70.8,
+              245.76,
+              77.03999999999999
+            ]
+          }
+        ]
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 2,
+      "block_type": "paragraph",
+      "source_text": "WHAT YOU DO",
+      "ai_translated_text": "ANO ANG IMONG GINABUHAT",
+      "current_text": "ANO ANG IMONG GINABUHAT",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "ANO ANG IMONG GINABUHAT",
+      "position": [
+        13.2,
+        98.39999999999999,
+        204.24,
+        119.99999999999999
+      ],
+      "page": 0,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 96.0,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 3,
+      "block_type": "paragraph",
+      "source_text": "IN 5 SECONDS?",
+      "ai_translated_text": "SA 5 KA SEKUNDO?",
+      "current_text": "SA 5 KA SEKUNDO?",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "SA 5 KA SEKUNDO?",
+      "position": [
+        11.52,
+        125.03999999999999,
+        209.76,
+        147.12
+      ],
+      "page": 0,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 77.66666666666667,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 4,
+      "block_type": "paragraph",
+      "source_text": "YOUR FIRST SCREEN SHOULD ANSWER THREE THINGS — CLEARLY.",
+      "ai_translated_text": "ANG IMONG UNANG SCREEN DAPAT MOTUBAG TULO KA BUTANG — KALARO",
+      "current_text": "ANG IMONG UNANG SCREEN DAPAT MOTUBAG TULO KA BUTANG — KALARO",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "ANG IMONG UNANG SCREEN DAPAT MOTUBAG TULO KA BUTANG — KALARO",
+      "position": [
+        14.16,
+        156.72,
+        222.48,
+        161.04
+      ],
+      "page": 0,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 95.22222222222223,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 5,
+      "block_type": "paragraph",
+      "source_text": "01",
+      "ai_translated_text": "01",
+      "current_text": "01",
+      "quality_score": null,
+      "quality_issues": null,
+      "passthrough": true,
+      "type": "paragraph",
+      "text": "01",
+      "position": [
+        122.64,
+        206.16,
+        128.4,
+        209.76
+      ],
+      "page": 0,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 60.0,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 6,
+      "block_type": "paragraph",
+      "source_text": "02",
+      "ai_translated_text": "02",
+      "current_text": "02",
+      "quality_score": null,
+      "quality_issues": null,
+      "passthrough": true,
+      "type": "paragraph",
+      "text": "02",
+      "position": [
+        122.64,
+        237.6,
+        129.12,
+        241.2
+      ],
+      "page": 0,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 95.0,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 7,
+      "block_type": "paragraph",
+      "source_text": "03",
+      "ai_translated_text": "03",
+      "current_text": "03",
+      "quality_score": null,
+      "quality_issues": null,
+      "passthrough": true,
+      "type": "paragraph",
+      "text": "03",
+      "position": [
+        122.64,
+        269.52,
+        129.12,
+        273.12
+      ],
+      "page": 0,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 96.0,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 8,
+      "block_type": "paragraph",
+      "source_text": "CLARITY BEFORE COMPLEXITY",
+      "ai_translated_text": "KALARO UNA KAYANG KOMPILADO",
+      "current_text": "KALARO UNA KAYANG KOMPILADO",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "KALARO UNA KAYANG KOMPILADO",
+      "position": [
+        15.84,
+        304.32,
+        88.32,
+        307.44
+      ],
+      "page": 0,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 96.0,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 9,
+      "block_type": "paragraph",
+      "source_text": "WHAT YOU OFFER",
+      "ai_translated_text": "ANO ANG IMONG GIHATAG",
+      "current_text": "ANO ANG IMONG GIHATAG",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "ANO ANG IMONG GIHATAG",
+      "position": [
+        136.79999999999998,
+        206.64,
+        177.35999999999999,
+        209.76
+      ],
+      "page": 0,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 96.0,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 10,
+      "block_type": "paragraph",
+      "source_text": "WHO IT’S FOR",
+      "ai_translated_text": "KINIYA KINSA",
+      "current_text": "KINIYA KINSA",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "KINIYA KINSA",
+      "position": [
+        136.79999999999998,
+        238.07999999999998,
+        171.12,
+        241.2
+      ],
+      "page": 0,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 95.66666666666667,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 11,
+      "block_type": "paragraph",
+      "source_text": "WHAT TO DO NEXT",
+      "ai_translated_text": "ANO ANG SUNOD NGA GINABUHAT",
+      "current_text": "ANO ANG SUNOD NGA GINABUHAT",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "ANO ANG SUNOD NGA GINABUHAT",
+      "position": [
+        136.79999999999998,
+        270.0,
+        180.0,
+        273.12
+      ],
+      "page": 0,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 95.25,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    },
+    {
+      "block_index": 12,
+      "block_type": "paragraph",
+      "source_text": "DAVAO CITY, PHILIPPINES",
+      "ai_translated_text": "DAVAO CITY, PHILIPPINES",
+      "current_text": "DAVAO CITY, PHILIPPINES",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "DAVAO CITY, PHILIPPINES",
+      "position": [
+        180.72,
+        305.28,
+        245.04,
+        308.64
+      ],
+      "page": 0,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 95.66666666666667,
+        "uncertain_words": []
+      },
+      "ocr_reflow": true
+    }
+  ],
+  "output_validation": {
+    "status": "passed",
+    "content_coverage": "passed",
+    "layout": "separate_translated_text",
+    "linguistic_accuracy": "unverified",
+    "source_pages": [
+      0
+    ],
+    "output_pages": 1
+  },
+  "extraction": {
+    "pages": [
+      {
+        "page": 0,
+        "classification": "ocr"
+      }
+    ],
+    "warnings": [
+      "Image OCR: check extracted text against the original. PDF output uses a separate translated layout.",
+      "This document uses a separate translated text layout; original scan artwork and page layout are not reproduced."
+    ]
+  }
+}

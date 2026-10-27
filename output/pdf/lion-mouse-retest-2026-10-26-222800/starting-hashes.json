@@ -1,0 +1,10 @@
+{
+  "git_commit": "6af226dd3d780492ed5308ed271af6decc016aba",
+  "files": {
+    "trilingua-code/.env": "05294994d4cf7a710806005c1464b015e15d567a09e72b5a9ec406ce629a1fda",
+    "trilingua-code/Model/prompts/system.py": "bdc2f643c91b0442d119f6e83fb2f3269dce58ff145c44433ecb8995a6a1cad2",
+    "trilingua-code/Model/document/ocr_extractor.py": "fe5d060749a38a08e655f0b3fe22591c0dc976eff91d0cb52c3c157fd8167c35",
+    "trilingua-code/Model/document/image_reconstructor.py": "6e408384ac3c98d7969c029ba70883b595536f8e4145fa2e5aafc68531624555",
+    "trilingua-code/Model/pipeline/document_pipeline.py": "8ccbd93f73264689639f986bc32cfbb84d4967c9d78366a3f3f86c024d1d94d8"
+  }
+}

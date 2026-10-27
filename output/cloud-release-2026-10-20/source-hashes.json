@@ -1,0 +1,206 @@
+[
+  {
+    "Path": "SETUP.md",
+    "SHA256": "90560A9EC7BB8709FE8AB8554ED2CFCF748050BCBBE5D7D39EF0E86A1F706602"
+  },
+  {
+    "Path": "TRILINGUA_COMPLETE_GUIDE.md",
+    "SHA256": "A970A1F0FA9BE5BE015EA323B5F81ECBFEBE759997D80272724CDB02F1712491"
+  },
+  {
+    "Path": "trilingua-code/.env.example",
+    "SHA256": "3F25D3A3AFD1E8F328712B6D420AC2AC921BB99A22E68102DC2A3E1F55DC0335"
+  },
+  {
+    "Path": "trilingua-code/DEMO.md",
+    "SHA256": "1887A0F98D3A474871BAFD120E646F79F0145FD623B2B7990347FEBEBDDA9133"
+  },
+  {
+    "Path": "trilingua-code/Model/dto/responses.py",
+    "SHA256": "0765F93FF35FA386F85C663D256FDF51CCA5967CF093D8C0D1A49CB4B2BCB477"
+  },
+  {
+    "Path": "trilingua-code/Model/pipeline/document_context.py",
+    "SHA256": "2E1C3488C440AE318C17FD316CD789980B4E5B13523BC9DE433B52E33FCF0058"
+  },
+  {
+    "Path": "trilingua-code/Model/pipeline/document_pipeline.py",
+    "SHA256": "5243B8059C7FF9FC6B177F41D7FD5D2F58D07483B3805FD1E3A9FB31F253A8FF"
+  },
+  {
+    "Path": "trilingua-code/Model/pipeline/translation_pipeline.py",
+    "SHA256": "C946C63B52903DAE0BEA5DB4CFB60C1697663225258E82E4F56705640C61FC71"
+  },
+  {
+    "Path": "trilingua-code/Model/providers/gemini.py",
+    "SHA256": "12A13D02B17419D1A4E992F7BD9E3004C922EA825B4BC5436B301A11C32AAC85"
+  },
+  {
+    "Path": "trilingua-code/Model/providers/gptoss.py",
+    "SHA256": "4A91F5A0D18C6850B014DBCAB9995448CF0DD26FC17FC9D5153E0EE3A5DE1585"
+  },
+  {
+    "Path": "trilingua-code/Model/requirements.txt",
+    "SHA256": "9461116CC86D186334654314DBE4D89A1605C7AB41F20872464DDAD2792AFD0B"
+  },
+  {
+    "Path": "trilingua-code/Model/server.py",
+    "SHA256": "F0050AE7A3E99EA7A90FA5AEF117C7FA06A37B1211EA6F4C918DFB75CC06367C"
+  },
+  {
+    "Path": "trilingua-code/app/Http/Controllers/Admin/DashboardController.php",
+    "SHA256": "FA8D6F819C34303E210613056F944CAEB309C846E319AEA914854A2AE02A12DD"
+  },
+  {
+    "Path": "trilingua-code/app/Http/Controllers/Admin/UserController.php",
+    "SHA256": "68CA0A283C7124AD0363F7593F8CA5911F0A5342D01169EF83A9C64E9B83E6E3"
+  },
+  {
+    "Path": "trilingua-code/app/Http/Controllers/TranslationController.php",
+    "SHA256": "ED67DFA4E62652C6ADF91DD1D9B6DF51A0EBA3CF310F7FC8E502A15A09CE022D"
+  },
+  {
+    "Path": "trilingua-code/app/Models/TranslationHistory.php",
+    "SHA256": "D4C77EFC090E5D93FD2EA31ADCB8D426593A37627A563413EFFEA82430FA38C9"
+  },
+  {
+    "Path": "trilingua-code/app/Models/TranslationMetric.php",
+    "SHA256": "8BC2F45B1782446F90F98307A080B7FEC630502B002F57F4AF1DCDFDC7415FC9"
+  },
+  {
+    "Path": "trilingua-code/app/Services/BlockService.php",
+    "SHA256": "45E9755B9ACE07786CEFD2E9D42BE91F25AB6E62E87F59B6EBFA8CC4EEC2B30F"
+  },
+  {
+    "Path": "trilingua-code/app/Services/HistoryService.php",
+    "SHA256": "44A9A10E579F34CDBF3CCF40566AC80DF903FED5D4E612351F37F79800C5B482"
+  },
+  {
+    "Path": "trilingua-code/app/Services/MetricsService.php",
+    "SHA256": "41DE4E80DA6CCCE84E8BE30F558E2984E1D74250F01445A90C850BE3C75EF975"
+  },
+  {
+    "Path": "trilingua-code/app/Services/Translation/DTO/TranslationResponse.php",
+    "SHA256": "3104D7017D0D86581F2CBE96E641A7A81F4A5271E67FD2C67AAF7DCA2C8E33F5"
+  },
+  {
+    "Path": "trilingua-code/app/Services/TranslationStatsService.php",
+    "SHA256": "04D28CAA7D8664E7608D1033598CD8C0C97AD5329DB3150C558F66523E758DB4"
+  },
+  {
+    "Path": "trilingua-code/bootstrap/app.php",
+    "SHA256": "9EE17C64CA7F0AC5141B01443CC1E82603D0EC658D0CC6D045A706B306B71FFC"
+  },
+  {
+    "Path": "trilingua-code/composer.json",
+    "SHA256": "85B2F559BCF2D6C1EFBABDC42C7DA41DC9C462770A1B2C48FAF3C67B99E0EC00"
+  },
+  {
+    "Path": "trilingua-code/config/queue.php",
+    "SHA256": "39535083650F08D39AD016F3F3ABAC4EF36C0E5D1CFD4EF3EDA9FDD7FF65BF7C"
+  },
+  {
+    "Path": "trilingua-code/config/translation.php",
+    "SHA256": "C9CD07C551A80B0DCF669F882ED19BC2A716764141AABE3D2BC34FF34C47806A"
+  },
+  {
+    "Path": "trilingua-code/docs/ARCHITECTURAL_DESIGN.md",
+    "SHA256": "449CABE769BD5BF168AA19EC4289AD9CEA48B02D27F5E2767481B51C6026ED59"
+  },
+  {
+    "Path": "trilingua-code/resources/css/layouts/app.css",
+    "SHA256": "6A663725FDD046A74A73A5B30EFB64691D783F0B4EE773CCD75CBB6CFD82392B"
+  },
+  {
+    "Path": "trilingua-code/resources/css/views/admin.css",
+    "SHA256": "F37F592D854D8AE44E0CF772FC0264B1813932F391A65B522DBBC5C1CA637ED9"
+  },
+  {
+    "Path": "trilingua-code/resources/css/views/dashboard-common.css",
+    "SHA256": "3146067256B853310DC0B1A4F5223AEA5E65A76B3CCD5660C1BFED1E84C90366"
+  },
+  {
+    "Path": "trilingua-code/resources/css/views/my-documents.css",
+    "SHA256": "EA03C47CE5B5F9607CE0EEDBB642D1BCDCB05663B5971CFD4D56EA3284C26A6E"
+  },
+  {
+    "Path": "trilingua-code/resources/css/views/translation.css",
+    "SHA256": "EE461683FB8DA24272EBDA3C97894CD3CBA7BDBBFBBC23CB9007230955DF6770"
+  },
+  {
+    "Path": "trilingua-code/resources/views/admin/dashboard.blade.php",
+    "SHA256": "76875D6BA0EED5958516BB9DFFD141C1D3FA4D279A33238B6F5F78920F5A4BC5"
+  },
+  {
+    "Path": "trilingua-code/resources/views/admin/user-detail.blade.php",
+    "SHA256": "E07FAA70BDDA562F8A1C30C8F36A7E739314B7B0E358F77A03BFE770AC4775E7"
+  },
+  {
+    "Path": "trilingua-code/resources/views/dashboard.blade.php",
+    "SHA256": "7B1227106ACBE9D77CF9178245B5C01A08719BA93A22A899DA874142C863C2D0"
+  },
+  {
+    "Path": "trilingua-code/routes/web.php",
+    "SHA256": "1C98D20E1A68109585497429943D712BD16AC13664035F2A54C8682B33B3EF93"
+  },
+  {
+    "Path": "trilingua-code/start-all.bat",
+    "SHA256": "A5AC7E940357538FE2F1A77A23167544F30A62FA5126015EEDE074AC92394EEF"
+  },
+  {
+    "Path": "trilingua-code/start-demo.ps1",
+    "SHA256": "FF9A4E77841BDED250F5C6C20BEE5A9EB075FE7AE56215287F10A1807632AA71"
+  },
+  {
+    "Path": "trilingua-code/stop-demo.ps1",
+    "SHA256": "B314C7C24620EA3DCFAFD5C657B7B9375B69D3404C9CB8B791D16EE3F0C2CFDF"
+  },
+  {
+    "Path": "trilingua-code/tests/Feature/AuthCssRenderingTest.php",
+    "SHA256": "0D9C3572A4DE0485760F84655E29D3F8FC57075F057DA32E8006DD60631BD9DC"
+  },
+  {
+    "Path": "trilingua-code/Model/tests/test_phase_a_measurements.py",
+    "SHA256": "37B2CCC13C1FD687B169557F8528458D14ACDDC9D430193BEFCCA073AFEC8CE9"
+  },
+  {
+    "Path": "trilingua-code/app/Services/EngineMetricsSummary.php",
+    "SHA256": "13E6F7F766CF15D45DC054FAA87C6E5E52761CD4624059E09F86157CDE2A26E5"
+  },
+  {
+    "Path": "trilingua-code/app/Support/MeasurementProvenance.php",
+    "SHA256": "97510D08058C267BE57B40DDDCC4AB6D63A651124E47CEB8E0B620B1668B3D0B"
+  },
+  {
+    "Path": "trilingua-code/app/Support/SourceWordCounter.php",
+    "SHA256": "2355AE14235A360337C6C43D855782873EE51FB564FC80B5F92FF0B29BFA173C"
+  },
+  {
+    "Path": "trilingua-code/config/timeouts.php",
+    "SHA256": "0790698EB4BCA4E4CC58BA5CB8151B94BF9A320FC8DA852A1C01509260612A90"
+  },
+  {
+    "Path": "trilingua-code/database/migrations/2026_10_19_000001_correct_processing_measurements.php",
+    "SHA256": "D417C66CCDA75FAE070978BD391AA6E3700CFD935F0F1168E265A15787DEED7E"
+  },
+  {
+    "Path": "trilingua-code/tests/Feature/PhaseADashboardTest.php",
+    "SHA256": "008A4C03F5414732466A82BF6EC53A66B16D015192C85474A585B1A95468E599"
+  },
+  {
+    "Path": "trilingua-code/tests/Feature/PhaseAMetricsTest.php",
+    "SHA256": "F9FE2EC7B3616F4D70F055B328F688C768E974204390CA32D8C661BA48516518"
+  },
+  {
+    "Path": "trilingua-code/tests/Feature/PhaseASourceWordsTest.php",
+    "SHA256": "77E4D100242C201BB2233E66764FE77B316409EF4AFC642D8930DB99DDB6832C"
+  },
+  {
+    "Path": "trilingua-code/tests/browser/processing-records.test.mjs",
+    "SHA256": "95ACEB65A249DCFA390D6274E1887A991707A50D6CFC63D3A61924D9D7DA738D"
+  },
+  {
+    "Path": "trilingua-code/tests/start-all-restart-check.ps1",
+    "SHA256": "00DBAFF557D8078542EB589666327FCA9F27AD37602C6C14355514D0B604EE41"
+  }
+]

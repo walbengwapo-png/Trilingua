@@ -1,0 +1,20 @@
++----------------------+-------------------------------------------+---------+
+| Stage                | Role                                      | Seconds |
++----------------------+-------------------------------------------+---------+
+| python_service       | Python engine HTTP limit                  | 1200    |
+| job                  | Illuminate job $timeout                   | 1300    |
+| worker               | queue worker --timeout                    | 1500    |
+| retry_after          | database queue lease (retry_after)        | 1800    |
+| reconcile_processing | translations:reconcile processing timeout | 2100    |
+| check_stale          | queue:check-stale threshold (advisory)    | 2100    |
++----------------------+-------------------------------------------+---------+
+Timeout ladder is safe:  python_service < job < worker < retry_after < reconcile/check-stale.
++---------------+-----------------+
+| Queue setting | Effective value |
++---------------+-----------------+
+| driver        | database        |
+| connection    | (default)       |
+| table         | jobs            |
+| after_commit  | false           |
++---------------+-----------------+
+Queue atomicity preconditions hold: driver=database, connection=sqlite, after_commit=false.

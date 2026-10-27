@@ -1,0 +1,39 @@
+{
+  "generated_at": "2026-09-22T10:20:37.358199+00:00",
+  "provider": "gptoss",
+  "model": "gpt-oss:20b-cloud",
+  "engine_config": {
+    "model": "gpt-oss:20b-cloud",
+    "active_provider": "gptoss",
+    "provider_status": {
+      "status": "ok",
+      "provider": "gptoss",
+      "model": "gpt-oss:20b-cloud",
+      "available_models": [
+        "llama3.2:1b",
+        "minimax-m3:cloud",
+        "qwen3.5:397b-cloud",
+        "gemma4:31b-cloud",
+        "gpt-oss:20b-cloud"
+      ]
+    },
+    "analysis_status": {
+      "status": "configured",
+      "provider": "gemini_analysis",
+      "model": "gemini-3.5-flash-lite",
+      "fallback_provider": "ollama_analysis",
+      "fallback_model": "gpt-oss:20b-cloud",
+      "primary_min_interval_seconds": 5.0,
+      "retry_after_seconds": 0,
+      "last_error": ""
+    },
+    "unit_pipeline_flag": "<unset>",
+    "translation_cache_enabled": "<unset>",
+    "gptoss_slots": "8",
+    "gptoss_model": "gpt-oss:20b-cloud"
+  },
+  "manifest_sha256": "8689780624e769e03b49856b1e6c93f5679e5b66428e50be5ea9242b46219f31",
+  "findings_sha256": "1eb61243b0f8d9d42367ad82441f6e0cbc6e199ff92160448b8cba2ff905e7a3",
+  "full_run_count": 6,
+  "runs_per_direction": 3
+}

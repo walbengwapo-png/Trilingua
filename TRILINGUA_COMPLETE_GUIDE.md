@@ -35,8 +35,8 @@ LARAVEL (PHP) ─── trilingua-code/
 PYTHON AI ENGINE ─── Model/
   |  server.py — FastAPI entry point
   |  pipeline/ — translation_pipeline.py, document_pipeline.py
-  |  providers/ — gptoss.py, mistral.py (talk to AI APIs)
-  |  ai/ — mistral_provider.py, ollama_provider.py (analysis, non-translation AI)
+  |  providers/ — gptoss.py, gemini.py (talk to AI APIs)
+  |  ai/ — gemini_provider.py, ollama_provider.py (analysis, non-translation AI)
   |  document/ — extractor.py, reconstructor.py, ocr_extractor.py, chunker.py
   |  memory/ — context buffer, glossary, document memory
   |  cache/ — sqlite_cache.py (persistent translation cache)
@@ -47,8 +47,8 @@ PYTHON AI ENGINE ─── Model/
   v
 AI PROVIDER
   - GPT-OSS (Ollama Cloud) = default, runs locally on port 11434
-  - Mistral AI = fallback, cloud API
-  - Analysis (separate): Mistral cloud when key set, else local Ollama
+  - Gemini AI = fallback, cloud API
+  - Analysis (separate): Gemini cloud when key set, else local Ollama
 ```
 
 ---
@@ -63,8 +63,8 @@ AI PROVIDER
 4. **`TranslationController::translate()`** (`TranslationController.php:42`) validates and calls `$this->translationManager->translateText()`
 5. **`TranslationManager::translateText()`** (`TranslationManager.php:46`) sends HTTP POST to Python at `http://127.0.0.1:5000/translate/text`
 6. **`server.py`** (`server.py:269`) receives it, creates a `TranslationRequest` DTO, and calls `_translation_pipeline.translate(request)`
-7. **`TranslationPipeline::translate()`** (`translation_pipeline.py:265`) builds context, then calls `self.provider.translate()` — goes to `GPTOSSProvider` or `MistralProvider`
-8. **Provider** (`gptoss.py` or `mistral.py`) sends the text + system prompt + user prompt to the AI model API
+7. **`TranslationPipeline::translate()`** (`translation_pipeline.py:265`) builds context, then calls `self.provider.translate()` — goes to `GPTOSSProvider` or `GeminiProvider`
+8. **Provider** (`gptoss.py` or `gemini.py`) sends the text + system prompt + user prompt to the AI model API
 9. **AI model** returns translated text
 10. **Response flows back** the same way — Python returns JSON, Laravel returns JSON, browser shows it
 
@@ -77,7 +77,7 @@ AI PROVIDER
 5. **`server.py`** (`server.py:311`) receives file, creates `DocumentTranslationRequest`, calls `_document_pipeline.translate(request)`
 6. **`DocumentPipeline::translate()`** (`document_pipeline.py:124`) orchestrates the whole pipeline:
    - **Extraction** — `document/extractor.py` reads the file format, extracts text blocks with metadata (style, position, font). For PDFs, per-line records with per-span runs and links are captured
-   - **OCR Fallback** — for scanned/image-based PDFs where PyMuPDF extracts nothing, `document/ocr_extractor.py` runs Tesseract OCR at 300 DPI and feeds the blocks back into the pipeline
+   - **Page-level OCR (quality gated)** — selectable PDF pages retain native extraction; scan-only pages require a representative 95% acceptance report for the source language. Tesseract runs at 300 DPI, retains uncertain words for review, and fails explicitly when unavailable or unvalidated. OCR documents use a separate translated-text PDF layout. PNG/JPEG support is implemented but remains disabled until photo categories pass
    - **AI Analysis** (Phase 1) — `document_analyzer.py` sends blocks to analysis AI to detect document type, structure, terminology
    - **Prepass** (Phase 7) — sends first 500 tokens to AI for summary + key terms as context injection
    - **Document Memory** (Phase 2) — builds a cross-document context store
@@ -189,7 +189,7 @@ FastAPI server on port `5000`. Endpoints:
 
 Starts up by:
 1. Loading `.env` vars
-2. Initializing providers (MistralProvider, GPTOSSProvider, OllamaAnalysisProvider)
+2. Initializing providers (GeminiProvider, GPTOSSProvider, OllamaAnalysisProvider)
 3. Creating `TranslationPipeline` + `DocumentPipeline`
 4. Running cold-start pre-warming (imports heavy libs, initializes SQLite cache, warms HTTP pool)
 
@@ -204,8 +204,8 @@ Starts up by:
 |---|---|
 | `base.py` | `TranslationProvider` abstract base class — defines `translate()`, `health()`, `estimate_tokens()` interface |
 | `gptoss.py` | `GPTOSSProvider` — talks to Ollama Cloud API at `localhost:11434`. Uses `requests.Session` with connection pooling. Retries 3x on failure. Validates for hallucinations. |
-| `mistral.py` | `MistralProvider` — talks to `api.mistral.ai`. Handles rate limiting with exponential backoff. 3 retries. |
-| `future_openai.py`, `future_gemini.py`, `future_deepseek.py` | Stubs — raise `NotImplementedError` |
+| `gemini.py` | `GeminiProvider` — calls the Google Gemini `generativelanguage.googleapis.com` API. Handles rate limiting with exponential backoff and three retries. |
+| `future_openai.py`, `gemini.py`, `future_deepseek.py` | Stubs — raise `NotImplementedError` |
 
 **Key pattern**: Providers only communicate with AI APIs. They contain NO prompt engineering, NO document logic, NO validation. Prompts come from `prompts/` module.
 
@@ -222,7 +222,7 @@ Starts up by:
 | File | What It Does |
 |---|---|
 | `extractor.py` | Reads files: DOCX (paragraphs, tables, headers, footers, text boxes with style metadata), PDF (via PyMuPDF — captures per-line records with bbox, baseline, alignment, per-span runs, font/color/bold/italic, and hyperlinks; normalizes subsetted font names), TXT, MD, RTF, ODT, CSV, PPTX, XLSX |
-| `ocr_extractor.py` | OCR fallback for scanned/image-based PDFs. Renders each page at 300 DPI and runs Tesseract OCR (`pytesseract`), producing blocks compatible with the normal pipeline |
+| `ocr_extractor.py` | Quality-gated page-level PDF/image OCR, runtime checks, source geometry, uncertain-word metadata and explicit failures; see `docs/OCR_IMPLEMENTATION_2026-10-25.md` |
 | `reconstructor.py` | Writes translated text back into original format. Key function: `_apply_translation_to_paragraph()` distributes translated text proportionally across runs to preserve per-run formatting. PDF path uses `write_pdf_preserved()` — per-line redact-and-reinsert with run-level formatting, system-font embedding, overflow handling, and hyperlink recreation |
 | `chunker.py` | `ChunkSplitter` — splits text at sentence boundaries, respects max token limits |
 | `semantic_chunker.py` | `SemanticChunker` — replaces naive chunking with structure-aware chunks (keeps headings with content, tables together, lists together). Uses DocumentProfile (NO extra AI calls). |
@@ -267,8 +267,8 @@ Starts up by:
 | File | What It Does |
 |---|---|
 | `base.py` | `AIAnalysisProvider` abstract base — defines `analyze(system_prompt, user_prompt) → dict` interface |
-| `mistral_provider.py` | `MistralAnalysisProvider` — **default analysis provider when `MISTRAL_API_KEY` is set**. Uses the same key as the translation provider (`mistral-small-latest` by default, overridable via `MISTRAL_ANALYSIS_MODEL`). Handles document analysis, quality review, layout planning. Returns parsed JSON. |
-| `ollama_provider.py` | `OllamaAnalysisProvider` — local fallback used when no Mistral key is set. Uses a separate smaller model (`OLLAMA_ANALYSIS_MODEL`, default `llama3.1:8b`) for non-translation AI tasks (document analysis, quality review, layout planning). Returns parsed JSON. |
+| `gemini_provider.py` | `GeminiAnalysisProvider` — **default analysis provider when `GEMINI_API_KEY` is set**. Uses the same key as the translation provider (`gemini-2.5-flash` by default, overridable via `GEMINI_ANALYSIS_MODEL`). Handles document analysis, quality review, layout planning. Returns parsed JSON. |
+| `ollama_provider.py` | `OllamaAnalysisProvider` — local fallback used when no Gemini key is set. Uses a separate smaller model (`OLLAMA_ANALYSIS_MODEL`, default `llama3.1:8b`) for non-translation AI tasks (document analysis, quality review, layout planning). Returns parsed JSON. |
 
 #### `config/`
 | File | What It Does |
@@ -311,7 +311,7 @@ In "auto" mode, the pipeline picks based on file size and complexity.
 7. **Hallucination detection** — regex + AI two-layer validation with automatic retranslation
 8. **Automatic language-specific prompts** — few-shot examples for Cebuano/Filipino with verb-focus preservation
 9. **PDF per-line redact-and-reinsert** — original text replaced line-by-line, preserving images, vector graphics, links, and run-level (bold/italic/size) formatting
-10. **PDF OCR fallback** — scanned/image-based PDFs auto-retry via Tesseract OCR when text extraction yields nothing
+10. **Page-level OCR (gated)** — scan-only PDF pages require validated language/input evidence; native pages retain extraction. Direct image support remains hidden until photo acceptance passes
 
 ---
 
@@ -496,7 +496,7 @@ def translate(self, request: TranslationRequest) -> TranslationResponse:
 
 ### 6. Provider → AI Model API
 
-**`gptoss.py:40-128`** (or `mistral.py:56-226` for Mistral) — Builds prompts, calls model
+**`gptoss.py:40-128`** (or `gemini.py:56-226` for Gemini) — Builds prompts, calls model
 
 ```python
 def translate(self, text, source_lang, target_lang, block_type, context_hint, document_type):

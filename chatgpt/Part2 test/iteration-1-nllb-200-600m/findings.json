@@ -1,0 +1,256 @@
+{
+  "schema_version": 1,
+  "iteration_title": "Part2 Iteration 1 NLLB",
+  "generated_at": "2026-09-22T04:48:06.097155+00:00",
+  "provider": "nllb",
+  "health": {
+    "status": "ok",
+    "engine": "provider:nllb",
+    "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+    "active_provider": "nllb",
+    "fallback_provider": null,
+    "available_providers": [
+      "gemini",
+      "gptoss",
+      "nllb"
+    ],
+    "languages": [
+      "English",
+      "Cebuano",
+      "Filipino"
+    ],
+    "formats": [
+      ".csv",
+      ".docx",
+      ".md",
+      ".odt",
+      ".pdf",
+      ".pptx",
+      ".rtf",
+      ".txt",
+      ".xlsx"
+    ],
+    "provider_status": {
+      "status": "ok",
+      "provider": "nllb",
+      "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+      "loaded": false,
+      "local_files_only": true
+    },
+    "analysis_status": {
+      "status": "configured",
+      "provider": "gemini_analysis",
+      "model": "gemini-3.5-flash-lite",
+      "fallback_provider": "ollama_analysis",
+      "fallback_model": "gpt-oss:20b-cloud",
+      "primary_min_interval_seconds": 5.0,
+      "retry_after_seconds": 0,
+      "last_error": ""
+    }
+  },
+  "manifest_path": "C:\\dev\\Trilingua\\chatgpt\\Part2 test\\iteration-1-nllb-200-600m\\benchmark-manifest.json",
+  "full_runs": [
+    {
+      "id": "en-to-ceb",
+      "source": "60 Heaven  God s Beautiful Home.pdf",
+      "reference": "60 Langit  Ang Nindot nga Puluy-anan sa Dios.pdf",
+      "source_language": "English",
+      "target_language": "Cebuano",
+      "source_sha256": "26e73702e3464b74541e29779b64a29d5957fb3a229898ca95cdb29132c6370e",
+      "reference_sha256": "b621fe5f4cd3c06bde32558edb94bd7dd517996de18012aa06abc0901776bd53",
+      "output_path": "C:\\dev\\Trilingua\\chatgpt\\Part2 test\\iteration-1-nllb-200-600m\\translated-files\\en-to-ceb.pdf",
+      "elapsed_ms": 196394.46,
+      "status": "completed",
+      "engine_response": {
+        "download_filename": "60 Heaven  God s Beautiful Home_translated.pdf",
+        "mime_type": "application/pdf",
+        "metrics": {
+          "provider": "nllb",
+          "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+          "mode": "fast",
+          "total_time_ms": 196281.5,
+          "llm_calls": 49,
+          "llm_total_time_ms": 155724.6,
+          "scheduler_wait_ms": 0.0,
+          "scheduler_batches": 0,
+          "scheduler_slots": 0,
+          "echo_retries": 0,
+          "semantic_fallbacks": 0,
+          "batch_fallbacks": 0,
+          "total_blocks": 49,
+          "blocks_translated": 49,
+          "blocks_cached": 0,
+          "blocks_passthrough": 0,
+          "retranslated_chunks": 0,
+          "cache_hits": 0,
+          "cache_misses": 0,
+          "document_type": "unknown",
+          "providers_used": {
+            "nllb": {
+              "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+              "calls": 49
+            }
+          },
+          "provider_chain": [
+            "nllb"
+          ]
+        }
+      },
+      "output_sha256": "4026a1c4d30a9adfee94a4a9a7191421a9af09417c2129578ea9adf526d87a21",
+      "output_bytes": 2212490,
+      "structure": {
+        "page_count": 25,
+        "text_characters": 5719,
+        "non_empty_text": true,
+        "page_count_matches_source": true,
+        "layout_validation": "pass"
+      },
+      "quality": {
+        "bleu": 26.67,
+        "chrf": 58.44,
+        "hypothesis_characters": 5719,
+        "reference_characters": 7114,
+        "normalization": "all pages; whitespace collapsed; no content removed"
+      }
+    },
+    {
+      "id": "ceb-to-en",
+      "source": "60 Langit  Ang Nindot nga Puluy-anan sa Dios.pdf",
+      "reference": "60 Heaven  God s Beautiful Home.pdf",
+      "source_language": "Cebuano",
+      "target_language": "English",
+      "source_sha256": "b621fe5f4cd3c06bde32558edb94bd7dd517996de18012aa06abc0901776bd53",
+      "reference_sha256": "26e73702e3464b74541e29779b64a29d5957fb3a229898ca95cdb29132c6370e",
+      "output_path": "C:\\dev\\Trilingua\\chatgpt\\Part2 test\\iteration-1-nllb-200-600m\\translated-files\\ceb-to-en.pdf",
+      "elapsed_ms": 146823.15,
+      "status": "completed",
+      "engine_response": {
+        "download_filename": "60 Langit  Ang Nindot nga Puluy-anan sa Dios_translated.pdf",
+        "mime_type": "application/pdf",
+        "metrics": {
+          "provider": "nllb",
+          "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+          "mode": "fast",
+          "total_time_ms": 146706.8,
+          "llm_calls": 48,
+          "llm_total_time_ms": 132851.8,
+          "scheduler_wait_ms": 0.0,
+          "scheduler_batches": 0,
+          "scheduler_slots": 0,
+          "echo_retries": 0,
+          "semantic_fallbacks": 0,
+          "batch_fallbacks": 0,
+          "total_blocks": 49,
+          "blocks_translated": 48,
+          "blocks_cached": 0,
+          "blocks_passthrough": 1,
+          "retranslated_chunks": 0,
+          "cache_hits": 0,
+          "cache_misses": 0,
+          "document_type": "unknown",
+          "providers_used": {
+            "nllb": {
+              "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+              "calls": 48
+            }
+          },
+          "provider_chain": [
+            "nllb"
+          ]
+        }
+      },
+      "output_sha256": "818a193de305402a3365031e387172d948d0adb9846a385169f6b0da09e15a36",
+      "output_bytes": 2216220,
+      "structure": {
+        "page_count": 25,
+        "text_characters": 5068,
+        "non_empty_text": true,
+        "page_count_matches_source": true,
+        "layout_validation": "pass"
+      },
+      "quality": {
+        "bleu": 31.03,
+        "chrf": 57.0,
+        "hypothesis_characters": 5068,
+        "reference_characters": 5763,
+        "normalization": "all pages; whitespace collapsed; no content removed"
+      }
+    }
+  ],
+  "stability_runs": {
+    "en-to-ceb": {
+      "input_pages": [
+        2,
+        3
+      ],
+      "input_characters": 529,
+      "samples": [
+        {
+          "run": 1,
+          "status": "completed",
+          "latency_ms": 15174.8,
+          "provider_reported_latency_ms": 15136.945962905884,
+          "output_sha256": "912fe7ec45c7e0d782caeb90baf989cd29518b3a7565b5d7dc6221a97943bce0",
+          "output_characters": 516
+        },
+        {
+          "run": 2,
+          "status": "completed",
+          "latency_ms": 13001.48,
+          "provider_reported_latency_ms": 12995.016098022461,
+          "output_sha256": "912fe7ec45c7e0d782caeb90baf989cd29518b3a7565b5d7dc6221a97943bce0",
+          "output_characters": 516
+        },
+        {
+          "run": 3,
+          "status": "completed",
+          "latency_ms": 19775.96,
+          "provider_reported_latency_ms": 19763.39602470398,
+          "output_sha256": "912fe7ec45c7e0d782caeb90baf989cd29518b3a7565b5d7dc6221a97943bce0",
+          "output_characters": 516
+        }
+      ],
+      "successful_runs": 3,
+      "median_latency_ms": 15174.8,
+      "distinct_output_hashes": 1,
+      "stable_output": true
+    },
+    "ceb-to-en": {
+      "input_pages": [
+        2,
+        3
+      ],
+      "input_characters": 548,
+      "samples": [
+        {
+          "run": 1,
+          "status": "completed",
+          "latency_ms": 11062.71,
+          "provider_reported_latency_ms": 11052.28042602539,
+          "output_sha256": "257000c51265e9287a65c6eb21395baec7ff8a0859483f802dddc5714150f519",
+          "output_characters": 270
+        },
+        {
+          "run": 2,
+          "status": "completed",
+          "latency_ms": 10321.64,
+          "provider_reported_latency_ms": 10318.226099014282,
+          "output_sha256": "257000c51265e9287a65c6eb21395baec7ff8a0859483f802dddc5714150f519",
+          "output_characters": 270
+        },
+        {
+          "run": 3,
+          "status": "completed",
+          "latency_ms": 10218.6,
+          "provider_reported_latency_ms": 10198.563814163208,
+          "output_sha256": "257000c51265e9287a65c6eb21395baec7ff8a0859483f802dddc5714150f519",
+          "output_characters": 270
+        }
+      ],
+      "successful_runs": 3,
+      "median_latency_ms": 10321.64,
+      "distinct_output_hashes": 1,
+      "stable_output": true
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "application_and_env_byte_changes": [],
+  "retained_commit": "6af226dd3d780492ed5308ed271af6decc016aba",
+  "held_regions": [
+    {
+      "page": 1,
+      "kind": "raster",
+      "bbox": [
+        112.0,
+        90.16256713867188,
+        500.0,
+        355.8374328613281
+      ],
+      "reason": "ocr_acceptance_hold"
+    },
+    {
+      "page": 1,
+      "kind": "raster",
+      "bbox": [
+        48.0,
+        552.0,
+        564.0,
+        620.0
+      ],
+      "reason": "ocr_acceptance_hold"
+    },
+    {
+      "page": 2,
+      "kind": "raster",
+      "bbox": [
+        158.0,
+        42.16009521484375,
+        454.0,
+        244.83990478515625
+      ],
+      "reason": "ocr_acceptance_hold"
+    },
+    {
+      "page": 2,
+      "kind": "raster",
+      "bbox": [
+        48.0,
+        505.0,
+        564.0,
+        585.0
+      ],
+      "reason": "ocr_acceptance_hold"
+    }
+  ],
+  "text_changes": 5,
+  "visual_review": "Both current output pages rendered with Poppler and inspected; native text left aligned and readable; both image dialogue passages still English. Linguistic errors remain.",
+  "verification_note": "Initial helper pointed to prior output; corrected path and verification was rerun against this output."
+}

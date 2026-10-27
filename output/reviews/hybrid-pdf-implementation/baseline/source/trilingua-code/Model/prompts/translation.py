@@ -1,0 +1,119 @@
+# -*- coding: utf-8 -*-
+"""
+Translation prompt builder.
+
+Builds the user message for translation requests.
+Contains few-shot examples and language-specific instructions.
+
+Contains NO provider-specific code.
+Changing prompts here affects all providers.
+
+OPTIMIZATION: Expanded Cebuano/Filipino few-shot examples with verb-focus
+preservation and proper noun handling (Task 6).
+"""
+
+
+def build_translation_prompt(text: str, source_lang: str, target_lang: str,
+                             block_type: str = "paragraph") -> str:
+    """Build the user prompt for a translation request.
+
+    Args:
+        text: The source text to translate.
+        source_lang: Source language name (e.g. "English").
+        target_lang: Target language name (e.g. "Cebuano").
+        block_type: Type of text block (paragraph, header, table_cell, etc.).
+
+    Returns:
+        A user prompt string.
+    """
+    # Map block type to human-readable description
+    type_descriptions = {
+        "paragraph":  "a body paragraph",
+        "header":     "a document header",
+        "footer":     "a document footer",
+        "text_box":   "a text box",
+        "table_cell": "a table cell",
+        "heading":    "a document heading",
+        "list_item":  "a list item",
+    }
+    type_desc = type_descriptions.get(block_type, block_type)
+
+    user_msg = f"Translate this {type_desc} from {source_lang} to {target_lang}.\n"
+    user_msg += (
+        "Return only the translation. Preserve names, initials, numbers, dates, URLs, "
+        "email addresses, identifiers, and intentional line breaks exactly unless the "
+        "source itself requires localized wording. Keep the original meaning, tense, "
+        "formality, and level of certainty; do not add explanations or omit details.\n"
+    )
+
+    if target_lang.lower() == "cebuano":
+        user_msg += (
+            "Use natural contemporary Cebuano: choose the verb focus and aspect that "
+            "matches the source, keep pronouns and politeness consistent, and prefer "
+            "clear native phrasing over word-for-word English structure.\n"
+        )
+    elif target_lang.lower() == "filipino":
+        user_msg += (
+            "Use natural contemporary Filipino: keep aspect, voice, formality, and "
+            "pronouns consistent, and prefer idiomatic Filipino over word-for-word "
+            "English structure.\n"
+        )
+
+    # OPTIMIZATION: Expanded few-shot examples (Task 6)
+    # Add few-shot examples for Cebuano and Filipino
+    if target_lang.lower() in ("cebuano", "filipino"):
+        user_msg += f"\nExamples:\n"
+        user_msg += (
+            "  Coherence: translate the whole paragraph as flowing text. Keep names, "
+            "places, and repeated terms consistent with the rest of the text and use "
+            "the same translation for the same term every time.\n"
+        )
+        if target_lang.lower() == "cebuano":
+            user_msg += (
+                "  EN: I am going to the market. → CEB: Moadto ko sa merkado.\n"
+                "  EN: What is your name? → CEB: Unsa imong pangalan?\n"
+                "  EN: The cat sat on the mat. → CEB: Lingkod ang iring sa banig.\n"
+                "  EN: 123 Main Street → CEB: 123 Main Street\n"
+                "  EN: She will cook food for the party. → CEB: Magluto siyag pagkaon alang sa party.\n"
+                "       (natural Cebuano with mag- actor focus; 'party' kept as borrowed term)\n"
+                "  EN: The book was written by Dr. Santos. → CEB: Gisulat ni Dr. Santos ang libro.\n"
+                "       (active voice in Cebuano; 'Dr. Santos' preserved)\n"
+                "  EN: Please call me tomorrow. → CEB: Palihug tawagi ko ugma.\n"
+                "       ('please' → 'palihug'; '-an' directional focus; 'ugma' natural time word)\n"
+            )
+        elif target_lang.lower() == "filipino":
+            user_msg += (
+                "  EN: I am going to the market. → FIL: Pupunta ako sa palengke.\n"
+                "  EN: What is your name? → FIL: Ano ang pangalan mo?\n"
+                "  EN: The cat sat on the mat. → FIL: Umupo ang pusa sa banig.\n"
+                "  EN: 123 Main Street → FIL: 123 Main Street\n"
+                "  EN: She will cook food for the party. → FIL: Magluluto siya ng pagkain para sa party.\n"
+                "       (natural Filipino with mag- actor focus; 'party' kept as borrowed term)\n"
+                "  EN: The book was written by Dr. Santos. → FIL: Isinulat ni Dr. Santos ang libro.\n"
+                "       (active voice in Filipino; 'Dr. Santos' preserved)\n"
+                "  EN: Please call me tomorrow. → FIL: Paki-tawagan mo ako bukas.\n"
+                "       ('please' → 'paki-'; '-an' directional focus; 'bukas' natural time word)\n"
+            )
+
+    user_msg += f"\nSource text:\n{text}"
+    return user_msg
+
+
+def build_validation_prompt(source_text: str, translated_text: str) -> str:
+    """Build a prompt to validate a translation.
+
+    Args:
+        source_text: The original source text.
+        translated_text: The translated text to validate.
+
+    Returns:
+        A prompt string for quality validation.
+    """
+    return (
+        f"Source text:\n{source_text}\n\n"
+        f"Translation:\n{translated_text}\n\n"
+        "Is this translation accurate and complete? "
+        "Check: missing content, added content, number preservation, "
+        "name preservation, and naturalness. "
+        "Respond with 'PASS' or 'FAIL: <reason>'."
+    )

@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "title": "Part2 Iteration 1 NLLB Evaluation",
+  "generated_at": "2026-09-22T04:48:06.097155+00:00",
+  "provider": "nllb",
+  "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+  "server_url": "http://127.0.0.1:5001",
+  "processing_mode": "fast",
+  "translation_fallback_disabled": true,
+  "translation_cache_disabled": true,
+  "pairs": [
+    {
+      "id": "en-to-ceb",
+      "source_path": "C:\\dev\\Trilingua\\chatgpt\\Part2 test\\60 Heaven  God s Beautiful Home.pdf",
+      "source_sha256": "26e73702e3464b74541e29779b64a29d5957fb3a229898ca95cdb29132c6370e",
+      "reference_path": "C:\\dev\\Trilingua\\chatgpt\\Part2 test\\60 Langit  Ang Nindot nga Puluy-anan sa Dios.pdf",
+      "reference_sha256": "b621fe5f4cd3c06bde32558edb94bd7dd517996de18012aa06abc0901776bd53",
+      "source_language": "English",
+      "target_language": "Cebuano",
+      "source_structure": {
+        "page_count": 25,
+        "text_characters": 5763,
+        "non_empty_text": true,
+        "page_count_matches_source": true,
+        "layout_validation": "pass"
+      }
+    },
+    {
+      "id": "ceb-to-en",
+      "source_path": "C:\\dev\\Trilingua\\chatgpt\\Part2 test\\60 Langit  Ang Nindot nga Puluy-anan sa Dios.pdf",
+      "source_sha256": "b621fe5f4cd3c06bde32558edb94bd7dd517996de18012aa06abc0901776bd53",
+      "reference_path": "C:\\dev\\Trilingua\\chatgpt\\Part2 test\\60 Heaven  God s Beautiful Home.pdf",
+      "reference_sha256": "26e73702e3464b74541e29779b64a29d5957fb3a229898ca95cdb29132c6370e",
+      "source_language": "Cebuano",
+      "target_language": "English",
+      "source_structure": {
+        "page_count": 25,
+        "text_characters": 7114,
+        "non_empty_text": true,
+        "page_count_matches_source": true,
+        "layout_validation": "pass"
+      }
+    }
+  ],
+  "score_method": "Corpus BLEU and chrF over all PDF pages after whitespace normalization only."
+}

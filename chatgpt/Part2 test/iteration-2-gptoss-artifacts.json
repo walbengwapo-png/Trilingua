@@ -1,0 +1,38 @@
+{
+  "iteration_title": "Part2 Iteration 2 GPT OSS supplied artifacts",
+  "method": "Corpus BLEU and chrF over all PDF pages after whitespace normalization only.",
+  "gptoss_artifacts": [
+    {
+      "id": "en-to-ceb",
+      "direction": "English to Cebuano",
+      "source": "60 Heaven  God s Beautiful Home.pdf",
+      "reference": "60 Langit  Ang Nindot nga Puluy-anan sa Dios.pdf",
+      "output": "e598d3ff-796c-4e07-890c-3b8be50b0875.pdf",
+      "output_path": "C:\\dev\\Trilingua\\chatgpt\\Part2 test\\gpt-oss\\e598d3ff-796c-4e07-890c-3b8be50b0875.pdf",
+      "output_sha256": "298f3885985b6a7a408ad1fd507c0fb3132545b1b2da4185c13aa269dca5354f",
+      "page_count": 25,
+      "text_characters": 6217,
+      "layout_validation": "pass",
+      "bleu": 29.68,
+      "chrf": 61.86,
+      "runtime_metadata": "Not supplied with the PDF artifact",
+      "normalization": "all pages; whitespace collapsed; no content removed"
+    },
+    {
+      "id": "ceb-to-en",
+      "direction": "Cebuano to English",
+      "source": "60 Langit  Ang Nindot nga Puluy-anan sa Dios.pdf",
+      "reference": "60 Heaven  God s Beautiful Home.pdf",
+      "output": "60 Langit  Ang Nindot nga Puluy-anan sa Dios_translated.pdf",
+      "output_path": "C:\\dev\\Trilingua\\chatgpt\\Part2 test\\gpt-oss\\60 Langit  Ang Nindot nga Puluy-anan sa Dios_translated.pdf",
+      "output_sha256": "e02ffa624bd9cbd883d5a0550095b513f15c53201069cddb65367bac8ea1b335",
+      "page_count": 25,
+      "text_characters": 6069,
+      "layout_validation": "pass",
+      "bleu": 52.52,
+      "chrf": 74.33,
+      "runtime_metadata": "Not supplied with the PDF artifact",
+      "normalization": "all pages; whitespace collapsed; no content removed"
+    }
+  ]
+}

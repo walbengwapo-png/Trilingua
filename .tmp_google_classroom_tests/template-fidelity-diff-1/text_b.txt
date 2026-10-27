@@ -1,0 +1,424 @@
+PROJECT NAME:
+Google Classroom Student Test Cases
+MODULE NAME:
+Stream - Announcements
+ENVIRONMENT:
+Web app - supported browser - school student account
+CREATED BY:
+Student Testing Team
+DATE OF CREATION:
+10 September 2026
+DATE OF REVIEW:
+To be completed
+TEST CASE ID:
+TC_STR_001
+TEST SCENARIO:
+Verify that students can view teacher announcements in the Stream.
+TEST CASE
+PRE-CONDITION(S)
+PROCEDURE(S)
+TEST DATA
+EXPECTED RESULT
+ACTUAL RESULT
+STATUS
+View the newest announcement.
+Student is enrolled; teacher posted two announcements.
+1. Open the class.2. Select Stream.3. Locate the newest announcement.
+Two dated announcements with distinct text.
+Both announcements appear, with the newest item shown first unless the teacher moved a post.
+Not Tested
+Open announcement details.
+An announcement contains text and an attachment.
+1. Open Stream.2. Select the announcement.3. Review the text and attachment.
+Announcement with a PDF or image.
+The full announcement text, teacher name, posting time, and attachment are visible.
+Not Tested
+Open an announcement attachment.
+The student has access to the attached resource.
+1. Open the announcement.2. Select the attachment.3. Return to Classroom.
+Accessible Drive file or web link.
+The resource opens successfully and the student can return to the same Stream position.
+Not Tested
+Retain announcements after refresh.
+The class Stream is loaded.
+1. Note the visible announcements.2. Refresh the browser.3. Compare the Stream.
+Existing Stream posts.
+The same authorized announcements remain visible without duplication or data loss.
+Not Tested
+Hide a scheduled announcement before release.
+Teacher scheduled an announcement for a later time.
+1. Open Stream before release.2. Search the visible posts.3. Recheck after release time.
+Scheduled announcement and release time.
+The post is hidden before release and appears after the scheduled time.
+Not Tested
+PROJECT NAME:
+Google Classroom Student Test Cases
+MODULE NAME:
+Stream - Comments
+ENVIRONMENT:
+Web app - supported browser - school student account
+CREATED BY:
+Student Testing Team
+DATE OF CREATION:
+10 September 2026
+DATE OF REVIEW:
+To be completed
+TEST CASE ID:
+TC_STR_002
+TEST SCENARIO:
+Verify student class comments, replies, deletion, and permission handling.
+TEST CASE
+PRE-CONDITION(S)
+PROCEDURE(S)
+TEST DATA
+EXPECTED RESULT
+ACTUAL RESULT
+STATUS
+Post a class comment.
+Teacher allows students to comment on the selected post.
+1. Select Add class comment.2. Enter the test comment.3. Select Post.
+Comment: Thank you for the reminder.
+The comment appears once with the student's name and posting time.
+Not Tested
+Reply to an existing comment.
+A classmate comment is visible and replies are allowed.
+1. Select Reply on the comment.2. Enter a response.3. Select Post.
+Reply: I found the file.
+The reply appears under the thread and identifies or mentions the original commenter.
+Not Tested
+Delete the student's own comment.
+The student has posted a test comment.
+1. Open the comment menu.2. Select Delete.3. Confirm deletion.
+Student-owned test comment.
+The comment is removed from the student's view after confirmation.
+Not Tested
+Prevent deletion of another user's comment.
+A teacher or classmate comment is visible.
+1. Open the other user's comment menu.2. Review available actions.
+Comment owned by another class member.
+No student option is available to delete or edit the other user's comment.
+Not Tested
+Honor disabled commenting.
+Teacher disabled comments or muted the test student.
+1. Open Stream.2. Open a post with comments.3. Check for comment controls.
+Class with restricted student commenting.
+Posting controls are absent or disabled and the existing Stream remains viewable.
+Not Tested
+PROJECT NAME:
+Google Classroom Student Test Cases
+MODULE NAME:
+Stream - Materials
+ENVIRONMENT:
+Web app - supported browser - school student account
+CREATED BY:
+Student Testing Team
+DATE OF CREATION:
+10 September 2026
+DATE OF REVIEW:
+To be completed
+TEST CASE ID:
+TC_STR_003
+TEST SCENARIO:
+Verify that students can find and open materials shared through the Stream.
+TEST CASE
+PRE-CONDITION(S)
+PROCEDURE(S)
+TEST DATA
+EXPECTED RESULT
+ACTUAL RESULT
+STATUS
+View a newly posted material.
+Teacher published class material to the class.
+1. Open Stream.2. Locate the material post.3. Review its title and description.
+Material title, description, and posting date.
+The material post displays the correct title, description, teacher, and date.
+Not Tested
+Open a Drive material.
+A viewable Drive file is attached to the material.
+1. Select the material post.2. Open the Drive attachment.3. Check access mode.
+View-only Google Doc, Sheet, or Slide.
+The correct file opens and the student's access matches the teacher's sharing setting.
+Not Tested
+Open an external material link.
+The material contains a valid HTTPS link.
+1. Open the material.2. Select the link.3. Verify the destination.
+Teacher-approved website URL.
+The expected website opens without changing or corrupting the Classroom post.
+Not Tested
+Handle an unavailable attachment.
+The linked file was removed or access was revoked.
+1. Open the material post.2. Select the unavailable attachment.
+Restricted or deleted test file.
+A clear access or availability message appears; Classroom remains responsive.
+Not Tested
+Match Stream and Classwork material.
+The same published material is listed in Classwork.
+1. Note the Stream material.2. Open Classwork.3. Find the same material.
+Published material assigned to one topic.
+Title, description, attachments, and access are consistent in both locations.
+Not Tested
+PROJECT NAME:
+Google Classroom Student Test Cases
+MODULE NAME:
+Classwork - Viewing
+ENVIRONMENT:
+Web app - supported browser - school student account
+CREATED BY:
+Student Testing Team
+DATE OF CREATION:
+10 September 2026
+DATE OF REVIEW:
+To be completed
+TEST CASE ID:
+TC_CWK_001
+TEST SCENARIO:
+Verify that students can view assigned classwork and supporting details.
+TEST CASE
+PRE-CONDITION(S)
+PROCEDURE(S)
+TEST DATA
+EXPECTED RESULT
+ACTUAL RESULT
+STATUS
+View classwork grouped by topic.
+Teacher published items under multiple topics.
+1. Open Classwork.2. Review topic sections.3. Select one topic.
+Two topics with assignments and materials.
+Published items appear under the correct topics and topic filtering shows only matching items.
+Not Tested
+Open assignment instructions.
+A published assignment is assigned to the student.
+1. Select the assignment.2. Select View instructions or View assignment.3. Review details.
+Assignment with title and instructions.
+The correct title, instructions, teacher, and assigned status are displayed.
+Not Tested
+View due date and points.
+The assignment has a due date and point value.
+1. Open the assignment.2. Locate due date and points.3. Compare with teacher setup.
+Known date, time, and point value.
+The student sees the correct due date, due time, time zone behavior, and points.
+Not Tested
+View attachments and rubric.
+The assignment includes resources and a rubric.
+1. Open the assignment.2. Open each resource.3. Expand the rubric.
+Drive file, link, and rubric criteria.
+All authorized resources open and the complete rubric criteria and points are readable.
+Not Tested
+Hide unassigned or draft work.
+Teacher has a draft or work assigned to other students only.
+1. Open Classwork as the test student.2. Search topics and the work list.
+Draft or individually assigned test item.
+The student cannot see classwork that was not published or assigned to that account.
+Not Tested
+PROJECT NAME:
+Google Classroom Student Test Cases
+MODULE NAME:
+Classwork - Submitting
+ENVIRONMENT:
+Web app - supported browser - school student account
+CREATED BY:
+Student Testing Team
+DATE OF CREATION:
+10 September 2026
+DATE OF REVIEW:
+To be completed
+TEST CASE ID:
+TC_CWK_002
+TEST SCENARIO:
+Verify assignment submission with files, links, and confirmation controls.
+TEST CASE
+PRE-CONDITION(S)
+PROCEDURE(S)
+TEST DATA
+EXPECTED RESULT
+ACTUAL RESULT
+STATUS
+Submit an uploaded file.
+Assignment accepts work; test file is available locally.
+1. Open the assignment.2. Add or create a file.3. Select Turn in and confirm.
+PDF or DOCX under the allowed size.
+The attachment is listed and the assignment status changes to Turned in once.
+Not Tested
+Submit a Drive file.
+Student owns an accessible Drive file.
+1. Open Your work.2. Add the Drive file.3. Turn in and confirm.
+Student-owned Google Doc.
+The selected file is attached and the teacher can receive the submitted version.
+Not Tested
+Mark work as done without a file.
+Teacher created an assignment that requires no attachment.
+1. Open the assignment.2. Select Mark as done.3. Confirm.
+No-attachment assignment.
+The status changes to Turned in and no unexpected attachment is created.
+Not Tested
+Cancel submission confirmation.
+Work is attached but not yet submitted.
+1. Select Turn in.2. Cancel in the confirmation dialog.3. Review the status.
+One attached test file.
+The assignment remains unsubmitted and the attachment stays available for review.
+Not Tested
+Handle a deadline submission.
+Teacher provides a controlled assignment at or after its due time.
+1. Open the assignment near the deadline.2. Attempt to submit.3. Review status or message.
+Known due date and synchronized clock.
+Classroom follows the configured deadline behavior and clearly shows Late or a submission restriction.
+Not Tested
+PROJECT NAME:
+Google Classroom Student Test Cases
+MODULE NAME:
+Classwork - Resubmitting and Comments
+ENVIRONMENT:
+Web app - supported browser - school student account
+CREATED BY:
+Student Testing Team
+DATE OF CREATION:
+10 September 2026
+DATE OF REVIEW:
+To be completed
+TEST CASE ID:
+TC_CWK_003
+TEST SCENARIO:
+Verify unsubmission, resubmission, and private assignment comments.
+TEST CASE
+PRE-CONDITION(S)
+PROCEDURE(S)
+TEST DATA
+EXPECTED RESULT
+ACTUAL RESULT
+STATUS
+Unsubmit work before the due date.
+Assignment is Turned in and the due date has not passed.
+1. Open the assignment.2. Select Unsubmit.3. Confirm.
+Previously submitted assignment.
+The assignment becomes editable and its status changes from Turned in to Assigned.
+Not Tested
+Replace work and resubmit.
+The student successfully unsubmitted the assignment.
+1. Remove the old attachment.2. Add the revised file.3. Turn in and confirm.
+Original file and revised file.
+Only the intended revised work is submitted and the status returns to Turned in.
+Not Tested
+Preserve resubmission status after refresh.
+Revised work was turned in successfully.
+1. Refresh the browser.2. Reopen the assignment.3. Check Your work.
+Resubmitted assignment.
+The Turned in state and revised attachment remain visible without duplicate files.
+Not Tested
+Post a private comment.
+The student can open the assignment details.
+1. Enter a private comment.2. Select Post.3. Refresh the assignment.
+Comment: Please confirm that my revision opens.
+The comment appears once in the private thread and is visible only to the student and teacher.
+Not Tested
+View a teacher reply to a private comment.
+Teacher replied to the student's private comment.
+1. Open the assignment.2. Review the private comment thread.3. Open any notification.
+Teacher reply in the test thread.
+The reply is readable, attributed to the teacher, and linked to the correct assignment.
+Not Tested
+PROJECT NAME:
+Google Classroom Student Test Cases
+MODULE NAME:
+People - Viewing and Email
+ENVIRONMENT:
+Web app - supported browser - school student account
+CREATED BY:
+Student Testing Team
+DATE OF CREATION:
+10 September 2026
+DATE OF REVIEW:
+To be completed
+TEST CASE ID:
+TC_PPL_001
+TEST SCENARIO:
+Verify the class roster and student email actions on the People page.
+TEST CASE
+PRE-CONDITION(S)
+PROCEDURE(S)
+TEST DATA
+EXPECTED RESULT
+ACTUAL RESULT
+STATUS
+View teachers and classmates.
+Student is enrolled in a class with teachers and classmates.
+1. Open the class.2. Select People.3. Review both roster sections.
+Known teacher and student roster.
+Teachers and Students sections show the expected authorized class members.
+Not Tested
+Protect roster information.
+The People page is open with a student account.
+1. Review visible profile details.2. Compare with account permissions.
+Class member names, photos, and permitted email links.
+Only information allowed for the student's role and school settings is displayed.
+Not Tested
+Send an email to a teacher.
+School Gmail and Directory services allow student email.
+1. Select Email beside the teacher.2. Enter subject and message.3. Send the test email.
+Subject: Classroom test; approved test message.
+A compose window opens with the teacher addressed and the sent message appears in Sent mail.
+Not Tested
+Send an email to a classmate.
+Student-to-student email is enabled for the school account.
+1. Select Email beside a classmate.2. Enter subject and message.3. Send the test email.
+Approved recipient and harmless test message.
+The compose window addresses the selected classmate and the email sends once.
+Not Tested
+Handle email when disabled.
+Administrator disabled Gmail or Directory access for students.
+1. Open People.2. Review teacher and classmate actions.
+Student account with email disabled.
+Email links are absent or unavailable; the roster remains visible according to policy.
+Not Tested
+PROJECT NAME:
+Google Classroom Student Test Cases
+MODULE NAME:
+Additional Student Scenarios
+ENVIRONMENT:
+Web app - supported browser - school student account
+CREATED BY:
+Student Testing Team
+DATE OF CREATION:
+10 September 2026
+DATE OF REVIEW:
+To be completed
+TEST CASE ID:
+TC_EXT_001
+TEST SCENARIO:
+Verify navigation, isolation, refresh behavior, and keyboard access.
+TEST CASE
+PRE-CONDITION(S)
+PROCEDURE(S)
+TEST DATA
+EXPECTED RESULT
+ACTUAL RESULT
+STATUS
+Navigate between class tabs.
+The student is viewing an enrolled class.
+1. Open Stream.2. Open Classwork.3. Open People.4. Return to Stream.
+One active class.
+Each tab loads the correct module without signing out or mixing content.
+Not Tested
+Keep classes isolated.
+The student belongs to two classes with distinct test content.
+1. Open Class A and note content.2. Switch to Class B.3. Compare items and roster.
+Two classes with unique posts and members.
+Only the selected class's posts, work, people, and private comments are shown.
+Not Tested
+Reject an unauthorized class URL.
+Student is not enrolled in the target class.
+1. Open the supplied direct class URL.2. Observe the response.
+URL for a class outside the student's access.
+Classroom denies access or requests a valid invitation without exposing class data.
+Not Tested
+Recover after browser refresh.
+Student is signed in and viewing an assignment.
+1. Refresh the page.2. Use browser Back and Forward.3. Reopen the item.
+Valid signed-in session.
+The session remains valid and navigation returns to the correct authorized content.
+Not Tested
+Use keyboard navigation.
+Supported browser and keyboard-only input are available.
+1. Press Tab through controls.2. Activate tabs and an item with Enter.3. Return with keyboard.
+Stream post, assignment, and People entry.
+Focus is visible, controls have meaningful names, and core student tasks work without a mouse.
+Not Tested

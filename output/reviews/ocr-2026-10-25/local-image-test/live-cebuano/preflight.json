@@ -1,0 +1,15 @@
+{
+  "document_limit": 1,
+  "input": "C:\\Users\\walbe\\OneDrive\\Desktop\\DFS\\Facebook Marketing\\day-03-five-second-test-1080x1350.png",
+  "source_language": "English",
+  "target_language": "Cebuano",
+  "provider": "gptoss",
+  "model": "gpt-oss:20b-cloud",
+  "billing": "Existing configured Ollama Cloud account usage; exact incremental charge is not exposed by this API. No purchase or subscription change.",
+  "mode": "fast",
+  "analysis_and_quality_provider_calls": false,
+  "provider_http_attempts_per_request": 1,
+  "provider_timeout_seconds": 60,
+  "release_gate": "Stubbed only in this isolated diagnostic process; no release acceptance or app upload enabling.",
+  "ocr_corrections": "None. Test the raw extracted text."
+}

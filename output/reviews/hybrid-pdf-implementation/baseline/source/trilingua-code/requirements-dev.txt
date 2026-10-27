@@ -1,0 +1,6 @@
+# Development and testing dependencies for the Trilingua translation pipeline
+# Install with: pip install -r requirements-dev.txt
+
+pytest==9.0.3
+hypothesis==6.152.4
+sacrebleu==2.6.0

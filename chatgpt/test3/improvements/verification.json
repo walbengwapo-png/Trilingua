@@ -1,0 +1,289 @@
+{
+  "date": "2026-10-05",
+  "evidence_type": "Local mocked tests and offline saved-translation replay",
+  "provider_requests": 0,
+  "tests": {
+    "focused-tests": {
+      "tests": "176",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "23.411"
+    },
+    "local-tests": {
+      "tests": "234",
+      "failures": "7",
+      "errors": "0",
+      "skipped": "0",
+      "time": "61.677"
+    },
+    "chunk-recheck": {
+      "tests": "1",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "5.538"
+    }
+  },
+  "graphics_checks": [
+    {
+      "id": 1,
+      "source_page": 1,
+      "block": 11,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 1,
+      "block": 11,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 1,
+      "block": 16,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 1,
+      "block": 18,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 1,
+      "block": 18,
+      "pixels_identical": false
+    },
+    {
+      "id": 1,
+      "source_page": 1,
+      "block": 24,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 1,
+      "block": 28,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 1,
+      "block": 28,
+      "pixels_identical": false
+    },
+    {
+      "id": 1,
+      "source_page": 1,
+      "block": 34,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 1,
+      "block": 35,
+      "pixels_identical": false
+    },
+    {
+      "id": 1,
+      "source_page": 1,
+      "block": 38,
+      "pixels_identical": false
+    },
+    {
+      "id": 1,
+      "source_page": 1,
+      "block": 41,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 2,
+      "block": 58,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 2,
+      "block": 58,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 2,
+      "block": 62,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 2,
+      "block": 62,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 2,
+      "block": 66,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 2,
+      "block": 68,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 2,
+      "block": 71,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 2,
+      "block": 73,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 2,
+      "block": 77,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 2,
+      "block": 78,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 2,
+      "block": 81,
+      "pixels_identical": true
+    },
+    {
+      "id": 1,
+      "source_page": 2,
+      "block": 83,
+      "pixels_identical": true
+    }
+  ],
+  "originals_unchanged": true,
+  "engine_py_hashes": {
+    "document_translator_v3.py": "b732b74e32d532150c8ceae470546a7320ef6cb1a4fb6b2665d908e0252d8a6e",
+    "server.py": "16457c333b3c306c049a77f4f6b232fbdf69186e5b14e78985f21736360cc26c",
+    "__init__.py": "2a6175c544e55e6b22e287c87acb4f64e74c8582fb83b2376a0821ca8274e6d9",
+    "ai\\base.py": "f2d593a39e1035d782f3039b609b3a92238c5eb0c5c5a49bffd84b9a97071965",
+    "ai\\fallback_provider.py": "3c39e560d4de09b1fca1d9f1cabf85281b8717cfe390b1aef8af75f0b87d78ac",
+    "ai\\gemini_provider.py": "45863eda0840d86066e1e212c7bea9cedd9b46e4b62752ab4d54207fbd1c590e",
+    "ai\\ollama_provider.py": "4e83754865818a0b27a474ebe2ee6a24301afb312f59fbba9dae9cb98a218e9a",
+    "ai\\__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "benchmarks\\build_test_folder_report.py": "d684eac94b6b3d90d65a11325d9db64277940aea4926a14b90c575b52b6de6cc",
+    "benchmarks\\evaluate_part2_nllb.py": "c04b996fb7268153efbea139178ae70019b191623fe565e8ac46ce02737e1d30",
+    "benchmarks\\evaluate_test_folder.py": "bd6eab41e4f118f2e187f3e24f52d0f6890fb7f1860da13b270edea789178345",
+    "benchmarks\\phase6_unit_pipeline_gptoss.py": "39e9b19f2d8293d81c4532ce99c61bed9923fcf1a176d239de11d1a993585750",
+    "benchmarks\\rerun_gptoss_sona_cebuano.py": "b0d2ecbf21f7572f95969f1f29ce4e102d0255671460155bfce14d57521a8e63",
+    "benchmarks\\run_benchmark.py": "e14e93fb37e878891d8b42d263056de295f9dab5152823b4cde0fec428e85b19",
+    "benchmarks\\score_part2_gptoss_artifacts.py": "04e33aea6e6e26b4ab80e91b1d2a40778664e2d0a30e2c2f5ccc94cf5c02a1b0",
+    "benchmarks\\translate_single_gptoss_document.py": "99a67c942fa0a263876d7960dff934a4424811ed57d7ff9ec639763443524b83",
+    "cache\\sqlite_cache.py": "e3a4593b153c868939b123580c8873be789d89b351dffaaf706119636a7424dd",
+    "cache\\__init__.py": "1fb1ba3f4ee9ab5dfbc4ba362175c7d19687cf94f692841cec09605155007de8",
+    "config\\environment.py": "2f8a70b04ef7010a242850314e5db213a621094d7f00bf4130009fe5ddc0a958",
+    "config\\processing_modes.py": "4d609cb0b66927f51523d3f193f6545e03c1f85da993ddf7a5ff2fe2b3b9e0a8",
+    "config\\runtime.py": "9018638c2cb79d252bfa7760519dd0258f762103c974a1ca0d09ed35c7367ebe",
+    "config\\__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "document\\chunker.py": "42cd8ad10c5e682b40b0080fb1e62bb25ab10790b4361590eb16383550882cd8",
+    "document\\document_analyzer.py": "44e354cffc9d74976e5082f0c40a51affdca437a1f21d6880ac266fe0a493224",
+    "document\\extractor.py": "62469166b47aa334084f928436423d5afa807cec02ccdddbab5b59933bc999c4",
+    "document\\layout.py": "e2c792e515b9bbae4cbc2030e6cee4af0f9ad366b0df804dab76e45d48367858",
+    "document\\layout_planner.py": "3822d3a5ffc15f09211b0669e61a458b6641bf6221207806ccf59dcc1bc5fa85",
+    "document\\layout_preflight.py": "69c50ec508b460131c796aaf307b9f37ef91dceba011cbdf3833ff88fe99522a",
+    "document\\map.py": "3514171e710bee225ffd299a18874b2db591134f2c8fe7ee5e8dcaacc0f6ede1",
+    "document\\metadata.py": "02940b490e51f97df67ab2f282f39403323f6a695a378f19fcbfcbf4e20d6286",
+    "document\\ocr_extractor.py": "c1294dcf21f464563f3c094df399f045150ba0cc2434a0f50cfdc6ddcff573b6",
+    "document\\protected_spans.py": "b9280d4f9fda368af0195fcfe575fac2b3701b987f7f3fcc8e424235c6d36196",
+    "document\\reconstructor.py": "3ccb3fc9a2c46b4f5252e214f7a4fddb2479ffa47913d992fb881d25c1cb1390",
+    "document\\regenerator.py": "55c49b75ab1be87e4d579e7b7c4a8ae029f836a2da79d1f104595c7ffaf1857e",
+    "document\\semantic_chunker.py": "fd66db3918258a537084508be0975ec61609f9615400449bc963c3a6f28f9a68",
+    "document\\__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "dto\\pipeline.py": "fb9dd0e67ef29e064dce9e8ed5a8babf359ec50b5a880ecc0e8134895368139e",
+    "dto\\requests.py": "cab2843a602b7f21f62ee94667c332d0fedd310269b5fadd4a32bc59831e229d",
+    "dto\\responses.py": "e56a4ecbd1abc63f42bacae7bec354d1c32d6c2d525f9aaafe72fcaf6b1d25f8",
+    "dto\\__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "memory\\document_memory.py": "b7c1cfda207c97112913d43d18dbfaaa15b01a2d0bfe3e227a31d823badfff8a",
+    "memory\\glossary.py": "ae80c010787bd485a5f465b81a9b8b6edfd875a67d909c2392f9260db65b4e0f",
+    "memory\\terminology.py": "2f5669753954e51b5c82a4d22976dad325b85ae1d77ad3192c1fdbf99efee0d7",
+    "memory\\translation_cache.py": "8e7c4faf5e2309c20db511064511f4c8393a940c9783f60712ed5a3c9ab1d61c",
+    "memory\\translation_memory.py": "044989dbf53bc865e63bcaf23429daabcb9c9752939bfbb3af722d48200bf5f4",
+    "memory\\__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "pipeline\\coherence_polish.py": "bda3e3fa4dbf8ec5424c948d7b111ee7731b0463131483e387f4b410db9ba2a1",
+    "pipeline\\document_context.py": "081e27a8747f29ad67cd5450d998a64587fac2aa996d1a60c88f56f424573037",
+    "pipeline\\document_pipeline.py": "fc8488912bb872511e7ccb085a2a6f9353ce239a7e6b553598cdbd1ad49f4ffb",
+    "pipeline\\fair_scheduler.py": "ec5ba5de8120069a799dc38a87b99c94302fd1dac962af7326b04ebcf8131f7d",
+    "pipeline\\phase_profiler.py": "632a951a18ef127e2599399100d863b93f6c7c6a5a914601b7b88976641cc04f",
+    "pipeline\\translation_pipeline.py": "0bcd61b5099027b2ba7796429540f039d0dadba25bbca465e61228e448a752ec",
+    "pipeline\\unit_adapters.py": "958fd70225c1dec766f85f57b05d130c47ebdf6e18d16c09e4389fbec50da619",
+    "pipeline\\validation_pipeline.py": "00ee4744ab136b83f6cb8440e569ac05dceaee1ac16d8e364383e93ec3c998b6",
+    "pipeline\\__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "prompts\\context.py": "58f0d9195a7dca8cb982bca00a964b7570d64902f629971373f0381f77f0f55f",
+    "prompts\\prepass.py": "4a5606c87d680435cfa74715d663f40d81a9079d4221f4840c4d0763cfc461b3",
+    "prompts\\quality.py": "da7725ea75944868fe1769f5bce2de2aad1c658cc7c16fdc10c18165f2e9e346",
+    "prompts\\system.py": "bdc2f643c91b0442d119f6e83fb2f3269dce58ff145c44433ecb8995a6a1cad2",
+    "prompts\\translation.py": "a5dad9bdae96ec0b9f7eed82dd4e71fedb6e6f342dab04c533090d7bb04bb87a",
+    "prompts\\__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "prompts\\specialized\\academic.py": "83cb4275c2ce2e7c72f56acfcb69fce56ce49800891a8f736b7b0f091ee74782",
+    "prompts\\specialized\\business.py": "3c3f9abed9d4fbccf2eb7b14791430876e9686bf5d6ebb233a01f09999ac9a8f",
+    "prompts\\specialized\\invoice.py": "11073c47ddbf3dd2deac7fd75cc72ef61eb03e825eb0e8530a6a3c08a528bffc",
+    "prompts\\specialized\\legal.py": "5238f33753247fac4b8b04423c163a176b47f51f0d240f6cf46a53301dc3ea31",
+    "prompts\\specialized\\medical.py": "570cb49352e23d6b6a0dcd6bfd89e6f6c5f79b34f2061ec7886fd93b46a54d01",
+    "prompts\\specialized\\presentation.py": "6c3ef1a6141d2ca53713f419ffa369da196552679d34b6a34614a608d3c55509",
+    "prompts\\specialized\\resume.py": "e6f29c6b23aafd9809ff7024fe44a4fb775b28e75948b0717d9e8d1cd39ac39b",
+    "prompts\\specialized\\technical.py": "f44728b7d4178920b71339ce30fb8bc9bd38350747f85c75cceac1b7d10601bd",
+    "prompts\\specialized\\__init__.py": "44433308ec2f52eb99a0bebaee3cbf4277e15756798e6cb953ebe7dc3b0ed04f",
+    "providers\\base.py": "273ddb6c5930f357c5c647de194becde16d91338027e891e13c94388d9f627b7",
+    "providers\\fallback.py": "e8c5d36af83bc5f12b1d0cae7a6c731f267280cd0e67ba96e226f34fd4647431",
+    "providers\\future_deepseek.py": "0c258615a96543d007423dfbcfbb2118fdd16d5891d55b8add3970a3b1cf7a7b",
+    "providers\\future_openai.py": "e5ecd025104b01e6c06cd1313e56ee843a19476af036afc283f63a9d35ac1779",
+    "providers\\gemini.py": "0cb64dc25cb9097f7146473e43185e26e7a630b8470a4a8b1c5f65dac678df9b",
+    "providers\\gptoss.py": "7a619aa79e06e5c455d89f85f35a5912e055deddeaf42812caaadd6db6bedcc7",
+    "providers\\nllb.py": "d11103b6a013b416d7b0db9a4fcabee2c3d27a1609716a969bddd9706aa587bd",
+    "providers\\__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests\\benchmark_analyzer_modes.py": "0ddd533bee54460330d552e9593ddb407df0cc8b08d0fe74cf6b4cb7df072caa",
+    "tests\\benchmark_chunk_sizes.py": "6efdd3ecc205640b726022d73d0144e26c9796c512ce2b312d713b2f83903718",
+    "tests\\conftest.py": "c1ebeae091ca19d0f5eb499298ce1613bd502820f774d8ab71a7de28bb0dad94",
+    "tests\\mock_providers.py": "97fcb7a3032cddc1ac05f77c062e2b4b2e8dc3374409b7bcf740c1d7416176c5",
+    "tests\\test_analysis_resilience.py": "6db0fe3fb171b68a293b44c90455cce436809102d482188d278bc2aa28e72239",
+    "tests\\test_block_quality.py": "ab19b70dfe5263163b8035531a4cd2e031e2d8e50a050251e996a17865756c26",
+    "tests\\test_cache_namespace.py": "0534835f3c9b01c133068b90b56acba496ae4fd65c98b2987126cd99463bd3f2",
+    "tests\\test_concurrency_benchmark.py": "7f3636ef6091221333bcb6c345c098bcc14eac7c1dc8ae476239f47fab381d01",
+    "tests\\test_docx_inplace_parallel.py": "4668e7bc08eff45f163501b16d11a724a21cb37897dbfa76bace0dee065de096",
+    "tests\\test_fair_scheduler.py": "964c14529f772fdd3b40d8f494e7a23de8b693c9d2a7ac4e94fea3b7f892f202",
+    "tests\\test_instrumentation.py": "388314694d3091a77c3001cd0f149df495a6da93fa54ec0dc09b88269bcfd069",
+    "tests\\test_pptx_inplace.py": "ede36daa2e5c85ed4fd5e98c9a60579e82d3d1db5ef4437a283760c3a0357eb4",
+    "tests\\test_properties.py": "1d3c9c54515a8cf484b02a053eb3a2e7b1965d0719f39cf1672c59eb998175eb",
+    "tests\\test_reference_gemini_workflow.py": "79cdeb574a8b34814554a5b874c0c3084154b3e56c439b663a74e4fdec023d2e",
+    "tests\\test_regeneration.py": "8863b66f7967305caa45222cd265f328619b642b63c5ffe450339ca2925b379c",
+    "tests\\test_regression.py": "e28891214ebae56366ded08f8ca1d6e6d056ab3bd0d37dbb4641c09fb3a674d2",
+    "tests\\test_request_logging.py": "7e647a9c269bba339d83b0dc3ebab6857414d50b26b1cfe52a0f6aff3c474396",
+    "tests\\test_runtime_output.py": "23ac44120985c894c7bf1a913d9e8132a5c9369f07878d839401f5477279905d",
+    "tests\\test_service_token_policy.py": "6b28e319efbae89818a3f0438b6d247ab08ed702dfe9c9dfacd60669deba2e8e",
+    "tests\\test_text_error_logging.py": "ee7a8ae751411656a0013681c3ccc7d6ed282d94c43157aa55497221493ebb6d",
+    "tests\\test_translation_fallback.py": "34efc6d5c485e78761b37181587641c36f6f628ce9c961c4e64173ef0fa99a91",
+    "tests\\test_units.py": "1730ea8c1d359e522dcf8c31df8937fe302b9ebf0679d1a46bda78aebd22066e",
+    "tests\\test_unit_pipeline.py": "cbd13a4a44b507e1c4ec8be956d748e47163ec915d797d6d10db50a3e419c453",
+    "tests\\__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "validators\\ai_quality_reviewer.py": "c18ad675ff8fd04c175812dc467b1886876753919cf86bb739ca5a633469664e",
+    "validators\\hallucination_detector.py": "ff3e5cc2de191f758870d8b4108d9d00be953a09ec849cdbd359d07720a6454a",
+    "validators\\translation_validator.py": "50755f4d08239aa2d689ff9b93ac4174e02c376f412ad334e3a8d7e2ea7cc54c",
+    "validators\\__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "unrelated_failure_sources_unchanged": {
+    "document\\chunker.py": true,
+    "ai\\gemini_provider.py": true,
+    "tests\\test_properties.py": true,
+    "tests\\test_analysis_resilience.py": true
+  }
+}

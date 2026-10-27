@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\TranslationHistory;
+use App\Support\SourceWordCounter;
 
 /**
  * Shared stat computation for translation_history records.
@@ -108,6 +109,7 @@ class TranslationStatsService
             'pairMix'       => self::pairMixFromCounts($pairs),
             'qualityByPair' => $qualityPairs,
             'avgQuality'    => $avgQuality,
+            'sourceWords'   => self::sourceWordSummary($userId),
         ];
     }
 
@@ -208,10 +210,10 @@ class TranslationStatsService
                     ->orWhereNull('translation_type')
                     ->orWhereNull('document_word_count');
             })
-            ->select(['id', 'created_at', 'source_text'])
+            ->select(['id', 'created_at', 'source_text', 'translation_type', 'document_word_count', 'source_word_metadata'])
             ->chunkById(self::WORD_SCAN_CHUNK, function ($rows) use (&$sums, $thisPeriodStart, $prevPeriodStart, $prevPeriodEnd) {
                 foreach ($rows as $row) {
-                    $words = str_word_count($row->source_text ?? '');
+                    $words = self::wordsForRecord($row->toArray());
                     $sums['total'] += $words;
 
                     $created = $row->created_at;
@@ -227,6 +229,39 @@ class TranslationStatsService
             });
 
         return $sums;
+    }
+
+    private static function sourceWordSummary(int $userId): array
+    {
+        $summary = ['method' => SourceWordCounter::METHOD, 'known_words' => 0,
+            'complete_records' => 0, 'partial_records' => 0, 'missing_records' => 0,
+            'legacy_records' => 0, 'legacy_words' => 0];
+        TranslationHistory::where('user_id', $userId)
+            ->select(['id', 'translation_type', 'source_text', 'document_word_count', 'source_word_metadata'])
+            ->chunkById(self::WORD_SCAN_CHUNK, function ($rows) use (&$summary): void {
+                foreach ($rows as $row) {
+                    $metadata = $row->source_word_metadata;
+                    if ($metadata === null) {
+                        $summary['legacy_records']++;
+                        $summary['legacy_words'] += self::wordsForRecord($row->toArray());
+                        continue;
+                    }
+                    if (($metadata['method'] ?? null) !== SourceWordCounter::METHOD
+                        || !is_int($metadata['known_words'] ?? null) || $metadata['known_words'] < 0) {
+                        $summary['missing_records']++;
+                        continue;
+                    }
+                    $state = $metadata['completeness'] ?? 'missing';
+                    if (!in_array($state, ['complete', 'partial'], true)) {
+                        $summary['missing_records']++;
+                        continue;
+                    }
+                    $summary[$state.'_records']++;
+                    $summary['known_words'] += $metadata['known_words'];
+                }
+            });
+
+        return $summary;
     }
 
     /**
@@ -340,11 +375,10 @@ class TranslationStatsService
 
             if ($isDocument) {
                 $totalDocs++;
-                // Real source word count where available; fall back for legacy rows.
-                $wordsTranslated += (int) ($r['document_word_count'] ?? static::estimateDocumentWords($r));
+                $wordsTranslated += static::wordsForRecord($r);
             } else {
                 $totalTexts++;
-                $wordsTranslated += str_word_count($r['source_text'] ?? '');
+                $wordsTranslated += static::wordsForRecord($r);
             }
 
             if (str_starts_with($r['created_at'] ?? '', $currentMonthPrefix)) {
@@ -392,6 +426,13 @@ class TranslationStatsService
      */
     public static function wordsForRecord(array $record): int
     {
+        // Compatibility totals retain legacy methods; new UI uses sourceWords separately.
+        if (isset($record['source_word_metadata'])) {
+            $metadata = $record['source_word_metadata'];
+            return is_array($metadata) && ($metadata['method'] ?? null) === SourceWordCounter::METHOD
+                && is_int($metadata['known_words'] ?? null) && $metadata['known_words'] >= 0
+                ? $metadata['known_words'] : 0;
+        }
         $isDocument = ($record['translation_type'] ?? '') === 'document';
         if ($isDocument) {
             return (int) ($record['document_word_count'] ?? static::estimateDocumentWords($record));

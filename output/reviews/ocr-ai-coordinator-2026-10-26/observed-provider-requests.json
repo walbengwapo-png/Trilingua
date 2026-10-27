@@ -1,0 +1,9 @@
+[
+  {
+    "method": "post",
+    "host": "generativelanguage.googleapis.com",
+    "path": "/v1beta/interactions",
+    "http_status": 200,
+    "elapsed_seconds": 22.141
+  }
+]

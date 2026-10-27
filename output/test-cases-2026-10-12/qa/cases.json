@@ -1,0 +1,900 @@
+[
+  {
+    "name": "User Registration and Authentication",
+    "code": "U-A",
+    "scenario": "Verify registration, login, session handling and logout",
+    "source": "routes/web.php; app/Http/Controllers/Auth",
+    "cases": [
+      [
+        "U-A01",
+        "Register valid user",
+        "Logged out; email is unused.",
+        "1. Open Register.\n2. Enter data and matching confirmation.\n3. Submit; open Dashboard.",
+        "Name: Test User\nEmail: user.a@example.test\nPassword: TestOnly!2026",
+        "User account is created and authenticated; Dashboard opens. Use a disposable account.",
+        "",
+        ""
+      ],
+      [
+        "U-A02",
+        "Reject invalid registration",
+        "Logged out.",
+        "1. Submit separately with invalid name, duplicate email and weak password.",
+        "Name: User123\nExisting email\nPassword: abc",
+        "Each invalid field is rejected with a validation message; no account is created.",
+        "",
+        ""
+      ],
+      [
+        "U-A03",
+        "User login",
+        "Disposable user exists.",
+        "1. Open Login.\n2. Enter valid credentials.\n3. Submit.",
+        "User A credentials",
+        "User becomes authenticated and can access Dashboard and Translate.",
+        "",
+        ""
+      ],
+      [
+        "U-A04",
+        "Reject invalid or empty login",
+        "Logged out; test user exists.",
+        "1. Try wrong password.\n2. Try blank fields and invalid email.",
+        "Wrong password; blank values; invalid email",
+        "Login is rejected; protected pages remain unavailable; validation or credential error is shown.",
+        "",
+        ""
+      ],
+      [
+        "U-A05",
+        "Limit failed login attempts",
+        "Isolated test IP and account.",
+        "1. Submit five wrong passwords.\n2. Submit a sixth attempt.",
+        "Same test email and IP",
+        "Further attempts are temporarily blocked according to the configured login limit; no protected access is granted.",
+        "",
+        ""
+      ],
+      [
+        "U-A06",
+        "Session refresh and logout",
+        "User A is logged in.",
+        "1. Refresh Dashboard.\n2. Log out.\n3. Reopen a protected URL.",
+        "/dashboard; /history",
+        "Refresh retains the session. After logout, protected content requires login again.",
+        "",
+        ""
+      ],
+      [
+        "U-A07",
+        "Password reset",
+        "Reset mail is configured; disposable account exists.",
+        "1. Request reset email.\n2. Use valid link and matching new password.\n3. Try the old password and reuse the link.",
+        "Test inbox; new strong password",
+        "Reset changes the password; old credentials and reused reset token are rejected. Mail delivery must be checked.",
+        "",
+        ""
+      ],
+      [
+        "U-A08",
+        "Google sign in",
+        "Google OAuth is configured in the test environment.",
+        "1. Select Google sign in.\n2. Complete consent.\n3. Repeat and cancel a sign-in.",
+        "Authorized test Google account",
+        "Successful callback authenticates the intended user without duplicate accounts. Cancellation returns a usable login flow.",
+        "",
+        ""
+      ]
+    ]
+  },
+  {
+    "name": "User Dashboard and Profile",
+    "code": "U-D",
+    "scenario": "Verify user statistics, navigation and empty states",
+    "source": "app/Http/Controllers/DashboardController.php; ProfileController.php; app/Services/TranslationStatsService.php",
+    "cases": [
+      [
+        "U-D01",
+        "Dashboard empty state",
+        "User has no translations.",
+        "1. Open Dashboard and Profile.\n2. Follow Translate and History links.",
+        "New test user",
+        "Pages render without errors; counts reflect zero records and navigation opens the intended pages.",
+        "",
+        ""
+      ],
+      [
+        "U-D02",
+        "Dashboard totals",
+        "Known text and document records exist for User A.",
+        "1. Count all owned records.\n2. Open Dashboard and Profile.\n3. Compare totals and recent activity.",
+        "More than 200 records; known document and word totals",
+        "Aggregates match all applicable owned records, including older records; recent activity is limited and ordered correctly.",
+        "",
+        ""
+      ]
+    ]
+  },
+  {
+    "name": "Text Translation Directions",
+    "code": "U-T",
+    "scenario": "Verify all six supported language directions",
+    "source": "config/translation.php; app/Http/Controllers/TranslationController.php; Model/dto/requests.py",
+    "cases": [
+      [
+        "U-T01",
+        "English to Filipino",
+        "User logged in; engine and selected provider available.",
+        "1. Open Translate.\n2. Choose the language pair; enter text.\n3. Translate; compare with a bilingual reference.",
+        "English -> Filipino\nPlease submit the report tomorrow. The meeting starts at nine.",
+        "Output uses the target language and preserves the request, date and time meaning; history stores the pair and result. Human language review is required.",
+        "",
+        ""
+      ],
+      [
+        "U-T02",
+        "English to Cebuano",
+        "User logged in; engine and selected provider available.",
+        "1. Open Translate.\n2. Choose the language pair; enter text.\n3. Translate; compare with a bilingual reference.",
+        "English -> Cebuano\nPlease submit the report tomorrow. The meeting starts at nine.",
+        "Output uses the target language and preserves the request, date and time meaning; history stores the pair and result. Human language review is required.",
+        "",
+        ""
+      ],
+      [
+        "U-T03",
+        "Filipino to English",
+        "User logged in; engine and selected provider available.",
+        "1. Open Translate.\n2. Choose the language pair; enter text.\n3. Translate; compare with a bilingual reference.",
+        "Filipino -> English\nPakisumite ang ulat bukas. Magsisimula ang pulong sa alas nuwebe.",
+        "Output uses the target language and preserves the request, date and time meaning; history stores the pair and result. Human language review is required.",
+        "",
+        ""
+      ],
+      [
+        "U-T04",
+        "Filipino to Cebuano",
+        "User logged in; engine and selected provider available.",
+        "1. Open Translate.\n2. Choose the language pair; enter text.\n3. Translate; compare with a bilingual reference.",
+        "Filipino -> Cebuano\nPakisumite ang ulat bukas. Magsisimula ang pulong sa alas nuwebe.",
+        "Output uses the target language and preserves the request, date and time meaning; history stores the pair and result. Human language review is required.",
+        "",
+        ""
+      ],
+      [
+        "U-T05",
+        "Cebuano to English",
+        "User logged in; engine and selected provider available.",
+        "1. Open Translate.\n2. Choose the language pair; enter text.\n3. Translate; compare with a bilingual reference.",
+        "Cebuano -> English\nPalihog isumite ang taho ugma. Magsugod ang miting sa alas nuwebe.",
+        "Output uses the target language and preserves the request, date and time meaning; history stores the pair and result. Human language review is required.",
+        "",
+        ""
+      ],
+      [
+        "U-T06",
+        "Cebuano to Filipino",
+        "User logged in; engine and selected provider available.",
+        "1. Open Translate.\n2. Choose the language pair; enter text.\n3. Translate; compare with a bilingual reference.",
+        "Cebuano -> Filipino\nPalihog isumite ang taho ugma. Magsugod ang miting sa alas nuwebe.",
+        "Output uses the target language and preserves the request, date and time meaning; history stores the pair and result. Human language review is required.",
+        "",
+        ""
+      ]
+    ]
+  },
+  {
+    "name": "Text Controls and Validation",
+    "code": "U-V",
+    "scenario": "Verify text actions, limits and processing modes",
+    "source": "TranslationController.php; resources/views/translation.blade.php; config/translation.php",
+    "cases": [
+      [
+        "U-V01",
+        "Processing modes",
+        "Engine and required analysis services are available.",
+        "1. Translate the sample separately in each mode.\n2. Inspect output and returned mode information.",
+        "fast; balanced; thorough; auto\nEnglish -> Filipino\nPlease submit the report tomorrow.",
+        "Configured modes return translated output; reported or resolved mode follows selection. Auto selects a supported mode; no exact wording equality is required.",
+        "",
+        ""
+      ],
+      [
+        "U-V02",
+        "Reject invalid languages and modes",
+        "Authenticated test client.",
+        "1. Submit same source and target.\n2. Submit unsupported language and mode.",
+        "English -> English; Spanish; mode=invalid",
+        "Invalid pair or option is rejected; no translation is stored.",
+        "",
+        ""
+      ],
+      [
+        "U-V03",
+        "Empty and boundary text",
+        "Record the environment text limit L. Default L is 8000 characters.",
+        "1. Submit no input.\n2. Submit L and L+1 characters separately.",
+        "No file or text\nL characters; L+1 characters",
+        "Empty input and L+1 are rejected. L passes length validation and is processed subject to service availability.",
+        "",
+        ""
+      ],
+      [
+        "U-V04",
+        "Copy download and clear",
+        "Successful text result displayed; clipboard allowed.",
+        "1. Copy output and paste it.\n2. Download text.\n3. Clear the editor.",
+        "One completed text translation",
+        "Copied and downloaded text match the visible result; Clear resets the relevant text fields and errors.",
+        "",
+        ""
+      ],
+      [
+        "U-V05",
+        "Refresh capability contract",
+        "User logged in.",
+        "1. Open Translate and its capability endpoint.\n2. Compare options and limits.",
+        "/translate/capabilities",
+        "Browser and server advertise matching languages, formats, modes and limits. Defaults are 8000 characters and 51200 KB per upload; environment overrides are respected.",
+        "",
+        ""
+      ]
+    ]
+  },
+  {
+    "name": "Document Format Translation",
+    "code": "U-F",
+    "scenario": "Verify every accepted format and its output structure",
+    "source": "config/translation.php; Model/document/extractor.py; Model/document/reconstructor.py",
+    "cases": [
+      [
+        "U-F01",
+        "Translate DOCX",
+        "User logged in; valid fixture prepared; engine, worker and storage available.",
+        "1. Upload fixture.\n2. Select English -> Filipino and balanced mode.\n3. Wait for completion; download and reopen output.",
+        "sample.docx with heading, bold text, table, image, header and footer",
+        "DOCX opens; translation preserves content order and inspectable document structure. Images and non-text content remain usable.",
+        "",
+        ""
+      ],
+      [
+        "U-F02",
+        "Translate PDF",
+        "User logged in; valid fixture prepared; engine, worker and storage available.",
+        "1. Upload fixture.\n2. Select English -> Filipino and balanced mode.\n3. Wait for completion; download and reopen output.",
+        "sample.pdf with selectable text, heading and table",
+        "PDF opens with translated readable text; check page order, overlap and clipping against the original.",
+        "",
+        ""
+      ],
+      [
+        "U-F03",
+        "Translate TXT",
+        "User logged in; valid fixture prepared; engine, worker and storage available.",
+        "1. Upload fixture.\n2. Select English -> Filipino and balanced mode.\n3. Wait for completion; download and reopen output.",
+        "sample.txt with UTF-8 text and multiple lines",
+        "TXT opens with translated text; Unicode and line structure remain readable.",
+        "",
+        ""
+      ],
+      [
+        "U-F04",
+        "Translate MD",
+        "User logged in; valid fixture prepared; engine, worker and storage available.",
+        "1. Upload fixture.\n2. Select English -> Filipino and balanced mode.\n3. Wait for completion; download and reopen output.",
+        "sample.md with heading, list, link and fenced code",
+        "MD remains usable; check translated prose and intact Markdown syntax, link destinations and code.",
+        "",
+        ""
+      ],
+      [
+        "U-F05",
+        "Translate RTF",
+        "User logged in; valid fixture prepared; engine, worker and storage available.",
+        "1. Upload fixture.\n2. Select English -> Filipino and balanced mode.\n3. Wait for completion; download and reopen output.",
+        "sample.rtf with paragraphs and a table",
+        "Output is DOCX, opens correctly and contains the translated content; compare formatting and content order.",
+        "",
+        ""
+      ],
+      [
+        "U-F06",
+        "Translate ODT",
+        "User logged in; valid fixture prepared; engine, worker and storage available.",
+        "1. Upload fixture.\n2. Select English -> Filipino and balanced mode.\n3. Wait for completion; download and reopen output.",
+        "sample.odt with heading and table",
+        "Output is DOCX, opens correctly and contains the translated content; compare structure and formatting.",
+        "",
+        ""
+      ],
+      [
+        "U-F07",
+        "Translate CSV",
+        "User logged in; valid fixture prepared; engine, worker and storage available.",
+        "1. Upload fixture.\n2. Select English -> Filipino and balanced mode.\n3. Wait for completion; download and reopen output.",
+        "sample.csv with header, quoted commas and empty cells",
+        "CSV opens; row/column counts and quoting remain valid; text is translated without shifting cells.",
+        "",
+        ""
+      ],
+      [
+        "U-F08",
+        "Translate PPTX",
+        "User logged in; valid fixture prepared; engine, worker and storage available.",
+        "1. Upload fixture.\n2. Select English -> Filipino and balanced mode.\n3. Wait for completion; download and reopen output.",
+        "sample.pptx with title, body text, table and image",
+        "PPTX opens; translated text is readable in the original slide structure; compare shapes, tables and images.",
+        "",
+        ""
+      ],
+      [
+        "U-F09",
+        "Translate XLSX",
+        "User logged in; valid fixture prepared; engine, worker and storage available.",
+        "1. Upload fixture.\n2. Select English -> Filipino and balanced mode.\n3. Wait for completion; download and reopen output.",
+        "sample.xlsx with text, number, date, formula and merged cells",
+        "XLSX opens; prose is translated; numbers, formulas, dates and workbook structure remain intact. Recalculate and compare formulas.",
+        "",
+        ""
+      ]
+    ]
+  },
+  {
+    "name": "PDF Columns and Document Fidelity",
+    "code": "U-P",
+    "scenario": "Verify column choices and complex document content",
+    "source": "config/translation.php; Model/document/document_analyzer.py; Model/document/reconstructor.py; Model/document_translator_v3.py",
+    "cases": [
+      [
+        "U-P01",
+        "PDF column choices",
+        "Two-column PDF has distinct left and right text.",
+        "1. Translate separate copies with each column choice.\n2. Compare text order and selected content.",
+        "auto; single; left; right\nDistinct column markers",
+        "Each supported choice is accepted; output follows the chosen extraction scope. Left and right select the intended column; auto detection must be checked against the fixture.",
+        "",
+        ""
+      ],
+      [
+        "U-P02",
+        "Scanned PDF behavior",
+        "Scanned fixture prepared; record whether OCR dependencies are installed.",
+        "1. Upload image-only PDF.\n2. Inspect completion or error.\n3. Compare recognized text if output is produced.",
+        "Scanned readable English page",
+        "With working OCR, output contains translated recognized text. If OCR is unavailable or no text can be extracted, show an explicit failure; do not silently produce a blank successful file.",
+        "",
+        ""
+      ],
+      [
+        "U-P03",
+        "Long document consistency",
+        "Long fixture and bilingual reference prepared.",
+        "1. Translate in balanced and thorough modes.\n2. Compare first, middle and last sections.\n3. Inspect repeated terminology and numbering.",
+        "Multi-page report; repeated names, dates and terms",
+        "No sections are silently omitted or duplicated; factual tokens and recurring terms remain consistent. A reviewer checks meaning, tables, page layout and overflow.",
+        "",
+        ""
+      ]
+    ]
+  },
+  {
+    "name": "Upload Validation and Quotas",
+    "code": "U-Q",
+    "scenario": "Verify file validation and per-user upload limits",
+    "source": "config/translation.php; TranslationController.php; app/Services/QuotaService.php; DocumentsController.php",
+    "cases": [
+      [
+        "U-Q01",
+        "Reject unsupported or disguised file",
+        "Disposable user; no running upload.",
+        "1. Upload unsupported file.\n2. Rename binary file to an accepted extension and upload.",
+        "sample.exe; binary renamed to sample.docx",
+        "Uploads are rejected by extension or content validation; no translation job or accepted history record is created.",
+        "",
+        ""
+      ],
+      [
+        "U-Q02",
+        "Reject corrupt document",
+        "Damaged fixture prepared.",
+        "1. Upload corrupt DOCX or PDF.\n2. Observe job and error.",
+        "Truncated OOXML archive or damaged PDF",
+        "Invalid content is rejected or the job fails explicitly; no successful downloadable result is advertised.",
+        "",
+        ""
+      ],
+      [
+        "U-Q03",
+        "Upload size boundary",
+        "Record configured upload limit L; valid fixtures prepared. Default is 51200 KB.",
+        "1. Upload a valid fixture at L.\n2. Upload a valid fixture above L.",
+        "L KB; L+1 KB",
+        "At-limit fixture passes size validation. Above-limit fixture is rejected before translation; hosting request limits must also be recorded.",
+        "",
+        ""
+      ],
+      [
+        "U-Q04",
+        "Daily count and byte quotas",
+        "Isolated account; record configured quotas. Defaults: 25 files and 262144000 bytes per day.",
+        "1. Reach each quota independently.\n2. Try another upload and re-translation.",
+        "Count limit; cumulative byte limit",
+        "Requests exceeding either quota are rejected. Re-translation consumes quota; reused or rejected duplicate work is not charged twice.",
+        "",
+        ""
+      ]
+    ]
+  },
+  {
+    "name": "Document Jobs and Recovery",
+    "code": "U-J",
+    "scenario": "Verify asynchronous progress, duplicates and failures",
+    "source": "TranslationController.php; app/Jobs/TranslateDocumentJob.php; TranslationJob.php; resources/views/translation.blade.php",
+    "cases": [
+      [
+        "U-J01",
+        "Queued document completion",
+        "Worker and engine are running.",
+        "1. Upload a valid document.\n2. Observe progress.\n3. Download result; check History.",
+        "sample.docx; English -> Cebuano",
+        "Submission returns a job identifier; terminal completion exposes a usable result and one corresponding history record.",
+        "",
+        ""
+      ],
+      [
+        "U-J02",
+        "Repeated document submission",
+        "A translation is queued or processing.",
+        "1. Submit the identical file and options twice rapidly.\n2. Inspect returned identifiers and job records.",
+        "Same user, bytes, pair, mode and PDF setting",
+        "The active duplicate reuses the existing job; one active job and one quota reservation represent the request.",
+        "",
+        ""
+      ],
+      [
+        "U-J03",
+        "Refresh during processing",
+        "Document job is processing.",
+        "1. Refresh Translate.\n2. Wait for completion.\n3. Compare job identifier.",
+        "Existing job identifier",
+        "The page resumes status tracking for the same job; refresh does not submit a duplicate translation.",
+        "",
+        ""
+      ],
+      [
+        "U-J04",
+        "Provider or engine failure",
+        "Disposable environment with controllable provider failure.",
+        "1. Cause timeout, provider stop or engine unavailability.\n2. Submit text and document jobs.\n3. Inspect errors and terminal states.",
+        "Timeout; quota/authentication failure; engine offline",
+        "Failure is visible and traceable; no false successful history or download is returned. Recoverable service outages do not destroy previous translations.",
+        "",
+        ""
+      ],
+      [
+        "U-J05",
+        "Completion with unavailable storage",
+        "Completed record exists; storage availability can be controlled.",
+        "1. Temporarily make output unavailable.\n2. Poll status and request download.\n3. Restore storage; retry.",
+        "Missing file and temporary storage outage tested separately",
+        "Download unavailability is reported honestly; no broken ready link is shown. Temporary outage and missing data are distinguished; restored output becomes downloadable.",
+        "",
+        ""
+      ]
+    ]
+  },
+  {
+    "name": "Translation History and Bookmarks",
+    "code": "U-H",
+    "scenario": "Verify owned history, actions and record navigation",
+    "source": "HistoryController.php; BookmarksController.php; app/Services/HistoryService.php",
+    "cases": [
+      [
+        "U-H01",
+        "History and pagination",
+        "User has text and document history, including more than 50 records.",
+        "1. Open History.\n2. Navigate pages.\n3. Open text and document details.",
+        "Known record IDs and timestamps",
+        "Owned records are accessible through pagination; pair, type, status and result match each record; details open the selected record.",
+        "",
+        ""
+      ],
+      [
+        "U-H02",
+        "Rename bookmark and priority",
+        "User owns a disposable record.",
+        "1. Rename it.\n2. Add and remove bookmark.\n3. Toggle priority review.\n4. Refresh related lists.",
+        "Name: Reviewed report",
+        "Changes persist for the selected owned record; Bookmarks reflects the toggle and priority state is visible to review workflows.",
+        "",
+        ""
+      ],
+      [
+        "U-H03",
+        "Original and translated downloads",
+        "Completed owned document has original and output files.",
+        "1. Download original and translated file.\n2. Open previews and files.",
+        "Known source and result hashes",
+        "Correct files are returned with usable names and types; original content remains unchanged. Previews render safely.",
+        "",
+        ""
+      ],
+      [
+        "U-H04",
+        "Delete history record",
+        "Disposable owned document; identify any linked translations.",
+        "1. Delete selected record.\n2. Refresh History, Documents and Bookmarks.\n3. Try its former download links.",
+        "Disposable record and related file references",
+        "Deleted record disappears from owned lists and cannot be accessed. Cleanup must preserve files still referenced by other records or active jobs.",
+        "",
+        ""
+      ]
+    ]
+  },
+  {
+    "name": "My Documents and Re Translation",
+    "code": "U-M",
+    "scenario": "Verify grouping, filters and stored-original translation",
+    "source": "DocumentsController.php; resources/views/my-documents.blade.php; app/Services/HistoryService.php",
+    "cases": [
+      [
+        "U-M01",
+        "Document grouping and filters",
+        "Multiple originals and translations span more than one page.",
+        "1. Open My Documents.\n2. Use name, pair, date and type filters.\n3. Navigate pages and clear filters.",
+        "Different names, language pairs, dates and types",
+        "Page shows owned originals with the correct translations; filters behave consistently within their displayed scope and older records remain reachable through pagination.",
+        "",
+        ""
+      ],
+      [
+        "U-M02",
+        "Translate original to another language",
+        "Owned English original and Filipino result exist in storage.",
+        "1. Request Cebuano from the existing original.\n2. Wait for completion.\n3. Open its grouped result.",
+        "Original English document; target Cebuano",
+        "Stored original is reused; completed child is linked to the correct source document and is downloadable.",
+        "",
+        ""
+      ],
+      [
+        "U-M03",
+        "Repeated re-translation",
+        "Owned original exists; same target is processing or completed.",
+        "1. Repeat the same re-translation request.\n2. Inspect job and returned result.",
+        "Same original and target",
+        "Active work is reused; a completed matching result is reused when available. No duplicate provider work or quota charge is created.",
+        "",
+        ""
+      ],
+      [
+        "U-M04",
+        "Unavailable original",
+        "Control original-file storage in test environment.",
+        "1. Request re-translation with missing original.\n2. Repeat during temporary storage outage.",
+        "Missing original; unknown storage availability",
+        "Missing original prompts re-upload. Temporary availability uncertainty prompts retry; it is not reported as permanent loss.",
+        "",
+        ""
+      ]
+    ]
+  },
+  {
+    "name": "Notifications and Account Settings",
+    "code": "U-S",
+    "scenario": "Verify notification state, account changes and themes",
+    "source": "NotificationController.php; SettingsController.php; ProfileController.php",
+    "cases": [
+      [
+        "U-S01",
+        "Notifications",
+        "User has read and unread test notifications.",
+        "1. Open Notifications and unread filter.\n2. Follow an owned translation link.\n3. Mark one then all as read.",
+        "Known owned notification IDs",
+        "Notifications link to the intended records; unread state and count update correctly and persist after refresh.",
+        "",
+        ""
+      ],
+      [
+        "U-S02",
+        "Update account details",
+        "Disposable User A; User B has a different email.",
+        "1. Update name and unused email.\n2. Refresh Profile.\n3. Attempt duplicate email.",
+        "Test User Updated; unused email; User B email",
+        "Valid changes persist; duplicate or invalid email is rejected; another account is not modified.",
+        "",
+        ""
+      ],
+      [
+        "U-S03",
+        "Change password",
+        "Disposable user knows current password.",
+        "1. Submit wrong current password.\n2. Submit valid current and matching new password.\n3. Log in with old then new password.",
+        "Test-only current and new passwords",
+        "Wrong current password is rejected. Valid change succeeds; old password fails and new password authenticates.",
+        "",
+        ""
+      ],
+      [
+        "U-S04",
+        "Light and dark themes",
+        "User logged in.",
+        "1. Save light then dark theme.\n2. Open Translate, History and Settings.\n3. Refresh.",
+        "theme=light; theme=dark",
+        "Chosen theme persists and remains readable across pages; controls and messages maintain usable contrast.",
+        "",
+        ""
+      ]
+    ]
+  },
+  {
+    "name": "Admin Access and Analytics",
+    "code": "A-D",
+    "scenario": "Verify admin access, aggregates and CSV exports",
+    "source": "routes/web.php; app/Http/Controllers/Admin/DashboardController.php; app/Http/Middleware/EnsureUserIsAdmin.php",
+    "cases": [
+      [
+        "A-D01",
+        "Admin login and access",
+        "Provisioned test admin exists.",
+        "1. Log in with admin credentials.\n2. Open /admin and each admin navigation item.",
+        "Test admin credentials",
+        "Admin pages open for the authorized role; navigation and data render without errors.",
+        "",
+        ""
+      ],
+      [
+        "A-D02",
+        "Admin dashboard aggregates",
+        "Known pending, verified, edited and flagged records exist.",
+        "1. Open Admin Dashboard.\n2. Apply supported date controls.\n3. Compare totals and trends with fixture records.",
+        "Known review counts, dates and metrics",
+        "Dashboard summaries, trends and health information reflect their applicable records and filters; absent metrics are not presented as measured performance.",
+        "",
+        ""
+      ],
+      [
+        "A-D03",
+        "CSV exports",
+        "Admin and known review/user/flag fixtures exist.",
+        "1. Export review trends, flags and users.\n2. Reopen CSV files.\n3. Compare rows with source records.",
+        "Three export endpoints; cells beginning with =, +, -, @",
+        "Exports open with correct headers and applicable data. Spreadsheet formula-like user input is escaped safely.",
+        "",
+        ""
+      ]
+    ]
+  },
+  {
+    "name": "Admin Review Queue and Text Review",
+    "code": "A-T",
+    "scenario": "Verify review selection, text correction, flags and verification",
+    "source": "Admin/ReviewController.php; Admin/TextReviewController.php; app/Services/Admin/ReviewService.php",
+    "cases": [
+      [
+        "A-T01",
+        "Review queue and filters",
+        "Admin; mixed translation types and review states.",
+        "1. Open Review queue.\n2. Apply visible search/status/type controls.\n3. Open selected item.",
+        "Text/document; pending/verified/edited/flagged; priority item",
+        "Filters show matching records; selected review opens the correct original, output and review metadata.",
+        "",
+        ""
+      ],
+      [
+        "A-T02",
+        "Verify text translation",
+        "Admin; pending text item.",
+        "1. Compare original and translation.\n2. Verify.\n3. Refresh review and owner History.",
+        "Known pending text ID",
+        "Review status becomes verified and an audit entry identifies the actor and action; owner sees the updated status.",
+        "",
+        ""
+      ],
+      [
+        "A-T03",
+        "Edit text translation",
+        "Admin; text item with known output.",
+        "1. Change translated text and add note.\n2. Save.\n3. Compare owner result and audit trail.",
+        "Corrected target text; review note",
+        "Corrected text persists, review status reflects editing, and the audit trail retains the change; owner receives the saved result.",
+        "",
+        ""
+      ],
+      [
+        "A-T04",
+        "Flag text translation",
+        "Admin; text item.",
+        "1. Enter supported reason and note.\n2. Flag.\n3. Inspect queue and audit trail.",
+        "Meaning error; reviewer note",
+        "Flag reason, status and note persist and are auditable; invalid or missing required reason is rejected.",
+        "",
+        ""
+      ]
+    ]
+  },
+  {
+    "name": "Admin Document Draft and Publication",
+    "code": "A-P",
+    "scenario": "Verify safe edits, regeneration, verification and concurrent review",
+    "source": "Admin/DocumentReviewController.php; app/Services/Admin/ReviewService.php; Model/document/regenerator.py",
+    "cases": [
+      [
+        "A-P01",
+        "Open document review",
+        "Admin; document with original, output, sidecar and blocks.",
+        "1. Open review.\n2. Inspect original, translated file and ordered blocks.",
+        "Known DOCX document and block IDs",
+        "Review displays the correct original and published translation; block order and text match the document.",
+        "",
+        ""
+      ],
+      [
+        "A-P02",
+        "Save block as draft",
+        "Admin; editable document block; baseline output saved for comparison.",
+        "1. Edit a block and save draft.\n2. Reload editor.\n3. Download as owner.",
+        "Corrected text; current draft revision",
+        "Draft persists and revision advances; owner download remains the last published version until regeneration publishes the edit.",
+        "",
+        ""
+      ],
+      [
+        "A-P03",
+        "Publish regenerated file",
+        "Admin; current draft and storage pointer.",
+        "1. Use Save and Regenerate.\n2. Reopen returned file and owner download.\n3. Compare draft and published revisions.",
+        "Current block draft; valid regeneration dependencies",
+        "A readable new file contains the edits; publication updates file pointer and published block text atomically; original remains available.",
+        "",
+        ""
+      ],
+      [
+        "A-P04",
+        "Verify and flag document",
+        "Admin; first a document with unpublished edits, then a published document.",
+        "1. Try Verify before publication.\n2. Publish edits and Verify.\n3. Flag a separate document with reason.",
+        "Unpublished draft; published document; flag reason",
+        "Unpublished edits prevent verification. Published content can be verified; flag status/reason persist with audit entries.",
+        "",
+        ""
+      ],
+      [
+        "A-P05",
+        "Concurrent admin edits",
+        "Two test admins open the same document revision.",
+        "1. Admin A saves an edit.\n2. Admin B saves stale revision.\n3. Repeat with competing publication.",
+        "Same block; stale draft revision or storage pointer",
+        "Stale writes return a conflict and prompt reload; newer draft and published content are not overwritten.",
+        "",
+        ""
+      ],
+      [
+        "A-P06",
+        "Failed regeneration or storage",
+        "Admin; published file exists; controlled engine/storage failure.",
+        "1. Save a draft.\n2. Cause regeneration or readback failure.\n3. Attempt publication; download prior output.",
+        "Engine error; failed upload/readback",
+        "Publication fails explicitly; prior published file and pointer remain usable; draft is retained and orphan cleanup is tracked.",
+        "",
+        ""
+      ]
+    ]
+  },
+  {
+    "name": "Admin Jobs User Directory and Audit",
+    "code": "A-O",
+    "scenario": "Verify operational monitoring and read-only directories",
+    "source": "Admin/JobController.php; Admin/UserController.php; Admin/AuditLogController.php",
+    "cases": [
+      [
+        "A-O01",
+        "Job monitoring and retry",
+        "Admin; recoverable failed document job with original payload.",
+        "1. Open Jobs; filter by status/search.\n2. Retry recoverable failure once.\n3. Inspect completion and repeated retry.",
+        "Known failed job; retained source file",
+        "Retry requeues eligible work without duplicate completion; missing payload or ineligible retry is refused clearly.",
+        "",
+        ""
+      ],
+      [
+        "A-O02",
+        "User directory and totals",
+        "Admin; users with known translations, including more than 200.",
+        "1. Search and sort users.\n2. Open user overview and translations.\n3. Apply available filters and pagination.",
+        "Name/email; recent/name/translations sort",
+        "Directory remains read-only; correct user records and full aggregates appear; filters and pagination reach applicable translations.",
+        "",
+        ""
+      ],
+      [
+        "A-O03",
+        "Audit trail",
+        "Login, account change, review edit, flag and publish fixtures exist.",
+        "1. Open Audit.\n2. Filter review/account type, action and date.\n3. Inspect actor, target and change details.",
+        "Known audit IDs and dates",
+        "Entries match recorded events and actors; filters return relevant actions without exposing passwords or service secrets.",
+        "",
+        ""
+      ]
+    ]
+  },
+  {
+    "name": "Security Usability and Non Functional Checks",
+    "code": "N-X",
+    "scenario": "Verify isolation, safe previews, accessibility and measured behavior",
+    "source": "routes/web.php; HistoryController.php; NotificationController.php; Model/server.py; resources/views",
+    "cases": [
+      [
+        "N-X01",
+        "Guest and role restrictions",
+        "Logged-out session and regular User A.",
+        "1. As guest, open protected URLs.\n2. As User A, request admin pages and write actions.",
+        "/dashboard; /history; /admin; admin review POST",
+        "Guests must authenticate; regular users cannot read admin data or perform admin mutations.",
+        "",
+        ""
+      ],
+      [
+        "N-X02",
+        "Ownership isolation",
+        "Users A and B own different files, jobs and notifications.",
+        "1. As A, request B detail, file, status and actions.\n2. Attempt rename, bookmark, delete and re-translation for B.",
+        "User B record/job/notification IDs",
+        "Cross-user access is denied or treated as unavailable; B records, files and notification state are unchanged.",
+        "",
+        ""
+      ],
+      [
+        "N-X03",
+        "Safe document previews",
+        "Fixtures contain HTML-like text and script payloads.",
+        "1. Preview original and translated documents.\n2. Open history details and review blocks.",
+        "Text: <script>alert(1)</script>\nHTML event handlers",
+        "Untrusted document text renders safely; scripts or event handlers do not execute in the application origin.",
+        "",
+        ""
+      ],
+      [
+        "N-X04",
+        "CSRF and engine authorization",
+        "Authenticated client; configured engine service token.",
+        "1. Submit write request without CSRF token.\n2. Call protected engine endpoints without and with invalid service token.",
+        "Missing CSRF; missing/wrong X-Service-Token",
+        "Unauthorized writes and engine calls are rejected; no translation, review or account mutation occurs.",
+        "",
+        ""
+      ],
+      [
+        "N-X05",
+        "Responsive keyboard and empty states",
+        "Desktop and mobile browsers; keyboard-only session.",
+        "1. Open main user and admin pages at 360 and 1280 px widths.\n2. Navigate forms/dialogs by keyboard.\n3. Inspect empty and error states.",
+        "360 px; 1280 px; Tab/Enter/Escape",
+        "Required actions remain reachable; focus and labels are usable; no clipped controls; empty/error states explain the next action.",
+        "",
+        ""
+      ],
+      [
+        "N-X06",
+        "Performance and concurrent work",
+        "Record hardware, provider, fixture size and agreed acceptance limits before running.",
+        "1. Measure page loads and text/document completion.\n2. Submit concurrent work from two users.\n3. Inspect states, totals and outputs.",
+        "Small and long documents; two users; approved timing limits",
+        "Record measured timings against the approved limits. Work stays associated with its owner; no duplicate or lost completion. No timing threshold is assumed by this template.",
+        "",
+        ""
+      ],
+      [
+        "N-X07",
+        "Human translation acceptance",
+        "Bilingual reviewers and agreed reference corpus/rubric prepared.",
+        "1. Review six directions and all relevant formats.\n2. Check meaning, terms, names, numbers and omissions.\n3. Record errors against the approved rubric.",
+        "Prepared bilingual references; approved quality criteria",
+        "Translations meet the agreed human quality criteria; automated scores alone do not establish acceptance.",
+        "",
+        ""
+      ]
+    ]
+  }
+]

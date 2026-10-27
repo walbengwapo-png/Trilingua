@@ -1,0 +1,336 @@
+[
+  {
+    "type": "paragraph",
+    "text": "(orerrat FRIDAY STUDIOS THE 5-SECOND rest )",
+    "page": 0,
+    "position": [
+      11.28,
+      11.28,
+      247.92,
+      25.68
+    ],
+    "pdf_coordinates": "display",
+    "style": {
+      "font": "helv",
+      "font_size": 11,
+      "color": 0,
+      "bold": false
+    },
+    "ocr": {
+      "pack": "eng",
+      "confidence": 80.0,
+      "uncertain_words": [
+        {
+          "text": "(orerrat",
+          "confidence": 33.0,
+          "position": [
+            11.28,
+            11.28,
+            46.08,
+            25.68
+          ]
+        }
+      ]
+    },
+    "ocr_reflow": true
+  },
+  {
+    "type": "paragraph",
+    "text": "CAN PEOPLE TELL ©",
+    "page": 0,
+    "position": [
+      13.68,
+      70.8,
+      245.76,
+      92.64
+    ],
+    "pdf_coordinates": "display",
+    "style": {
+      "font": "helv",
+      "font_size": 11,
+      "color": 0,
+      "bold": false
+    },
+    "ocr": {
+      "pack": "eng",
+      "confidence": 80.5,
+      "uncertain_words": [
+        {
+          "text": "©",
+          "confidence": 42.0,
+          "position": [
+            234.0,
+            70.8,
+            245.76,
+            77.03999999999999
+          ]
+        }
+      ]
+    },
+    "ocr_reflow": true
+  },
+  {
+    "type": "paragraph",
+    "text": "WHAT YOU DO",
+    "page": 0,
+    "position": [
+      13.2,
+      98.39999999999999,
+      204.24,
+      119.99999999999999
+    ],
+    "pdf_coordinates": "display",
+    "style": {
+      "font": "helv",
+      "font_size": 11,
+      "color": 0,
+      "bold": false
+    },
+    "ocr": {
+      "pack": "eng",
+      "confidence": 96.0,
+      "uncertain_words": []
+    },
+    "ocr_reflow": true
+  },
+  {
+    "type": "paragraph",
+    "text": "IN 5 SECONDS?",
+    "page": 0,
+    "position": [
+      11.52,
+      125.03999999999999,
+      209.76,
+      147.12
+    ],
+    "pdf_coordinates": "display",
+    "style": {
+      "font": "helv",
+      "font_size": 11,
+      "color": 0,
+      "bold": false
+    },
+    "ocr": {
+      "pack": "eng",
+      "confidence": 77.66666666666667,
+      "uncertain_words": []
+    },
+    "ocr_reflow": true
+  },
+  {
+    "type": "paragraph",
+    "text": "YOUR FIRST SCREEN SHOULD ANSWER THREE THINGS — CLEARLY.",
+    "page": 0,
+    "position": [
+      14.16,
+      156.72,
+      222.48,
+      161.04
+    ],
+    "pdf_coordinates": "display",
+    "style": {
+      "font": "helv",
+      "font_size": 11,
+      "color": 0,
+      "bold": false
+    },
+    "ocr": {
+      "pack": "eng",
+      "confidence": 95.22222222222223,
+      "uncertain_words": []
+    },
+    "ocr_reflow": true
+  },
+  {
+    "type": "paragraph",
+    "text": "01",
+    "page": 0,
+    "position": [
+      122.64,
+      206.16,
+      128.4,
+      209.76
+    ],
+    "pdf_coordinates": "display",
+    "style": {
+      "font": "helv",
+      "font_size": 11,
+      "color": 0,
+      "bold": false
+    },
+    "ocr": {
+      "pack": "eng",
+      "confidence": 60.0,
+      "uncertain_words": []
+    },
+    "ocr_reflow": true
+  },
+  {
+    "type": "paragraph",
+    "text": "02",
+    "page": 0,
+    "position": [
+      122.64,
+      237.6,
+      129.12,
+      241.2
+    ],
+    "pdf_coordinates": "display",
+    "style": {
+      "font": "helv",
+      "font_size": 11,
+      "color": 0,
+      "bold": false
+    },
+    "ocr": {
+      "pack": "eng",
+      "confidence": 95.0,
+      "uncertain_words": []
+    },
+    "ocr_reflow": true
+  },
+  {
+    "type": "paragraph",
+    "text": "03",
+    "page": 0,
+    "position": [
+      122.64,
+      269.52,
+      129.12,
+      273.12
+    ],
+    "pdf_coordinates": "display",
+    "style": {
+      "font": "helv",
+      "font_size": 11,
+      "color": 0,
+      "bold": false
+    },
+    "ocr": {
+      "pack": "eng",
+      "confidence": 96.0,
+      "uncertain_words": []
+    },
+    "ocr_reflow": true
+  },
+  {
+    "type": "paragraph",
+    "text": "CLARITY BEFORE COMPLEXITY",
+    "page": 0,
+    "position": [
+      15.84,
+      304.32,
+      88.32,
+      307.44
+    ],
+    "pdf_coordinates": "display",
+    "style": {
+      "font": "helv",
+      "font_size": 11,
+      "color": 0,
+      "bold": false
+    },
+    "ocr": {
+      "pack": "eng",
+      "confidence": 96.0,
+      "uncertain_words": []
+    },
+    "ocr_reflow": true
+  },
+  {
+    "type": "paragraph",
+    "text": "WHAT YOU OFFER",
+    "page": 0,
+    "position": [
+      136.79999999999998,
+      206.64,
+      177.35999999999999,
+      209.76
+    ],
+    "pdf_coordinates": "display",
+    "style": {
+      "font": "helv",
+      "font_size": 11,
+      "color": 0,
+      "bold": false
+    },
+    "ocr": {
+      "pack": "eng",
+      "confidence": 96.0,
+      "uncertain_words": []
+    },
+    "ocr_reflow": true
+  },
+  {
+    "type": "paragraph",
+    "text": "WHO IT’S FOR",
+    "page": 0,
+    "position": [
+      136.79999999999998,
+      238.07999999999998,
+      171.12,
+      241.2
+    ],
+    "pdf_coordinates": "display",
+    "style": {
+      "font": "helv",
+      "font_size": 11,
+      "color": 0,
+      "bold": false
+    },
+    "ocr": {
+      "pack": "eng",
+      "confidence": 95.66666666666667,
+      "uncertain_words": []
+    },
+    "ocr_reflow": true
+  },
+  {
+    "type": "paragraph",
+    "text": "WHAT TO DO NEXT",
+    "page": 0,
+    "position": [
+      136.79999999999998,
+      270.0,
+      180.0,
+      273.12
+    ],
+    "pdf_coordinates": "display",
+    "style": {
+      "font": "helv",
+      "font_size": 11,
+      "color": 0,
+      "bold": false
+    },
+    "ocr": {
+      "pack": "eng",
+      "confidence": 95.25,
+      "uncertain_words": []
+    },
+    "ocr_reflow": true
+  },
+  {
+    "type": "paragraph",
+    "text": "DAVAO CITY, PHILIPPINES",
+    "page": 0,
+    "position": [
+      180.72,
+      305.28,
+      245.04,
+      308.64
+    ],
+    "pdf_coordinates": "display",
+    "style": {
+      "font": "helv",
+      "font_size": 11,
+      "color": 0,
+      "bold": false
+    },
+    "ocr": {
+      "pack": "eng",
+      "confidence": 95.66666666666667,
+      "uncertain_words": []
+    },
+    "ocr_reflow": true
+  }
+]

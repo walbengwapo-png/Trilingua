@@ -1,0 +1,11 @@
+{
+  "report_bytes": 46323,
+  "report_words": 5788,
+  "numbered_findings": 16,
+  "distinct_local_links": 55,
+  "missing_links": [],
+  "invalid_line_links": [],
+  "original_manifest_files": 401,
+  "changed_original_source_files": [],
+  "pint_issue_paths_in_original_manifest": 150
+}

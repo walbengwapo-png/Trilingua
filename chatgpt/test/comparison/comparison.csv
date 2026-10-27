@@ -1,0 +1,5 @@
+provider,target_language,status,bleu,chrf,elapsed_ms,layout_validation,output_sha256
+gptoss,Filipino,failed,,,5390690.19,,
+nllb,Filipino,completed,29.42,69.47,1529123.51,pass,7f510e0ec7ab210f4f2968704d417aa04c2310f9c1721fee3da1eaa96183cd3e
+gptoss,Cebuano,,,,,,
+nllb,Cebuano,completed,19.08,65.06,1763559.85,pass,41ecc25f83af9612c2d6eabfd3c495ace0737eb35290ca6a34aa3286b588be7c

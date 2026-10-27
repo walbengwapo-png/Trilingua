@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="Tests\Feature\AuditProbesTest" file="C:\Users\walbe\AppData\Local\Temp\trilingua-production-audit-20261009\snapshot\trilingua-code\tests\Feature\AuditProbesTest.php" tests="4" assertions="13" errors="0" failures="0" skipped="0" time="0.333172">
+    <testcase name="test_zero_string_is_rejected" file="C:\Users\walbe\AppData\Local\Temp\trilingua-production-audit-20261009\snapshot\trilingua-code\tests\Feature\AuditProbesTest.php" line="20" class="Tests\Feature\AuditProbesTest" classname="Tests.Feature.AuditProbesTest" assertions="2" time="0.276233"/>
+    <testcase name="test_empty_success_envelope_creates_completed_history" file="C:\Users\walbe\AppData\Local\Temp\trilingua-production-audit-20261009\snapshot\trilingua-code\tests\Feature\AuditProbesTest.php" line="27" class="Tests\Feature\AuditProbesTest" classname="Tests.Feature.AuditProbesTest" assertions="5" time="0.032971"/>
+    <testcase name="test_explicit_failed_envelope_creates_completed_history" file="C:\Users\walbe\AppData\Local\Temp\trilingua-production-audit-20261009\snapshot\trilingua-code\tests\Feature\AuditProbesTest.php" line="35" class="Tests\Feature\AuditProbesTest" classname="Tests.Feature.AuditProbesTest" assertions="4" time="0.012687"/>
+    <testcase name="test_internal_python_error_is_returned_to_user" file="C:\Users\walbe\AppData\Local\Temp\trilingua-production-audit-20261009\snapshot\trilingua-code\tests\Feature\AuditProbesTest.php" line="43" class="Tests\Feature\AuditProbesTest" classname="Tests.Feature.AuditProbesTest" assertions="2" time="0.011281"/>
+  </testsuite>
+</testsuites>

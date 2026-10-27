@@ -1,0 +1,186 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "argparse": {
+      "name": "argparse",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "sprintf-js"
+      ],
+      "effects": [
+        "mammoth"
+      ],
+      "range": "1.0.0 - 1.0.10",
+      "nodes": [
+        "node_modules/argparse"
+      ],
+      "fixAvailable": {
+        "name": "mammoth",
+        "version": "0.3.29",
+        "isSemVerMajor": true
+      }
+    },
+    "echarts": {
+      "name": "echarts",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1122144,
+          "name": "echarts",
+          "dependency": "echarts",
+          "title": "Apache ECharts has a cross-site scripting (XSS) vulnerability",
+          "url": "https://github.com/advisories/GHSA-fgmj-fm8m-jvvx",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-79"
+          ],
+          "cvss": {
+            "score": 6.1,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"
+          },
+          "range": "<6.1.0"
+        }
+      ],
+      "effects": [
+        "pptx-preview"
+      ],
+      "range": "<6.1.0",
+      "nodes": [
+        "node_modules/echarts"
+      ],
+      "fixAvailable": {
+        "name": "pptx-preview",
+        "version": "1.0.0",
+        "isSemVerMajor": true
+      }
+    },
+    "mammoth": {
+      "name": "mammoth",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "argparse"
+      ],
+      "effects": [],
+      "range": ">=0.3.30",
+      "nodes": [
+        "node_modules/mammoth"
+      ],
+      "fixAvailable": {
+        "name": "mammoth",
+        "version": "0.3.29",
+        "isSemVerMajor": true
+      }
+    },
+    "pptx-preview": {
+      "name": "pptx-preview",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "echarts",
+        "uuid"
+      ],
+      "effects": [],
+      "range": ">=0.0.6",
+      "nodes": [
+        "node_modules/pptx-preview"
+      ],
+      "fixAvailable": {
+        "name": "pptx-preview",
+        "version": "1.0.0",
+        "isSemVerMajor": true
+      }
+    },
+    "sprintf-js": {
+      "name": "sprintf-js",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1241202,
+          "name": "sprintf-js",
+          "dependency": "sprintf-js",
+          "title": "sprintf-js vulnerable to denial of service through unbounded precision specifiers",
+          "url": "https://github.com/advisories/GHSA-hp3w-g68c-fv3c",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-1284"
+          ],
+          "cvss": {
+            "score": 5.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+          },
+          "range": "<=1.1.3"
+        }
+      ],
+      "effects": [
+        "argparse"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/sprintf-js"
+      ],
+      "fixAvailable": {
+        "name": "mammoth",
+        "version": "0.3.29",
+        "isSemVerMajor": true
+      }
+    },
+    "uuid": {
+      "name": "uuid",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1119441,
+          "name": "uuid",
+          "dependency": "uuid",
+          "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+          "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-787",
+            "CWE-1285"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+          },
+          "range": "<11.1.1"
+        }
+      ],
+      "effects": [
+        "pptx-preview"
+      ],
+      "range": "<11.1.1",
+      "nodes": [
+        "node_modules/uuid"
+      ],
+      "fixAvailable": {
+        "name": "pptx-preview",
+        "version": "1.0.0",
+        "isSemVerMajor": true
+      }
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 6,
+      "high": 0,
+      "critical": 0,
+      "total": 6
+    },
+    "dependencies": {
+      "prod": 37,
+      "dev": 167,
+      "optional": 76,
+      "peer": 0,
+      "peerOptional": 0,
+      "total": 204
+    }
+  }
+}

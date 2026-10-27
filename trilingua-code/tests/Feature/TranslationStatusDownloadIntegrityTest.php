@@ -80,6 +80,18 @@ class TranslationStatusDownloadIntegrityTest extends TestCase
             ]);
     }
 
+    public function test_completed_status_retains_extraction_warnings(): void
+    {
+        $user = $this->makeUser();
+        $job = $this->makeCompletedJob($user, StorageService::BACKEND_LOCAL);
+        TranslationHistory::whereKey($job->translation_history_id)->update([
+            'sidecar' => json_encode(['extraction' => ['warnings' => ['Page 2: check uncertain OCR text.']]]),
+        ]);
+        $this->mockStorage(StorageService::PRESENCE_PRESENT, signerFails: false);
+        $this->actingAs($user)->getJson("/translate/status/{$job->uuid}")
+            ->assertOk()->assertJsonPath('warnings.0', 'Page 2: check uncertain OCR text.');
+    }
+
     public function test_signer_failure_with_confirmed_missing_returns_terminal_failure(): void
     {
         $user = $this->makeUser();

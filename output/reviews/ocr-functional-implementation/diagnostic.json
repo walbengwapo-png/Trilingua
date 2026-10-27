@@ -1,0 +1,97 @@
+{
+  "purpose": "diagnostic_only",
+  "acceptance_evidence": false,
+  "provider_calls": 0,
+  "settings": {
+    "version": 3,
+    "dpi": 300,
+    "psm": 3,
+    "grouping": "hocr-paragraph-word-line-baseline-v1",
+    "preprocessing": "exif-transpose,grayscale,autocontrast",
+    "retain_uncertain_words": true,
+    "retry": "uncertain-paragraph,32px-pad,min200,4/3-lanczos,exact-NFC-text,all-words80,60s-total,v1"
+  },
+  "input_sha256": "df09eaad8e681a4c5792081db117b38d238f06a9bdadf7c8241b7b0c0b76e34f",
+  "regions": [
+    {
+      "page": 1,
+      "xref": 14,
+      "text": "\"Spare me!\" begged the poor Mouse. \"Please let me go and some day I will surely repay you.\"",
+      "retry": "accepted",
+      "minimum_confidence": 85.0,
+      "style": {
+        "font_id": "NotoSerif-Bold",
+        "initial_size": 15.008471814923428,
+        "method": "packaged glyph-shape comparison",
+        "confidence": 0.6869339924549245
+      },
+      "old": {
+        "status": "held",
+        "reason": "Rotated/curved baseline is unsupported"
+      },
+      "new": {
+        "status": "planned_source_text_only",
+        "fit": {
+          "font_id": "NotoSerif-Bold",
+          "font_sha256": "3b2086a869bcded2aeb4416fc281ceec9d6ce3c06756cda19f8f763636204e7d",
+          "font_size": 15.008471814923428,
+          "lines": [
+            "\"Spare me!\" begged the poor Mouse. \"Please let me go and some",
+            "day I will surely repay you.\""
+          ],
+          "leading": 20.441538887454694,
+          "alignment": 0,
+          "bbox": [
+            48.0,
+            557.4856567382812,
+            561.0,
+            605.1908569335938
+          ],
+          "text": "\"Spare me!\" begged the poor Mouse. \"Please let me go and some day I will surely repay you.\"",
+          "initial_size": 15.008471814923428
+        },
+        "mask_sha256": "4f3dfde1f55f9993793c38834df995a83e052aba8d82e3eb4476c21a5276f744"
+      }
+    },
+    {
+      "page": 2,
+      "xref": 23,
+      "text": "\"You laughed when I said I would repay you,\" said the Mouse. \"Now you see that even a Mouse can help a Lion.\"",
+      "retry": "not_needed",
+      "minimum_confidence": 83.0,
+      "style": {
+        "font_id": "NotoSerif-Bold",
+        "initial_size": 15.298515104966718,
+        "method": "packaged glyph-shape comparison",
+        "confidence": 0.7542173680459701
+      },
+      "old": {
+        "status": "held",
+        "reason": "Rotated/curved baseline is unsupported"
+      },
+      "new": {
+        "status": "planned_source_text_only",
+        "fit": {
+          "font_id": "NotoSerif-Bold",
+          "font_sha256": "3b2086a869bcded2aeb4416fc281ceec9d6ce3c06756cda19f8f763636204e7d",
+          "font_size": 15.298515104966718,
+          "lines": [
+            "\"You laughed when I said I would repay you,\" said the Mouse.",
+            "\"Now you see that even a Mouse can help a Lion.\""
+          ],
+          "leading": 20.836577853818337,
+          "alignment": 0,
+          "bbox": [
+            48.0,
+            510.3333435058594,
+            550.3333129882812,
+            558.31591796875
+          ],
+          "text": "\"You laughed when I said I would repay you,\" said the Mouse. \"Now you see that even a Mouse can help a Lion.\"",
+          "initial_size": 15.298515104966718
+        },
+        "mask_sha256": "f22fa37dabf972840c5c9d3c73d4dca9d3788b8de56f193e1447cc7a0bdfa17d"
+      }
+    }
+  ]
+}

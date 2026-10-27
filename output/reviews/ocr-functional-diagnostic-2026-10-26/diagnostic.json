@@ -1,0 +1,746 @@
+{
+  "purpose": "diagnostic_only",
+  "acceptance_evidence": false,
+  "notice": "No reviewed reference, accuracy score, signed report, production OCR enablement or PDF replacement.",
+  "input_sha256": "df09eaad8e681a4c5792081db117b38d238f06a9bdadf7c8241b7b0c0b76e34f",
+  "runtime": {
+    "available": true,
+    "binary": "C:/Program Files/Tesseract-OCR/tesseract.exe",
+    "version": "tesseract v5.4.0.20240606",
+    "binary_sha256": "babb405f4366b480d02cd8ff2bac8d497170f6c1711ce6f3d5d8bf0fb7fa6ed9",
+    "installed_packs": [
+      "ceb",
+      "eng",
+      "fil",
+      "osd"
+    ],
+    "list_languages_output": "List of available languages in \"C:/Users/walbe/AppData/Local/TriLingua/ocr/tessdata/\" (4):\nceb\neng\nfil\nosd\n",
+    "pack_sha256": {
+      "ceb": "346a39de801495c93ece6656d018d7d19d298af7db42d82ebae99dfe8ee14961",
+      "eng": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+      "fil": "2b17f68014ab44b88b5e2334ebcd0ce0090d9af7c6fbef6fab22e0bbd9a934dd",
+      "osd": "9cf5d576fcc47564f11265841e5ca839001e7e6f38ff7f7aacf46d15a96b00ff"
+    },
+    "python_package_available": true,
+    "ready": true
+  },
+  "image_regions": [
+    {
+      "page": 1,
+      "xref": 14,
+      "page_bbox": [
+        48.0,
+        552.0,
+        564.0,
+        620.0
+      ],
+      "pixel_size": [
+        1548,
+        204
+      ],
+      "ocr_blocks": [
+        {
+          "type": "paragraph",
+          "text": "\"Spare me!\" begged the poor Mouse. \"Please let me go and some day I will surely repay you.\"",
+          "page": 0,
+          "position": [
+            3.0,
+            15.0,
+            1536.0,
+            137.0
+          ],
+          "pdf_coordinates": "display",
+          "style": {
+            "font": "helv",
+            "font_size": 11,
+            "color": 0,
+            "bold": false
+          },
+          "ocr": {
+            "pack": "eng",
+            "confidence": 93.94444444444444,
+            "words": [
+              {
+                "text": "\"Spare",
+                "confidence": 96.0,
+                "position": [
+                  4.0,
+                  20.0,
+                  135.0,
+                  65.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "me!\"",
+                "confidence": 96.0,
+                "position": [
+                  151.0,
+                  20.0,
+                  246.0,
+                  55.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "begged",
+                "confidence": 96.0,
+                "position": [
+                  263.0,
+                  19.0,
+                  409.0,
+                  65.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "the",
+                "confidence": 96.0,
+                "position": [
+                  424.0,
+                  19.0,
+                  483.0,
+                  55.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "poor",
+                "confidence": 96.0,
+                "position": [
+                  498.0,
+                  31.0,
+                  591.0,
+                  65.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "Mouse.",
+                "confidence": 96.0,
+                "position": [
+                  605.0,
+                  20.0,
+                  752.0,
+                  55.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "\"Please",
+                "confidence": 96.0,
+                "position": [
+                  772.0,
+                  19.0,
+                  918.0,
+                  55.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "let",
+                "confidence": 95.0,
+                "position": [
+                  933.0,
+                  19.0,
+                  983.0,
+                  55.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "me",
+                "confidence": 96.0,
+                "position": [
+                  997.0,
+                  31.0,
+                  1057.0,
+                  55.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "go",
+                "confidence": 96.0,
+                "position": [
+                  1072.0,
+                  31.0,
+                  1120.0,
+                  65.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "and",
+                "confidence": 96.0,
+                "position": [
+                  1137.0,
+                  19.0,
+                  1208.0,
+                  55.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "some",
+                "confidence": 96.0,
+                "position": [
+                  1224.0,
+                  31.0,
+                  1327.0,
+                  55.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "day",
+                "confidence": 96.0,
+                "position": [
+                  1342.0,
+                  19.0,
+                  1414.0,
+                  65.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "I",
+                "confidence": 96.0,
+                "position": [
+                  1417.0,
+                  15.0,
+                  1436.0,
+                  69.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "will",
+                "confidence": 96.0,
+                "position": [
+                  1459.0,
+                  19.0,
+                  1536.0,
+                  54.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "surely",
+                "confidence": 96.0,
+                "position": [
+                  3.0,
+                  91.0,
+                  123.0,
+                  137.0
+                ],
+                "line": 2,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "repay",
+                "confidence": 95.0,
+                "position": [
+                  137.0,
+                  103.0,
+                  249.0,
+                  137.0
+                ],
+                "line": 2,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "you.\"",
+                "confidence": 61.0,
+                "position": [
+                  264.0,
+                  92.0,
+                  370.0,
+                  137.0
+                ],
+                "line": 2,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              }
+            ],
+            "reading_order": 0,
+            "uncertain_words": []
+          },
+          "ocr_reflow": true
+        }
+      ],
+      "planning_probes": [
+        {
+          "kind": "source-text-only mask/font/fit probe, no translation or mutation",
+          "status": "held",
+          "reason": "Low confidence word geometry"
+        }
+      ]
+    },
+    {
+      "page": 2,
+      "xref": 23,
+      "page_bbox": [
+        48.0,
+        505.0,
+        564.0,
+        585.0
+      ],
+      "pixel_size": [
+        1548,
+        240
+      ],
+      "ocr_blocks": [
+        {
+          "type": "paragraph",
+          "text": "\"You laughed when I said I would repay you,\" said the Mouse. \"Now you see that even a Mouse can help a Lion.\"",
+          "page": 1,
+          "position": [
+            3.0,
+            19.0,
+            1504.0,
+            137.0
+          ],
+          "pdf_coordinates": "display",
+          "style": {
+            "font": "helv",
+            "font_size": 11,
+            "color": 0,
+            "bold": false
+          },
+          "ocr": {
+            "pack": "eng",
+            "confidence": 94.69565217391305,
+            "words": [
+              {
+                "text": "\"You",
+                "confidence": 96.0,
+                "position": [
+                  4.0,
+                  20.0,
+                  107.0,
+                  55.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "laughed",
+                "confidence": 96.0,
+                "position": [
+                  122.0,
+                  19.0,
+                  282.0,
+                  65.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "when",
+                "confidence": 95.0,
+                "position": [
+                  297.0,
+                  19.0,
+                  406.0,
+                  55.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "I",
+                "confidence": 95.0,
+                "position": [
+                  420.0,
+                  20.0,
+                  435.0,
+                  54.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "said",
+                "confidence": 95.0,
+                "position": [
+                  452.0,
+                  19.0,
+                  530.0,
+                  55.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "I",
+                "confidence": 95.0,
+                "position": [
+                  544.0,
+                  20.0,
+                  559.0,
+                  54.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "would",
+                "confidence": 96.0,
+                "position": [
+                  574.0,
+                  19.0,
+                  700.0,
+                  55.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "repay",
+                "confidence": 96.0,
+                "position": [
+                  713.0,
+                  31.0,
+                  825.0,
+                  65.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "you,\"",
+                "confidence": 83.0,
+                "position": [
+                  840.0,
+                  20.0,
+                  946.0,
+                  65.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "said",
+                "confidence": 96.0,
+                "position": [
+                  965.0,
+                  19.0,
+                  1044.0,
+                  55.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "the",
+                "confidence": 96.0,
+                "position": [
+                  1058.0,
+                  19.0,
+                  1118.0,
+                  55.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "Mouse.",
+                "confidence": 96.0,
+                "position": [
+                  1133.0,
+                  20.0,
+                  1280.0,
+                  55.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "\"Now",
+                "confidence": 96.0,
+                "position": [
+                  1301.0,
+                  20.0,
+                  1415.0,
+                  55.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "you",
+                "confidence": 96.0,
+                "position": [
+                  1430.0,
+                  31.0,
+                  1504.0,
+                  65.0
+                ],
+                "line": 1,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "see",
+                "confidence": 96.0,
+                "position": [
+                  3.0,
+                  103.0,
+                  63.0,
+                  127.0
+                ],
+                "line": 2,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "that",
+                "confidence": 96.0,
+                "position": [
+                  79.0,
+                  91.0,
+                  154.0,
+                  127.0
+                ],
+                "line": 2,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "even",
+                "confidence": 96.0,
+                "position": [
+                  168.0,
+                  103.0,
+                  263.0,
+                  127.0
+                ],
+                "line": 2,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "a",
+                "confidence": 96.0,
+                "position": [
+                  278.0,
+                  103.0,
+                  299.0,
+                  127.0
+                ],
+                "line": 2,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "Mouse",
+                "confidence": 95.0,
+                "position": [
+                  313.0,
+                  92.0,
+                  449.0,
+                  127.0
+                ],
+                "line": 2,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "can",
+                "confidence": 95.0,
+                "position": [
+                  464.0,
+                  103.0,
+                  533.0,
+                  127.0
+                ],
+                "line": 2,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "help",
+                "confidence": 96.0,
+                "position": [
+                  548.0,
+                  91.0,
+                  633.0,
+                  137.0
+                ],
+                "line": 2,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "a",
+                "confidence": 96.0,
+                "position": [
+                  649.0,
+                  103.0,
+                  670.0,
+                  127.0
+                ],
+                "line": 2,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "text": "Lion.\"",
+                "confidence": 85.0,
+                "position": [
+                  684.0,
+                  91.0,
+                  809.0,
+                  127.0
+                ],
+                "line": 2,
+                "paragraph": [
+                  1,
+                  1
+                ]
+              }
+            ],
+            "reading_order": 0,
+            "uncertain_words": []
+          },
+          "ocr_reflow": true
+        }
+      ],
+      "planning_probes": [
+        {
+          "kind": "source-text-only mask/font/fit probe, no translation or mutation",
+          "status": "held",
+          "reason": "Rotated/curved baseline is unsupported"
+        }
+      ]
+    }
+  ],
+  "elapsed_seconds": 2.594,
+  "source_unchanged": true
+}

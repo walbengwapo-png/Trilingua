@@ -1,0 +1,81 @@
+{
+  "purpose": "diagnostic_only",
+  "acceptance_evidence": false,
+  "production_settings_changed": false,
+  "notice": "Confidence is not measured OCR word accuracy. These variants require calibration and fresh held-out evaluation before any production setting change.",
+  "variants": [
+    {
+      "page": 1,
+      "dpi_variant": 300,
+      "binarize": true,
+      "text": "\"Spare me!\" begged the poor Mouse. \"Please let me go and some day I will surely repay you.\"",
+      "minimum_word_confidence": 60.0,
+      "low_confidence_words": [
+        {
+          "text": "you.\"",
+          "confidence": 60.0
+        }
+      ]
+    },
+    {
+      "page": 1,
+      "dpi_variant": 400,
+      "binarize": false,
+      "text": "\"Spare me!\" begged the poor Mouse. \"Please let me go and some day I will surely repay you.\"",
+      "minimum_word_confidence": 90.0,
+      "low_confidence_words": []
+    },
+    {
+      "page": 1,
+      "dpi_variant": 400,
+      "binarize": true,
+      "text": "\"Spare me!\" begged the poor Mouse. \"Please let me go and some day I will surely repay you.\"",
+      "minimum_word_confidence": 76.0,
+      "low_confidence_words": [
+        {
+          "text": "you.\"",
+          "confidence": 76.0
+        }
+      ]
+    },
+    {
+      "page": 2,
+      "dpi_variant": 300,
+      "binarize": true,
+      "text": "\"You laughed when I said I would repay you,\" said the Mouse. \"Now you see that even a Mouse can help a Lion.”",
+      "minimum_word_confidence": 79.0,
+      "low_confidence_words": [
+        {
+          "text": "Lion.”",
+          "confidence": 79.0
+        }
+      ]
+    },
+    {
+      "page": 2,
+      "dpi_variant": 400,
+      "binarize": false,
+      "text": "\"You laughed when I said I would repay you,\" said the Mouse. \"Now you see that even a Mouse can help a Lion.\"",
+      "minimum_word_confidence": 61.0,
+      "low_confidence_words": [
+        {
+          "text": "you,\"",
+          "confidence": 61.0
+        }
+      ]
+    },
+    {
+      "page": 2,
+      "dpi_variant": 400,
+      "binarize": true,
+      "text": "\"You laughed when I said I would repay you,” said the Mouse. \"Now you see that even a Mouse can help a Lion.\"",
+      "minimum_word_confidence": 60.0,
+      "low_confidence_words": [
+        {
+          "text": "you,”",
+          "confidence": 60.0
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "role": "advisory preparation only",
+  "documents": [
+    {
+      "id": "861207a4a241dce4",
+      "language": "English",
+      "capture_class": "",
+      "split": "calibration",
+      "gaps": [
+        "unsupported language/capture class",
+        "author/rights note missing"
+      ]
+    }
+  ],
+  "missing_splits": {
+    "English / scan": [
+      "calibration",
+      "heldout"
+    ],
+    "English / photo": [
+      "calibration",
+      "heldout"
+    ],
+    "English / screenshot": [
+      "calibration",
+      "heldout"
+    ]
+  },
+  "candidates": [
+    {
+      "id": "7d008e604ff83e9380f27e2b",
+      "sample_id": "861207a4a241dce4",
+      "page": 0,
+      "bbox": [
+        1166.6666666666667,
+        3141.6666666666665,
+        1189.8333231608074,
+        3198.9166259765625
+      ],
+      "text": "1",
+      "basis": "visible native PDF text missing from calibration draft"
+    },
+    {
+      "id": "17dabdedb1508d100a55edc8",
+      "sample_id": "861207a4a241dce4",
+      "page": 1,
+      "bbox": [
+        1166.6666666666667,
+        3141.6666666666665,
+        1189.8333231608074,
+        3198.9166259765625
+      ],
+      "text": "2",
+      "basis": "visible native PDF text missing from calibration draft"
+    }
+  ],
+  "available_questions": {
+    "metadata": "Who supplied these samples, do we have permission to use them, and was each made as a scan, photo or screenshot?",
+    "independent_review": "Who, other than the collector, will check the complete text, boxes and reading order?",
+    "unseen_samples": "Which additional, previously unused documents may be used for the missing test categories?",
+    "proposal_review": "Please check the separate proposed corrections against the original pages before accepting any of them."
+  },
+  "heldout_content_included": false,
+  "page_images_included": false
+}

@@ -47,6 +47,9 @@ class TranslationService
         '.odt'  => '.docx',
         '.pptx' => '.pptx',
         '.xlsx' => '.xlsx',
+        '.png'  => '.pdf',
+        '.jpg'  => '.pdf',
+        '.jpeg' => '.pdf',
     ];
 
     // Increased timeout for large documents (10 minutes)

@@ -1,0 +1,44 @@
+{
+  "input_sha256": "df09eaad8e681a4c5792081db117b38d238f06a9bdadf7c8241b7b0c0b76e34f",
+  "target_language": "Cebuano",
+  "mode": "fast",
+  "entrypoint": "FastAPI /translate/document via in-process ASGI TestClient; real providers, no external server started",
+  "configured_primary": "gptoss",
+  "configured_model": "gpt-oss:20b-cloud",
+  "configured_route": [
+    "gptoss",
+    "gemini"
+  ],
+  "private_operational_plan_key": "C:\\Users\\walbe\\AppData\\Local\\TriLingua\\private-test-keys\\5d7c619b-6646-455a-8723-2e4ae9138d79\\render-plan.json",
+  "ocr_acceptance_report_configured": false,
+  "unrelated_import_warmup_connections_blocked": true,
+  "http_status": 200,
+  "output_pdf": "C:\\dev\\Trilingua\\output\\pdf\\lion-mouse-pipeline-test-2026-10-26\\Lion_and_Mouse_Cebuano_pipeline_partial.pdf",
+  "output_sha256": "eb2c69686ad017425a6ad3aec3ac46e15145706224eeb2966c9f318a1147f7d6",
+  "content_summary": {
+    "status": "partial",
+    "translated": 6,
+    "held": 4,
+    "passthrough": 0,
+    "source_coverage": "unknown",
+    "held_region_ids": [
+      "15238ad3f4c6cbef28aa58a6",
+      "ae08701268feae8b96e15910",
+      "0d6eda5eb3f955d7c590961a",
+      "4585b2de9d4876b94e3fd1cc"
+    ]
+  },
+  "download_filename": "Lion_and_Mouse_2_pages_10_blocks_2_image_text_partial.pdf",
+  "saved_plan_signature_and_source_verified": true,
+  "elapsed_seconds": 80.718,
+  "observed_http_calls": [
+    {
+      "method": "POST",
+      "host": "localhost",
+      "path": "/api/chat",
+      "http_status": 200,
+      "elapsed_seconds": 78.188
+    }
+  ],
+  "source_unchanged": true
+}

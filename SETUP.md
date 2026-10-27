@@ -26,7 +26,7 @@ Will be pulled automatically on first request:
 - `gemma4:31b-cloud`
 - `gpt-oss:20b-cloud`
 
-**Local analysis model** (only needed as the analysis fallback when no Mistral API key is set):
+**Local analysis model** (only needed as the analysis fallback when no Gemini API key is set):
 
 ```bash
 ollama pull llama3.2:1b
@@ -41,12 +41,12 @@ The file `trilingua-code/.env` controls all provider and pipeline settings.
 ### Translation Provider
 
 ```
-TRANSLATION_PROVIDER=mistral        # "mistral" or "gptoss"
+TRANSLATION_PROVIDER=gemini        # "gemini" or "gptoss"
 ```
 
 | Provider | Key | Model |
 |----------|-----|-------|
-| Mistral | `MISTRAL_API_KEY` | `MISTRAL_MODEL=mistral-small-latest` |
+| Gemini | `GEMINI_API_KEY` | `GEMINI_MODEL=gemini-2.5-flash` |
 | GPT-OSS (Ollama Cloud) | — | `OLLAMA_CLOUD_MODEL=gpt-oss:20b-cloud` |
 
 **Switching providers:** Change `TRANSLATION_PROVIDER`, restart server. That's it.
@@ -56,11 +56,11 @@ TRANSLATION_PROVIDER=mistral        # "mistral" or "gptoss"
 Analysis (document analysis, quality review, layout planning) uses a separate provider from translation:
 
 ```
-MISTRAL_ANALYSIS_MODEL=mistral-small-latest
+GEMINI_ANALYSIS_MODEL=gemini-2.5-flash
 ```
 
-- **Mistral (default when `MISTRAL_API_KEY` is set)** — the server picks `MistralAnalysisProvider` whenever a Mistral API key is present. Uses the same key as the translation provider, model controlled by `MISTRAL_ANALYSIS_MODEL`.
-- **Ollama (fallback)** — if no `MISTRAL_API_KEY` is set, the server falls back to the local `OllamaAnalysisProvider` using `OLLAMA_ANALYSIS_MODEL`.
+- **Gemini (default when `GEMINI_API_KEY` is set)** — the server picks `GeminiAnalysisProvider` whenever a Gemini API key is present. Uses the same key as the translation provider, model controlled by `GEMINI_ANALYSIS_MODEL`.
+- **Ollama (fallback)** — if no `GEMINI_API_KEY` is set, the server falls back to the local `OllamaAnalysisProvider` using `OLLAMA_ANALYSIS_MODEL`.
 
 Falls back gracefully if unavailable.
 
@@ -70,25 +70,30 @@ Falls back gracefully if unavailable.
 TRANSLATION_CONCURRENCY=16
 ```
 
-How many parallel API calls the pipeline sends. Auto-capped at 4 when using Mistral (to avoid rate limits). Default 16 for GPT-OSS.
+How many parallel API calls the pipeline sends. Auto-capped at 4 when using Gemini (to avoid rate limits). Default 16 for GPT-OSS.
 
 | Provider | Recommended |
 |----------|------------|
-| Mistral | `4` (auto-capped, override not needed) |
+| Gemini | `4` (auto-capped, override not needed) |
 | GPT-OSS (Ollama Cloud) | `16` (default if line is deleted) |
 
 ### All .env Variables
 
 | Variable | Required | Default | Purpose |
 |----------|----------|---------|---------|
-| `TRANSLATION_PROVIDER` | Yes | `gptoss` | `mistral` or `gptoss` |
-| `MISTRAL_API_KEY` | If Mistral | — | Mistral API key |
-| `MISTRAL_MODEL` | No | `mistral-small-latest` | Mistral model name (translation) |
+| `TRANSLATION_PROVIDER` | Yes | `gemini` | `gemini` or `gptoss` |
+| `GEMINI_API_KEY` | If Gemini | — | Gemini API key |
+| `GEMINI_MODEL` | No | `gemini-2.5-flash` | Gemini model name (translation) |
 | `OLLAMA_CLOUD_URL` | No | `http://localhost:11434/api/chat` | Ollama Cloud endpoint |
 | `OLLAMA_CLOUD_MODEL` | No | `gpt-oss:20b-cloud` | Ollama Cloud model |
-| `MISTRAL_ANALYSIS_MODEL` | No | `mistral-small-latest` | Analysis model (Mistral cloud) |
+| `GEMINI_ANALYSIS_MODEL` | No | `gemini-2.5-flash` | Analysis model (Gemini cloud) |
 | `OLLAMA_ANALYSIS_MODEL` | No | `llama3.1:8b` | Analysis model (local Ollama fallback) |
-| `TRANSLATION_CONCURRENCY` | No | `16` | Parallel API call count |
+| `TRANSLATION_CONCURRENCY` | No | `8` | Maximum per-document GPT-OSS batch submissions; shared slots are scheduled fairly |
+| `GPTOSS_TRANSLATION_SLOTS` | No | `8` | Shared GPT-OSS document-batch capacity across all active documents |
+| `TRANSLATION_MAX_CONCURRENT` | No | `2` | Active document pipelines accepted by the Python service |
+| `DOCUMENT_QUEUE_WORKERS` | No | `2` | Laravel queue workers launched for document jobs |
+| `GEMINI_FALLBACK_CONCURRENCY` | No | `1` | Serialized Gemini translation-fallback capacity |
+| `GPTOSS_MAX_OUTPUT_TOKENS` | No | `0` | Use Ollama's normal output budget; empty GPT-OSS replies retry at 8192 then 16384 |
 | `TRANSLATION_CACHE_ENABLED` | No | `true` | Enable the persistent SQLite cache |
 | `TRANSLATION_CACHE_TTL_DAYS` | No | `30` | SQLite cache entry lifetime |
 | `TRANSLATION_PORT` | No | `5000` | Port the FastAPI server listens on |
@@ -103,23 +108,23 @@ cd trilingua-code
 python Model/server.py
 ```
 
-Expected startup log (with `MISTRAL_API_KEY` set, analysis uses Mistral):
+Expected startup log (with `GEMINI_API_KEY` set, analysis uses Gemini):
 
 ```
-[OK] Active translation provider: mistral (mistral-small-latest)
-[OK] Analysis provider: mistral_analysis (mistral-small-latest)
-[OK] Available providers: ['mistral', 'gptoss']
+[OK] Active translation provider: gemini (gemini-2.5-flash)
+[OK] Analysis provider: gemini_analysis (gemini-2.5-flash)
+[OK] Available providers: ['gemini', 'gptoss']
 [WARMUP] Pre-warming cold-start dependencies...
   [WARMUP] [OK] python-docx
   [WARMUP] [OK] PyMuPDF (fitz)
   ...
-  [WARMUP] [OK] mistral connection pool warmed
+  [WARMUP] [OK] gemini connection pool warmed
   [WARMUP] Complete in 6ms
 INFO:     Started server process [12345]
 INFO:     Application startup complete.
 ```
 
-Without a `MISTRAL_API_KEY`, the analysis provider falls back to local Ollama (`ollama_analysis`).
+Without a `GEMINI_API_KEY`, the analysis provider falls back to local Ollama (`ollama_analysis`).
 
 GPT-OSS warmup includes a model loading step (may take 1-2 min):
 
@@ -159,11 +164,13 @@ Font resolution during reconstruction guarantees glyph coverage in this order:
 
 `FontMapper` in ``layout.py`` still handles the embedded-font resolution used elsewhere, but the PDF write path now prefers system fonts for guaranteed accented coverage.
 
-### OCR Fallback (Scanned / Image-Based PDFs)
+### Page-Level OCR (Quality Gated)
 
-If PyMuPDF extracts **no text** from a PDF, the pipeline automatically retries with OCR via ``document/ocr_extractor.py``. Each page is rendered at 300 DPI and run through **Tesseract** (low-confidence results dropped), producing blocks compatible with the normal pipeline.
+PDFs retain native extraction on selectable pages and classify each remaining page. Scan-only pages use Tesseract at 300 DPI only when the source-language scan category has a matching representative acceptance report at **95% minimum word accuracy**. Unavailable/unvalidated OCR fails explicitly instead of omitting scanned pages. Low-confidence words remain in the text and are marked for source review.
 
-Requires `pip install pytesseract Pillow` plus the Tesseract OCR binary on `PATH`. If the OCR path isn't available the request fails with a clear message telling you to install it.
+Install `Model/requirements.txt` and the external Tesseract binary. Set `OCR_TESSERACT_CMD` if it is not on PATH, and `TESSDATA_PREFIX` for a custom language-data directory. Packs are `eng`, `ceb`, and `fil` (not `tgl`). Set `OCR_ACCEPTANCE_REPORT` to the evaluator's accepted JSON report; engine version, pack checksum, processing settings and language/input category must match. `/ocr/readiness` is service-token protected and does not call a translation provider.
+
+PNG/JPEG-to-PDF support is implemented but hidden by default (`TRANSLATION_IMAGE_UPLOADS=false`); enable it only after the applicable photo categories pass. Documents using OCR produce a separate translated-text PDF with source-page labels, not replacement of words inside scanned artwork. Region-level OCR and scanned-word replacement remain deferred. Photo acceptance and any required perspective/deskew improvements remain unfinished. See `trilingua-code/docs/OCR_IMPLEMENTATION_2026-10-25.md` for the current evidence and acceptance procedure.
 
 ### PDF Column Modes
 
@@ -180,10 +187,12 @@ For bilingual PDFs (text in two columns), the API/pipeline supports:
 | `Cannot connect to Ollama Cloud` | Ollama not running | Start Ollama, verify at http://localhost:11434 |
 | `Timeout` | GPU spin-up longer than 60s | Timeout is now 300s, wait or check Ollama status |
 | `404 Client Error ... /api/chat` | Analysis model doesn't exist | Run `ollama pull <model>` or change `OLLAMA_ANALYSIS_MODEL` |
-| `Rate limited, retrying...` | Too many concurrent requests | Mistral caps at 4 automatically; or lower `TRANSLATION_CONCURRENCY` |
-| `Unknown provider '...'` | Wrong `TRANSLATION_PROVIDER` value | Use `mistral` or `gptoss`, NOT model name |
-| `OCR fallback is not available (pytesseract not installed)` | Scanned PDF with no text layer, no OCR deps | `pip install pytesseract Pillow` + install Tesseract OCR |
-| `No translatable text extracted` | Scanned PDF AND OCR yielded no text | OCR deps missing, or truly image-only page; try `pdf_column_mode='left'/'right'` for bilingual |
+| `Rate limited, retrying...` | Too many concurrent requests | Gemini caps at 4 automatically; or lower `TRANSLATION_CONCURRENCY` |
+| `Unknown provider '...'` | Wrong `TRANSLATION_PROVIDER` value | Use `gemini` or `gptoss`, NOT model name |
+| `OCR runtime unavailable` | Missing Tesseract/Python dependency or incorrect binary path | Install runtime requirements and Tesseract; check `OCR_TESSERACT_CMD` |
+| `OCR ... is on hold` | Missing, stale or insufficient category acceptance evidence | Complete the representative 95% evaluation; configure `OCR_ACCEPTANCE_REPORT` |
+| `OCR found no readable text` | Unreadable scan, blank raster or recognition failure | Check the original; do not treat the page as successfully translated |
+| `No translatable text extracted` | Empty input or native text excluded by the column filter | Check content and the selected column mode |
 
 ### Running PDF Font Regression Tests
 
@@ -202,14 +211,14 @@ Runs full ``write_pdf_preserved`` round-trips against generated accented PDFs pl
 ## 7. Quick Reference
 
 ```bash
-# Start server (Mistral)
+# Start server (Gemini)
 python Model/server.py
 
 # Or with GPT-OSS
 TRANSLATION_PROVIDER=gptoss python Model/server.py
 
 # Test analysis provider is working
-# (Mistral if MISTRAL_API_KEY is set, else local Ollama)
+# (Gemini if GEMINI_API_KEY is set, else local Ollama)
 curl http://127.0.0.1:5000/health        # shows active provider + model
 ollama list                               # verify local analysis model is pulled
 ollama ps                                 # check if model is loaded in memory

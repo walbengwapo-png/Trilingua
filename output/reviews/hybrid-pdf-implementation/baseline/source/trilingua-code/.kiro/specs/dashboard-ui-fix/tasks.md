@@ -1,0 +1,155 @@
+# Implementation Plan
+
+- [x] 1. Write bug condition exploration test
+  - **Property 1: Bug Condition** - Hardcoded Data and Missing UI Elements on All Four Pages
+  - **CRITICAL**: This test MUST FAIL on unfixed code — failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior — it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate the bug exists across all four affected pages
+  - **Scoped PBT Approach**: Scope the property to the concrete failing cases below for reproducibility
+  - Write a Laravel feature test (PHPUnit) that authenticates a session and seeds known `translation_history` rows via `HistoryService` (or Supabase test fixtures), then asserts on the rendered HTML
+  - **Test case 1 — Dashboard stat cards**: Seed 3 document records for the session, GET `/dashboard`, assert response contains "3" (not "24") for Total Documents
+  - **Test case 2 — Dashboard greeting**: Authenticate as a user named "Maria Santos", GET `/dashboard`, assert response contains "Maria Santos"
+  - **Test case 3 — New Translation counter**: GET `/translate`, assert response contains "0/5000" (not "0/8000")
+  - **Test case 4 — Speaker icons**: GET `/translate`, assert response contains element with id `speak-source-btn`
+  - **Test case 5 — My Documents tab filters**: GET `/documents`, assert response contains element with class `tab-btn`
+  - **Test case 6 — History grouping**: GET `/history`, assert response contains element with class `history-group`
+  - Run all test cases on UNFIXED code
+  - **EXPECTED OUTCOME**: Tests FAIL (this is correct — it proves the bug exists)
+  - Document counterexamples found, e.g.:
+    - Dashboard renders "24" regardless of seeded record count
+    - `/translate` response contains "8000" not "5000"
+    - No elements with class `speak-source-btn`, `tab-btn`, `history-group`, or `match-badge` exist in the respective page responses
+  - Mark task complete when tests are written, run, and failures are documented
+  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11, 1.12, 1.13, 1.14_
+
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - All Existing Functional Flows Unchanged
+  - **IMPORTANT**: Follow observation-first methodology — observe behavior on UNFIXED code first, then write tests capturing that behavior
+  - **Observe on UNFIXED code (non-buggy inputs — all POST endpoints and auth flows):**
+    - Observe: POST `/translate` with valid text returns JSON `{ "translated": "..." }`
+    - Observe: POST `/translate` with a valid file returns JSON `{ "download_url": "..." }`
+    - Observe: POST `/history/redownload/{id}` returns JSON `{ "download_url": "..." }`
+    - Observe: GET `/translate` response contains the swap button markup and its JS handler
+    - Observe: Unauthenticated GET `/dashboard` returns a redirect (HTTP 302) to the login page
+    - Observe: Session with zero document records, GET `/documents`, response contains the empty-state message
+  - **Write property-based tests capturing observed behavior patterns:**
+    - For any valid text translation request, POST `/translate` returns HTTP 200 with `translated` key in JSON
+    - For any valid document upload request, POST `/translate` returns HTTP 200 with `download_url` key in JSON
+    - For any valid history record id, POST `/history/redownload/{id}` returns HTTP 200 with `download_url` key in JSON
+    - For any unauthenticated request to a protected route, the response is a redirect to login
+    - For any authenticated session with zero documents, GET `/documents` renders the empty-state element
+  - Run all preservation tests on UNFIXED code
+  - **EXPECTED OUTCOME**: Tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when tests are written, run, and passing on unfixed code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10_
+
+- [x] 3. Fix for hardcoded data and missing UI elements on Dashboard, New Translation, My Documents, and Saved Translations pages
+
+  - [x] 3.1 Create DashboardController
+    - Create `app/Http/Controllers/DashboardController.php` (new file)
+    - Inject `HistoryService` via constructor
+    - In `index()`: call `$this->history->getHistory(session()->getId())` to fetch all records for the current session
+    - Implement `computeStats(array $records)`: count records where `translation_type = 'document'` for `totalDocs`; count records where `created_at` starts with `date('Y-m')` for `translationsThisMonth`; sum `str_word_count($r['source_text'])` for text records plus 250 per document record for `wordsTranslated`
+    - Slice the first 5 elements of the descending `$records` array as `$recentRecords`
+    - On `HistoryService` exception: pass `$stats = ['totalDocs'=>0, 'translationsThisMonth'=>0, 'wordsTranslated'=>0]`, `$recentRecords = []`, `$error = true`
+    - Return `view('dashboard', compact('stats', 'recentRecords', 'error'))`
+    - Register `DashboardController@index` for `GET /dashboard` in `routes/web.php`, replacing any existing closure
+    - _Bug_Condition: `isBugCondition(pageResponse)` where `pageContainsHardcodedStats(pageResponse)` OR `pageGreetingLacksRealName(pageResponse)` OR `recentTranslationsAreHardcoded(pageResponse)` OR `quickActionsPanelMissing(pageResponse)`_
+    - _Expected_Behavior: Dashboard renders real user name, real stat counts, real recent records (up to 5), and a Quick Actions panel_
+    - _Preservation: `TranslationController`, `DocumentsController`, `HistoryController`, and all POST endpoints are untouched_
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
+
+  - [x] 3.2 Update Dashboard blade template
+    - In `resources/views/dashboard.blade.php`: replace hardcoded greeting with `Welcome back, {{ auth()->user()->name ?? 'User' }}`
+    - Replace hardcoded stat values with `{{ $stats['totalDocs'] }}`, `{{ $stats['translationsThisMonth'] }}`, `{{ number_format($stats['wordsTranslated']) }}`
+    - Replace hardcoded table rows with a `@forelse ($recentRecords as $record)` loop (up to 5 rows) showing: document name or truncated source text, source → target language, formatted date, status pill ("Completed" for documents, "Text" for text records), and a confidence column (fixed "—")
+    - Add `@empty` branch with a "No recent translations" message
+    - Add a Quick Actions panel below the stat cards with three `<a>` links: "New Translation" → `route('translate')`, "Upload Document" → `route('translate')`, "Browse Corpus" → `#`
+    - Add `@if ($error ?? false)` error banner above the stat cards
+    - _Bug_Condition: `pageContainsHardcodedStats`, `pageGreetingLacksRealName`, `recentTranslationsAreHardcoded`, `quickActionsPanelMissing`_
+    - _Expected_Behavior: All four dashboard defects resolved — real name, real stats, real recent records, Quick Actions panel present_
+    - _Preservation: App layout (sidebar, header, logout) markup is unchanged; no changes to any POST route or controller_
+    - _Requirements: 2.1, 2.2, 2.3, 2.4_
+
+  - [x] 3.3 Update New Translation blade and JS
+    - In `resources/views/translation.blade.php`: change `maxlength="8000"` on `<textarea id="source-text">` to `maxlength="5000"`
+    - Change `MAX_CHARS = 8000` in the inline JS to `MAX_CHARS = 5000`
+    - Change `WARN_THRESHOLD = 7500` to `WARN_THRESHOLD = 4500`
+    - Update the initial counter `<span>` text from `0/8000` to `0/5000`
+    - Add speaker `<button id="speak-source-btn" type="button" aria-label="Read source text aloud">` with a speaker SVG icon in the source panel footer (before `#attach-btn`)
+    - Add speaker `<button id="speak-output-btn" type="button" aria-label="Read translation aloud">` with a speaker SVG icon in the output panel footer (before `#copy-btn`)
+    - Add minimal JS for speaker buttons using `window.speechSynthesis`; hide buttons if the API is unavailable
+    - Do NOT modify the existing translate/copy/save/swap JS handlers
+    - _Bug_Condition: `charCounterShowsWrongLimit(pageResponse)` OR `speakerIconsMissing(pageResponse)`_
+    - _Expected_Behavior: Counter shows "0/5000"; speaker buttons present on both panels; existing translate/copy/save/swap flows unchanged_
+    - _Preservation: All existing `TranslationController` POST handling, file validation, swap button, copy button, and save button behavior is unchanged_
+    - _Requirements: 2.6, 2.7, 3.1, 3.2, 3.3_
+
+  - [x] 3.4 Update My Documents blade
+    - In `resources/views/my-documents.blade.php`: add a `.docs-toolbar` row above the grid containing: `<input type="search" id="docs-search" placeholder="Search documents…">`, `<select id="docs-lang-filter">` (All Languages / English / Cebuano / Filipino), `<select id="docs-status-filter">` (All Status / Translated / Original), and two icon buttons for grid/list toggle
+    - Add a `@php` block to compute tab counts from `$documents`: `$allCount`, `$recentCount` (current month), `$sharedCount = 0`, `$archivedCount = 0`
+    - Add a `.docs-tabs` row with four `<button class="tab-btn">` elements showing All, Recent, Shared, Archived with their counts
+    - Inside each `.doc-card__body`, add a progress bar: `<div class="doc-card__progress"><div class="doc-card__progress-bar" style="width: {{ $isTranslated ? 100 : 0 }}%"></div></div>` and `<span class="doc-card__progress-label">{{ $isTranslated ? '100%' : '0%' }} Complete</span>`
+    - Add client-side JS for search filtering, dropdown filtering, tab switching, and grid/list toggle (all client-side only — no new AJAX calls)
+    - Preserve the existing "Open" button and its download URL logic; preserve the empty-state markup
+    - _Bug_Condition: `searchAndFilterBarMissing(pageResponse)` OR `tabFiltersWithCountsMissing(pageResponse)` OR `progressBarMissingOnCards(pageResponse)`_
+    - _Expected_Behavior: Search bar, Language/Status filters, grid/list toggle, tab filters with real counts, and progress bar on each card are all present_
+    - _Preservation: `DocumentsController` is unchanged; "Open" download flow and empty-state message are preserved_
+    - _Requirements: 2.8, 2.9, 2.10, 3.4, 3.10_
+
+  - [x] 3.5 Update Saved Translations (History) blade
+    - In `resources/views/history.blade.php`: replace the plain `<h2>` with a `.history-page-header` row containing: title + `<span class="count-badge">{{ count($records) }}</span>`, `<input type="search" id="history-search">`, `<select id="history-group">` (Group by Language Pair / No Grouping), `<select id="history-sort">` (Newest First / Oldest First / Language A–Z)
+    - Add a `@php` block to group records: `$grouped = []; foreach ($records as $r) { $key = ($r['source_language'] ?? '?') . ' → ' . ($r['target_language'] ?? '?'); $grouped[$key][] = $r; }`
+    - Replace the flat `<table>` with a `@foreach ($grouped as $langPair => $groupRecords)` loop rendering each group as `<section class="history-group">` with a `<h3 class="history-group__title">` heading and a card grid
+    - For each record, render a `<div class="history-card">` containing: match badge `<span class="match-badge">{{ $matchPct }}%</span>` (computed as `$isDoc ? 100 : min(100, (int)(mb_strlen($r['translated_text'] ?? '') / max(1, mb_strlen($r['source_text'] ?? '')) * 100))`), content preview, date, and action icon row with copy, download, share, and bookmark buttons
+    - Reuse existing `data-id`, `data-source`, `data-translated` attributes on action buttons so the existing re-download JS and view-text-modal JS continue to work
+    - Add client-side JS for search filtering, group-by toggle, and sort (all client-side only)
+    - _Bug_Condition: `historyNotGroupedByLanguagePair(pageResponse)` OR `matchBadgeMissing(pageResponse)` OR `perCardActionIconsMissing(pageResponse)` OR `historyPageHeaderMissing(pageResponse)`_
+    - _Expected_Behavior: Page header with count badge, search, group-by, and sort controls; cards grouped by language pair; match percentage badge; copy/download/share/bookmark action icons on each card_
+    - _Preservation: `HistoryController` is unchanged; re-download POST flow and view-text-modal JS are preserved via same `data-*` attributes_
+    - _Requirements: 2.11, 2.12, 2.13, 2.14, 3.5, 3.6_
+
+  - [x] 3.6 Add CSS for all new UI components
+    - In `resources/css/views/dashboard.css`: add `.welcome-greeting`, `.stat-card__icon`, `.quick-actions`, `.quick-action-card` (with hover state), `.recent-table__status--completed`, `.recent-table__status--text`
+    - In `resources/css/views/translation.css`: add `.speak-btn` (matching existing `.translation-swap` pattern) and `.speak-btn svg` (icon sizing)
+    - In `resources/css/views/my-documents.css`: add `.docs-toolbar`, `.docs-search`, `.docs-filter-select`, `.docs-view-toggle`, `.docs-tabs`, `.tab-btn`, `.tab-btn.active`, `.doc-card__progress`, `.doc-card__progress-bar`, `.doc-card__progress-label`, `.docs-list-view .doc-card`
+    - In `resources/css/views/history.css`: add `.history-page-header`, `.count-badge`, `.history-search`, `.history-select`, `.history-group`, `.history-group__title`, `.history-cards`, `.history-card`, `.match-badge`, `.history-card__actions`, `.history-card__action-btn`
+    - Use existing CSS custom properties (`--card-bg`, `--primary`, `--border`, `--muted`, `--text`, `--bg`, `--radius`) throughout for automatic dark-mode support
+    - Do NOT modify any existing CSS rules — only add new rules
+    - _Bug_Condition: Any required UI element is absent because its CSS class has no definition_
+    - _Expected_Behavior: All new UI elements render correctly with the clean white/light-gray design and blue sidebar matching the mockups_
+    - _Preservation: No existing CSS rules are modified; all existing component styles remain unchanged_
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13, 2.14_
+
+  - [x] 3.7 Write unit tests for DashboardController::computeStats()
+    - `computeStats([])` returns `['totalDocs'=>0, 'translationsThisMonth'=>0, 'wordsTranslated'=>0]`
+    - `computeStats()` with mixed document/text records returns correct `totalDocs` (document records only), correct `translationsThisMonth` (current month only), and correct `wordsTranslated` (sum of `str_word_count` for text records + 250 per document record)
+    - `computeStats()` with records from a previous month returns `translationsThisMonth = 0`
+    - Match percentage calculation: `mb_strlen($translated) / max(1, mb_strlen($source)) * 100`, capped at 100
+    - _Requirements: 2.2_
+
+  - [x] 3.8 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - Real Data Rendered on All Four Pages
+    - **IMPORTANT**: Re-run the SAME test from task 1 — do NOT write a new test
+    - The test from task 1 encodes the expected behavior; when it passes, it confirms the fix is correct
+    - Run all six test cases from task 1 against the FIXED code
+    - **EXPECTED OUTCOME**: All six test cases PASS (confirms bug is fixed)
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11, 2.12, 2.13, 2.14_
+
+  - [x] 3.9 Verify preservation tests still pass
+    - **Property 2: Preservation** - All Existing Functional Flows Unchanged
+    - **IMPORTANT**: Re-run the SAME tests from task 2 — do NOT write new tests
+    - Run all preservation property tests from task 2 against the FIXED code
+    - **EXPECTED OUTCOME**: All preservation tests PASS (confirms no regressions)
+    - Confirm: POST `/translate` (text and document), POST `/history/redownload/{id}`, unauthenticated redirect, and empty-state all behave identically to the unfixed baseline
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10_
+
+- [x] 4. Checkpoint — Ensure all tests pass
+  - Run the full PHPUnit test suite: `php artisan test`
+  - Confirm all bug condition exploration tests (task 1 / 3.8) pass
+  - Confirm all preservation property tests (task 2 / 3.9) pass
+  - Confirm all unit tests for `DashboardController::computeStats()` (task 3.7) pass
+  - Manually verify each of the four pages in a browser with a seeded session to confirm the UI matches the design mockups
+  - If any test fails, investigate before proceeding — do not mark this task complete until the full suite is green
+  - Ask the user if any questions arise

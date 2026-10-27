@@ -1,0 +1,35 @@
+{
+  "source_sha256": "df09eaad8e681a4c5792081db117b38d238f06a9bdadf7c8241b7b0c0b76e34f",
+  "page_geometry_unchanged": true,
+  "dialogue_replacements": [
+    {
+      "page": 1,
+      "target_text": "\"Pasagdi ko!\" nangayo ang pobre nga Ilaga. \"Palihug pasagdi ko ug sa usa ka adlaw siguradong mobalos ko nimo.\"",
+      "font_size": 15.008471814923428,
+      "glyph_pixels_erased": 31428,
+      "outside_mask_unchanged": true,
+      "searchable_target": true,
+      "old_image_object_absent": true
+    },
+    {
+      "page": 2,
+      "target_text": "\"Nagkatawa ka kung ako nagsulti nga mobalos ko nimo,\" miingon ang Ilaga. \"Karon makita nimo nga bisan ang Ilaga makahatag og tabang sa Leona.\"",
+      "font_size": 12.8,
+      "glyph_pixels_erased": 37072,
+      "outside_mask_unchanged": true,
+      "searchable_target": true,
+      "old_image_object_absent": true
+    }
+  ],
+  "illustrations": [
+    {
+      "page": 1,
+      "artwork_pixels_unchanged": true
+    },
+    {
+      "page": 2,
+      "artwork_pixels_unchanged": true
+    }
+  ],
+  "preview_unverified": true
+}

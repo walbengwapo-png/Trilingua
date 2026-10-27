@@ -1,0 +1,58 @@
+{
+  "xlsx_formula_loss": {
+    "source_A1": "=SUM(1,2)",
+    "output_A1": null,
+    "output_B1": "Kumusta"
+  },
+  "case_collision": {
+    "requested": "us",
+    "returned": "Estados Unidos",
+    "memory_keys_equal": true
+  },
+  "single_character_document_passthrough": {
+    "output": "I",
+    "provider_calls": 0
+  },
+  "persistent_echo_success": {
+    "text": "The dog is hungry.",
+    "success": true,
+    "provider_calls": 2,
+    "warnings": [
+      "Source echoed unchanged after primary retry and semantic fallback; kept as-is (likely already in Cebuano or untranslatable). Verify output."
+    ]
+  },
+  "identity_review": {
+    "score": 30.0,
+    "retry_required": true,
+    "issues": [
+      "untranslated"
+    ]
+  },
+  "terminal_http_retry": {
+    "401": {
+      "attempts": 3,
+      "success": false
+    },
+    "403": {
+      "attempts": 3,
+      "success": false
+    },
+    "429": {
+      "attempts": 3,
+      "success": false
+    }
+  },
+  "quota_fallback": {
+    "provider": "gemini",
+    "backup_calls": 1
+  },
+  "unreported_tokens_estimated": {
+    "input": 2,
+    "output": 2
+  },
+  "startup_warmup": {
+    "top_level_call_lines": [
+      307
+    ]
+  }
+}

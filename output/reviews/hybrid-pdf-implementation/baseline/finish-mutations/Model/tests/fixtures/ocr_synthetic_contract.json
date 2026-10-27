@@ -1,0 +1,7 @@
+{
+  "material": "test_fixture",
+  "source_text": "SOURCE",
+  "renderer": "tests.test_pdf_image_layout.geometry",
+  "scope_simulations": ["scan", "photo", "screenshot"],
+  "notice": "Synthetic contract geometry only. No real acquisition or human reference review. Not acceptance evidence. Images and random keys exist only in temporary test folders."
+}

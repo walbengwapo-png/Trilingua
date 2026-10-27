@@ -1,0 +1,122 @@
+[
+  {
+    "id": "p1-r1",
+    "page": 0,
+    "order": 0,
+    "bbox": [
+      203.0,
+      180.0,
+      1330.0,
+      257.0
+    ],
+    "text": "The Lion and the Mouse"
+  },
+  {
+    "id": "p1-r2",
+    "page": 0,
+    "order": 1,
+    "bbox": [
+      200.0,
+      1609.0,
+      2345.0,
+      1976.0
+    ],
+    "text": "A Lion lay asleep in the forest, his great head resting on his paws. A timid little Mouse came upon him unexpectedly, and in her fright and haste to get away, ran across the Lion's nose. Roused from his nap, the Lion laid his huge paw angrily on the tiny creature to kill her."
+  },
+  {
+    "id": "p1-r3",
+    "page": 0,
+    "order": 2,
+    "bbox": [
+      203.99624188589,
+      2326.9281045751636,
+      2333.753672702426,
+      2490.8202614379084
+    ],
+    "text": "\"Spare me!\" begged the poor Mouse. \"Please let me go and some day I will surely repay you.\""
+  },
+  {
+    "id": "p1-r4",
+    "page": 0,
+    "order": 3,
+    "bbox": [
+      200.0,
+      2697.0,
+      2339.0,
+      2862.0
+    ],
+    "text": "The Lion was much amused to think that a Mouse could ever help him. But he was generous and finally let the Mouse go."
+  },
+  {
+    "id": "proposal-7d008e604ff83e9380f27e2b",
+    "page": 0,
+    "bbox": [
+      1166.6666666666667,
+      3141.6666666666665,
+      1189.8333231608074,
+      3198.9166259765625
+    ],
+    "text": "1",
+    "order": 4
+  },
+  {
+    "id": "p2-r5",
+    "page": 1,
+    "order": 5,
+    "bbox": [
+      200.0,
+      1184.0,
+      2335.0,
+      1652.0
+    ],
+    "text": "Some days later, while stalking his prey in the forest, the Lion was caught in the toils of a hunter's net. Unable to free himself, he filled the forest with his angry roaring. The Mouse knew the voice and quickly found the Lion struggling in the net. Running to one of the great ropes that bound him, she gnawed it until it parted, and soon the Lion was free."
+  },
+  {
+    "id": "p2-r6",
+    "page": 1,
+    "order": 6,
+    "bbox": [
+      203.0,
+      2130.0,
+      2289.0,
+      2295.0
+    ],
+    "text": "\"You laughed when I said I would repay you,\" said the Mouse. \"Now you see that even a Mouse can help a Lion.\""
+  },
+  {
+    "id": "p2-r7",
+    "page": 1,
+    "order": 7,
+    "bbox": [
+      194.0,
+      2595.0,
+      1175.0,
+      2657.0
+    ],
+    "text": "A kindness is never wasted."
+  },
+  {
+    "id": "p2-r8",
+    "page": 1,
+    "order": 8,
+    "bbox": [
+      201.24383247274812,
+      2888.4007490636704,
+      1443.7561675272518,
+      2930.3483146067415
+    ],
+    "text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994"
+  },
+  {
+    "id": "proposal-17dabdedb1508d100a55edc8",
+    "page": 1,
+    "bbox": [
+      1166.6666666666667,
+      3141.6666666666665,
+      1189.8333231608074,
+      3198.9166259765625
+    ],
+    "text": "2",
+    "order": 9
+  }
+]

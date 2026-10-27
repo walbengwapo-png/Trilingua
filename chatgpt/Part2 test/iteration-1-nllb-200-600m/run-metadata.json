@@ -1,0 +1,53 @@
+{
+  "generated_at": "2026-09-22T04:55:09.135022+00:00",
+  "provider": "nllb",
+  "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+  "health": {
+    "status": "ok",
+    "engine": "provider:nllb",
+    "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+    "active_provider": "nllb",
+    "fallback_provider": null,
+    "available_providers": [
+      "gemini",
+      "gptoss",
+      "nllb"
+    ],
+    "languages": [
+      "English",
+      "Cebuano",
+      "Filipino"
+    ],
+    "formats": [
+      ".csv",
+      ".docx",
+      ".md",
+      ".odt",
+      ".pdf",
+      ".pptx",
+      ".rtf",
+      ".txt",
+      ".xlsx"
+    ],
+    "provider_status": {
+      "status": "ok",
+      "provider": "nllb",
+      "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d",
+      "loaded": false,
+      "local_files_only": true
+    },
+    "analysis_status": {
+      "status": "configured",
+      "provider": "gemini_analysis",
+      "model": "gemini-3.5-flash-lite",
+      "fallback_provider": "ollama_analysis",
+      "fallback_model": "gpt-oss:20b-cloud",
+      "primary_min_interval_seconds": 5.0,
+      "retry_after_seconds": 0,
+      "last_error": ""
+    }
+  },
+  "manifest_sha256": "17b355eef502d52e2edef6490fc61c27277bd0837d445b0e547138001440df7d",
+  "full_run_count": 2,
+  "stability_runs_per_direction": 3
+}

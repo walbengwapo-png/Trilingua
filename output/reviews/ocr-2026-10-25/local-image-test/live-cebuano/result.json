@@ -1,0 +1,51 @@
+{
+  "document_limit": 1,
+  "input": "C:\\Users\\walbe\\OneDrive\\Desktop\\DFS\\Facebook Marketing\\day-03-five-second-test-1080x1350.png",
+  "source_language": "English",
+  "target_language": "Cebuano",
+  "provider": "gptoss",
+  "model": "gpt-oss:20b-cloud",
+  "billing": "Existing configured Ollama Cloud account usage; exact incremental charge is not exposed by this API. No purchase or subscription change.",
+  "mode": "fast",
+  "analysis_and_quality_provider_calls": false,
+  "provider_http_attempts_per_request": 1,
+  "provider_timeout_seconds": 60,
+  "release_gate": "Stubbed only in this isolated diagnostic process; no release acceptance or app upload enabling.",
+  "ocr_corrections": "None. Test the raw extracted text.",
+  "status": "passed_functionally",
+  "output": "C:\\dev\\Trilingua\\output\\reviews\\ocr-2026-10-25\\local-image-test\\live-cebuano\\translated_DFS_5_second_poster.pdf",
+  "elapsed_seconds": 34.063,
+  "blocks": 13,
+  "pdf_pages": 1,
+  "embedded_images": 0,
+  "output_validation": {
+    "status": "passed",
+    "content_coverage": "passed",
+    "layout": "separate_translated_text",
+    "linguistic_accuracy": "unverified",
+    "source_pages": [
+      0
+    ],
+    "output_pages": 1
+  },
+  "provider_requests": 1,
+  "warnings": [
+    "Image OCR: check extracted text against the original. PDF output uses a separate translated layout.",
+    "This document uses a separate translated text layout; original scan artwork and page layout are not reproduced."
+  ],
+  "limitation": "Separate text PDF. Original poster graphics and layout are not reconstructed. Translation accuracy needs source comparison.",
+  "review": {
+    "overall": "Not acceptable as a finished translated poster",
+    "translation_quality": "failed qualitative spot check; not a quantified bilingual accuracy assessment",
+    "reconstruction": "Saved text coverage passed. Original artwork/layout was not reconstructed.",
+    "reviewed_render": "translated-page-1.png",
+    "findings": [
+      "OCR misread TEST as rest; translated output consequently says pahulay (rest).",
+      "CAN PEOPLE TELL became MAKASUGOD BA ANG MGA TAO, changing the intended meaning.",
+      "WHAT YOU DO became ANO ANG IMONG GINABUHAT, mixing nonstandard wording for the requested Cebuano output.",
+      "WHO IT’S FOR became KINIYA KINSA, an unclear label.",
+      "The poster background, decorative frames, typography and original label positioning are absent; PDF contains 0 embedded images."
+    ],
+    "release_acceptance": "Still on hold; application settings unchanged."
+  }
+}

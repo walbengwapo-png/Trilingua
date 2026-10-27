@@ -1,0 +1,119 @@
+{
+  "image_only": {
+    "path": "C:\\dev\\Trilingua\\output\\reviews\\layout-preserving-ocr-investigation-2026-10-25\\sample-image-only.pdf",
+    "pages": 1,
+    "native_text": "",
+    "native_chars": 0,
+    "image_occurrences": 1,
+    "page_size": [
+      0.0,
+      0.0,
+      259.20001220703125,
+      324.0
+    ],
+    "image_hashes": [
+      "dabd43a16cd78ef35be5578cd4d32962"
+    ],
+    "native_extractor_blocks": 0,
+    "normal_pipeline": {
+      "status": "blocked_before_translation",
+      "exception": "OCR English / scan is on hold: a representative, checked 95% acceptance report is required.",
+      "provider_calls": 0
+    }
+  },
+  "same_page_mixed": {
+    "path": "C:\\dev\\Trilingua\\output\\reviews\\layout-preserving-ocr-investigation-2026-10-25\\sample-native-plus-image.pdf",
+    "pages": 1,
+    "native_text": "Native caption remains extractable.\n",
+    "native_chars": 35,
+    "image_occurrences": 1,
+    "page_size": [
+      0.0,
+      0.0,
+      259.20001220703125,
+      360.0
+    ],
+    "image_hashes": [
+      "dabd43a16cd78ef35be5578cd4d32962"
+    ],
+    "native_extractor_blocks": 1,
+    "classification": {
+      "pages": [
+        {
+          "page": 0,
+          "classification": "native"
+        }
+      ],
+      "warnings": [
+        "Page 1: image regions were not OCR-checked; verify that no text is missing."
+      ]
+    },
+    "ocr_blocks": 0,
+    "diagnostic_mock_pipeline": {
+      "output": "C:\\dev\\Trilingua\\output\\reviews\\layout-preserving-ocr-investigation-2026-10-25\\translated_sample-native-plus-image.pdf",
+      "blocks": 1,
+      "images_preserved": 1,
+      "image_pixels_unchanged": true,
+      "output_text": "Padayon sa panid 2\n",
+      "provider": "existing mock provider; no cloud requests",
+      "output_pages": 2,
+      "output_text_all_pages": "Padayon sa panid 2\n\nGipadayon gikan sa orihinal nga panid 1\n[MOCK:4w] .elbatcartxe sniamer noitpac\nevitaN\n"
+    }
+  },
+  "direct_ocr": {
+    "seconds": 2.375,
+    "blocks": 13,
+    "text": "(orerrat FRIDAY STUDIOS THE 5-SECOND rest )\nCAN PEOPLE TELL ©\nWHAT YOU DO\nIN 5 SECONDS?\nYOUR FIRST SCREEN SHOULD ANSWER THREE THINGS — CLEARLY.\n01\n02\n03\nCLARITY BEFORE COMPLEXITY\nWHAT YOU OFFER\nWHO IT’S FOR\nWHAT TO DO NEXT\nDAVAO CITY, PHILIPPINES",
+    "font_sizes": [
+      11
+    ],
+    "colors": [
+      0
+    ],
+    "has_rotation_field": false,
+    "is_acceptance_run": false
+  },
+  "recorded_translation_reconstruction": {
+    "output": "C:\\dev\\Trilingua\\output\\reviews\\layout-preserving-ocr-investigation-2026-10-25\\recorded-live-translation-reflow.pdf",
+    "pages": 1,
+    "page_size": [
+      0.0,
+      0.0,
+      595.0,
+      842.0
+    ],
+    "images": 0,
+    "validation": {
+      "status": "passed",
+      "content_coverage": "passed",
+      "layout": "separate_translated_text",
+      "linguistic_accuracy": "unverified",
+      "source_pages": [
+        0
+      ],
+      "output_pages": 1
+    },
+    "provenance": "Replay of previous actual GPT-OSS Cebuano translation; not a new provider run."
+  },
+  "runtime": {
+    "available": true,
+    "binary": "C:/Program Files/Tesseract-OCR/tesseract.exe",
+    "version": "tesseract v5.4.0.20240606",
+    "installed_packs": [
+      "ceb",
+      "eng",
+      "fil",
+      "osd"
+    ],
+    "list_languages_output": "List of available languages in \"C:/Users/walbe/AppData/Local/TriLingua/ocr/tessdata/\" (4):\nceb\neng\nfil\nosd\n",
+    "pack_sha256": {
+      "ceb": "346a39de801495c93ece6656d018d7d19d298af7db42d82ebae99dfe8ee14961",
+      "eng": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+      "fil": "2b17f68014ab44b88b5e2334ebcd0ce0090d9af7c6fbef6fab22e0bbd9a934dd",
+      "osd": "9cf5d576fcc47564f11265841e5ca839001e7e6f38ff7f7aacf46d15a96b00ff"
+    },
+    "python_package_available": true,
+    "ready": true
+  },
+  "tracked_source_and_env_unchanged": true
+}

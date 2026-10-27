@@ -1,0 +1,940 @@
+{
+  "pages": [
+    {
+      "page": 1,
+      "dimensions_unchanged": true,
+      "images": [
+        {
+          "bbox": [
+            112.0,
+            90.16256713867188,
+            500.0,
+            355.8374328613281
+          ],
+          "source_xref": 8,
+          "decoded_pixels_identical": true,
+          "encoded_stream_identical": true
+        },
+        {
+          "bbox": [
+            48.0,
+            552.0,
+            564.0,
+            620.0
+          ],
+          "source_xref": 14,
+          "decoded_pixels_identical": true,
+          "encoded_stream_identical": true
+        }
+      ],
+      "output_text": "1\nAng Leong ug ang Mouse\nNagpahulay ang Leong sa kakahuyan, ang iyang dako nga ulo\nnagpahimutang sa iyang mga paa. Usa ka mahina nga gamay nga Mouse\nang nakit-an siya sa wala damha, ug sa iyang kahadlok ug pagdali nga\nmolayo, nagdagan siya sa ilong sa Leong. Gipukaw gikan sa iyang tulog,\nang Leong nagbutang sa iyang dako nga paa sa gamay nga nilalang aron\npatyon siya.\nNakalipay kaayo ang Leong nga maghunahuna nga ang Mouse makahatag\nsiya og tabang. Apan siya malumo ug sa katapusan nagpahawa siya sa\nMouse.\n"
+    },
+    {
+      "page": 2,
+      "dimensions_unchanged": true,
+      "images": [
+        {
+          "bbox": [
+            158.0,
+            42.16009521484375,
+            454.0,
+            244.83990478515625
+          ],
+          "source_xref": 8,
+          "decoded_pixels_identical": true,
+          "encoded_stream_identical": true
+        },
+        {
+          "bbox": [
+            48.0,
+            505.0,
+            564.0,
+            585.0
+          ],
+          "source_xref": 23,
+          "decoded_pixels_identical": true,
+          "encoded_stream_identical": true
+        }
+      ],
+      "output_text": "2\nPipila ka adlaw pagkahuman, samtang nagbantay sa iyang pangayam sa\nkakahuyan, ang Leong nadakpan sa mga kalisud sa usa ka net sa\nmangangayam. Walay mahimo nga makagawas, siya nagpatik sa\nkakahuyan sa iyang masuko nga pag-uyog. Ang Mouse nakahibalo sa\ntingog ug dali nga nakit-an ang Leong nga naglisod sa net. Nagdagan siya\nngadto sa usa sa mga dakong tali nga nag-uban kaniya, siya nagkagat niini\nhangtod kini napartido, ug sa dali ra nga panahon ang Leong naglibre.\nAng kabinantayon dili\ngayud malugaw.\nAesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg\n#19994\n"
+    }
+  ],
+  "regions": [
+    {
+      "region_id": "85dbc31715eb371eca947b3c",
+      "page": 0,
+      "source_kind": "native",
+      "bbox": [
+        48.0,
+        33.99998092651367,
+        319.5960388183594,
+        70.00997924804688
+      ],
+      "status": "translated",
+      "reason": null,
+      "block_index": 0
+    },
+    {
+      "region_id": "8bbdc35cddb81fd373da7498",
+      "page": 0,
+      "source_kind": "native",
+      "bbox": [
+        48.0,
+        380.0,
+        562.6581420898438,
+        475.17706298828125
+      ],
+      "status": "translated",
+      "reason": null,
+      "block_index": 1
+    },
+    {
+      "region_id": "b2b763db0d6adea917027abe",
+      "page": 0,
+      "source_kind": "native",
+      "bbox": [
+        48.0,
+        641.0,
+        561.26416015625,
+        687.8443603515625
+      ],
+      "status": "translated",
+      "reason": null,
+      "block_index": 2
+    },
+    {
+      "region_id": "15238ad3f4c6cbef28aa58a6",
+      "page": 0,
+      "source_kind": "raster",
+      "bbox": [
+        112.0,
+        90.16256713867188,
+        500.0,
+        355.8374328613281
+      ],
+      "status": "held",
+      "reason": "ocr_acceptance_hold",
+      "occurrence_id": "0:0",
+      "xref": 8,
+      "transform": [
+        388.0,
+        0.0,
+        -0.0,
+        265.67486572265625,
+        112.0,
+        90.16256713867188
+      ],
+      "capture_scope": [
+        "scan",
+        "photo",
+        "screenshot"
+      ],
+      "signals": {
+        "version": 1,
+        "calibrated": false,
+        "preview_range": 214
+      },
+      "occurrence_count": 2,
+      "detail": "OCR English / scan is on hold: a representative, checked 95% acceptance report is required.",
+      "safety_hold": "shared_or_unresolved_image"
+    },
+    {
+      "region_id": "ae08701268feae8b96e15910",
+      "page": 0,
+      "source_kind": "raster",
+      "bbox": [
+        48.0,
+        552.0,
+        564.0,
+        620.0
+      ],
+      "status": "held",
+      "reason": "ocr_acceptance_hold",
+      "occurrence_id": "0:1",
+      "xref": 14,
+      "transform": [
+        516.0,
+        0.0,
+        -0.0,
+        68.0,
+        48.0,
+        552.0
+      ],
+      "capture_scope": [
+        "scan",
+        "photo",
+        "screenshot"
+      ],
+      "signals": {
+        "version": 1,
+        "calibrated": false,
+        "preview_range": 214
+      },
+      "occurrence_count": 1,
+      "detail": "OCR English / scan is on hold: a representative, checked 95% acceptance report is required."
+    },
+    {
+      "region_id": "6f1b5cb77a352d29029346bf",
+      "page": 1,
+      "source_kind": "native",
+      "bbox": [
+        48.0,
+        278.0,
+        560.5162353515625,
+        397.3434143066406
+      ],
+      "status": "translated",
+      "reason": null,
+      "block_index": 3
+    },
+    {
+      "region_id": "c2cc580187dbf150a512062d",
+      "page": 1,
+      "source_kind": "native",
+      "bbox": [
+        48.0,
+        617.0,
+        284.27105712890625,
+        644.2160034179688
+      ],
+      "status": "translated",
+      "reason": null,
+      "block_index": 4
+    },
+    {
+      "region_id": "8e13b444eb71d8530c137ab6",
+      "page": 1,
+      "source_kind": "native",
+      "bbox": [
+        48.0,
+        691.0,
+        346.8089904785156,
+        703.365966796875
+      ],
+      "status": "translated",
+      "reason": null,
+      "block_index": 5
+    },
+    {
+      "region_id": "0d6eda5eb3f955d7c590961a",
+      "page": 1,
+      "source_kind": "raster",
+      "bbox": [
+        158.0,
+        42.16009521484375,
+        454.0,
+        244.83990478515625
+      ],
+      "status": "held",
+      "reason": "ocr_acceptance_hold",
+      "occurrence_id": "1:0",
+      "xref": 8,
+      "transform": [
+        296.0,
+        0.0,
+        -0.0,
+        202.6798095703125,
+        158.0,
+        42.16009521484375
+      ],
+      "capture_scope": [
+        "scan",
+        "photo",
+        "screenshot"
+      ],
+      "signals": {
+        "version": 1,
+        "calibrated": false,
+        "preview_range": 208
+      },
+      "occurrence_count": 2,
+      "detail": "OCR English / scan is on hold: a representative, checked 95% acceptance report is required.",
+      "safety_hold": "shared_or_unresolved_image"
+    },
+    {
+      "region_id": "4585b2de9d4876b94e3fd1cc",
+      "page": 1,
+      "source_kind": "raster",
+      "bbox": [
+        48.0,
+        505.0,
+        564.0,
+        585.0
+      ],
+      "status": "held",
+      "reason": "ocr_acceptance_hold",
+      "occurrence_id": "1:1",
+      "xref": 23,
+      "transform": [
+        516.0,
+        0.0,
+        -0.0,
+        80.0,
+        48.0,
+        505.0
+      ],
+      "capture_scope": [
+        "scan",
+        "photo",
+        "screenshot"
+      ],
+      "signals": {
+        "version": 1,
+        "calibrated": false,
+        "preview_range": 215
+      },
+      "occurrence_count": 1,
+      "detail": "OCR English / scan is on hold: a representative, checked 95% acceptance report is required."
+    }
+  ],
+  "blocks": [
+    {
+      "block_index": 0,
+      "region_id": "85dbc31715eb371eca947b3c",
+      "source_text": "The Lion and the Mouse",
+      "text": "Ang Leong ug ang Mouse",
+      "passthrough": null,
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 0,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              33.99998092651367,
+              302.8259996652603,
+              66.40898140072822
+            ],
+            "font_size": 23.400000000000002,
+            "action": "fit",
+            "page": 0
+          }
+        ]
+      }
+    },
+    {
+      "block_index": 1,
+      "region_id": "8bbdc35cddb81fd373da7498",
+      "source_text": "A Lion lay asleep in the forest, his great head resting on his paws. A timid little Mouse came upon him unexpectedly, and in her fright and haste to get away, ran across the Lion's nose. Roused from his nap, the Lion laid his huge paw angrily on the tiny creature to kill her.",
+      "text": "Nagpahulay ang Leong sa kakahuyan, ang iyang dako nga ulo nagpahimutang sa iyang mga paa. Usa ka mahina nga gamay nga Mouse ang nakit-an siya sa wala damha, ug sa iyang kahadlok ug pagdali nga molayo, nagdagan siya sa ilong sa Leong. Gipukaw gikan sa iyang tulog, ang Leong nagbutang sa iyang dako nga paa sa gamay nga nilalang aron patyon siya.",
+      "passthrough": null,
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              94.2910704612732,
+              380.0,
+              516.3670716285706,
+              402.67799934744835
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              58.4040704369545,
+              404.17799934744835,
+              552.2540716528893,
+              426.8559986948967
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              66.6660704612732,
+              428.3559986948967,
+              543.9920716285706,
+              451.03399804234505
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              56.9675706923008,
+              452.53399804234505,
+              553.690571397543,
+              475.2119973897934
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              59.35607033967972,
+              476.7119973897934,
+              551.302071750164,
+              499.38999673724174
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              264.24857100844383,
+              500.88999673724174,
+              346.4095710813999,
+              523.5679960846901
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          }
+        ]
+      }
+    },
+    {
+      "block_index": 2,
+      "region_id": "b2b763db0d6adea917027abe",
+      "source_text": "The Lion was much amused to think that a Mouse could ever help him. But he was generous and finally let the Mouse go.",
+      "text": "Nakalipay kaayo ang Leong nga maghunahuna nga ang Mouse makahatag siya og tabang. Apan siya malumo ug sa katapusan nagpahawa siya sa Mouse.",
+      "passthrough": null,
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 2,
+            "source_page": 0,
+            "rect": [
+              51.816579312086105,
+              641.0,
+              557.4475808441639,
+              663.6779993474483
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 2,
+            "source_page": 0,
+            "rect": [
+              65.73107951879501,
+              665.1779993474483,
+              543.533080637455,
+              687.8559986948967
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 2,
+            "source_page": 0,
+            "rect": [
+              279.3700800538063,
+              689.3559986948967,
+              329.8940801024437,
+              712.033998042345
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          }
+        ]
+      }
+    },
+    {
+      "block_index": 3,
+      "region_id": "6f1b5cb77a352d29029346bf",
+      "source_text": "Some days later, while stalking his prey in the forest, the Lion was caught in the toils of a hunter's net. Unable to free himself, he filled the forest with his angry roaring. The Mouse knew the voice and quickly found the Lion struggling in the net. Running to one of the great ropes that bound him, she gnawed it until it parted, and soon the Lion was free.",
+      "text": "Pipila ka adlaw pagkahuman, samtang nagbantay sa iyang pangayam sa kakahuyan, ang Leong nadakpan sa mga kalisud sa usa ka net sa mangangayam. Walay mahimo nga makagawas, siya nagpatik sa kakahuyan sa iyang masuko nga pag-uyog. Ang Mouse nakahibalo sa tingog ug dali nga nakit-an ang Leong nga naglisod sa net. Nagdagan siya ngadto sa usa sa mga dakong tali nga nag-uban kaniya, siya nagkagat niini hangtod kini napartido, ug sa dali ra nga panahon ang Leong naglibre.",
+      "passthrough": null,
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              60.163617104291916,
+              278.0,
+              548.3526182472706,
+              300.67799934744835
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              85.19611704349518,
+              302.17799934744835,
+              523.3201183080673,
+              324.8559986948967
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              83.53861710429192,
+              326.3559986948967,
+              524.9776182472706,
+              349.03399804234505
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              67.24411714076996,
+              350.53399804234505,
+              541.2721182107925,
+              373.2119973897934
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              52.836617201566696,
+              374.7119973897934,
+              555.6796181499958,
+              397.38999673724174
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              50.949617177248,
+              398.88999673724174,
+              557.5666181743145,
+              421.5679960846901
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              66.0626171529293,
+              423.0679960846901,
+              542.4536181986332,
+              445.74599543213844
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          }
+        ]
+      }
+    },
+    {
+      "block_index": 4,
+      "region_id": "c2cc580187dbf150a512062d",
+      "source_text": "A kindness is never wasted.",
+      "text": "Ang kabinantayon dili gayud malugaw.",
+      "passthrough": null,
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 4,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              617.0,
+              241.72499924898148,
+              644.2160000801086
+            ],
+            "font_size": 21.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 4,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              645.7160000801086,
+              190.35899966955185,
+              672.9320001602173
+            ],
+            "font_size": 21.0,
+            "action": "fit",
+            "page": 1
+          }
+        ]
+      }
+    },
+    {
+      "block_index": 5,
+      "region_id": "8e13b444eb71d8530c137ab6",
+      "source_text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+      "text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+      "passthrough": null,
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 5,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              691.0,
+              314.2829985022545,
+              703.3660003840923
+            ],
+            "font_size": 9.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 5,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              704.8660003840923,
+              78.02399969100952,
+              717.2320007681847
+            ],
+            "font_size": 9.0,
+            "action": "fit",
+            "page": 1
+          }
+        ]
+      }
+    }
+  ],
+  "warnings": [
+    "Page 1: original region retained (ocr_acceptance_hold).",
+    "Page 1: original region retained (ocr_acceptance_hold).",
+    "Page 2: original region retained (ocr_acceptance_hold).",
+    "Page 2: original region retained (ocr_acceptance_hold).",
+    "Partial: 6 translated, 4 held, 0 passthrough regions. Held content retains its original language."
+  ],
+  "output_validation": {
+    "status": "passed",
+    "content_coverage": "passed",
+    "layout": "passed",
+    "linguistic_accuracy": "unverified",
+    "source_pages": 2,
+    "output_pages": 2,
+    "continuation_pages": 0,
+    "checked_fragments": 21,
+    "issues": [],
+    "content_findings": [],
+    "blocks": [
+      {
+        "block_index": 0,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          33.99998092651367,
+          302.8259996652603,
+          66.40898140072822
+        ],
+        "font_size": 23.400000000000002,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 1,
+        "source_page": 0,
+        "rect": [
+          94.2910704612732,
+          380.0,
+          516.3670716285706,
+          402.67799934744835
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 1,
+        "source_page": 0,
+        "rect": [
+          58.4040704369545,
+          404.17799934744835,
+          552.2540716528893,
+          426.8559986948967
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 1,
+        "source_page": 0,
+        "rect": [
+          66.6660704612732,
+          428.3559986948967,
+          543.9920716285706,
+          451.03399804234505
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 1,
+        "source_page": 0,
+        "rect": [
+          56.9675706923008,
+          452.53399804234505,
+          553.690571397543,
+          475.2119973897934
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 1,
+        "source_page": 0,
+        "rect": [
+          59.35607033967972,
+          476.7119973897934,
+          551.302071750164,
+          499.38999673724174
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 1,
+        "source_page": 0,
+        "rect": [
+          264.24857100844383,
+          500.88999673724174,
+          346.4095710813999,
+          523.5679960846901
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 2,
+        "source_page": 0,
+        "rect": [
+          51.816579312086105,
+          641.0,
+          557.4475808441639,
+          663.6779993474483
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 2,
+        "source_page": 0,
+        "rect": [
+          65.73107951879501,
+          665.1779993474483,
+          543.533080637455,
+          687.8559986948967
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 2,
+        "source_page": 0,
+        "rect": [
+          279.3700800538063,
+          689.3559986948967,
+          329.8940801024437,
+          712.033998042345
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          60.163617104291916,
+          278.0,
+          548.3526182472706,
+          300.67799934744835
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          85.19611704349518,
+          302.17799934744835,
+          523.3201183080673,
+          324.8559986948967
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          83.53861710429192,
+          326.3559986948967,
+          524.9776182472706,
+          349.03399804234505
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          67.24411714076996,
+          350.53399804234505,
+          541.2721182107925,
+          373.2119973897934
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          52.836617201566696,
+          374.7119973897934,
+          555.6796181499958,
+          397.38999673724174
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          50.949617177248,
+          398.88999673724174,
+          557.5666181743145,
+          421.5679960846901
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          66.0626171529293,
+          423.0679960846901,
+          542.4536181986332,
+          445.74599543213844
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 4,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          617.0,
+          241.72499924898148,
+          644.2160000801086
+        ],
+        "font_size": 21.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 4,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          645.7160000801086,
+          190.35899966955185,
+          672.9320001602173
+        ],
+        "font_size": 21.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 5,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          691.0,
+          314.2829985022545,
+          703.3660003840923
+        ],
+        "font_size": 9.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 5,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          704.8660003840923,
+          78.02399969100952,
+          717.2320007681847
+        ],
+        "font_size": 9.0,
+        "action": "fit",
+        "page": 1
+      }
+    ],
+    "source_artifacts": [],
+    "held": [],
+    "source_page_map": {
+      "0": 0,
+      "1": 1
+    }
+  },
+  "page_count_unchanged": true,
+  "tracked_or_env_hash_changes": [],
+  "input_hash_unchanged": true
+}

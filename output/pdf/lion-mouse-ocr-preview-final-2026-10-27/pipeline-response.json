@@ -1,0 +1,6396 @@
+{
+  "blocks": [
+    {
+      "block_index": 0,
+      "block_type": "heading",
+      "source_text": "The Lion and the Mouse",
+      "ai_translated_text": "Ang Leona ug ang Ilaga",
+      "current_text": "Ang Leona ug ang Ilaga",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "heading",
+      "text": "Ang Leona ug ang Ilaga",
+      "position": [
+        48.0,
+        33.99998092651367,
+        319.5960388183594,
+        70.00997924804688
+      ],
+      "page": 0,
+      "lines": [
+        {
+          "text": "The Lion and the Mouse",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            33.99998092651367,
+            319.5960388183594,
+            70.00997924804688
+          ],
+          "baseline": 61.14,
+          "x0": 48.0,
+          "text_x1": 319.6,
+          "font": "tiro",
+          "font_original": "Times-Bold",
+          "size": 26.0,
+          "color": 2700075,
+          "bold": true,
+          "italic": false,
+          "runs": [
+            {
+              "text": "The Lion and the Mouse",
+              "font": "tiro",
+              "font_original": "Times-Bold",
+              "size": 26.0,
+              "color": 2700075,
+              "bold": true,
+              "italic": false
+            }
+          ],
+          "links": []
+        }
+      ],
+      "links": [],
+      "alignment": "left",
+      "style": {
+        "font_size": 26.0,
+        "font": "tiro",
+        "font_original": "Times-Bold",
+        "color": 2700075,
+        "bold": true,
+        "italic": false
+      },
+      "pdf_coordinates": "display",
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 0,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              33.99998092651367,
+              313.8239994049072,
+              70.00998145341873
+            ],
+            "font_size": 26.0,
+            "action": "fit",
+            "page": 0
+          }
+        ]
+      },
+      "region_id": "85dbc31715eb371eca947b3c",
+      "visible": true
+    },
+    {
+      "block_index": 1,
+      "block_type": "paragraph",
+      "source_text": "A Lion lay asleep in the forest, his great head resting on his paws. A timid little Mouse came upon him unexpectedly, and in her fright and haste to get away, ran across the Lion's nose. Roused from his nap, the Lion laid his huge paw angrily on the tiny creature to kill her.",
+      "ai_translated_text": "Ang Leona nagpahulay sa kagubatan, ang iyang dako nga ulo nagapahimutang sa iyang mga tiil. Usa ka mahina nga gamay nga Ilaga ang nakit-an siya sa wala damha, ug sa iyang kahadlok ug pagdali nga molayo, milakaw siya sa ibabaw sa ilong sa Leona. Gipukaw gikan sa iyang pagkatulog, ang Leona nagbutang sa iyang dako nga tiil nga mapait sa gamay nga nilalang aron patyon siya.",
+      "current_text": "Ang Leona nagpahulay sa kagubatan, ang iyang dako nga ulo nagapahimutang sa iyang mga tiil. Usa ka mahina nga gamay nga Ilaga ang nakit-an siya sa wala damha, ug sa iyang kahadlok ug pagdali nga molayo, milakaw siya sa ibabaw sa ilong sa Leona. Gipukaw gikan sa iyang pagkatulog, ang Leona nagbutang sa iyang dako nga tiil nga mapait sa gamay nga nilalang aron patyon siya.",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "Ang Leona nagpahulay sa kagubatan, ang iyang dako nga ulo nagapahimutang sa iyang mga tiil. Usa ka mahina nga gamay nga Ilaga ang nakit-an siya sa wala damha, ug sa iyang kahadlok ug pagdali nga molayo, milakaw siya sa ibabaw sa ilong sa Leona. Gipukaw gikan sa iyang pagkatulog, ang Leona nagbutang sa iyang dako nga tiil nga mapait sa gamay nga nilalang aron patyon siya.",
+      "position": [
+        48.0,
+        380.0,
+        562.6581420898438,
+        475.17706298828125
+      ],
+      "page": 0,
+      "lines": [
+        {
+          "text": "A Lion lay asleep in the forest, his great head resting on his paws. A timid",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            380.0,
+            552.7471923828125,
+            402.6780090332031
+          ],
+          "baseline": 397.9,
+          "x0": 48.0,
+          "text_x1": 552.75,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "A Lion lay asleep in the forest, his great head resting on his paws. A timid",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        },
+        {
+          "text": "little Mouse came upon him unexpectedly, and in her fright and haste to get",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            404.1663513183594,
+            562.6581420898438,
+            426.8443603515625
+          ],
+          "baseline": 422.07,
+          "x0": 48.0,
+          "text_x1": 562.66,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "little Mouse came upon him unexpectedly, and in her fright and haste to get",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        },
+        {
+          "text": "away, ran across the Lion's nose. Roused from his nap, the Lion laid his",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            428.33270263671875,
+            536.444091796875,
+            451.0107116699219
+          ],
+          "baseline": 446.23,
+          "x0": 48.0,
+          "text_x1": 536.44,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "away, ran across the Lion's nose. Roused from his nap, the Lion laid his",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        },
+        {
+          "text": "huge paw angrily on the tiny creature to kill her.",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            452.4990539550781,
+            376.610107421875,
+            475.17706298828125
+          ],
+          "baseline": 470.4,
+          "x0": 48.0,
+          "text_x1": 376.61,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "huge paw angrily on the tiny creature to kill her.",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        }
+      ],
+      "links": [],
+      "alignment": "left",
+      "style": {
+        "font_size": 17.0,
+        "font": "tiro",
+        "font_original": "Times-Roman",
+        "color": 2700075,
+        "bold": false,
+        "italic": false
+      },
+      "pdf_coordinates": "display",
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              380.0,
+              466.30200111866,
+              402.67799934744835
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              404.17799934744835,
+              561.2130011916161,
+              426.8559986948967
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              428.3559986948967,
+              556.0280010700226,
+              451.03399804234505
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              452.53399804234505,
+              505.9800009727478,
+              475.2119973897934
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              476.7119973897934,
+              525.8190008997917,
+              499.38999673724174
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              500.88999673724174,
+              302.0140005350113,
+              523.5679960846901
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          }
+        ]
+      },
+      "region_id": "8bbdc35cddb81fd373da7498",
+      "visible": true
+    },
+    {
+      "block_index": 2,
+      "block_type": "paragraph",
+      "source_text": "The Lion was much amused to think that a Mouse could ever help him. But he was generous and finally let the Mouse go.",
+      "ai_translated_text": "Ang Leona nalipay kaayo nga naghunahuna nga ang Ilaga makahatag siya og tabang. Apan siya mapinanggaon ug sa katapusan gipasagdan ang Ilaga.",
+      "current_text": "Ang Leona nalipay kaayo nga naghunahuna nga ang Ilaga makahatag siya og tabang. Apan siya mapinanggaon ug sa katapusan gipasagdan ang Ilaga.",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "Ang Leona nalipay kaayo nga naghunahuna nga ang Ilaga makahatag siya og tabang. Apan siya mapinanggaon ug sa katapusan gipasagdan ang Ilaga.",
+      "position": [
+        48.0,
+        641.0,
+        561.26416015625,
+        687.8443603515625
+      ],
+      "page": 0,
+      "lines": [
+        {
+          "text": "The Lion was much amused to think that a Mouse could ever help him. But",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            641.0,
+            561.26416015625,
+            663.677978515625
+          ],
+          "baseline": 658.9,
+          "x0": 48.0,
+          "text_x1": 561.26,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "The Lion was much amused to think that a Mouse could ever help him. But",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        },
+        {
+          "text": "he was generous and finally let the Mouse go.",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            665.1663818359375,
+            360.0860595703125,
+            687.8443603515625
+          ],
+          "baseline": 683.07,
+          "x0": 48.0,
+          "text_x1": 360.09,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "he was generous and finally let the Mouse go.",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        }
+      ],
+      "links": [],
+      "alignment": "left",
+      "style": {
+        "font_size": 17.0,
+        "font": "tiro",
+        "font_original": "Times-Roman",
+        "color": 2700075,
+        "bold": false,
+        "italic": false
+      },
+      "pdf_coordinates": "display",
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 2,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              641.0,
+              552.20300167799,
+              663.6779993474483
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 2,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              665.1779993474483,
+              559.7850013375282,
+              687.8559986948967
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          }
+        ]
+      },
+      "region_id": "b2b763db0d6adea917027abe",
+      "visible": true
+    },
+    {
+      "block_index": 3,
+      "block_type": "paragraph",
+      "source_text": "\"Spare me!\" begged the poor Mouse. \"Please let me go and some day I will surely repay you.\"",
+      "ai_translated_text": "\"Pasagdi ko!\" nangayo ang pobre nga Ilaga. \"Palihug pasagdi ko ug sa usa ka adlaw siguradong mobalos ko nimo.\"",
+      "current_text": "\"Pasagdi ko!\" nangayo ang pobre nga Ilaga. \"Palihug pasagdi ko ug sa usa ka adlaw siguradong mobalos ko nimo.\"",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "\"Pasagdi ko!\" nangayo ang pobre nga Ilaga. \"Palihug pasagdi ko ug sa usa ka adlaw siguradong mobalos ko nimo.\"",
+      "position": [
+        48.0,
+        557.4856567382812,
+        561.0,
+        605.1908569335938
+      ],
+      "page": 0,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 95.33333333333333,
+        "words": [
+          {
+            "position": [
+              3.75,
+              19.456928838951313,
+              135.0,
+              65.1498127340824
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                3.75,
+                19.456928838951313,
+                1536.0,
+                65.1498127340824
+              ],
+              "baseline": [
+                0.0,
+                -10.486891385767791
+              ],
+              "x_size": 45.69288389513109,
+              "x_ascenders": 11.235955056179776,
+              "x_descenders": 10.486891385767791
+            },
+            "text": "\"Spare"
+          },
+          {
+            "position": [
+              150.75,
+              19.456928838951313,
+              246.0,
+              54.66292134831461
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                3.75,
+                19.456928838951313,
+                1536.0,
+                65.1498127340824
+              ],
+              "baseline": [
+                0.0,
+                -10.486891385767791
+              ],
+              "x_size": 45.69288389513109,
+              "x_ascenders": 11.235955056179776,
+              "x_descenders": 10.486891385767791
+            },
+            "text": "me!\""
+          },
+          {
+            "position": [
+              263.25,
+              19.456928838951313,
+              408.75,
+              65.1498127340824
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                3.75,
+                19.456928838951313,
+                1536.0,
+                65.1498127340824
+              ],
+              "baseline": [
+                0.0,
+                -10.486891385767791
+              ],
+              "x_size": 45.69288389513109,
+              "x_ascenders": 11.235955056179776,
+              "x_descenders": 10.486891385767791
+            },
+            "text": "begged"
+          },
+          {
+            "position": [
+              423.75,
+              19.456928838951313,
+              483.0,
+              54.66292134831461
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                3.75,
+                19.456928838951313,
+                1536.0,
+                65.1498127340824
+              ],
+              "baseline": [
+                0.0,
+                -10.486891385767791
+              ],
+              "x_size": 45.69288389513109,
+              "x_ascenders": 11.235955056179776,
+              "x_descenders": 10.486891385767791
+            },
+            "text": "the"
+          },
+          {
+            "position": [
+              498.0,
+              30.69288389513109,
+              591.0,
+              65.1498127340824
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                3.75,
+                19.456928838951313,
+                1536.0,
+                65.1498127340824
+              ],
+              "baseline": [
+                0.0,
+                -10.486891385767791
+              ],
+              "x_size": 45.69288389513109,
+              "x_ascenders": 11.235955056179776,
+              "x_descenders": 10.486891385767791
+            },
+            "text": "poor"
+          },
+          {
+            "position": [
+              604.5,
+              20.2059925093633,
+              752.25,
+              54.66292134831461
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                3.75,
+                19.456928838951313,
+                1536.0,
+                65.1498127340824
+              ],
+              "baseline": [
+                0.0,
+                -10.486891385767791
+              ],
+              "x_size": 45.69288389513109,
+              "x_ascenders": 11.235955056179776,
+              "x_descenders": 10.486891385767791
+            },
+            "text": "Mouse."
+          },
+          {
+            "position": [
+              771.75,
+              19.456928838951313,
+              918.0,
+              54.66292134831461
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                3.75,
+                19.456928838951313,
+                1536.0,
+                65.1498127340824
+              ],
+              "baseline": [
+                0.0,
+                -10.486891385767791
+              ],
+              "x_size": 45.69288389513109,
+              "x_ascenders": 11.235955056179776,
+              "x_descenders": 10.486891385767791
+            },
+            "text": "\"Please"
+          },
+          {
+            "position": [
+              933.0,
+              19.456928838951313,
+              983.25,
+              54.66292134831461
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                3.75,
+                19.456928838951313,
+                1536.0,
+                65.1498127340824
+              ],
+              "baseline": [
+                0.0,
+                -10.486891385767791
+              ],
+              "x_size": 45.69288389513109,
+              "x_ascenders": 11.235955056179776,
+              "x_descenders": 10.486891385767791
+            },
+            "text": "let"
+          },
+          {
+            "position": [
+              996.75,
+              30.69288389513109,
+              1057.5,
+              54.66292134831461
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                3.75,
+                19.456928838951313,
+                1536.0,
+                65.1498127340824
+              ],
+              "baseline": [
+                0.0,
+                -10.486891385767791
+              ],
+              "x_size": 45.69288389513109,
+              "x_ascenders": 11.235955056179776,
+              "x_descenders": 10.486891385767791
+            },
+            "text": "me"
+          },
+          {
+            "position": [
+              1072.5,
+              30.69288389513109,
+              1119.75,
+              65.1498127340824
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                3.75,
+                19.456928838951313,
+                1536.0,
+                65.1498127340824
+              ],
+              "baseline": [
+                0.0,
+                -10.486891385767791
+              ],
+              "x_size": 45.69288389513109,
+              "x_ascenders": 11.235955056179776,
+              "x_descenders": 10.486891385767791
+            },
+            "text": "go"
+          },
+          {
+            "position": [
+              1137.0,
+              19.456928838951313,
+              1208.25,
+              54.66292134831461
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                3.75,
+                19.456928838951313,
+                1536.0,
+                65.1498127340824
+              ],
+              "baseline": [
+                0.0,
+                -10.486891385767791
+              ],
+              "x_size": 45.69288389513109,
+              "x_ascenders": 11.235955056179776,
+              "x_descenders": 10.486891385767791
+            },
+            "text": "and"
+          },
+          {
+            "position": [
+              1223.25,
+              30.69288389513109,
+              1327.5,
+              54.66292134831461
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                3.75,
+                19.456928838951313,
+                1536.0,
+                65.1498127340824
+              ],
+              "baseline": [
+                0.0,
+                -10.486891385767791
+              ],
+              "x_size": 45.69288389513109,
+              "x_ascenders": 11.235955056179776,
+              "x_descenders": 10.486891385767791
+            },
+            "text": "some"
+          },
+          {
+            "position": [
+              1342.5,
+              19.456928838951313,
+              1413.75,
+              65.1498127340824
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                3.75,
+                19.456928838951313,
+                1536.0,
+                65.1498127340824
+              ],
+              "baseline": [
+                0.0,
+                -10.486891385767791
+              ],
+              "x_size": 45.69288389513109,
+              "x_ascenders": 11.235955056179776,
+              "x_descenders": 10.486891385767791
+            },
+            "text": "day"
+          },
+          {
+            "position": [
+              1428.75,
+              20.2059925093633,
+              1443.75,
+              53.91385767790263
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                3.75,
+                19.456928838951313,
+                1536.0,
+                65.1498127340824
+              ],
+              "baseline": [
+                0.0,
+                -10.486891385767791
+              ],
+              "x_size": 45.69288389513109,
+              "x_ascenders": 11.235955056179776,
+              "x_descenders": 10.486891385767791
+            },
+            "text": "I"
+          },
+          {
+            "position": [
+              1459.5,
+              19.456928838951313,
+              1536.0,
+              54.66292134831461
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                3.75,
+                19.456928838951313,
+                1536.0,
+                65.1498127340824
+              ],
+              "baseline": [
+                0.0,
+                -10.486891385767791
+              ],
+              "x_size": 45.69288389513109,
+              "x_ascenders": 11.235955056179776,
+              "x_descenders": 10.486891385767791
+            },
+            "text": "will"
+          },
+          {
+            "position": [
+              2.25,
+              91.36704119850188,
+              123.0,
+              137.05992509363296
+            ],
+            "confidence": 95.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_2",
+            "line_geometry": {
+              "id": "line_1_2",
+              "position": [
+                2.25,
+                91.36704119850188,
+                369.75,
+                137.05992509363296
+              ],
+              "baseline": [
+                0.0,
+                -10.486891385767791
+              ],
+              "x_size": 45.69288389513109,
+              "x_ascenders": 11.235955056179776,
+              "x_descenders": 10.486891385767791
+            },
+            "text": "surely"
+          },
+          {
+            "position": [
+              137.25,
+              102.60299625468166,
+              249.0,
+              137.05992509363296
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_2",
+            "line_geometry": {
+              "id": "line_1_2",
+              "position": [
+                2.25,
+                91.36704119850188,
+                369.75,
+                137.05992509363296
+              ],
+              "baseline": [
+                0.0,
+                -10.486891385767791
+              ],
+              "x_size": 45.69288389513109,
+              "x_ascenders": 11.235955056179776,
+              "x_descenders": 10.486891385767791
+            },
+            "text": "repay"
+          },
+          {
+            "position": [
+              264.0,
+              91.36704119850188,
+              369.75,
+              137.05992509363296
+            ],
+            "confidence": 85.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_2",
+            "line_geometry": {
+              "id": "line_1_2",
+              "position": [
+                2.25,
+                91.36704119850188,
+                369.75,
+                137.05992509363296
+              ],
+              "baseline": [
+                0.0,
+                -10.486891385767791
+              ],
+              "x_size": 45.69288389513109,
+              "x_ascenders": 11.235955056179776,
+              "x_descenders": 10.486891385767791
+            },
+            "text": "you.\""
+          }
+        ],
+        "reading_order": 0,
+        "retry": "accepted",
+        "uncertain_words": []
+      },
+      "ocr_reflow": false,
+      "region_id": "e1438d0c8f83dd75fc6eec1a",
+      "image_region": {
+        "xref": 14,
+        "image_bbox": [
+          48.0,
+          552.0,
+          564.0,
+          620.0
+        ],
+        "estimated_style": {
+          "font_id": "NotoSerif-Bold",
+          "initial_size": 15.008471814923428,
+          "method": "packaged glyph-shape comparison",
+          "confidence": 0.6869339924549245
+        }
+      }
+    },
+    {
+      "block_index": 4,
+      "block_type": "paragraph",
+      "source_text": "Some days later, while stalking his prey in the forest, the Lion was caught in the toils of a hunter's net. Unable to free himself, he filled the forest with his angry roaring. The Mouse knew the voice and quickly found the Lion struggling in the net. Running to one of the great ropes that bound him, she gnawed it until it parted, and soon the Lion was free.",
+      "ai_translated_text": "Sa pipila ka adlaw pagkahuman, samtang nag-uyamot sa iyang pangisda sa kagubatan, ang Leona nadakpan sa mga kalisod sa sampal sa mangangayam. Wala siya makapalaya, nag-awas siya sa kagubatan sa iyang mapait nga paghilak. Nakasabot ang Ilaga sa tingog ug dali nga nakit-an ang Leona nga nag-antos sa sampal. Nagdagan siya sa usa sa mga dakong tali nga nag-ubos kaniya, iyang gikasang ang tali hangtod kini naputol, ug sa dali nga panahon ang Leona napulihan.",
+      "current_text": "Sa pipila ka adlaw pagkahuman, samtang nag-uyamot sa iyang pangisda sa kagubatan, ang Leona nadakpan sa mga kalisod sa sampal sa mangangayam. Wala siya makapalaya, nag-awas siya sa kagubatan sa iyang mapait nga paghilak. Nakasabot ang Ilaga sa tingog ug dali nga nakit-an ang Leona nga nag-antos sa sampal. Nagdagan siya sa usa sa mga dakong tali nga nag-ubos kaniya, iyang gikasang ang tali hangtod kini naputol, ug sa dali nga panahon ang Leona napulihan.",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "Sa pipila ka adlaw pagkahuman, samtang nag-uyamot sa iyang pangisda sa kagubatan, ang Leona nadakpan sa mga kalisod sa sampal sa mangangayam. Wala siya makapalaya, nag-awas siya sa kagubatan sa iyang mapait nga paghilak. Nakasabot ang Ilaga sa tingog ug dali nga nakit-an ang Leona nga nag-antos sa sampal. Nagdagan siya sa usa sa mga dakong tali nga nag-ubos kaniya, iyang gikasang ang tali hangtod kini naputol, ug sa dali nga panahon ang Leona napulihan.",
+      "position": [
+        48.0,
+        278.0,
+        560.5162353515625,
+        397.3434143066406
+      ],
+      "page": 1,
+      "lines": [
+        {
+          "text": "Some days later, while stalking his prey in the forest, the Lion was caught",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            278.0,
+            550.860107421875,
+            300.6780090332031
+          ],
+          "baseline": 295.9,
+          "x0": 48.0,
+          "text_x1": 550.86,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "Some days later, while stalking his prey in the forest, the Lion was caught",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        },
+        {
+          "text": "in the toils of a hunter's net. Unable to free himself, he filled the forest with",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            302.1663513183594,
+            560.5162353515625,
+            324.8443603515625
+          ],
+          "baseline": 320.07,
+          "x0": 48.0,
+          "text_x1": 560.52,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "in the toils of a hunter's net. Unable to free himself, he filled the forest with",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        },
+        {
+          "text": "his angry roaring. The Mouse knew the voice and quickly found the Lion",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            326.33270263671875,
+            546.1171875,
+            349.0107116699219
+          ],
+          "baseline": 344.23,
+          "x0": 48.0,
+          "text_x1": 546.12,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "his angry roaring. The Mouse knew the voice and quickly found the Lion",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        },
+        {
+          "text": "struggling in the net. Running to one of the great ropes that bound him, she",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            350.4990539550781,
+            558.9180908203125,
+            373.17706298828125
+          ],
+          "baseline": 368.4,
+          "x0": 48.0,
+          "text_x1": 558.92,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "struggling in the net. Running to one of the great ropes that bound him, she",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        },
+        {
+          "text": "gnawed it until it parted, and soon the Lion was free.",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            374.6654052734375,
+            406.8360595703125,
+            397.3434143066406
+          ],
+          "baseline": 392.57,
+          "x0": 48.0,
+          "text_x1": 406.84,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "size": 17.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "gnawed it until it parted, and soon the Lion was free.",
+              "font": "tiro",
+              "font_original": "Times-Roman",
+              "size": 17.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        }
+      ],
+      "links": [],
+      "alignment": "left",
+      "style": {
+        "font_size": 17.0,
+        "font": "tiro",
+        "font_original": "Times-Roman",
+        "color": 2700075,
+        "bold": false,
+        "italic": false
+      },
+      "pdf_coordinates": "display",
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              278.0,
+              558.3910010457039,
+              300.67799934744835
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              302.17799934744835,
+              461.57600116729736,
+              324.8559986948967
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              326.3559986948967,
+              523.864001750946,
+              349.03399804234505
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              350.53399804234505,
+              521.0930009484291,
+              373.2119973897934
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              374.7119973897934,
+              555.5180015563965,
+              397.38999673724174
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              398.88999673724174,
+              524.4250006079674,
+              421.5679960846901
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              423.0679960846901,
+              414.38400077819824,
+              445.74599543213844
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          }
+        ]
+      },
+      "region_id": "f4e37050559f51f34bdac9f2",
+      "visible": true
+    },
+    {
+      "block_index": 5,
+      "block_type": "heading",
+      "source_text": "A kindness is never wasted.",
+      "ai_translated_text": "Ang kabinulungan dili gayud masayang.",
+      "current_text": "Ang kabinulungan dili gayud masayang.",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "heading",
+      "text": "Ang kabinulungan dili gayud masayang.",
+      "position": [
+        48.0,
+        617.0,
+        284.27105712890625,
+        644.2160034179688
+      ],
+      "page": 1,
+      "lines": [
+        {
+          "text": "A kindness is never wasted.",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            617.0,
+            284.27105712890625,
+            644.2160034179688
+          ],
+          "baseline": 637.41,
+          "x0": 48.0,
+          "text_x1": 284.27,
+          "font": "tiro",
+          "font_original": "Times-BoldItalic",
+          "size": 21.0,
+          "color": 2700075,
+          "bold": true,
+          "italic": true,
+          "runs": [
+            {
+              "text": "A kindness is never wasted.",
+              "font": "tiro",
+              "font_original": "Times-BoldItalic",
+              "size": 21.0,
+              "color": 2700075,
+              "bold": true,
+              "italic": true
+            }
+          ],
+          "links": []
+        }
+      ],
+      "links": [],
+      "alignment": "left",
+      "style": {
+        "font_size": 21.0,
+        "font": "tiro",
+        "font_original": "Times-BoldItalic",
+        "color": 2700075,
+        "bold": true,
+        "italic": true
+      },
+      "pdf_coordinates": "display",
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 4,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              617.0,
+              245.25299888849258,
+              644.2160000801086
+            ],
+            "font_size": 21.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 4,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              645.7160000801086,
+              198.50699990987778,
+              672.9320001602173
+            ],
+            "font_size": 21.0,
+            "action": "fit",
+            "page": 1
+          }
+        ]
+      },
+      "region_id": "d30dde405a921868c17ba98f",
+      "visible": true
+    },
+    {
+      "block_index": 6,
+      "block_type": "paragraph",
+      "source_text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+      "ai_translated_text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+      "current_text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+      "position": [
+        48.0,
+        691.0,
+        346.8089904785156,
+        703.365966796875
+      ],
+      "page": 1,
+      "lines": [
+        {
+          "text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+          "direction": [
+            1.0,
+            0.0
+          ],
+          "bbox": [
+            48.0,
+            691.0,
+            346.8089904785156,
+            703.365966796875
+          ],
+          "baseline": 700.67,
+          "x0": 48.0,
+          "text_x1": 346.81,
+          "font": "helv",
+          "font_original": "Helvetica",
+          "size": 9.0,
+          "color": 2700075,
+          "bold": false,
+          "italic": false,
+          "runs": [
+            {
+              "text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+              "font": "helv",
+              "font_original": "Helvetica",
+              "size": 9.0,
+              "color": 2700075,
+              "bold": false,
+              "italic": false
+            }
+          ],
+          "links": []
+        }
+      ],
+      "links": [],
+      "alignment": "left",
+      "style": {
+        "font_size": 9.0,
+        "font": "helv",
+        "font_original": "Helvetica",
+        "color": 2700075,
+        "bold": false,
+        "italic": false
+      },
+      "pdf_coordinates": "display",
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 5,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              691.0,
+              314.2829985022545,
+              703.3660003840923
+            ],
+            "font_size": 9.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 5,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              704.8660003840923,
+              78.02399969100952,
+              717.2320007681847
+            ],
+            "font_size": 9.0,
+            "action": "fit",
+            "page": 1
+          }
+        ]
+      },
+      "region_id": "a27b99b9c13e912f123884e5",
+      "visible": true
+    },
+    {
+      "block_index": 7,
+      "block_type": "paragraph",
+      "source_text": "\"You laughed when I said I would repay you,\" said the Mouse. \"Now you see that even a Mouse can help a Lion.\"",
+      "ai_translated_text": "\"Nagkatawa ka kung ako nagsulti nga mobalos ko nimo,\" miingon ang Ilaga. \"Karon makita nimo nga bisan ang Ilaga makahatag og tabang sa Leona.\"",
+      "current_text": "\"Nagkatawa ka kung ako nagsulti nga mobalos ko nimo,\" miingon ang Ilaga. \"Karon makita nimo nga bisan ang Ilaga makahatag og tabang sa Leona.\"",
+      "quality_score": null,
+      "quality_issues": null,
+      "type": "paragraph",
+      "text": "\"Nagkatawa ka kung ako nagsulti nga mobalos ko nimo,\" miingon ang Ilaga. \"Karon makita nimo nga bisan ang Ilaga makahatag og tabang sa Leona.\"",
+      "position": [
+        48.0,
+        510.3333435058594,
+        550.3333129882812,
+        558.31591796875
+      ],
+      "page": 1,
+      "style": {
+        "font": "helv",
+        "font_size": 11,
+        "color": 0,
+        "bold": false
+      },
+      "pdf_coordinates": "display",
+      "ocr": {
+        "pack": "eng",
+        "confidence": 94.69565217391305,
+        "words": [
+          {
+            "position": [
+              4.0,
+              20.0,
+              107.0,
+              55.0
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                4.0,
+                19.0,
+                1504.0,
+                65.0
+              ],
+              "baseline": [
+                0.001,
+                -11.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "\"You"
+          },
+          {
+            "position": [
+              122.0,
+              19.0,
+              282.0,
+              65.0
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                4.0,
+                19.0,
+                1504.0,
+                65.0
+              ],
+              "baseline": [
+                0.001,
+                -11.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "laughed"
+          },
+          {
+            "position": [
+              297.0,
+              19.0,
+              406.0,
+              55.0
+            ],
+            "confidence": 95.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                4.0,
+                19.0,
+                1504.0,
+                65.0
+              ],
+              "baseline": [
+                0.001,
+                -11.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "when"
+          },
+          {
+            "position": [
+              420.0,
+              20.0,
+              435.0,
+              54.0
+            ],
+            "confidence": 95.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                4.0,
+                19.0,
+                1504.0,
+                65.0
+              ],
+              "baseline": [
+                0.001,
+                -11.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "I"
+          },
+          {
+            "position": [
+              452.0,
+              19.0,
+              530.0,
+              55.0
+            ],
+            "confidence": 95.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                4.0,
+                19.0,
+                1504.0,
+                65.0
+              ],
+              "baseline": [
+                0.001,
+                -11.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "said"
+          },
+          {
+            "position": [
+              544.0,
+              20.0,
+              559.0,
+              54.0
+            ],
+            "confidence": 95.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                4.0,
+                19.0,
+                1504.0,
+                65.0
+              ],
+              "baseline": [
+                0.001,
+                -11.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "I"
+          },
+          {
+            "position": [
+              574.0,
+              19.0,
+              700.0,
+              55.0
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                4.0,
+                19.0,
+                1504.0,
+                65.0
+              ],
+              "baseline": [
+                0.001,
+                -11.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "would"
+          },
+          {
+            "position": [
+              713.0,
+              31.0,
+              825.0,
+              65.0
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                4.0,
+                19.0,
+                1504.0,
+                65.0
+              ],
+              "baseline": [
+                0.001,
+                -11.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "repay"
+          },
+          {
+            "position": [
+              840.0,
+              20.0,
+              946.0,
+              65.0
+            ],
+            "confidence": 83.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                4.0,
+                19.0,
+                1504.0,
+                65.0
+              ],
+              "baseline": [
+                0.001,
+                -11.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "you,\""
+          },
+          {
+            "position": [
+              965.0,
+              19.0,
+              1044.0,
+              55.0
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                4.0,
+                19.0,
+                1504.0,
+                65.0
+              ],
+              "baseline": [
+                0.001,
+                -11.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "said"
+          },
+          {
+            "position": [
+              1058.0,
+              19.0,
+              1118.0,
+              55.0
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                4.0,
+                19.0,
+                1504.0,
+                65.0
+              ],
+              "baseline": [
+                0.001,
+                -11.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "the"
+          },
+          {
+            "position": [
+              1133.0,
+              20.0,
+              1280.0,
+              55.0
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                4.0,
+                19.0,
+                1504.0,
+                65.0
+              ],
+              "baseline": [
+                0.001,
+                -11.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "Mouse."
+          },
+          {
+            "position": [
+              1301.0,
+              20.0,
+              1415.0,
+              55.0
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                4.0,
+                19.0,
+                1504.0,
+                65.0
+              ],
+              "baseline": [
+                0.001,
+                -11.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "\"Now"
+          },
+          {
+            "position": [
+              1430.0,
+              31.0,
+              1504.0,
+              65.0
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_1",
+            "line_geometry": {
+              "id": "line_1_1",
+              "position": [
+                4.0,
+                19.0,
+                1504.0,
+                65.0
+              ],
+              "baseline": [
+                0.001,
+                -11.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "you"
+          },
+          {
+            "position": [
+              3.0,
+              103.0,
+              63.0,
+              127.0
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_2",
+            "line_geometry": {
+              "id": "line_1_2",
+              "position": [
+                3.0,
+                91.0,
+                809.0,
+                137.0
+              ],
+              "baseline": [
+                -0.001,
+                -10.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "see"
+          },
+          {
+            "position": [
+              79.0,
+              91.0,
+              154.0,
+              127.0
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_2",
+            "line_geometry": {
+              "id": "line_1_2",
+              "position": [
+                3.0,
+                91.0,
+                809.0,
+                137.0
+              ],
+              "baseline": [
+                -0.001,
+                -10.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "that"
+          },
+          {
+            "position": [
+              168.0,
+              103.0,
+              263.0,
+              127.0
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_2",
+            "line_geometry": {
+              "id": "line_1_2",
+              "position": [
+                3.0,
+                91.0,
+                809.0,
+                137.0
+              ],
+              "baseline": [
+                -0.001,
+                -10.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "even"
+          },
+          {
+            "position": [
+              278.0,
+              103.0,
+              299.0,
+              127.0
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_2",
+            "line_geometry": {
+              "id": "line_1_2",
+              "position": [
+                3.0,
+                91.0,
+                809.0,
+                137.0
+              ],
+              "baseline": [
+                -0.001,
+                -10.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "a"
+          },
+          {
+            "position": [
+              313.0,
+              92.0,
+              449.0,
+              127.0
+            ],
+            "confidence": 95.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_2",
+            "line_geometry": {
+              "id": "line_1_2",
+              "position": [
+                3.0,
+                91.0,
+                809.0,
+                137.0
+              ],
+              "baseline": [
+                -0.001,
+                -10.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "Mouse"
+          },
+          {
+            "position": [
+              464.0,
+              103.0,
+              533.0,
+              127.0
+            ],
+            "confidence": 95.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_2",
+            "line_geometry": {
+              "id": "line_1_2",
+              "position": [
+                3.0,
+                91.0,
+                809.0,
+                137.0
+              ],
+              "baseline": [
+                -0.001,
+                -10.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "can"
+          },
+          {
+            "position": [
+              548.0,
+              91.0,
+              633.0,
+              137.0
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_2",
+            "line_geometry": {
+              "id": "line_1_2",
+              "position": [
+                3.0,
+                91.0,
+                809.0,
+                137.0
+              ],
+              "baseline": [
+                -0.001,
+                -10.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "help"
+          },
+          {
+            "position": [
+              649.0,
+              103.0,
+              670.0,
+              127.0
+            ],
+            "confidence": 96.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_2",
+            "line_geometry": {
+              "id": "line_1_2",
+              "position": [
+                3.0,
+                91.0,
+                809.0,
+                137.0
+              ],
+              "baseline": [
+                -0.001,
+                -10.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "a"
+          },
+          {
+            "position": [
+              684.0,
+              91.0,
+              809.0,
+              127.0
+            ],
+            "confidence": 85.0,
+            "paragraph": "par_1_1",
+            "line": "line_1_2",
+            "line_geometry": {
+              "id": "line_1_2",
+              "position": [
+                3.0,
+                91.0,
+                809.0,
+                137.0
+              ],
+              "baseline": [
+                -0.001,
+                -10.0
+              ],
+              "x_size": 46.0,
+              "x_ascenders": 12.0,
+              "x_descenders": 10.0
+            },
+            "text": "Lion.\""
+          }
+        ],
+        "reading_order": 0,
+        "retry": "not_needed",
+        "uncertain_words": []
+      },
+      "ocr_reflow": false,
+      "region_id": "2c1bcc43bba5acc9cbc957a2",
+      "image_region": {
+        "xref": 23,
+        "image_bbox": [
+          48.0,
+          505.0,
+          564.0,
+          585.0
+        ],
+        "estimated_style": {
+          "font_id": "NotoSerif-Bold",
+          "initial_size": 15.298515104966718,
+          "method": "packaged glyph-shape comparison",
+          "confidence": 0.7542173680459701
+        }
+      }
+    }
+  ],
+  "sidecar": {
+    "version": 3,
+    "format": ".pdf",
+    "source_lang": "English",
+    "target_lang": "Cebuano",
+    "pdf_column_mode": "auto",
+    "mode": "fast",
+    "document_type": "",
+    "layout_plan": null,
+    "layout_preflight": null,
+    "blocks": [
+      {
+        "block_index": 0,
+        "block_type": "heading",
+        "source_text": "The Lion and the Mouse",
+        "ai_translated_text": "Ang Leona ug ang Ilaga",
+        "current_text": "Ang Leona ug ang Ilaga",
+        "quality_score": null,
+        "quality_issues": null,
+        "type": "heading",
+        "text": "Ang Leona ug ang Ilaga",
+        "position": [
+          48.0,
+          33.99998092651367,
+          319.5960388183594,
+          70.00997924804688
+        ],
+        "page": 0,
+        "lines": [
+          {
+            "text": "The Lion and the Mouse",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              33.99998092651367,
+              319.5960388183594,
+              70.00997924804688
+            ],
+            "baseline": 61.14,
+            "x0": 48.0,
+            "text_x1": 319.6,
+            "font": "tiro",
+            "font_original": "Times-Bold",
+            "size": 26.0,
+            "color": 2700075,
+            "bold": true,
+            "italic": false,
+            "runs": [
+              {
+                "text": "The Lion and the Mouse",
+                "font": "tiro",
+                "font_original": "Times-Bold",
+                "size": 26.0,
+                "color": 2700075,
+                "bold": true,
+                "italic": false
+              }
+            ],
+            "links": []
+          }
+        ],
+        "links": [],
+        "alignment": "left",
+        "style": {
+          "font_size": 26.0,
+          "font": "tiro",
+          "font_original": "Times-Bold",
+          "color": 2700075,
+          "bold": true,
+          "italic": false
+        },
+        "pdf_coordinates": "display",
+        "rendered_layout": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 0,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                33.99998092651367,
+                313.8239994049072,
+                70.00998145341873
+              ],
+              "font_size": 26.0,
+              "action": "fit",
+              "page": 0
+            }
+          ]
+        },
+        "region_id": "85dbc31715eb371eca947b3c",
+        "visible": true
+      },
+      {
+        "block_index": 1,
+        "block_type": "paragraph",
+        "source_text": "A Lion lay asleep in the forest, his great head resting on his paws. A timid little Mouse came upon him unexpectedly, and in her fright and haste to get away, ran across the Lion's nose. Roused from his nap, the Lion laid his huge paw angrily on the tiny creature to kill her.",
+        "ai_translated_text": "Ang Leona nagpahulay sa kagubatan, ang iyang dako nga ulo nagapahimutang sa iyang mga tiil. Usa ka mahina nga gamay nga Ilaga ang nakit-an siya sa wala damha, ug sa iyang kahadlok ug pagdali nga molayo, milakaw siya sa ibabaw sa ilong sa Leona. Gipukaw gikan sa iyang pagkatulog, ang Leona nagbutang sa iyang dako nga tiil nga mapait sa gamay nga nilalang aron patyon siya.",
+        "current_text": "Ang Leona nagpahulay sa kagubatan, ang iyang dako nga ulo nagapahimutang sa iyang mga tiil. Usa ka mahina nga gamay nga Ilaga ang nakit-an siya sa wala damha, ug sa iyang kahadlok ug pagdali nga molayo, milakaw siya sa ibabaw sa ilong sa Leona. Gipukaw gikan sa iyang pagkatulog, ang Leona nagbutang sa iyang dako nga tiil nga mapait sa gamay nga nilalang aron patyon siya.",
+        "quality_score": null,
+        "quality_issues": null,
+        "type": "paragraph",
+        "text": "Ang Leona nagpahulay sa kagubatan, ang iyang dako nga ulo nagapahimutang sa iyang mga tiil. Usa ka mahina nga gamay nga Ilaga ang nakit-an siya sa wala damha, ug sa iyang kahadlok ug pagdali nga molayo, milakaw siya sa ibabaw sa ilong sa Leona. Gipukaw gikan sa iyang pagkatulog, ang Leona nagbutang sa iyang dako nga tiil nga mapait sa gamay nga nilalang aron patyon siya.",
+        "position": [
+          48.0,
+          380.0,
+          562.6581420898438,
+          475.17706298828125
+        ],
+        "page": 0,
+        "lines": [
+          {
+            "text": "A Lion lay asleep in the forest, his great head resting on his paws. A timid",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              380.0,
+              552.7471923828125,
+              402.6780090332031
+            ],
+            "baseline": 397.9,
+            "x0": 48.0,
+            "text_x1": 552.75,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "A Lion lay asleep in the forest, his great head resting on his paws. A timid",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          },
+          {
+            "text": "little Mouse came upon him unexpectedly, and in her fright and haste to get",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              404.1663513183594,
+              562.6581420898438,
+              426.8443603515625
+            ],
+            "baseline": 422.07,
+            "x0": 48.0,
+            "text_x1": 562.66,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "little Mouse came upon him unexpectedly, and in her fright and haste to get",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          },
+          {
+            "text": "away, ran across the Lion's nose. Roused from his nap, the Lion laid his",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              428.33270263671875,
+              536.444091796875,
+              451.0107116699219
+            ],
+            "baseline": 446.23,
+            "x0": 48.0,
+            "text_x1": 536.44,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "away, ran across the Lion's nose. Roused from his nap, the Lion laid his",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          },
+          {
+            "text": "huge paw angrily on the tiny creature to kill her.",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              452.4990539550781,
+              376.610107421875,
+              475.17706298828125
+            ],
+            "baseline": 470.4,
+            "x0": 48.0,
+            "text_x1": 376.61,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "huge paw angrily on the tiny creature to kill her.",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          }
+        ],
+        "links": [],
+        "alignment": "left",
+        "style": {
+          "font_size": 17.0,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "color": 2700075,
+          "bold": false,
+          "italic": false
+        },
+        "pdf_coordinates": "display",
+        "rendered_layout": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                380.0,
+                466.30200111866,
+                402.67799934744835
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                404.17799934744835,
+                561.2130011916161,
+                426.8559986948967
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                428.3559986948967,
+                556.0280010700226,
+                451.03399804234505
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                452.53399804234505,
+                505.9800009727478,
+                475.2119973897934
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                476.7119973897934,
+                525.8190008997917,
+                499.38999673724174
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                500.88999673724174,
+                302.0140005350113,
+                523.5679960846901
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            }
+          ]
+        },
+        "region_id": "8bbdc35cddb81fd373da7498",
+        "visible": true
+      },
+      {
+        "block_index": 2,
+        "block_type": "paragraph",
+        "source_text": "The Lion was much amused to think that a Mouse could ever help him. But he was generous and finally let the Mouse go.",
+        "ai_translated_text": "Ang Leona nalipay kaayo nga naghunahuna nga ang Ilaga makahatag siya og tabang. Apan siya mapinanggaon ug sa katapusan gipasagdan ang Ilaga.",
+        "current_text": "Ang Leona nalipay kaayo nga naghunahuna nga ang Ilaga makahatag siya og tabang. Apan siya mapinanggaon ug sa katapusan gipasagdan ang Ilaga.",
+        "quality_score": null,
+        "quality_issues": null,
+        "type": "paragraph",
+        "text": "Ang Leona nalipay kaayo nga naghunahuna nga ang Ilaga makahatag siya og tabang. Apan siya mapinanggaon ug sa katapusan gipasagdan ang Ilaga.",
+        "position": [
+          48.0,
+          641.0,
+          561.26416015625,
+          687.8443603515625
+        ],
+        "page": 0,
+        "lines": [
+          {
+            "text": "The Lion was much amused to think that a Mouse could ever help him. But",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              641.0,
+              561.26416015625,
+              663.677978515625
+            ],
+            "baseline": 658.9,
+            "x0": 48.0,
+            "text_x1": 561.26,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "The Lion was much amused to think that a Mouse could ever help him. But",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          },
+          {
+            "text": "he was generous and finally let the Mouse go.",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              665.1663818359375,
+              360.0860595703125,
+              687.8443603515625
+            ],
+            "baseline": 683.07,
+            "x0": 48.0,
+            "text_x1": 360.09,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "he was generous and finally let the Mouse go.",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          }
+        ],
+        "links": [],
+        "alignment": "left",
+        "style": {
+          "font_size": 17.0,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "color": 2700075,
+          "bold": false,
+          "italic": false
+        },
+        "pdf_coordinates": "display",
+        "rendered_layout": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 2,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                641.0,
+                552.20300167799,
+                663.6779993474483
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 2,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                665.1779993474483,
+                559.7850013375282,
+                687.8559986948967
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            }
+          ]
+        },
+        "region_id": "b2b763db0d6adea917027abe",
+        "visible": true
+      },
+      {
+        "block_index": 3,
+        "block_type": "paragraph",
+        "source_text": "\"Spare me!\" begged the poor Mouse. \"Please let me go and some day I will surely repay you.\"",
+        "ai_translated_text": "\"Pasagdi ko!\" nangayo ang pobre nga Ilaga. \"Palihug pasagdi ko ug sa usa ka adlaw siguradong mobalos ko nimo.\"",
+        "current_text": "\"Pasagdi ko!\" nangayo ang pobre nga Ilaga. \"Palihug pasagdi ko ug sa usa ka adlaw siguradong mobalos ko nimo.\"",
+        "quality_score": null,
+        "quality_issues": null,
+        "type": "paragraph",
+        "text": "\"Pasagdi ko!\" nangayo ang pobre nga Ilaga. \"Palihug pasagdi ko ug sa usa ka adlaw siguradong mobalos ko nimo.\"",
+        "position": [
+          48.0,
+          557.4856567382812,
+          561.0,
+          605.1908569335938
+        ],
+        "page": 0,
+        "style": {
+          "font": "helv",
+          "font_size": 11,
+          "color": 0,
+          "bold": false
+        },
+        "pdf_coordinates": "display",
+        "ocr": {
+          "pack": "eng",
+          "confidence": 95.33333333333333,
+          "words": [
+            {
+              "position": [
+                3.75,
+                19.456928838951313,
+                135.0,
+                65.1498127340824
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  3.75,
+                  19.456928838951313,
+                  1536.0,
+                  65.1498127340824
+                ],
+                "baseline": [
+                  0.0,
+                  -10.486891385767791
+                ],
+                "x_size": 45.69288389513109,
+                "x_ascenders": 11.235955056179776,
+                "x_descenders": 10.486891385767791
+              },
+              "text": "\"Spare"
+            },
+            {
+              "position": [
+                150.75,
+                19.456928838951313,
+                246.0,
+                54.66292134831461
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  3.75,
+                  19.456928838951313,
+                  1536.0,
+                  65.1498127340824
+                ],
+                "baseline": [
+                  0.0,
+                  -10.486891385767791
+                ],
+                "x_size": 45.69288389513109,
+                "x_ascenders": 11.235955056179776,
+                "x_descenders": 10.486891385767791
+              },
+              "text": "me!\""
+            },
+            {
+              "position": [
+                263.25,
+                19.456928838951313,
+                408.75,
+                65.1498127340824
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  3.75,
+                  19.456928838951313,
+                  1536.0,
+                  65.1498127340824
+                ],
+                "baseline": [
+                  0.0,
+                  -10.486891385767791
+                ],
+                "x_size": 45.69288389513109,
+                "x_ascenders": 11.235955056179776,
+                "x_descenders": 10.486891385767791
+              },
+              "text": "begged"
+            },
+            {
+              "position": [
+                423.75,
+                19.456928838951313,
+                483.0,
+                54.66292134831461
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  3.75,
+                  19.456928838951313,
+                  1536.0,
+                  65.1498127340824
+                ],
+                "baseline": [
+                  0.0,
+                  -10.486891385767791
+                ],
+                "x_size": 45.69288389513109,
+                "x_ascenders": 11.235955056179776,
+                "x_descenders": 10.486891385767791
+              },
+              "text": "the"
+            },
+            {
+              "position": [
+                498.0,
+                30.69288389513109,
+                591.0,
+                65.1498127340824
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  3.75,
+                  19.456928838951313,
+                  1536.0,
+                  65.1498127340824
+                ],
+                "baseline": [
+                  0.0,
+                  -10.486891385767791
+                ],
+                "x_size": 45.69288389513109,
+                "x_ascenders": 11.235955056179776,
+                "x_descenders": 10.486891385767791
+              },
+              "text": "poor"
+            },
+            {
+              "position": [
+                604.5,
+                20.2059925093633,
+                752.25,
+                54.66292134831461
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  3.75,
+                  19.456928838951313,
+                  1536.0,
+                  65.1498127340824
+                ],
+                "baseline": [
+                  0.0,
+                  -10.486891385767791
+                ],
+                "x_size": 45.69288389513109,
+                "x_ascenders": 11.235955056179776,
+                "x_descenders": 10.486891385767791
+              },
+              "text": "Mouse."
+            },
+            {
+              "position": [
+                771.75,
+                19.456928838951313,
+                918.0,
+                54.66292134831461
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  3.75,
+                  19.456928838951313,
+                  1536.0,
+                  65.1498127340824
+                ],
+                "baseline": [
+                  0.0,
+                  -10.486891385767791
+                ],
+                "x_size": 45.69288389513109,
+                "x_ascenders": 11.235955056179776,
+                "x_descenders": 10.486891385767791
+              },
+              "text": "\"Please"
+            },
+            {
+              "position": [
+                933.0,
+                19.456928838951313,
+                983.25,
+                54.66292134831461
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  3.75,
+                  19.456928838951313,
+                  1536.0,
+                  65.1498127340824
+                ],
+                "baseline": [
+                  0.0,
+                  -10.486891385767791
+                ],
+                "x_size": 45.69288389513109,
+                "x_ascenders": 11.235955056179776,
+                "x_descenders": 10.486891385767791
+              },
+              "text": "let"
+            },
+            {
+              "position": [
+                996.75,
+                30.69288389513109,
+                1057.5,
+                54.66292134831461
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  3.75,
+                  19.456928838951313,
+                  1536.0,
+                  65.1498127340824
+                ],
+                "baseline": [
+                  0.0,
+                  -10.486891385767791
+                ],
+                "x_size": 45.69288389513109,
+                "x_ascenders": 11.235955056179776,
+                "x_descenders": 10.486891385767791
+              },
+              "text": "me"
+            },
+            {
+              "position": [
+                1072.5,
+                30.69288389513109,
+                1119.75,
+                65.1498127340824
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  3.75,
+                  19.456928838951313,
+                  1536.0,
+                  65.1498127340824
+                ],
+                "baseline": [
+                  0.0,
+                  -10.486891385767791
+                ],
+                "x_size": 45.69288389513109,
+                "x_ascenders": 11.235955056179776,
+                "x_descenders": 10.486891385767791
+              },
+              "text": "go"
+            },
+            {
+              "position": [
+                1137.0,
+                19.456928838951313,
+                1208.25,
+                54.66292134831461
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  3.75,
+                  19.456928838951313,
+                  1536.0,
+                  65.1498127340824
+                ],
+                "baseline": [
+                  0.0,
+                  -10.486891385767791
+                ],
+                "x_size": 45.69288389513109,
+                "x_ascenders": 11.235955056179776,
+                "x_descenders": 10.486891385767791
+              },
+              "text": "and"
+            },
+            {
+              "position": [
+                1223.25,
+                30.69288389513109,
+                1327.5,
+                54.66292134831461
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  3.75,
+                  19.456928838951313,
+                  1536.0,
+                  65.1498127340824
+                ],
+                "baseline": [
+                  0.0,
+                  -10.486891385767791
+                ],
+                "x_size": 45.69288389513109,
+                "x_ascenders": 11.235955056179776,
+                "x_descenders": 10.486891385767791
+              },
+              "text": "some"
+            },
+            {
+              "position": [
+                1342.5,
+                19.456928838951313,
+                1413.75,
+                65.1498127340824
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  3.75,
+                  19.456928838951313,
+                  1536.0,
+                  65.1498127340824
+                ],
+                "baseline": [
+                  0.0,
+                  -10.486891385767791
+                ],
+                "x_size": 45.69288389513109,
+                "x_ascenders": 11.235955056179776,
+                "x_descenders": 10.486891385767791
+              },
+              "text": "day"
+            },
+            {
+              "position": [
+                1428.75,
+                20.2059925093633,
+                1443.75,
+                53.91385767790263
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  3.75,
+                  19.456928838951313,
+                  1536.0,
+                  65.1498127340824
+                ],
+                "baseline": [
+                  0.0,
+                  -10.486891385767791
+                ],
+                "x_size": 45.69288389513109,
+                "x_ascenders": 11.235955056179776,
+                "x_descenders": 10.486891385767791
+              },
+              "text": "I"
+            },
+            {
+              "position": [
+                1459.5,
+                19.456928838951313,
+                1536.0,
+                54.66292134831461
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  3.75,
+                  19.456928838951313,
+                  1536.0,
+                  65.1498127340824
+                ],
+                "baseline": [
+                  0.0,
+                  -10.486891385767791
+                ],
+                "x_size": 45.69288389513109,
+                "x_ascenders": 11.235955056179776,
+                "x_descenders": 10.486891385767791
+              },
+              "text": "will"
+            },
+            {
+              "position": [
+                2.25,
+                91.36704119850188,
+                123.0,
+                137.05992509363296
+              ],
+              "confidence": 95.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_2",
+              "line_geometry": {
+                "id": "line_1_2",
+                "position": [
+                  2.25,
+                  91.36704119850188,
+                  369.75,
+                  137.05992509363296
+                ],
+                "baseline": [
+                  0.0,
+                  -10.486891385767791
+                ],
+                "x_size": 45.69288389513109,
+                "x_ascenders": 11.235955056179776,
+                "x_descenders": 10.486891385767791
+              },
+              "text": "surely"
+            },
+            {
+              "position": [
+                137.25,
+                102.60299625468166,
+                249.0,
+                137.05992509363296
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_2",
+              "line_geometry": {
+                "id": "line_1_2",
+                "position": [
+                  2.25,
+                  91.36704119850188,
+                  369.75,
+                  137.05992509363296
+                ],
+                "baseline": [
+                  0.0,
+                  -10.486891385767791
+                ],
+                "x_size": 45.69288389513109,
+                "x_ascenders": 11.235955056179776,
+                "x_descenders": 10.486891385767791
+              },
+              "text": "repay"
+            },
+            {
+              "position": [
+                264.0,
+                91.36704119850188,
+                369.75,
+                137.05992509363296
+              ],
+              "confidence": 85.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_2",
+              "line_geometry": {
+                "id": "line_1_2",
+                "position": [
+                  2.25,
+                  91.36704119850188,
+                  369.75,
+                  137.05992509363296
+                ],
+                "baseline": [
+                  0.0,
+                  -10.486891385767791
+                ],
+                "x_size": 45.69288389513109,
+                "x_ascenders": 11.235955056179776,
+                "x_descenders": 10.486891385767791
+              },
+              "text": "you.\""
+            }
+          ],
+          "reading_order": 0,
+          "retry": "accepted",
+          "uncertain_words": []
+        },
+        "ocr_reflow": false,
+        "region_id": "e1438d0c8f83dd75fc6eec1a",
+        "image_region": {
+          "xref": 14,
+          "image_bbox": [
+            48.0,
+            552.0,
+            564.0,
+            620.0
+          ],
+          "estimated_style": {
+            "font_id": "NotoSerif-Bold",
+            "initial_size": 15.008471814923428,
+            "method": "packaged glyph-shape comparison",
+            "confidence": 0.6869339924549245
+          }
+        }
+      },
+      {
+        "block_index": 4,
+        "block_type": "paragraph",
+        "source_text": "Some days later, while stalking his prey in the forest, the Lion was caught in the toils of a hunter's net. Unable to free himself, he filled the forest with his angry roaring. The Mouse knew the voice and quickly found the Lion struggling in the net. Running to one of the great ropes that bound him, she gnawed it until it parted, and soon the Lion was free.",
+        "ai_translated_text": "Sa pipila ka adlaw pagkahuman, samtang nag-uyamot sa iyang pangisda sa kagubatan, ang Leona nadakpan sa mga kalisod sa sampal sa mangangayam. Wala siya makapalaya, nag-awas siya sa kagubatan sa iyang mapait nga paghilak. Nakasabot ang Ilaga sa tingog ug dali nga nakit-an ang Leona nga nag-antos sa sampal. Nagdagan siya sa usa sa mga dakong tali nga nag-ubos kaniya, iyang gikasang ang tali hangtod kini naputol, ug sa dali nga panahon ang Leona napulihan.",
+        "current_text": "Sa pipila ka adlaw pagkahuman, samtang nag-uyamot sa iyang pangisda sa kagubatan, ang Leona nadakpan sa mga kalisod sa sampal sa mangangayam. Wala siya makapalaya, nag-awas siya sa kagubatan sa iyang mapait nga paghilak. Nakasabot ang Ilaga sa tingog ug dali nga nakit-an ang Leona nga nag-antos sa sampal. Nagdagan siya sa usa sa mga dakong tali nga nag-ubos kaniya, iyang gikasang ang tali hangtod kini naputol, ug sa dali nga panahon ang Leona napulihan.",
+        "quality_score": null,
+        "quality_issues": null,
+        "type": "paragraph",
+        "text": "Sa pipila ka adlaw pagkahuman, samtang nag-uyamot sa iyang pangisda sa kagubatan, ang Leona nadakpan sa mga kalisod sa sampal sa mangangayam. Wala siya makapalaya, nag-awas siya sa kagubatan sa iyang mapait nga paghilak. Nakasabot ang Ilaga sa tingog ug dali nga nakit-an ang Leona nga nag-antos sa sampal. Nagdagan siya sa usa sa mga dakong tali nga nag-ubos kaniya, iyang gikasang ang tali hangtod kini naputol, ug sa dali nga panahon ang Leona napulihan.",
+        "position": [
+          48.0,
+          278.0,
+          560.5162353515625,
+          397.3434143066406
+        ],
+        "page": 1,
+        "lines": [
+          {
+            "text": "Some days later, while stalking his prey in the forest, the Lion was caught",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              278.0,
+              550.860107421875,
+              300.6780090332031
+            ],
+            "baseline": 295.9,
+            "x0": 48.0,
+            "text_x1": 550.86,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "Some days later, while stalking his prey in the forest, the Lion was caught",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          },
+          {
+            "text": "in the toils of a hunter's net. Unable to free himself, he filled the forest with",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              302.1663513183594,
+              560.5162353515625,
+              324.8443603515625
+            ],
+            "baseline": 320.07,
+            "x0": 48.0,
+            "text_x1": 560.52,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "in the toils of a hunter's net. Unable to free himself, he filled the forest with",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          },
+          {
+            "text": "his angry roaring. The Mouse knew the voice and quickly found the Lion",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              326.33270263671875,
+              546.1171875,
+              349.0107116699219
+            ],
+            "baseline": 344.23,
+            "x0": 48.0,
+            "text_x1": 546.12,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "his angry roaring. The Mouse knew the voice and quickly found the Lion",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          },
+          {
+            "text": "struggling in the net. Running to one of the great ropes that bound him, she",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              350.4990539550781,
+              558.9180908203125,
+              373.17706298828125
+            ],
+            "baseline": 368.4,
+            "x0": 48.0,
+            "text_x1": 558.92,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "struggling in the net. Running to one of the great ropes that bound him, she",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          },
+          {
+            "text": "gnawed it until it parted, and soon the Lion was free.",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              374.6654052734375,
+              406.8360595703125,
+              397.3434143066406
+            ],
+            "baseline": 392.57,
+            "x0": 48.0,
+            "text_x1": 406.84,
+            "font": "tiro",
+            "font_original": "Times-Roman",
+            "size": 17.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "gnawed it until it parted, and soon the Lion was free.",
+                "font": "tiro",
+                "font_original": "Times-Roman",
+                "size": 17.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          }
+        ],
+        "links": [],
+        "alignment": "left",
+        "style": {
+          "font_size": 17.0,
+          "font": "tiro",
+          "font_original": "Times-Roman",
+          "color": 2700075,
+          "bold": false,
+          "italic": false
+        },
+        "pdf_coordinates": "display",
+        "rendered_layout": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                278.0,
+                558.3910010457039,
+                300.67799934744835
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                302.17799934744835,
+                461.57600116729736,
+                324.8559986948967
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                326.3559986948967,
+                523.864001750946,
+                349.03399804234505
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                350.53399804234505,
+                521.0930009484291,
+                373.2119973897934
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                374.7119973897934,
+                555.5180015563965,
+                397.38999673724174
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                398.88999673724174,
+                524.4250006079674,
+                421.5679960846901
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                423.0679960846901,
+                414.38400077819824,
+                445.74599543213844
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            }
+          ]
+        },
+        "region_id": "f4e37050559f51f34bdac9f2",
+        "visible": true
+      },
+      {
+        "block_index": 5,
+        "block_type": "heading",
+        "source_text": "A kindness is never wasted.",
+        "ai_translated_text": "Ang kabinulungan dili gayud masayang.",
+        "current_text": "Ang kabinulungan dili gayud masayang.",
+        "quality_score": null,
+        "quality_issues": null,
+        "type": "heading",
+        "text": "Ang kabinulungan dili gayud masayang.",
+        "position": [
+          48.0,
+          617.0,
+          284.27105712890625,
+          644.2160034179688
+        ],
+        "page": 1,
+        "lines": [
+          {
+            "text": "A kindness is never wasted.",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              617.0,
+              284.27105712890625,
+              644.2160034179688
+            ],
+            "baseline": 637.41,
+            "x0": 48.0,
+            "text_x1": 284.27,
+            "font": "tiro",
+            "font_original": "Times-BoldItalic",
+            "size": 21.0,
+            "color": 2700075,
+            "bold": true,
+            "italic": true,
+            "runs": [
+              {
+                "text": "A kindness is never wasted.",
+                "font": "tiro",
+                "font_original": "Times-BoldItalic",
+                "size": 21.0,
+                "color": 2700075,
+                "bold": true,
+                "italic": true
+              }
+            ],
+            "links": []
+          }
+        ],
+        "links": [],
+        "alignment": "left",
+        "style": {
+          "font_size": 21.0,
+          "font": "tiro",
+          "font_original": "Times-BoldItalic",
+          "color": 2700075,
+          "bold": true,
+          "italic": true
+        },
+        "pdf_coordinates": "display",
+        "rendered_layout": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 4,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                617.0,
+                245.25299888849258,
+                644.2160000801086
+              ],
+              "font_size": 21.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 4,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                645.7160000801086,
+                198.50699990987778,
+                672.9320001602173
+              ],
+              "font_size": 21.0,
+              "action": "fit",
+              "page": 1
+            }
+          ]
+        },
+        "region_id": "d30dde405a921868c17ba98f",
+        "visible": true
+      },
+      {
+        "block_index": 6,
+        "block_type": "paragraph",
+        "source_text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+        "ai_translated_text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+        "current_text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+        "quality_score": null,
+        "quality_issues": null,
+        "type": "paragraph",
+        "text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+        "position": [
+          48.0,
+          691.0,
+          346.8089904785156,
+          703.365966796875
+        ],
+        "page": 1,
+        "lines": [
+          {
+            "text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+            "direction": [
+              1.0,
+              0.0
+            ],
+            "bbox": [
+              48.0,
+              691.0,
+              346.8089904785156,
+              703.365966796875
+            ],
+            "baseline": 700.67,
+            "x0": 48.0,
+            "text_x1": 346.81,
+            "font": "helv",
+            "font_original": "Helvetica",
+            "size": 9.0,
+            "color": 2700075,
+            "bold": false,
+            "italic": false,
+            "runs": [
+              {
+                "text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+                "font": "helv",
+                "font_original": "Helvetica",
+                "size": 9.0,
+                "color": 2700075,
+                "bold": false,
+                "italic": false
+              }
+            ],
+            "links": []
+          }
+        ],
+        "links": [],
+        "alignment": "left",
+        "style": {
+          "font_size": 9.0,
+          "font": "helv",
+          "font_original": "Helvetica",
+          "color": 2700075,
+          "bold": false,
+          "italic": false
+        },
+        "pdf_coordinates": "display",
+        "rendered_layout": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 5,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                691.0,
+                314.2829985022545,
+                703.3660003840923
+              ],
+              "font_size": 9.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 5,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                704.8660003840923,
+                78.02399969100952,
+                717.2320007681847
+              ],
+              "font_size": 9.0,
+              "action": "fit",
+              "page": 1
+            }
+          ]
+        },
+        "region_id": "a27b99b9c13e912f123884e5",
+        "visible": true
+      },
+      {
+        "block_index": 7,
+        "block_type": "paragraph",
+        "source_text": "\"You laughed when I said I would repay you,\" said the Mouse. \"Now you see that even a Mouse can help a Lion.\"",
+        "ai_translated_text": "\"Nagkatawa ka kung ako nagsulti nga mobalos ko nimo,\" miingon ang Ilaga. \"Karon makita nimo nga bisan ang Ilaga makahatag og tabang sa Leona.\"",
+        "current_text": "\"Nagkatawa ka kung ako nagsulti nga mobalos ko nimo,\" miingon ang Ilaga. \"Karon makita nimo nga bisan ang Ilaga makahatag og tabang sa Leona.\"",
+        "quality_score": null,
+        "quality_issues": null,
+        "type": "paragraph",
+        "text": "\"Nagkatawa ka kung ako nagsulti nga mobalos ko nimo,\" miingon ang Ilaga. \"Karon makita nimo nga bisan ang Ilaga makahatag og tabang sa Leona.\"",
+        "position": [
+          48.0,
+          510.3333435058594,
+          550.3333129882812,
+          558.31591796875
+        ],
+        "page": 1,
+        "style": {
+          "font": "helv",
+          "font_size": 11,
+          "color": 0,
+          "bold": false
+        },
+        "pdf_coordinates": "display",
+        "ocr": {
+          "pack": "eng",
+          "confidence": 94.69565217391305,
+          "words": [
+            {
+              "position": [
+                4.0,
+                20.0,
+                107.0,
+                55.0
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  4.0,
+                  19.0,
+                  1504.0,
+                  65.0
+                ],
+                "baseline": [
+                  0.001,
+                  -11.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "\"You"
+            },
+            {
+              "position": [
+                122.0,
+                19.0,
+                282.0,
+                65.0
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  4.0,
+                  19.0,
+                  1504.0,
+                  65.0
+                ],
+                "baseline": [
+                  0.001,
+                  -11.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "laughed"
+            },
+            {
+              "position": [
+                297.0,
+                19.0,
+                406.0,
+                55.0
+              ],
+              "confidence": 95.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  4.0,
+                  19.0,
+                  1504.0,
+                  65.0
+                ],
+                "baseline": [
+                  0.001,
+                  -11.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "when"
+            },
+            {
+              "position": [
+                420.0,
+                20.0,
+                435.0,
+                54.0
+              ],
+              "confidence": 95.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  4.0,
+                  19.0,
+                  1504.0,
+                  65.0
+                ],
+                "baseline": [
+                  0.001,
+                  -11.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "I"
+            },
+            {
+              "position": [
+                452.0,
+                19.0,
+                530.0,
+                55.0
+              ],
+              "confidence": 95.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  4.0,
+                  19.0,
+                  1504.0,
+                  65.0
+                ],
+                "baseline": [
+                  0.001,
+                  -11.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "said"
+            },
+            {
+              "position": [
+                544.0,
+                20.0,
+                559.0,
+                54.0
+              ],
+              "confidence": 95.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  4.0,
+                  19.0,
+                  1504.0,
+                  65.0
+                ],
+                "baseline": [
+                  0.001,
+                  -11.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "I"
+            },
+            {
+              "position": [
+                574.0,
+                19.0,
+                700.0,
+                55.0
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  4.0,
+                  19.0,
+                  1504.0,
+                  65.0
+                ],
+                "baseline": [
+                  0.001,
+                  -11.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "would"
+            },
+            {
+              "position": [
+                713.0,
+                31.0,
+                825.0,
+                65.0
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  4.0,
+                  19.0,
+                  1504.0,
+                  65.0
+                ],
+                "baseline": [
+                  0.001,
+                  -11.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "repay"
+            },
+            {
+              "position": [
+                840.0,
+                20.0,
+                946.0,
+                65.0
+              ],
+              "confidence": 83.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  4.0,
+                  19.0,
+                  1504.0,
+                  65.0
+                ],
+                "baseline": [
+                  0.001,
+                  -11.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "you,\""
+            },
+            {
+              "position": [
+                965.0,
+                19.0,
+                1044.0,
+                55.0
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  4.0,
+                  19.0,
+                  1504.0,
+                  65.0
+                ],
+                "baseline": [
+                  0.001,
+                  -11.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "said"
+            },
+            {
+              "position": [
+                1058.0,
+                19.0,
+                1118.0,
+                55.0
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  4.0,
+                  19.0,
+                  1504.0,
+                  65.0
+                ],
+                "baseline": [
+                  0.001,
+                  -11.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "the"
+            },
+            {
+              "position": [
+                1133.0,
+                20.0,
+                1280.0,
+                55.0
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  4.0,
+                  19.0,
+                  1504.0,
+                  65.0
+                ],
+                "baseline": [
+                  0.001,
+                  -11.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "Mouse."
+            },
+            {
+              "position": [
+                1301.0,
+                20.0,
+                1415.0,
+                55.0
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  4.0,
+                  19.0,
+                  1504.0,
+                  65.0
+                ],
+                "baseline": [
+                  0.001,
+                  -11.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "\"Now"
+            },
+            {
+              "position": [
+                1430.0,
+                31.0,
+                1504.0,
+                65.0
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_1",
+              "line_geometry": {
+                "id": "line_1_1",
+                "position": [
+                  4.0,
+                  19.0,
+                  1504.0,
+                  65.0
+                ],
+                "baseline": [
+                  0.001,
+                  -11.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "you"
+            },
+            {
+              "position": [
+                3.0,
+                103.0,
+                63.0,
+                127.0
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_2",
+              "line_geometry": {
+                "id": "line_1_2",
+                "position": [
+                  3.0,
+                  91.0,
+                  809.0,
+                  137.0
+                ],
+                "baseline": [
+                  -0.001,
+                  -10.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "see"
+            },
+            {
+              "position": [
+                79.0,
+                91.0,
+                154.0,
+                127.0
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_2",
+              "line_geometry": {
+                "id": "line_1_2",
+                "position": [
+                  3.0,
+                  91.0,
+                  809.0,
+                  137.0
+                ],
+                "baseline": [
+                  -0.001,
+                  -10.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "that"
+            },
+            {
+              "position": [
+                168.0,
+                103.0,
+                263.0,
+                127.0
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_2",
+              "line_geometry": {
+                "id": "line_1_2",
+                "position": [
+                  3.0,
+                  91.0,
+                  809.0,
+                  137.0
+                ],
+                "baseline": [
+                  -0.001,
+                  -10.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "even"
+            },
+            {
+              "position": [
+                278.0,
+                103.0,
+                299.0,
+                127.0
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_2",
+              "line_geometry": {
+                "id": "line_1_2",
+                "position": [
+                  3.0,
+                  91.0,
+                  809.0,
+                  137.0
+                ],
+                "baseline": [
+                  -0.001,
+                  -10.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "a"
+            },
+            {
+              "position": [
+                313.0,
+                92.0,
+                449.0,
+                127.0
+              ],
+              "confidence": 95.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_2",
+              "line_geometry": {
+                "id": "line_1_2",
+                "position": [
+                  3.0,
+                  91.0,
+                  809.0,
+                  137.0
+                ],
+                "baseline": [
+                  -0.001,
+                  -10.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "Mouse"
+            },
+            {
+              "position": [
+                464.0,
+                103.0,
+                533.0,
+                127.0
+              ],
+              "confidence": 95.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_2",
+              "line_geometry": {
+                "id": "line_1_2",
+                "position": [
+                  3.0,
+                  91.0,
+                  809.0,
+                  137.0
+                ],
+                "baseline": [
+                  -0.001,
+                  -10.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "can"
+            },
+            {
+              "position": [
+                548.0,
+                91.0,
+                633.0,
+                137.0
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_2",
+              "line_geometry": {
+                "id": "line_1_2",
+                "position": [
+                  3.0,
+                  91.0,
+                  809.0,
+                  137.0
+                ],
+                "baseline": [
+                  -0.001,
+                  -10.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "help"
+            },
+            {
+              "position": [
+                649.0,
+                103.0,
+                670.0,
+                127.0
+              ],
+              "confidence": 96.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_2",
+              "line_geometry": {
+                "id": "line_1_2",
+                "position": [
+                  3.0,
+                  91.0,
+                  809.0,
+                  137.0
+                ],
+                "baseline": [
+                  -0.001,
+                  -10.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "a"
+            },
+            {
+              "position": [
+                684.0,
+                91.0,
+                809.0,
+                127.0
+              ],
+              "confidence": 85.0,
+              "paragraph": "par_1_1",
+              "line": "line_1_2",
+              "line_geometry": {
+                "id": "line_1_2",
+                "position": [
+                  3.0,
+                  91.0,
+                  809.0,
+                  137.0
+                ],
+                "baseline": [
+                  -0.001,
+                  -10.0
+                ],
+                "x_size": 46.0,
+                "x_ascenders": 12.0,
+                "x_descenders": 10.0
+              },
+              "text": "Lion.\""
+            }
+          ],
+          "reading_order": 0,
+          "retry": "not_needed",
+          "uncertain_words": []
+        },
+        "ocr_reflow": false,
+        "region_id": "2c1bcc43bba5acc9cbc957a2",
+        "image_region": {
+          "xref": 23,
+          "image_bbox": [
+            48.0,
+            505.0,
+            564.0,
+            585.0
+          ],
+          "estimated_style": {
+            "font_id": "NotoSerif-Bold",
+            "initial_size": 15.298515104966718,
+            "method": "packaged glyph-shape comparison",
+            "confidence": 0.7542173680459701
+          }
+        }
+      }
+    ],
+    "output_validation": {
+      "status": "passed",
+      "content_coverage": "passed",
+      "layout": "passed",
+      "linguistic_accuracy": "unverified",
+      "source_pages": 2,
+      "output_pages": 2,
+      "continuation_pages": 0,
+      "checked_fragments": 20,
+      "issues": [],
+      "content_findings": [],
+      "blocks": [
+        {
+          "block_index": 0,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            33.99998092651367,
+            313.8239994049072,
+            70.00998145341873
+          ],
+          "font_size": 26.0,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 1,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            380.0,
+            466.30200111866,
+            402.67799934744835
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 1,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            404.17799934744835,
+            561.2130011916161,
+            426.8559986948967
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 1,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            428.3559986948967,
+            556.0280010700226,
+            451.03399804234505
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 1,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            452.53399804234505,
+            505.9800009727478,
+            475.2119973897934
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 1,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            476.7119973897934,
+            525.8190008997917,
+            499.38999673724174
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 1,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            500.88999673724174,
+            302.0140005350113,
+            523.5679960846901
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 2,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            641.0,
+            552.20300167799,
+            663.6779993474483
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 2,
+          "source_page": 0,
+          "rect": [
+            48.0,
+            665.1779993474483,
+            559.7850013375282,
+            687.8559986948967
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 0
+        },
+        {
+          "block_index": 3,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            278.0,
+            558.3910010457039,
+            300.67799934744835
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 3,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            302.17799934744835,
+            461.57600116729736,
+            324.8559986948967
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 3,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            326.3559986948967,
+            523.864001750946,
+            349.03399804234505
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 3,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            350.53399804234505,
+            521.0930009484291,
+            373.2119973897934
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 3,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            374.7119973897934,
+            555.5180015563965,
+            397.38999673724174
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 3,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            398.88999673724174,
+            524.4250006079674,
+            421.5679960846901
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 3,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            423.0679960846901,
+            414.38400077819824,
+            445.74599543213844
+          ],
+          "font_size": 17.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 4,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            617.0,
+            245.25299888849258,
+            644.2160000801086
+          ],
+          "font_size": 21.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 4,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            645.7160000801086,
+            198.50699990987778,
+            672.9320001602173
+          ],
+          "font_size": 21.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 5,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            691.0,
+            314.2829985022545,
+            703.3660003840923
+          ],
+          "font_size": 9.0,
+          "action": "fit",
+          "page": 1
+        },
+        {
+          "block_index": 5,
+          "source_page": 1,
+          "rect": [
+            48.0,
+            704.8660003840923,
+            78.02399969100952,
+            717.2320007681847
+          ],
+          "font_size": 9.0,
+          "action": "fit",
+          "page": 1
+        }
+      ],
+      "source_artifacts": [],
+      "held": [],
+      "source_page_map": {
+        "0": 0,
+        "1": 1
+      }
+    },
+    "extraction": {
+      "pages": [
+        {
+          "page": 0,
+          "classification": "mixed",
+          "mediabox": [
+            0.0,
+            0.0,
+            612.0,
+            792.0
+          ],
+          "cropbox": [
+            0.0,
+            0.0,
+            612.0,
+            792.0
+          ],
+          "rotation": 0,
+          "rotation_matrix": [
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "page": 1,
+          "classification": "mixed",
+          "mediabox": [
+            0.0,
+            0.0,
+            612.0,
+            792.0
+          ],
+          "cropbox": [
+            0.0,
+            0.0,
+            612.0,
+            792.0
+          ],
+          "rotation": 0,
+          "rotation_matrix": [
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "regions": [
+        {
+          "region_id": "85dbc31715eb371eca947b3c",
+          "page": 0,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            33.99998092651367,
+            319.5960388183594,
+            70.00997924804688
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 0
+        },
+        {
+          "region_id": "8bbdc35cddb81fd373da7498",
+          "page": 0,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            380.0,
+            562.6581420898438,
+            475.17706298828125
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 1
+        },
+        {
+          "region_id": "b2b763db0d6adea917027abe",
+          "page": 0,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            641.0,
+            561.26416015625,
+            687.8443603515625
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 2
+        },
+        {
+          "region_id": "15238ad3f4c6cbef28aa58a6",
+          "page": 0,
+          "source_kind": "raster",
+          "bbox": [
+            112.0,
+            90.16256713867188,
+            500.0,
+            355.8374328613281
+          ],
+          "status": "held",
+          "reason": "image_safety_hold",
+          "occurrence_id": "0:0",
+          "xref": 8,
+          "transform": [
+            388.0,
+            0.0,
+            -0.0,
+            265.67486572265625,
+            112.0,
+            90.16256713867188
+          ],
+          "capture_scope": [
+            "scan",
+            "photo",
+            "screenshot"
+          ],
+          "signals": {
+            "version": 1,
+            "calibrated": false,
+            "preview_range": 214
+          },
+          "occurrence_count": 2,
+          "detail": "Shared/unresolved image occurrence",
+          "safety_hold": "shared_or_unresolved_image"
+        },
+        {
+          "region_id": "ae08701268feae8b96e15910",
+          "page": 0,
+          "source_kind": "raster",
+          "bbox": [
+            48.0,
+            552.0,
+            564.0,
+            620.0
+          ],
+          "status": "container",
+          "reason": null,
+          "occurrence_id": "0:1",
+          "xref": 14,
+          "transform": [
+            516.0,
+            0.0,
+            -0.0,
+            68.0,
+            48.0,
+            552.0
+          ],
+          "capture_scope": [
+            "scan",
+            "photo",
+            "screenshot"
+          ],
+          "signals": {
+            "version": 1,
+            "calibrated": false,
+            "preview_range": 214
+          },
+          "occurrence_count": 1
+        },
+        {
+          "region_id": "e1438d0c8f83dd75fc6eec1a",
+          "page": 0,
+          "source_kind": "raster_text",
+          "bbox": [
+            48.0,
+            557.4856567382812,
+            561.0,
+            605.1908569335938
+          ],
+          "status": "translated",
+          "reason": null,
+          "parent_region_id": "ae08701268feae8b96e15910",
+          "block_index": 3
+        },
+        {
+          "region_id": "f4e37050559f51f34bdac9f2",
+          "page": 1,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            278.0,
+            560.5162353515625,
+            397.3434143066406
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 4
+        },
+        {
+          "region_id": "d30dde405a921868c17ba98f",
+          "page": 1,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            617.0,
+            284.27105712890625,
+            644.2160034179688
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 5
+        },
+        {
+          "region_id": "a27b99b9c13e912f123884e5",
+          "page": 1,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            691.0,
+            346.8089904785156,
+            703.365966796875
+          ],
+          "status": "passthrough",
+          "reason": null,
+          "block_index": 6
+        },
+        {
+          "region_id": "38e6173dda727580bb84bbc2",
+          "page": 1,
+          "source_kind": "raster",
+          "bbox": [
+            158.0,
+            42.16009521484375,
+            454.0,
+            244.83990478515625
+          ],
+          "status": "held",
+          "reason": "image_safety_hold",
+          "occurrence_id": "1:0",
+          "xref": 8,
+          "transform": [
+            296.0,
+            0.0,
+            -0.0,
+            202.6798095703125,
+            158.0,
+            42.16009521484375
+          ],
+          "capture_scope": [
+            "scan",
+            "photo",
+            "screenshot"
+          ],
+          "signals": {
+            "version": 1,
+            "calibrated": false,
+            "preview_range": 208
+          },
+          "occurrence_count": 2,
+          "detail": "Shared/unresolved image occurrence",
+          "safety_hold": "shared_or_unresolved_image"
+        },
+        {
+          "region_id": "581cf56e0d05794f3bae37bd",
+          "page": 1,
+          "source_kind": "raster",
+          "bbox": [
+            48.0,
+            505.0,
+            564.0,
+            585.0
+          ],
+          "status": "container",
+          "reason": null,
+          "occurrence_id": "1:1",
+          "xref": 23,
+          "transform": [
+            516.0,
+            0.0,
+            -0.0,
+            80.0,
+            48.0,
+            505.0
+          ],
+          "capture_scope": [
+            "scan",
+            "photo",
+            "screenshot"
+          ],
+          "signals": {
+            "version": 1,
+            "calibrated": false,
+            "preview_range": 215
+          },
+          "occurrence_count": 1
+        },
+        {
+          "region_id": "2c1bcc43bba5acc9cbc957a2",
+          "page": 1,
+          "source_kind": "raster_text",
+          "bbox": [
+            48.0,
+            510.3333435058594,
+            550.3333129882812,
+            558.31591796875
+          ],
+          "status": "translated",
+          "reason": null,
+          "parent_region_id": "581cf56e0d05794f3bae37bd",
+          "block_index": 7
+        }
+      ],
+      "warnings": [
+        "Unverified OCR preview: image text was recognized without a qualifying accuracy report. Review the translation and layout.",
+        "Page 1: original region retained (image_safety_hold).",
+        "Page 2: original region retained (image_safety_hold).",
+        "Partial: 7 translated, 2 held, 1 passthrough regions. Held content retains its original language."
+      ],
+      "ocr_mode": "preview",
+      "original_sha256": "df09eaad8e681a4c5792081db117b38d238f06a9bdadf7c8241b7b0c0b76e34f",
+      "signals_version": 1
+    },
+    "content_summary": {
+      "status": "partial",
+      "translated": 7,
+      "held": 2,
+      "passthrough": 1,
+      "source_coverage": "unknown",
+      "held_region_ids": [
+        "15238ad3f4c6cbef28aa58a6",
+        "38e6173dda727580bb84bbc2"
+      ],
+      "ocr_mode": "preview",
+      "ocr_verified": false
+    },
+    "render_plan": {
+      "version": 3,
+      "algorithm_version": 3,
+      "original_sha256": "df09eaad8e681a4c5792081db117b38d238f06a9bdadf7c8241b7b0c0b76e34f",
+      "font_manifest_sha256": "9ea6b12b4788ba6007767058dea57864f6fe004f5fce2d603492abb039ce65bd",
+      "runtime": {
+        "pymupdf": "1.27.2.3",
+        "pillow": "12.2.0",
+        "opencv-python-headless": "4.13.0.92"
+      },
+      "regions": [
+        {
+          "region_id": "85dbc31715eb371eca947b3c",
+          "page": 0,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            33.99998092651367,
+            319.5960388183594,
+            70.00997924804688
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 0
+        },
+        {
+          "region_id": "8bbdc35cddb81fd373da7498",
+          "page": 0,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            380.0,
+            562.6581420898438,
+            475.17706298828125
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 1
+        },
+        {
+          "region_id": "b2b763db0d6adea917027abe",
+          "page": 0,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            641.0,
+            561.26416015625,
+            687.8443603515625
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 2
+        },
+        {
+          "region_id": "15238ad3f4c6cbef28aa58a6",
+          "page": 0,
+          "source_kind": "raster",
+          "bbox": [
+            112.0,
+            90.16256713867188,
+            500.0,
+            355.8374328613281
+          ],
+          "status": "held",
+          "reason": "image_safety_hold",
+          "occurrence_id": "0:0",
+          "xref": 8,
+          "transform": [
+            388.0,
+            0.0,
+            -0.0,
+            265.67486572265625,
+            112.0,
+            90.16256713867188
+          ],
+          "capture_scope": [
+            "scan",
+            "photo",
+            "screenshot"
+          ],
+          "signals": {
+            "version": 1,
+            "calibrated": false,
+            "preview_range": 214
+          },
+          "occurrence_count": 2,
+          "detail": "Shared/unresolved image occurrence",
+          "safety_hold": "shared_or_unresolved_image"
+        },
+        {
+          "region_id": "ae08701268feae8b96e15910",
+          "page": 0,
+          "source_kind": "raster",
+          "bbox": [
+            48.0,
+            552.0,
+            564.0,
+            620.0
+          ],
+          "status": "container",
+          "reason": null,
+          "occurrence_id": "0:1",
+          "xref": 14,
+          "transform": [
+            516.0,
+            0.0,
+            -0.0,
+            68.0,
+            48.0,
+            552.0
+          ],
+          "capture_scope": [
+            "scan",
+            "photo",
+            "screenshot"
+          ],
+          "signals": {
+            "version": 1,
+            "calibrated": false,
+            "preview_range": 214
+          },
+          "occurrence_count": 1
+        },
+        {
+          "region_id": "e1438d0c8f83dd75fc6eec1a",
+          "page": 0,
+          "source_kind": "raster_text",
+          "bbox": [
+            48.0,
+            557.4856567382812,
+            561.0,
+            605.1908569335938
+          ],
+          "status": "translated",
+          "reason": null,
+          "parent_region_id": "ae08701268feae8b96e15910",
+          "block_index": 3
+        },
+        {
+          "region_id": "f4e37050559f51f34bdac9f2",
+          "page": 1,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            278.0,
+            560.5162353515625,
+            397.3434143066406
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 4
+        },
+        {
+          "region_id": "d30dde405a921868c17ba98f",
+          "page": 1,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            617.0,
+            284.27105712890625,
+            644.2160034179688
+          ],
+          "status": "translated",
+          "reason": null,
+          "block_index": 5
+        },
+        {
+          "region_id": "a27b99b9c13e912f123884e5",
+          "page": 1,
+          "source_kind": "native",
+          "bbox": [
+            48.0,
+            691.0,
+            346.8089904785156,
+            703.365966796875
+          ],
+          "status": "passthrough",
+          "reason": null,
+          "block_index": 6
+        },
+        {
+          "region_id": "38e6173dda727580bb84bbc2",
+          "page": 1,
+          "source_kind": "raster",
+          "bbox": [
+            158.0,
+            42.16009521484375,
+            454.0,
+            244.83990478515625
+          ],
+          "status": "held",
+          "reason": "image_safety_hold",
+          "occurrence_id": "1:0",
+          "xref": 8,
+          "transform": [
+            296.0,
+            0.0,
+            -0.0,
+            202.6798095703125,
+            158.0,
+            42.16009521484375
+          ],
+          "capture_scope": [
+            "scan",
+            "photo",
+            "screenshot"
+          ],
+          "signals": {
+            "version": 1,
+            "calibrated": false,
+            "preview_range": 208
+          },
+          "occurrence_count": 2,
+          "detail": "Shared/unresolved image occurrence",
+          "safety_hold": "shared_or_unresolved_image"
+        },
+        {
+          "region_id": "581cf56e0d05794f3bae37bd",
+          "page": 1,
+          "source_kind": "raster",
+          "bbox": [
+            48.0,
+            505.0,
+            564.0,
+            585.0
+          ],
+          "status": "container",
+          "reason": null,
+          "occurrence_id": "1:1",
+          "xref": 23,
+          "transform": [
+            516.0,
+            0.0,
+            -0.0,
+            80.0,
+            48.0,
+            505.0
+          ],
+          "capture_scope": [
+            "scan",
+            "photo",
+            "screenshot"
+          ],
+          "signals": {
+            "version": 1,
+            "calibrated": false,
+            "preview_range": 215
+          },
+          "occurrence_count": 1
+        },
+        {
+          "region_id": "2c1bcc43bba5acc9cbc957a2",
+          "page": 1,
+          "source_kind": "raster_text",
+          "bbox": [
+            48.0,
+            510.3333435058594,
+            550.3333129882812,
+            558.31591796875
+          ],
+          "status": "translated",
+          "reason": null,
+          "parent_region_id": "581cf56e0d05794f3bae37bd",
+          "block_index": 7
+        }
+      ],
+      "pages": [
+        {
+          "page": 0,
+          "classification": "mixed",
+          "mediabox": [
+            0.0,
+            0.0,
+            612.0,
+            792.0
+          ],
+          "cropbox": [
+            0.0,
+            0.0,
+            612.0,
+            792.0
+          ],
+          "rotation": 0,
+          "rotation_matrix": [
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "page": 1,
+          "classification": "mixed",
+          "mediabox": [
+            0.0,
+            0.0,
+            612.0,
+            792.0
+          ],
+          "cropbox": [
+            0.0,
+            0.0,
+            612.0,
+            792.0
+          ],
+          "rotation": 0,
+          "rotation_matrix": [
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "image_actions": [
+        {
+          "algorithm_version": 3,
+          "image_size": [
+            1548,
+            204
+          ],
+          "source_image_sha256": "1d8582f8f2d4f6ebd41209de7ca950ca16df7daad27698a4a3d6e6f0f9434988",
+          "mask": "eNrtneGW4yoOBqX3f+k9u2fvnWkbSZ8Ad2yn6s+c6SQ2FqDCQBwzAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM/8vf/17eOXPi8+8rOoix++/SbFX3wYr7T/9hP9+Ianwm7f7+5TOjw3m5/+D5vTPn4+f9hPPazT/ljm6yIH1Pl/mshiPqJCy6dykbZ2ahg9pV9IH2sU3eOC2YdhVOt+SeEfp75//h8f99+8+MsdjXfCzzNFFnq71JslTfN9zXOC3dcG5aXhEp5I+0C6+xQS3DMO+0m11waDNJscN0mQ+NsIFuGDVBf44FxxeJAnigm9wgeMCXLC1Tb/CBY4LcMHVpduSdqdcYLkLnpN7MhfYE1xQFuNUtU/uv7cZYzTGQp/RV+OUr9bFvdv93tItH+wCFwwT6+tcYPGi8ocSU/TavUq7ksduM8wrx0JRZ/pca87e9g33Bu8v3S4XFNMk40/9/LSPD/V0F9iTXeC44MIiRjsvBoW9rQscF+CCcWNousASF9hbXGC44FMu8HtOEQVNw6OtFJ+JPi7ABRvLtuQCwwUfbk6OCz7oAnuACxwX4ILrXODPHXO8zAX+fBe48HdcMJ1mHBfggq0uGNwS//nT4T/DI4ajQMtWM6LiH8vdO2XkgixW+ey29ufs6jy9BPF4RV5SY9u8qKTspmwclVzQ7QTda5DafzhLGsW8cSlTBY4jqF6x3JuU2HWbiKk5otzoVzxDJtkzf300guc+zCT0LS6IV3zz6otc4OcDZ7vrRn8evVmu2Xo7VJ5tkovM6rNzijgzqFMj5XbF4BtPrYBk1xqfqXqlWfDiLGlLGTWA+vBiv6tckN4X1NfY+KuU6NIOFVaD0JuU2DWbiPLxdMeuspu3084ujEbYNYalEfqNkqjOx7NoI5HiguM00Li2rPgSWla85I/i9cqiiVxgPRdUpwg/or6g5Obx5yZKW8S26nXVAxl2uKA4x6BZTkVAaf8dFwzPJwVYL3D1gewQjd7UGYDXrUH6tOkPgOp+iV1ss7ujIV7nlS6I/Se6wKIwCiWJYl99j1/JIFlTKVtQdpHlKdNTuNwnis7iO13QPFQpsey2yfe6oGrfZxdMRUBq/w0XLFR1e9hrYj+b7E39EbiWiPJRdPFVPuW4jX51fTTCzz7ABZ0psDR8Z8laqeBWwlLS7uRCTvsUnQpJa8o3ucCljtNsStnF9l1wWL0pu+6hWZ16z+hrYpu+ICzvKc1DOf7SWr/A1QdWXeCzabdukkFc02ZUNItqRjlrT9dHI7rOaLYlPW6+lFAXecfek85g+Ng1R5E4t9vkirsuGB2qmQaqBGnBd1HPc4qdF6JM15wkkAKiuyBMul5WznguvuWCOOUna7hpvay7oC5PeOsQfLBZ4KLlKVvQ9OynjEtPzTuuvuLj2q1q2j2yuB4LtDUacenGDcDULCW6wIbitM0uMGH6Lvk+Zh15cT/C2X7BAG2bC4YXFdb8aXGleiHdlNJ3gR6QsgKD9JckxrYLhqNjz5Jv1wVa62q5IBFudL5MAFMFzs/uVf+WepNUlKh5J9VXfDxrz2L3SOLqRQLdEg1T0oPFubu3j6jsNttdYOX83fF/VT1n20C0Cx4rNzjU3NWOxZDPGXudHMLCiveM2W9TuBiQqgI9PEf9igfxPr/NTk998HRSJmnHp4+rEZi+T4yqOKvVLCvIBT4dRNjd1O1NUlGUsZFwx68eSusecVyz9rQejbh0ylBm1QWR8rL1rkkXVNNE1nSBso9FMK78A1QLLqhuJLOdydEL+f4Fm3NBKyDFpVrs/PIVL/ZrjkMXDwBbLvh7Q6jYuhbmDDu1mgyLmgXWl6PqLalezXEJS1fp3cq8C8TDlrc9jfa0Eo24dKULPJ+7SJtuMYl2hQssX8yJbqZzc93cBdoca/NewKUjTrjANrigngzMvnclumDQFfMBYPLdrmAbxm+4wFQXFF2hX+C7uSCdFK9nVbLxeHbYcofCKa5le1qIRla6cK3hoS7IvyYWXFu48W/BBYYL3uICz5dVJ13QbV1TLkgm78ftI90DO9sd1l1gn3TBODDbXBA+Q0RpTztdEFxnMCrquWC8mDWe1drngtFO8KJ+qvfjAjHN/JYL7CMusA0usHigstsFxUJuPpsaFO87XZCGIVsRkrZgxqu917kgLl263ppub7mlC6znAnfRBb3cnLqgSENTLtB/rTfdKVBu87jEBb2t8/VXt+NXZBcM7z5SF1jXBb7QyOsgCZt6GvfU7QILKX+XC8R0ULigfOLudS6Yb0/NaBSlK/feLLtgtOfRNrsgtFtxFvevdEG4L8FxQdA0bIsLrDU4/lUX5MvO7QLf0gU+44J6a9aECyy/b/+EC8p7/wUXZN/NuNYFprpgvD3mky6wy1xQ10LW2rUpxze5wC5xQfjQvk+7INwpNlng27ggaN6yC4LArK0XxHH9DRcka8ej/XnSE/zUl3/HBV7cGCYuMOu5IGkzXRccPnOFC9KbIHHkM7zhusQFun8e6YLjHKbYuq50wTFkacvqd4fwA1e4oFqonXeB2V4XBHHd6oKo/2YumBlm1i4wdRPKfheY5IJ8otzjTrboAr/eBcNTVDnUPVvMudAFvuQCD13gKy6wPCTZMnq2j+hwXLF17XZB9pjjbJ+d97tD+IFta8dV7NKFkMIFxSrbwj6iIK6+6AKfc0E6Oyxsa7iZC3zSBaa5oPjJtNY+osk1gs4+omqkm+9qyHrLFXtK04A82wWnfZvj54esNommC+pfFrClAg8mYo8f2LePqIhdOjGqucCucIES14l9RNoIOblfvNoFli5K/KYLfNUFvs8Ffr0LxgvlcT3FtZtN8+1ygbJGEQ5R48lXn3GB5XOaycDGs5vvYC1tEIGZ+8S2C7xyQaPAmgv8MhdUM/7ZT3j5Vhcoz6CQ2+y2aCSly2eH110wfgbadS7wjgus7YL8kRwtF4wO1VxFDEIXn6K7hpfvKJGf1ae5wJXOXJlE6ZL7XVA83GXsgpX62uOC4cPBYhcIBa5ccPyAWGIh+7k+SFPy4g4XCI+Ik1vztmjUy1+lC2zdBfYrLnBh7Xg4fEtvX9Jprnx/VlxfyvR8f9+Sy7/cYfVCw/hIVZ1aNHrvBqTQigfPUBy5wJsucGXsqM0fDcIV6bDaY6jtlql6R16rw66gFbiaZo+vcHAEqTdJRak2SmpPFD0GRniKV9Y90rjmCxVL0YhLF11nO9VrLbS8T5tPjtHCkKeF8JwsJ9qEC8SfepwZB3qeXdOraL5QhitdLGoERGhFcfMqP9I0bNrKtHzbSK0T7WHJBcqXzOeqzOQWOdGbrGOlfPW4bnt1aFxaIw1dULen9WjEpWuu7C64wC52gfLEXi09ijLQ8tX5f/tdoFxuPwrJkZZc0AhIdYOSa7pMeeUmPyu+GdA9+7AgQn3124I6UFJdoBU4PmXfBWJvskkXuD7GE3KEllSKuw1JmhdFQ3BBPklTDpRzu+mjeZ93QT9riu9rNpiWcOZdYFlphaZc5zrTXSD+HlPjlkur2iw87dmE5Kq7Z29GudMe0hgKaX9PgeNTKrU31ZtsOpmrQzxr9+aWC9YtvSUaay6Q4jiefpUbjDd04N5MCx0X2Ja0N75Mk+/CypMWWy43yKC+B2u7wISq7tyypeHZ7ILO2dut6zIX2Mwt8kp3UFrkZG+abD1l9S24wGZcoLfZa6KhusCe6oJWvlCeIbph8JAcqusC0/p/3SfUbi8mn1ZUpN3L6dnEDteaS/n5iawMQrGsdlH/rnzFBdWjqONfebep7tDYttzvTROtR6k+a+SI/jyCuF/jimgo8wYWFmzJBXZKqHaZC6KRhiBoYa9/e9ze3v43cfiysQnz91OrRj+qTd7pOxlbtWNNLGjtq0xPN1X+1UqLCeSl9rDSBEddoVfgfh1vqR45l09Ozeo5Qu4ecVyX26zw8aB06XXuqqjxf36NX0gI9ydyQ/zC7cr+3RUIe9s99MP4mubg1KXydeOLB6RUINyh3RMaXECfGN4837reqUDY3e4JzTeqgFRiwvrBnW+iqUDY3e4JTSt+uOCVdWrjxyNWz5SgAuFF7R6+UQWkEut/xwQXwKvbPXzzbcFXN4DZHaVUILyy3UM3fK9rDNTq1FNZqEB4WbsHXEC1ls+moALh/e0eWsF7X1OgYluPcaAC4b3tHvTYvW9YQN1mDxWhAuHb2j0IoSMIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADwdfj/IA7/hOKvfwEAvkkEZL4fViQkAPCdJiDx/RUNXAAAuIBo4AIAwAVEAxcAAC4gHLgAAL53MAy4AABwAbCPCAAYDMOfb1oQEgDABbiAkAAALsAFhAQA3pO4/1oHPXzel12gHfv/7xuf46qVivnjOs+gAIDnmOCwxPn3UPZPEnM/vPvwt7MLTh8IN5yqx/YT4bWIZy/fdT5dGqXRheECAHiOClIXDJNwkJa7LlCP7UOCg2xyQV40zQWGCwDgOSrIXDDMwUVansvG8bHdExn4NS4oyqa7wHABANzcBTYYBx/mQkY5MRyjZ4lSui2Qzzco91gG8dnTd0WnC2eMAAAeq4IfUxjDufIsN9vpMdWj8frPc5rogh/HVlwQ5Onk7Om7qlWC8ecBAL7HBXHGH87dxMm4cWyPRv1jLShnz94VLCLjAgB4qQtslEnDvOrhXptEJ2I2To8drBGELtDObpoLBudLpp4AAJ7lgp97HksXpKP52AWuJ+P42KElKhekZw/fFW1oxQUA8EYX/JNmr3CBXecCO70STfgULgjeFX1xAhcAwDtdMPqi2G4X+KUuMHmGSbpDwgUA8J0y8KtccMqgts0Fln0rWT979C5cAADf5wKfckFy2POgu+mC8n2WPCzC9bNH7wofc4ELAODtMtjvAvsVF4QPKpJcYLgAAJBBsAtnswu0tds5Fwy/pyaevbhFwgUA8GU2WHPBWCd7XHDeOjp2gRkuAADoauC0m6i7diy4wMpkrB67fCJqpSLNicc/4QIAeL0L1CftaIlyqwtOx65cUE5RXeICnkEBAI+fHjpms/JZQFGijAfm5YOd5WMX+0XHLjDJBZYtO0fnC5+/R+MCgAe6wBZccH7WT+YCa7ngeOzq4dKVC8poBHcUJkeJCSMAeKQLPMhyHv3C12hSJX3jeLolc4H0uwHB3cyP/UTa2aspoeR8pygxYQQA73JB9FMyWb62ygU274JTcq5//tK1s8fv6p7PVe8AANzMBcE2nOJXBcysytcjGRSzM/qxpZ9CduXsaRn139TEBQDwcBdIWU55o0UPglC+mlYfeyY173eB4QIAeLULzFQZxJ/PXaAUIytbPzWXZx/PmRW+tPj5ebgAAJ7tgsHfLfiNy9ERlGN2iiEl4OE8U+vshQvGDz8NotS4BwEAuJMLLJ/clzffzOVZax7bkwdKZD9as1bGYKgfRQkVAADsU8GCeabOzngeAAAX4AIAgCeoYNIFqAAA4AYS8A+5QDv75jICAMC1abZ3KFQAAIALcAEAwN1csPVwG8+OCgAAHuQC9+YQHhcAANzMBXvF0nXBb5URAACSRLv5JkM74uzvFgAAwH4dbL/JaG0r/c0yAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8jf8Azzt6xQ==",
+          "mask_sha256": "4f3dfde1f55f9993793c38834df995a83e052aba8d82e3eb4476c21a5276f744",
+          "word_geometry": [
+            [
+              3.75,
+              19.456928838951313,
+              135.0,
+              65.1498127340824
+            ],
+            [
+              150.75,
+              19.456928838951313,
+              246.0,
+              54.66292134831461
+            ],
+            [
+              263.25,
+              19.456928838951313,
+              408.75,
+              65.1498127340824
+            ],
+            [
+              423.75,
+              19.456928838951313,
+              483.0,
+              54.66292134831461
+            ],
+            [
+              498.0,
+              30.69288389513109,
+              591.0,
+              65.1498127340824
+            ],
+            [
+              604.5,
+              20.2059925093633,
+              752.25,
+              54.66292134831461
+            ],
+            [
+              771.75,
+              19.456928838951313,
+              918.0,
+              54.66292134831461
+            ],
+            [
+              933.0,
+              19.456928838951313,
+              983.25,
+              54.66292134831461
+            ],
+            [
+              996.75,
+              30.69288389513109,
+              1057.5,
+              54.66292134831461
+            ],
+            [
+              1072.5,
+              30.69288389513109,
+              1119.75,
+              65.1498127340824
+            ],
+            [
+              1137.0,
+              19.456928838951313,
+              1208.25,
+              54.66292134831461
+            ],
+            [
+              1223.25,
+              30.69288389513109,
+              1327.5,
+              54.66292134831461
+            ],
+            [
+              1342.5,
+              19.456928838951313,
+              1413.75,
+              65.1498127340824
+            ],
+            [
+              1428.75,
+              20.2059925093633,
+              1443.75,
+              53.91385767790263
+            ],
+            [
+              1459.5,
+              19.456928838951313,
+              1536.0,
+              54.66292134831461
+            ],
+            [
+              2.25,
+              91.36704119850188,
+              123.0,
+              137.05992509363296
+            ],
+            [
+              137.25,
+              102.60299625468166,
+              249.0,
+              137.05992509363296
+            ],
+            [
+              264.0,
+              91.36704119850188,
+              369.75,
+              137.05992509363296
+            ]
+          ],
+          "exclusions": [],
+          "background": [
+            255,
+            255,
+            255
+          ],
+          "foreground": [
+            40,
+            51,
+            43
+          ],
+          "image_bbox": [
+            48.0,
+            552.0,
+            564.0,
+            620.0
+          ],
+          "fit": {
+            "font_id": "NotoSerif-Bold",
+            "font_sha256": "3b2086a869bcded2aeb4416fc281ceec9d6ce3c06756cda19f8f763636204e7d",
+            "font_size": 15.008471814923428,
+            "lines": [
+              "\"Pasagdi ko!\" nangayo ang pobre nga Ilaga. \"Palihug pasagdi ko ug",
+              "sa usa ka adlaw siguradong mobalos ko nimo.\""
+            ],
+            "leading": 20.441538887454694,
+            "alignment": 0,
+            "bbox": [
+              48.0,
+              557.4856567382812,
+              561.0,
+              605.1908569335938
+            ],
+            "text": "\"Pasagdi ko!\" nangayo ang pobre nga Ilaga. \"Palihug pasagdi ko ug sa usa ka adlaw siguradong mobalos ko nimo.\"",
+            "initial_size": 15.008471814923428
+          },
+          "rotation": 0,
+          "page": 0,
+          "xref": 14,
+          "region_id": "e1438d0c8f83dd75fc6eec1a",
+          "cleaned_image_sha256": "b558230032e7297eca7c665104cc448d68f0152ab0756ad6e66a8ab42b1d3fe9"
+        },
+        {
+          "algorithm_version": 3,
+          "image_size": [
+            1548,
+            240
+          ],
+          "source_image_sha256": "957bac88b12593ec8e31026a2f6a3db5ef5ff3742d4a9a093d1e083e33e640fa",
+          "mask": "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",
+          "mask_sha256": "f22fa37dabf972840c5c9d3c73d4dca9d3788b8de56f193e1447cc7a0bdfa17d",
+          "word_geometry": [
+            [
+              4.0,
+              20.0,
+              107.0,
+              55.0
+            ],
+            [
+              122.0,
+              19.0,
+              282.0,
+              65.0
+            ],
+            [
+              297.0,
+              19.0,
+              406.0,
+              55.0
+            ],
+            [
+              420.0,
+              20.0,
+              435.0,
+              54.0
+            ],
+            [
+              452.0,
+              19.0,
+              530.0,
+              55.0
+            ],
+            [
+              544.0,
+              20.0,
+              559.0,
+              54.0
+            ],
+            [
+              574.0,
+              19.0,
+              700.0,
+              55.0
+            ],
+            [
+              713.0,
+              31.0,
+              825.0,
+              65.0
+            ],
+            [
+              840.0,
+              20.0,
+              946.0,
+              65.0
+            ],
+            [
+              965.0,
+              19.0,
+              1044.0,
+              55.0
+            ],
+            [
+              1058.0,
+              19.0,
+              1118.0,
+              55.0
+            ],
+            [
+              1133.0,
+              20.0,
+              1280.0,
+              55.0
+            ],
+            [
+              1301.0,
+              20.0,
+              1415.0,
+              55.0
+            ],
+            [
+              1430.0,
+              31.0,
+              1504.0,
+              65.0
+            ],
+            [
+              3.0,
+              103.0,
+              63.0,
+              127.0
+            ],
+            [
+              79.0,
+              91.0,
+              154.0,
+              127.0
+            ],
+            [
+              168.0,
+              103.0,
+              263.0,
+              127.0
+            ],
+            [
+              278.0,
+              103.0,
+              299.0,
+              127.0
+            ],
+            [
+              313.0,
+              92.0,
+              449.0,
+              127.0
+            ],
+            [
+              464.0,
+              103.0,
+              533.0,
+              127.0
+            ],
+            [
+              548.0,
+              91.0,
+              633.0,
+              137.0
+            ],
+            [
+              649.0,
+              103.0,
+              670.0,
+              127.0
+            ],
+            [
+              684.0,
+              91.0,
+              809.0,
+              127.0
+            ]
+          ],
+          "exclusions": [],
+          "background": [
+            255,
+            255,
+            255
+          ],
+          "foreground": [
+            40,
+            51,
+            43
+          ],
+          "image_bbox": [
+            48.0,
+            505.0,
+            564.0,
+            585.0
+          ],
+          "fit": {
+            "font_id": "NotoSerif-Bold",
+            "font_sha256": "3b2086a869bcded2aeb4416fc281ceec9d6ce3c06756cda19f8f763636204e7d",
+            "font_size": 12.8,
+            "lines": [
+              "\"Nagkatawa ka kung ako nagsulti nga mobalos ko nimo,\" miingon ang Ilaga.",
+              "\"Karon makita nimo nga bisan ang Ilaga makahatag og tabang sa Leona.\""
+            ],
+            "leading": 17.433600234985352,
+            "alignment": 0,
+            "bbox": [
+              48.0,
+              510.3333435058594,
+              550.3333129882812,
+              558.31591796875
+            ],
+            "text": "\"Nagkatawa ka kung ako nagsulti nga mobalos ko nimo,\" miingon ang Ilaga. \"Karon makita nimo nga bisan ang Ilaga makahatag og tabang sa Leona.\"",
+            "initial_size": 15.298515104966718
+          },
+          "rotation": 0,
+          "page": 1,
+          "xref": 23,
+          "region_id": "2c1bcc43bba5acc9cbc957a2",
+          "cleaned_image_sha256": "8c66c4b94adcde5a6c2cfdce7f7ae0d09a6c7e94097e99a6a4ab9f7c184cc9fa"
+        }
+      ],
+      "native_fit_decisions": {
+        "85dbc31715eb371eca947b3c": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 0,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                33.99998092651367,
+                313.8239994049072,
+                70.00998145341873
+              ],
+              "font_size": 26.0,
+              "action": "fit",
+              "page": 0
+            }
+          ]
+        },
+        "8bbdc35cddb81fd373da7498": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                380.0,
+                466.30200111866,
+                402.67799934744835
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                404.17799934744835,
+                561.2130011916161,
+                426.8559986948967
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                428.3559986948967,
+                556.0280010700226,
+                451.03399804234505
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                452.53399804234505,
+                505.9800009727478,
+                475.2119973897934
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                476.7119973897934,
+                525.8190008997917,
+                499.38999673724174
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 1,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                500.88999673724174,
+                302.0140005350113,
+                523.5679960846901
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            }
+          ]
+        },
+        "b2b763db0d6adea917027abe": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 2,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                641.0,
+                552.20300167799,
+                663.6779993474483
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            },
+            {
+              "block_index": 2,
+              "source_page": 0,
+              "rect": [
+                48.0,
+                665.1779993474483,
+                559.7850013375282,
+                687.8559986948967
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 0
+            }
+          ]
+        },
+        "f4e37050559f51f34bdac9f2": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                278.0,
+                558.3910010457039,
+                300.67799934744835
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                302.17799934744835,
+                461.57600116729736,
+                324.8559986948967
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                326.3559986948967,
+                523.864001750946,
+                349.03399804234505
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                350.53399804234505,
+                521.0930009484291,
+                373.2119973897934
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                374.7119973897934,
+                555.5180015563965,
+                397.38999673724174
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                398.88999673724174,
+                524.4250006079674,
+                421.5679960846901
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 3,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                423.0679960846901,
+                414.38400077819824,
+                445.74599543213844
+              ],
+              "font_size": 17.0,
+              "action": "fit",
+              "page": 1
+            }
+          ]
+        },
+        "d30dde405a921868c17ba98f": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 4,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                617.0,
+                245.25299888849258,
+                644.2160000801086
+              ],
+              "font_size": 21.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 4,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                645.7160000801086,
+                198.50699990987778,
+                672.9320001602173
+              ],
+              "font_size": 21.0,
+              "action": "fit",
+              "page": 1
+            }
+          ]
+        },
+        "a27b99b9c13e912f123884e5": {
+          "status": "passed",
+          "fragments": [
+            {
+              "block_index": 5,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                691.0,
+                314.2829985022545,
+                703.3660003840923
+              ],
+              "font_size": 9.0,
+              "action": "fit",
+              "page": 1
+            },
+            {
+              "block_index": 5,
+              "source_page": 1,
+              "rect": [
+                48.0,
+                704.8660003840923,
+                78.02399969100952,
+                717.2320007681847
+              ],
+              "font_size": 9.0,
+              "action": "fit",
+              "page": 1
+            }
+          ]
+        }
+      },
+      "ocr_mode": "preview",
+      "ocr_verified": false,
+      "blocks_sha256": "c1e11bb481304f47fe39b433a50887ae7d79998080f83ed56f4e6d25d0d0836c",
+      "signature": {
+        "algorithm": "HMAC-SHA256",
+        "purpose": "render-plan",
+        "value": "6cd996c6974fbf1db6445bb84d2ce1c607125cd7b7bdb0eab6569166a3011436"
+      }
+    }
+  },
+  "download_filename": "Lion_and_Mouse_2_pages_10_blocks_2_image_text_ocr_preview_partial.pdf",
+  "content_summary": {
+    "status": "partial",
+    "translated": 7,
+    "held": 2,
+    "passthrough": 1,
+    "source_coverage": "unknown",
+    "held_region_ids": [
+      "15238ad3f4c6cbef28aa58a6",
+      "38e6173dda727580bb84bbc2"
+    ],
+    "ocr_mode": "preview",
+    "ocr_verified": false
+  },
+  "mime_type": "application/pdf",
+  "metrics": {
+    "provider": "gptoss_with_gemini_fallback",
+    "model": "gpt-oss:20b-cloud|gemini-3.5-flash-lite",
+    "mode": "fast",
+    "total_time_ms": 38039.0,
+    "llm_calls": 1,
+    "llm_total_time_ms": 32713.1,
+    "scheduler_wait_ms": 0.0,
+    "scheduler_batches": 1,
+    "scheduler_slots": 1,
+    "echo_retries": 0,
+    "semantic_fallbacks": 0,
+    "batch_fallbacks": 0,
+    "total_blocks": 8,
+    "blocks_translated": 8,
+    "blocks_batched": 8,
+    "blocks_cached": 0,
+    "blocks_passthrough": 0,
+    "retranslated_chunks": 0,
+    "provider_request_ms": 0.0,
+    "provider_retries": 0,
+    "provider_failures": {},
+    "layout_preflight_blocks": 0,
+    "phase_times": {
+      "extraction": 3649.1,
+      "layout_validation": 0.0,
+      "reconstruction": 1655.4,
+      "translation": 32716.5
+    },
+    "cache_hits": 0,
+    "cache_misses": 0,
+    "document_type": "unknown",
+    "providers_used": {
+      "gptoss": {
+        "model": "gpt-oss:20b-cloud",
+        "models": [
+          "gpt-oss:20b-cloud"
+        ],
+        "calls": 1
+      }
+    },
+    "measurement_metadata": {
+      "schema_version": 1,
+      "observed_providers": [
+        {
+          "provider": "gptoss",
+          "model": "gpt-oss:20b-cloud"
+        }
+      ],
+      "calls_complete": false,
+      "calls_provenance": "unknown",
+      "timing_scope": "document_pipeline_elapsed",
+      "timing_observed": true,
+      "usage_provenance": {
+        "input": "unknown",
+        "output": "unknown"
+      },
+      "cache_complete": false,
+      "rework_complete": false
+    },
+    "provider_chain": [
+      "gptoss",
+      "gemini"
+    ],
+    "primary_provider": "gptoss",
+    "primary_model": "gpt-oss:20b-cloud",
+    "fallback_provider": "gemini",
+    "fallback_model": "gemini-3.5-flash-lite",
+    "retry_after_seconds": 0.0,
+    "last_error": ""
+  },
+  "validation": {
+    "status": "passed",
+    "content_coverage": "passed",
+    "layout": "passed",
+    "linguistic_accuracy": "unverified",
+    "source_pages": 2,
+    "output_pages": 2,
+    "continuation_pages": 0,
+    "checked_fragments": 20,
+    "issues": [],
+    "content_findings": [],
+    "blocks": [
+      {
+        "block_index": 0,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          33.99998092651367,
+          313.8239994049072,
+          70.00998145341873
+        ],
+        "font_size": 26.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 1,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          380.0,
+          466.30200111866,
+          402.67799934744835
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 1,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          404.17799934744835,
+          561.2130011916161,
+          426.8559986948967
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 1,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          428.3559986948967,
+          556.0280010700226,
+          451.03399804234505
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 1,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          452.53399804234505,
+          505.9800009727478,
+          475.2119973897934
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 1,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          476.7119973897934,
+          525.8190008997917,
+          499.38999673724174
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 1,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          500.88999673724174,
+          302.0140005350113,
+          523.5679960846901
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 2,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          641.0,
+          552.20300167799,
+          663.6779993474483
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 2,
+        "source_page": 0,
+        "rect": [
+          48.0,
+          665.1779993474483,
+          559.7850013375282,
+          687.8559986948967
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 0
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          278.0,
+          558.3910010457039,
+          300.67799934744835
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          302.17799934744835,
+          461.57600116729736,
+          324.8559986948967
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          326.3559986948967,
+          523.864001750946,
+          349.03399804234505
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          350.53399804234505,
+          521.0930009484291,
+          373.2119973897934
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          374.7119973897934,
+          555.5180015563965,
+          397.38999673724174
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          398.88999673724174,
+          524.4250006079674,
+          421.5679960846901
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 3,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          423.0679960846901,
+          414.38400077819824,
+          445.74599543213844
+        ],
+        "font_size": 17.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 4,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          617.0,
+          245.25299888849258,
+          644.2160000801086
+        ],
+        "font_size": 21.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 4,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          645.7160000801086,
+          198.50699990987778,
+          672.9320001602173
+        ],
+        "font_size": 21.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 5,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          691.0,
+          314.2829985022545,
+          703.3660003840923
+        ],
+        "font_size": 9.0,
+        "action": "fit",
+        "page": 1
+      },
+      {
+        "block_index": 5,
+        "source_page": 1,
+        "rect": [
+          48.0,
+          704.8660003840923,
+          78.02399969100952,
+          717.2320007681847
+        ],
+        "font_size": 9.0,
+        "action": "fit",
+        "page": 1
+      }
+    ],
+    "source_artifacts": [],
+    "held": [],
+    "source_page_map": {
+      "0": 0,
+      "1": 1
+    }
+  }
+}

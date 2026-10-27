@@ -1,0 +1,779 @@
+{
+  "schema_version": 2,
+  "title": "Phase 6 — GPT-OSS-only DTO unit pipeline acceptance benchmark",
+  "generated_at": "2026-09-22T08:54:56.018167+00:00",
+  "provider": "gptoss",
+  "health": {
+    "status": "ok",
+    "engine": "provider:gptoss",
+    "model": "gpt-oss:20b-cloud",
+    "active_provider": "gptoss",
+    "fallback_provider": null,
+    "available_providers": [
+      "gemini",
+      "gptoss",
+      "nllb"
+    ],
+    "languages": [
+      "English",
+      "Cebuano",
+      "Filipino"
+    ],
+    "formats": [
+      ".csv",
+      ".docx",
+      ".md",
+      ".odt",
+      ".pdf",
+      ".pptx",
+      ".rtf",
+      ".txt",
+      ".xlsx"
+    ],
+    "provider_status": {
+      "status": "ok",
+      "provider": "gptoss",
+      "model": "gpt-oss:20b-cloud",
+      "available_models": [
+        "llama3.2:1b",
+        "minimax-m3:cloud",
+        "qwen3.5:397b-cloud",
+        "gemma4:31b-cloud",
+        "gpt-oss:20b-cloud"
+      ]
+    },
+    "analysis_status": {
+      "status": "configured",
+      "provider": "gemini_analysis",
+      "model": "gemini-3.5-flash-lite",
+      "fallback_provider": "ollama_analysis",
+      "fallback_model": "gpt-oss:20b-cloud",
+      "primary_min_interval_seconds": 5.0,
+      "retry_after_seconds": 0,
+      "last_error": ""
+    }
+  },
+  "engine_config": {
+    "model": "gpt-oss:20b-cloud",
+    "active_provider": "gptoss",
+    "provider_status": {
+      "status": "ok",
+      "provider": "gptoss",
+      "model": "gpt-oss:20b-cloud",
+      "available_models": [
+        "llama3.2:1b",
+        "minimax-m3:cloud",
+        "qwen3.5:397b-cloud",
+        "gemma4:31b-cloud",
+        "gpt-oss:20b-cloud"
+      ]
+    },
+    "analysis_status": {
+      "status": "configured",
+      "provider": "gemini_analysis",
+      "model": "gemini-3.5-flash-lite",
+      "fallback_provider": "ollama_analysis",
+      "fallback_model": "gpt-oss:20b-cloud",
+      "primary_min_interval_seconds": 5.0,
+      "retry_after_seconds": 0,
+      "last_error": ""
+    },
+    "unit_pipeline_flag": "<unset>",
+    "translation_cache_enabled": "<unset>",
+    "gptoss_slots": "8",
+    "gptoss_model": "gpt-oss:20b-cloud"
+  },
+  "manifest_path": "C:\\dev\\Trilingua\\chatgpt\\Part2 test\\phase-6-unit-pipeline-gptoss\\benchmark-manifest.json",
+  "runs": [
+    {
+      "id": "en-to-ceb",
+      "run": 1,
+      "source_language": "English",
+      "target_language": "Cebuano",
+      "status": "completed",
+      "elapsed_ms": 772797.07,
+      "output_path": "C:\\dev\\Trilingua\\chatgpt\\Part2 test\\phase-6-unit-pipeline-gptoss\\en-to-ceb_run1.pdf",
+      "output_sha256": "0dbbafd05ea38dd2894dfeeff6925f02a9ca9b86f98e9ef5ed866853b8c18113",
+      "output_bytes": 4161751,
+      "structure": {
+        "page_count": 25,
+        "text_characters": 6176,
+        "non_empty_text": true,
+        "page_count_matches_source": true,
+        "layout_validation": "pass"
+      },
+      "quality": {
+        "bleu": 29.38,
+        "chrf": 60.77,
+        "hypothesis_characters": 6176,
+        "reference_characters": 7114,
+        "normalization": "all pages; whitespace collapsed; no content removed"
+      },
+      "span_checks": {
+        "emails": {
+          "expected_count": 1,
+          "missing_count": 0,
+          "missing": []
+        },
+        "urls": {
+          "expected_count": 1,
+          "missing_count": 0,
+          "missing": []
+        },
+        "numbers": {
+          "expected_count": 11,
+          "missing_count": 0,
+          "missing": []
+        },
+        "placeholders": {
+          "expected_count": 0,
+          "missing_count": 0,
+          "missing": []
+        }
+      },
+      "blocks": 49,
+      "metrics": {
+        "provider": "gptoss",
+        "model": "gpt-oss:20b-cloud",
+        "mode": "balanced",
+        "total_time_ms": 772662.2,
+        "llm_calls": 57,
+        "llm_total_time_ms": 322218.9,
+        "scheduler_wait_ms": 302624.0,
+        "scheduler_batches": 3,
+        "scheduler_slots": 1,
+        "echo_retries": 1,
+        "semantic_fallbacks": 0,
+        "batch_fallbacks": 0,
+        "total_blocks": 49,
+        "blocks_translated": 49,
+        "blocks_batched": 49,
+        "blocks_cached": 0,
+        "blocks_passthrough": 0,
+        "retranslated_chunks": 6,
+        "provider_request_ms": 436059.4,
+        "provider_retries": 0,
+        "provider_failures": {},
+        "layout_preflight_blocks": 49,
+        "phase_times": {
+          "document_analyzer": 2774.2,
+          "extraction": 38.1,
+          "layout_validation": 0.0,
+          "reconstruction": 14334.0,
+          "translation": 755515.6
+        },
+        "cache_hits": 0,
+        "cache_misses": 0,
+        "document_type": "general_document",
+        "providers_used": {
+          "gptoss": {
+            "model": "gpt-oss:20b-cloud",
+            "calls": 56
+          }
+        },
+        "provider_chain": [
+          "gptoss"
+        ]
+      },
+      "engine_total_time_ms": 772662.2,
+      "provider_request_ms": 436059.4,
+      "provider_retries": 0,
+      "provider_failures": {},
+      "scheduler_wait_ms": 302624.0,
+      "scheduler_batches": 3,
+      "scheduler_slots": 1,
+      "blocks_translated": 49,
+      "blocks_batched": 49,
+      "layout_preflight_blocks": 49,
+      "echo_retries": 1,
+      "llm_calls": 57,
+      "phase_times": {
+        "document_analyzer": 2774.2,
+        "extraction": 38.1,
+        "layout_validation": 0.0,
+        "reconstruction": 14334.0,
+        "translation": 755515.6
+      },
+      "download_filename": "60 Heaven  God s Beautiful Home_translated.pdf",
+      "unit_pipeline_verification": {
+        "pass": true
+      }
+    },
+    {
+      "id": "en-to-ceb",
+      "run": 2,
+      "source_language": "English",
+      "target_language": "Cebuano",
+      "status": "completed",
+      "elapsed_ms": 831758.19,
+      "output_path": "C:\\dev\\Trilingua\\chatgpt\\Part2 test\\phase-6-unit-pipeline-gptoss\\en-to-ceb_run2.pdf",
+      "output_sha256": "a92aaed56fea4b0e8bebf4bbe62311e010d7c3c9e2b042ddd0b9bd6dd4ed6e02",
+      "output_bytes": 3450363,
+      "structure": {
+        "page_count": 25,
+        "text_characters": 6184,
+        "non_empty_text": true,
+        "page_count_matches_source": true,
+        "layout_validation": "pass"
+      },
+      "quality": {
+        "bleu": 27.84,
+        "chrf": 60.91,
+        "hypothesis_characters": 6184,
+        "reference_characters": 7114,
+        "normalization": "all pages; whitespace collapsed; no content removed"
+      },
+      "span_checks": {
+        "emails": {
+          "expected_count": 1,
+          "missing_count": 0,
+          "missing": []
+        },
+        "urls": {
+          "expected_count": 1,
+          "missing_count": 0,
+          "missing": []
+        },
+        "numbers": {
+          "expected_count": 11,
+          "missing_count": 0,
+          "missing": []
+        },
+        "placeholders": {
+          "expected_count": 0,
+          "missing_count": 0,
+          "missing": []
+        }
+      },
+      "blocks": 49,
+      "metrics": {
+        "provider": "gptoss",
+        "model": "gpt-oss:20b-cloud",
+        "mode": "balanced",
+        "total_time_ms": 831561.2,
+        "llm_calls": 59,
+        "llm_total_time_ms": 516135.3,
+        "scheduler_wait_ms": 334922.0,
+        "scheduler_batches": 3,
+        "scheduler_slots": 1,
+        "echo_retries": 0,
+        "semantic_fallbacks": 0,
+        "batch_fallbacks": 0,
+        "total_blocks": 49,
+        "blocks_translated": 49,
+        "blocks_batched": 49,
+        "blocks_cached": 0,
+        "blocks_passthrough": 0,
+        "retranslated_chunks": 9,
+        "provider_request_ms": 288663.1,
+        "provider_retries": 0,
+        "provider_failures": {},
+        "layout_preflight_blocks": 49,
+        "phase_times": {
+          "document_analyzer": 2871.6,
+          "extraction": 54.0,
+          "layout_validation": 0.0,
+          "reconstruction": 26704.2,
+          "translation": 801931.1
+        },
+        "cache_hits": 0,
+        "cache_misses": 0,
+        "document_type": "general_document",
+        "providers_used": {
+          "gptoss": {
+            "model": "gpt-oss:20b-cloud",
+            "calls": 58
+          }
+        },
+        "provider_chain": [
+          "gptoss"
+        ]
+      },
+      "engine_total_time_ms": 831561.2,
+      "provider_request_ms": 288663.1,
+      "provider_retries": 0,
+      "provider_failures": {},
+      "scheduler_wait_ms": 334922.0,
+      "scheduler_batches": 3,
+      "scheduler_slots": 1,
+      "blocks_translated": 49,
+      "blocks_batched": 49,
+      "layout_preflight_blocks": 49,
+      "echo_retries": 0,
+      "llm_calls": 59,
+      "phase_times": {
+        "document_analyzer": 2871.6,
+        "extraction": 54.0,
+        "layout_validation": 0.0,
+        "reconstruction": 26704.2,
+        "translation": 801931.1
+      },
+      "download_filename": "60 Heaven  God s Beautiful Home_translated.pdf",
+      "unit_pipeline_verification": {
+        "pass": true
+      }
+    },
+    {
+      "id": "en-to-ceb",
+      "run": 3,
+      "source_language": "English",
+      "target_language": "Cebuano",
+      "status": "completed",
+      "elapsed_ms": 990423.88,
+      "output_path": "C:\\dev\\Trilingua\\chatgpt\\Part2 test\\phase-6-unit-pipeline-gptoss\\en-to-ceb_run3.pdf",
+      "output_sha256": "a858152806c31db140239a357d724efb737c808949b1e39b42f19fd8eae0c45d",
+      "output_bytes": 4161364,
+      "structure": {
+        "page_count": 25,
+        "text_characters": 6138,
+        "non_empty_text": true,
+        "page_count_matches_source": true,
+        "layout_validation": "pass"
+      },
+      "quality": {
+        "bleu": 28.27,
+        "chrf": 60.02,
+        "hypothesis_characters": 6138,
+        "reference_characters": 7114,
+        "normalization": "all pages; whitespace collapsed; no content removed"
+      },
+      "span_checks": {
+        "emails": {
+          "expected_count": 1,
+          "missing_count": 0,
+          "missing": []
+        },
+        "urls": {
+          "expected_count": 1,
+          "missing_count": 0,
+          "missing": []
+        },
+        "numbers": {
+          "expected_count": 11,
+          "missing_count": 0,
+          "missing": []
+        },
+        "placeholders": {
+          "expected_count": 0,
+          "missing_count": 0,
+          "missing": []
+        }
+      },
+      "blocks": 49,
+      "metrics": {
+        "provider": "gptoss",
+        "model": "gpt-oss:20b-cloud",
+        "mode": "balanced",
+        "total_time_ms": 990127.2,
+        "llm_calls": 59,
+        "llm_total_time_ms": 527724.1,
+        "scheduler_wait_ms": 638265.0,
+        "scheduler_batches": 3,
+        "scheduler_slots": 1,
+        "echo_retries": 1,
+        "semantic_fallbacks": 0,
+        "batch_fallbacks": 0,
+        "total_blocks": 49,
+        "blocks_translated": 49,
+        "blocks_batched": 49,
+        "blocks_cached": 0,
+        "blocks_passthrough": 0,
+        "retranslated_chunks": 8,
+        "provider_request_ms": 434505.0,
+        "provider_retries": 0,
+        "provider_failures": {},
+        "layout_preflight_blocks": 49,
+        "phase_times": {
+          "document_analyzer": 3051.1,
+          "extraction": 44.9,
+          "layout_validation": 0.4,
+          "reconstruction": 27827.7,
+          "translation": 959200.7
+        },
+        "cache_hits": 0,
+        "cache_misses": 0,
+        "document_type": "general_document",
+        "providers_used": {
+          "gptoss": {
+            "model": "gpt-oss:20b-cloud",
+            "calls": 58
+          }
+        },
+        "provider_chain": [
+          "gptoss"
+        ]
+      },
+      "engine_total_time_ms": 990127.2,
+      "provider_request_ms": 434505.0,
+      "provider_retries": 0,
+      "provider_failures": {},
+      "scheduler_wait_ms": 638265.0,
+      "scheduler_batches": 3,
+      "scheduler_slots": 1,
+      "blocks_translated": 49,
+      "blocks_batched": 49,
+      "layout_preflight_blocks": 49,
+      "echo_retries": 1,
+      "llm_calls": 59,
+      "phase_times": {
+        "document_analyzer": 3051.1,
+        "extraction": 44.9,
+        "layout_validation": 0.4,
+        "reconstruction": 27827.7,
+        "translation": 959200.7
+      },
+      "download_filename": "60 Heaven  God s Beautiful Home_translated.pdf",
+      "unit_pipeline_verification": {
+        "pass": true
+      }
+    },
+    {
+      "id": "ceb-to-en",
+      "run": 1,
+      "source_language": "Cebuano",
+      "target_language": "English",
+      "status": "completed",
+      "elapsed_ms": 620538.1,
+      "output_path": "C:\\dev\\Trilingua\\chatgpt\\Part2 test\\phase-6-unit-pipeline-gptoss\\ceb-to-en_run1.pdf",
+      "output_sha256": "ce3b7fc59ef65b53f9a58d7f75b1e44c553e08dc9b3465998f1a4cdea090a76b",
+      "output_bytes": 4301475,
+      "structure": {
+        "page_count": 25,
+        "text_characters": 6131,
+        "non_empty_text": true,
+        "page_count_matches_source": true,
+        "layout_validation": "pass"
+      },
+      "quality": {
+        "bleu": 44.76,
+        "chrf": 70.8,
+        "hypothesis_characters": 6131,
+        "reference_characters": 5763,
+        "normalization": "all pages; whitespace collapsed; no content removed"
+      },
+      "span_checks": {
+        "emails": {
+          "expected_count": 1,
+          "missing_count": 0,
+          "missing": []
+        },
+        "urls": {
+          "expected_count": 1,
+          "missing_count": 0,
+          "missing": []
+        },
+        "numbers": {
+          "expected_count": 12,
+          "missing_count": 1,
+          "missing": [
+            "22"
+          ]
+        },
+        "placeholders": {
+          "expected_count": 0,
+          "missing_count": 0,
+          "missing": []
+        }
+      },
+      "blocks": 49,
+      "metrics": {
+        "provider": "gptoss",
+        "model": "gpt-oss:20b-cloud",
+        "mode": "balanced",
+        "total_time_ms": 620288.6,
+        "llm_calls": 71,
+        "llm_total_time_ms": 438468.5,
+        "scheduler_wait_ms": 183859.0,
+        "scheduler_batches": 3,
+        "scheduler_slots": 1,
+        "echo_retries": 6,
+        "semantic_fallbacks": 0,
+        "batch_fallbacks": 0,
+        "total_blocks": 49,
+        "blocks_translated": 48,
+        "blocks_batched": 48,
+        "blocks_cached": 0,
+        "blocks_passthrough": 1,
+        "retranslated_chunks": 16,
+        "provider_request_ms": 184845.1,
+        "provider_retries": 0,
+        "provider_failures": {},
+        "layout_preflight_blocks": 48,
+        "phase_times": {
+          "document_analyzer": 3042.8,
+          "extraction": 80.5,
+          "layout_validation": 0.0,
+          "reconstruction": 29742.9,
+          "translation": 587422.0
+        },
+        "cache_hits": 0,
+        "cache_misses": 0,
+        "document_type": "general_document",
+        "providers_used": {
+          "gptoss": {
+            "model": "gpt-oss:20b-cloud",
+            "calls": 70
+          }
+        },
+        "provider_chain": [
+          "gptoss"
+        ]
+      },
+      "engine_total_time_ms": 620288.6,
+      "provider_request_ms": 184845.1,
+      "provider_retries": 0,
+      "provider_failures": {},
+      "scheduler_wait_ms": 183859.0,
+      "scheduler_batches": 3,
+      "scheduler_slots": 1,
+      "blocks_translated": 48,
+      "blocks_batched": 48,
+      "layout_preflight_blocks": 48,
+      "echo_retries": 6,
+      "llm_calls": 71,
+      "phase_times": {
+        "document_analyzer": 3042.8,
+        "extraction": 80.5,
+        "layout_validation": 0.0,
+        "reconstruction": 29742.9,
+        "translation": 587422.0
+      },
+      "download_filename": "60 Langit  Ang Nindot nga Puluy-anan sa Dios_translated.pdf",
+      "unit_pipeline_verification": {
+        "pass": true
+      }
+    },
+    {
+      "id": "ceb-to-en",
+      "run": 2,
+      "source_language": "Cebuano",
+      "target_language": "English",
+      "status": "completed",
+      "elapsed_ms": 838713.4,
+      "output_path": "C:\\dev\\Trilingua\\chatgpt\\Part2 test\\phase-6-unit-pipeline-gptoss\\ceb-to-en_run2.pdf",
+      "output_sha256": "8ac0584602892a59ba7e3dcad8d88240457703d0511a000338e9c1cb215a1601",
+      "output_bytes": 3302371,
+      "structure": {
+        "page_count": 25,
+        "text_characters": 6129,
+        "non_empty_text": true,
+        "page_count_matches_source": true,
+        "layout_validation": "pass"
+      },
+      "quality": {
+        "bleu": 44.55,
+        "chrf": 70.71,
+        "hypothesis_characters": 6129,
+        "reference_characters": 5763,
+        "normalization": "all pages; whitespace collapsed; no content removed"
+      },
+      "span_checks": {
+        "emails": {
+          "expected_count": 1,
+          "missing_count": 0,
+          "missing": []
+        },
+        "urls": {
+          "expected_count": 1,
+          "missing_count": 0,
+          "missing": []
+        },
+        "numbers": {
+          "expected_count": 12,
+          "missing_count": 1,
+          "missing": [
+            "22"
+          ]
+        },
+        "placeholders": {
+          "expected_count": 0,
+          "missing_count": 0,
+          "missing": []
+        }
+      },
+      "blocks": 49,
+      "metrics": {
+        "provider": "gptoss",
+        "model": "gpt-oss:20b-cloud",
+        "mode": "balanced",
+        "total_time_ms": 838561.9,
+        "llm_calls": 69,
+        "llm_total_time_ms": 692065.3,
+        "scheduler_wait_ms": 174172.0,
+        "scheduler_batches": 3,
+        "scheduler_slots": 1,
+        "echo_retries": 6,
+        "semantic_fallbacks": 0,
+        "batch_fallbacks": 0,
+        "total_blocks": 49,
+        "blocks_translated": 48,
+        "blocks_batched": 48,
+        "blocks_cached": 0,
+        "blocks_passthrough": 1,
+        "retranslated_chunks": 14,
+        "provider_request_ms": 169813.2,
+        "provider_retries": 0,
+        "provider_failures": {},
+        "layout_preflight_blocks": 48,
+        "phase_times": {
+          "document_analyzer": 3752.8,
+          "extraction": 89.1,
+          "layout_validation": 0.0,
+          "reconstruction": 18229.8,
+          "translation": 816489.7
+        },
+        "cache_hits": 0,
+        "cache_misses": 0,
+        "document_type": "general_document",
+        "providers_used": {
+          "gptoss": {
+            "model": "gpt-oss:20b-cloud",
+            "calls": 68
+          }
+        },
+        "provider_chain": [
+          "gptoss"
+        ]
+      },
+      "engine_total_time_ms": 838561.9,
+      "provider_request_ms": 169813.2,
+      "provider_retries": 0,
+      "provider_failures": {},
+      "scheduler_wait_ms": 174172.0,
+      "scheduler_batches": 3,
+      "scheduler_slots": 1,
+      "blocks_translated": 48,
+      "blocks_batched": 48,
+      "layout_preflight_blocks": 48,
+      "echo_retries": 6,
+      "llm_calls": 69,
+      "phase_times": {
+        "document_analyzer": 3752.8,
+        "extraction": 89.1,
+        "layout_validation": 0.0,
+        "reconstruction": 18229.8,
+        "translation": 816489.7
+      },
+      "download_filename": "60 Langit  Ang Nindot nga Puluy-anan sa Dios_translated.pdf",
+      "unit_pipeline_verification": {
+        "pass": true
+      }
+    },
+    {
+      "id": "ceb-to-en",
+      "run": 3,
+      "source_language": "Cebuano",
+      "target_language": "English",
+      "status": "completed",
+      "elapsed_ms": 870268.05,
+      "output_path": "C:\\dev\\Trilingua\\chatgpt\\Part2 test\\phase-6-unit-pipeline-gptoss\\ceb-to-en_run3.pdf",
+      "output_sha256": "f86f200dbd8f21b90db188d24400f062d684ec97157e8dd03b4c60f16926fd2e",
+      "output_bytes": 3302596,
+      "structure": {
+        "page_count": 25,
+        "text_characters": 6187,
+        "non_empty_text": true,
+        "page_count_matches_source": true,
+        "layout_validation": "pass"
+      },
+      "quality": {
+        "bleu": 43.83,
+        "chrf": 70.19,
+        "hypothesis_characters": 6187,
+        "reference_characters": 5763,
+        "normalization": "all pages; whitespace collapsed; no content removed"
+      },
+      "span_checks": {
+        "emails": {
+          "expected_count": 1,
+          "missing_count": 0,
+          "missing": []
+        },
+        "urls": {
+          "expected_count": 1,
+          "missing_count": 0,
+          "missing": []
+        },
+        "numbers": {
+          "expected_count": 12,
+          "missing_count": 1,
+          "missing": [
+            "22"
+          ]
+        },
+        "placeholders": {
+          "expected_count": 0,
+          "missing_count": 0,
+          "missing": []
+        }
+      },
+      "blocks": 49,
+      "metrics": {
+        "provider": "gptoss",
+        "model": "gpt-oss:20b-cloud",
+        "mode": "balanced",
+        "total_time_ms": 870137.0,
+        "llm_calls": 70,
+        "llm_total_time_ms": 670531.4,
+        "scheduler_wait_ms": 215452.0,
+        "scheduler_batches": 3,
+        "scheduler_slots": 1,
+        "echo_retries": 6,
+        "semantic_fallbacks": 0,
+        "batch_fallbacks": 0,
+        "total_blocks": 49,
+        "blocks_translated": 48,
+        "blocks_batched": 48,
+        "blocks_cached": 0,
+        "blocks_passthrough": 1,
+        "retranslated_chunks": 15,
+        "provider_request_ms": 215547.7,
+        "provider_retries": 0,
+        "provider_failures": {},
+        "layout_preflight_blocks": 48,
+        "phase_times": {
+          "document_analyzer": 2812.9,
+          "extraction": 64.0,
+          "layout_validation": 0.0,
+          "reconstruction": 14808.4,
+          "translation": 852451.4
+        },
+        "cache_hits": 0,
+        "cache_misses": 0,
+        "document_type": "general_document",
+        "providers_used": {
+          "gptoss": {
+            "model": "gpt-oss:20b-cloud",
+            "calls": 69
+          }
+        },
+        "provider_chain": [
+          "gptoss"
+        ]
+      },
+      "engine_total_time_ms": 870137.0,
+      "provider_request_ms": 215547.7,
+      "provider_retries": 0,
+      "provider_failures": {},
+      "scheduler_wait_ms": 215452.0,
+      "scheduler_batches": 3,
+      "scheduler_slots": 1,
+      "blocks_translated": 48,
+      "blocks_batched": 48,
+      "layout_preflight_blocks": 48,
+      "echo_retries": 6,
+      "llm_calls": 70,
+      "phase_times": {
+        "document_analyzer": 2812.9,
+        "extraction": 64.0,
+        "layout_validation": 0.0,
+        "reconstruction": 14808.4,
+        "translation": 852451.4
+      },
+      "download_filename": "60 Langit  Ang Nindot nga Puluy-anan sa Dios_translated.pdf",
+      "unit_pipeline_verification": {
+        "pass": true
+      }
+    }
+  ]
+}

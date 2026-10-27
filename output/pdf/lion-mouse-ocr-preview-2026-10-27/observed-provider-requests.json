@@ -1,0 +1,9 @@
+[
+  {
+    "method": "POST",
+    "host": "localhost",
+    "path": "/api/chat",
+    "http_status": 200,
+    "elapsed_seconds": 22.547
+  }
+]

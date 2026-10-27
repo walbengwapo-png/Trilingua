@@ -1,0 +1,70 @@
+  [OK] XLSX saved with perfect layout preservation (1 cells translated)
+  [Cache] SQLite cache ready at: C:\Users\walbe\AppData\Local\Temp\tmp8kyar045\cache.db
+
+  [OK] Translation complete! (1 blocks)
+  ⚠️  Provider echoed source unchanged after retry; keeping text as-is (Cebuano)
+  Warning: Error: 401 Client Error: None for url: http://127.0.0.1:1/api/chat, retrying (1/3)...
+  Warning: Error: 401 Client Error: None for url: http://127.0.0.1:1/api/chat, retrying (2/3)...
+  Warning: Error: 403 Client Error: None for url: http://127.0.0.1:1/api/chat, retrying (1/3)...
+  Warning: Error: 403 Client Error: None for url: http://127.0.0.1:1/api/chat, retrying (2/3)...
+  [GPTOSS] Rate limited; retrying in 1.0s (1/3)
+  [GPTOSS] Rate limited; retrying in 2.0s (2/3)
+  [Translation] gptoss unavailable: GPT-OSS rate limit reached after paced retries; using gemini during cooldown
+{
+  "xlsx_formula_loss": {
+    "source_A1": "=SUM(1,2)",
+    "output_A1": null,
+    "output_B1": "Kumusta"
+  },
+  "case_collision": {
+    "requested": "us",
+    "returned": "Estados Unidos",
+    "memory_keys_equal": true
+  },
+  "single_character_document_passthrough": {
+    "output": "I",
+    "provider_calls": 0
+  },
+  "persistent_echo_success": {
+    "text": "The dog is hungry.",
+    "success": true,
+    "provider_calls": 2,
+    "warnings": [
+      "Source echoed unchanged after primary retry and semantic fallback; kept as-is (likely already in Cebuano or untranslatable). Verify output."
+    ]
+  },
+  "identity_review": {
+    "score": 30.0,
+    "retry_required": true,
+    "issues": [
+      "untranslated"
+    ]
+  },
+  "terminal_http_retry": {
+    "401": {
+      "attempts": 3,
+      "success": false
+    },
+    "403": {
+      "attempts": 3,
+      "success": false
+    },
+    "429": {
+      "attempts": 3,
+      "success": false
+    }
+  },
+  "quota_fallback": {
+    "provider": "gemini",
+    "backup_calls": 1
+  },
+  "unreported_tokens_estimated": {
+    "input": 2,
+    "output": 2
+  },
+  "startup_warmup": {
+    "top_level_call_lines": [
+      307
+    ]
+  }
+}

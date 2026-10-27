@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-27",
+  "key_directory": "C:\\Users\\walbe\\AppData\\Local\\TriLingua\\ocr\\keys",
+  "keys": {
+    "OCR_ACCEPTANCE_KEY_FILE": {
+      "configured": true,
+      "path": "C:\\Users\\walbe\\AppData\\Local\\TriLingua\\ocr\\keys\\acceptance.json",
+      "created": true,
+      "reused": false,
+      "purpose": "acceptance",
+      "validated": true
+    },
+    "OCR_PLAN_KEY_FILE": {
+      "configured": true,
+      "path": "C:\\Users\\walbe\\AppData\\Local\\TriLingua\\ocr\\keys\\render-plan.json",
+      "created": true,
+      "reused": false,
+      "purpose": "render-plan",
+      "validated": true
+    }
+  },
+  "environment_original_sha256": "05294994d4cf7a710806005c1464b015e15d567a09e72b5a9ec406ce629a1fda",
+  "environment_current_sha256": "697510073d90fc4ba50b18f151d30b22d57a568fab689ee4c579262669c11c77",
+  "private_environment_backup_created": true,
+  "only_key_path_entries_changed": true,
+  "render_signing_round_trip_passed": true,
+  "tampering_rejected": true,
+  "acceptance_report_configured": false,
+  "corpus_manifest_configured": false,
+  "english_acceptance_still_held": {
+    "scan": true,
+    "photo": true,
+    "screenshot": true
+  },
+  "acceptance_report_issued": false,
+  "service_restarted": false,
+  "provider_calls": 0
+}

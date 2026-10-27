@@ -1,0 +1,46 @@
+{
+  "input_sha256": "df09eaad8e681a4c5792081db117b38d238f06a9bdadf7c8241b7b0c0b76e34f",
+  "target_language": "Cebuano",
+  "mode": "fast",
+  "ocr_mode": "preview",
+  "translation_cache_enabled": false,
+  "entrypoint": "FastAPI /translate/document via in-process ASGI TestClient; real providers, no external server started",
+  "configured_primary": "gptoss",
+  "configured_model": "gpt-oss:20b-cloud",
+  "configured_route": [
+    "gptoss",
+    "gemini"
+  ],
+  "persistent_plan_key_configured": true,
+  "ocr_acceptance_report_configured": false,
+  "unrelated_import_warmup_connections_blocked": true,
+  "http_status": 200,
+  "output_pdf": "C:\\dev\\Trilingua\\output\\pdf\\lion-mouse-ocr-preview-final-2026-10-27\\Lion_and_Mouse_Cebuano_OCR_preview.pdf",
+  "output_sha256": "f953d7fd25abb60c50ab44056ac8ab6e807405e50953f456f9b966131225875e",
+  "content_summary": {
+    "status": "partial",
+    "translated": 7,
+    "held": 2,
+    "passthrough": 1,
+    "source_coverage": "unknown",
+    "held_region_ids": [
+      "15238ad3f4c6cbef28aa58a6",
+      "38e6173dda727580bb84bbc2"
+    ],
+    "ocr_mode": "preview",
+    "ocr_verified": false
+  },
+  "download_filename": "Lion_and_Mouse_2_pages_10_blocks_2_image_text_ocr_preview_partial.pdf",
+  "saved_plan_signature_and_source_verified": true,
+  "elapsed_seconds": 38.156,
+  "observed_http_calls": [
+    {
+      "method": "POST",
+      "host": "localhost",
+      "path": "/api/chat",
+      "http_status": 200,
+      "elapsed_seconds": 32.703
+    }
+  ],
+  "source_unchanged": true
+}

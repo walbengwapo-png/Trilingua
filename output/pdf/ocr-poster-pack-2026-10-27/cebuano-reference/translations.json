@@ -1,0 +1,75 @@
+[
+  {
+    "file": "01_earth_Cebuano.pdf",
+    "target_language": "Cebuano",
+    "text": [
+      "YUTA",
+      "IMONG OASIS SA KAWANANGAN",
+      "DIIN LIBRE ANG HANGIN UG SAYON ANG PAGGINHAWA"
+    ],
+    "pages": 2,
+    "page1": "raster poster with replacement text panel",
+    "page2": "selectable translated text",
+    "method": "assistant-authored reference; not TriLingua OCR output"
+  },
+  {
+    "file": "02_venus_Cebuano.pdf",
+    "target_language": "Cebuano",
+    "text": [
+      "VENUS",
+      "MAGKITA TA SA OBSERBATORYO SA CLOUD 9",
+      "GIPILI NGA PINAKAMAAYONG DAPIT SA SISTEMANG SOLAR",
+      "ARON TAN-AWON ANG PAGLABAY SA MERCURY ATUBANG SA ADLAW",
+      "PARESERBA NA!"
+    ],
+    "pages": 2,
+    "page1": "raster poster with replacement text panel",
+    "page2": "selectable translated text",
+    "method": "assistant-authored reference; not TriLingua OCR output"
+  },
+  {
+    "file": "03_ceres_Cebuano.pdf",
+    "target_language": "Cebuano",
+    "text": [
+      "CERES",
+      "RAYNA SA SINTURON SA MGA ASTEROID",
+      "GANGHAAN PAINGON SA GAWAS NGA BAHIN SA SISTEMANG SOLAR",
+      "KATAPOSANG HIGAYON SA PAGKUHA OG TUBIG SA DILI PA ANG JUPITER"
+    ],
+    "pages": 2,
+    "page1": "raster poster with replacement text panel",
+    "page2": "selectable translated text",
+    "method": "assistant-authored reference; not TriLingua OCR output"
+  },
+  {
+    "file": "04_enceladus_Cebuano.pdf",
+    "target_language": "Cebuano",
+    "text": [
+      "BISITAHA ANG MATAHOM NGA HABAGATANG",
+      "ENCELADUS",
+      "KAPIN SA 100 KA MAKAPAHINGANGHANG GEYSER!",
+      "ANG PINUY-ANAN SA \"COLD FAITHFUL\"",
+      "NAGDAWAT NA OG MGA RESERBASYON SA TOUR"
+    ],
+    "pages": 2,
+    "page1": "raster poster with replacement text panel",
+    "page2": "selectable translated text",
+    "method": "assistant-authored reference; not TriLingua OCR output"
+  },
+  {
+    "file": "05_grand_tour_Cebuano.pdf",
+    "target_language": "Cebuano",
+    "text": [
+      "USA KA BAKASYON NGA KAUSA RA SA KINABUHI",
+      "ANG DAKONG PANAW",
+      "JUPITER / SATURN / URANUS / NEPTUNE",
+      "SINATIA ANG KAHIBULONG SA TABANG SA GRABIDAD",
+      "MATAG 175 KA TUIG",
+      "PASAKAY NA"
+    ],
+    "pages": 2,
+    "page1": "raster poster with replacement text panel",
+    "page2": "selectable translated text",
+    "method": "assistant-authored reference; not TriLingua OCR output"
+  }
+]

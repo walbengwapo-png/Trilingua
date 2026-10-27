@@ -218,35 +218,43 @@
     @if ($engineHealth['samples'] > 0)
         <div class="review-table-card">
             <h3 class="card-title">AI Engine Performance
-                <span class="text-muted" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.8rem">across {{ $engineHealth['samples'] }} runs</span>
+                <span class="text-muted" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.8rem">across {{ $engineHealth['samples'] }} recorded metric samples; {{ $engineHealth['legacy_samples'] }} legacy</span>
             </h3>
             <div class="panel-grid panel-grid--4">
                 <div class="stat-card stat-card--compact">
-                    <div class="stat-card__label">Avg Latency</div>
-                    <div class="stat-card__value">{{ $engineHealth['avg_latency_ms'] }}<span class="stat-card__suffix">ms</span></div>
+                    <div class="stat-card__label">Comparable recorded elapsed time</div>
+                    <div class="stat-card__value">{{ $engineHealth['avg_latency_ms'] === null ? 'Unavailable' : $engineHealth['avg_latency_ms'] . ' ms' }}</div>
+                    <p class="text-muted">{{ $engineHealth['latency_scope'] ?? 'Unknown or incompatible scopes' }} · {{ $engineHealth['latency_samples'] }} of {{ $engineHealth['samples'] }} samples</p>
                 </div>
                 <div class="stat-card stat-card--compact">
                     <div class="stat-card__label">Cache Hit Rate</div>
-                    <div class="stat-card__value">{{ $engineHealth['cache_hit_rate'] === null ? '—' : $engineHealth['cache_hit_rate'] . '%' }}</div>
+                    <div class="stat-card__value">{{ $engineHealth['cache_hit_rate'] === null ? 'Unavailable' : $engineHealth['cache_hit_rate'] . '%' }}</div>
+                    <p class="text-muted">Known lookup units · {{ $engineHealth['cache_samples'] }} of {{ $engineHealth['samples'] }} samples</p>
                 </div>
                 <div class="stat-card stat-card--compact">
-                    <div class="stat-card__label">Retranslation Rate</div>
-                    <div class="stat-card__value">{{ $engineHealth['retranslation_rate'] === null ? '—' : $engineHealth['retranslation_rate'] . '%' }}</div>
+                    <div class="stat-card__label">Block rework rate</div>
+                    <div class="stat-card__value">{{ $engineHealth['retranslation_rate'] === null ? 'Unavailable' : $engineHealth['retranslation_rate'] . '%' }}</div>
+                    <p class="text-muted">Operational count, not quality · {{ $engineHealth['rework_samples'] }} of {{ $engineHealth['samples'] }} samples</p>
                 </div>
                 <div class="stat-card stat-card--compact">
-                    <div class="stat-card__label">Active Provider / Model</div>
+                    <div class="stat-card__label">Last observed provider/model</div>
                     <div class="stat-card__value" style="font-size:.8rem">
-                        @if ($engineHealth['active_provider'] || $engineHealth['active_model'])
-                            {{ $engineHealth['active_provider'] ?? '—' }}
-                            @if ($engineHealth['active_model'])
-                                <span class="stat-card__suffix">{{ $engineHealth['active_model'] }}</span>
-                            @endif
+                        @if ($engineHealth['last_observed_providers'] !== [])
+                            @foreach ($engineHealth['last_observed_providers'] as $observed)
+                                <div>{{ $observed['provider'] }} / {{ $observed['model'] }}</div>
+                            @endforeach
                         @else
-                            <span class="text-muted">not recorded in this run</span>
+                            <span class="text-muted">Unavailable</span>
                         @endif
                     </div>
+                    <p class="text-muted">Recorded: {{ $engineHealth['last_observed_at'] ?? 'Observation time unavailable' }} · {{ $engineHealth['attribution_samples'] }} of {{ $engineHealth['samples'] }} samples</p>
                 </div>
             </div>
+            <p class="text-muted">Latest recorded usage — retained translation result; full operation accounting unavailable:</p>
+            @foreach (['input', 'output'] as $direction)
+                @php $usage = $engineHealth['latest_usage'][$direction] ?? ['value' => null, 'provenance' => 'unknown', 'method' => null]; @endphp
+                <p class="text-muted">{{ ucfirst($direction) }}: {{ $usage['value'] === null ? 'Unavailable' : $usage['value'] }} ({{ $usage['provenance'] }}{{ $usage['method'] ? ', ' . $usage['method'] : '' }})</p>
+            @endforeach
         </div>
     @endif
 

@@ -1,0 +1,14 @@
+{
+  "changed_since_start": [
+    "trilingua-code/Model/document/extractor.py",
+    "trilingua-code/Model/document/image_reconstructor.py",
+    "trilingua-code/Model/document/ocr_extractor.py",
+    "trilingua-code/Model/document/pdf_regions.py",
+    "trilingua-code/Model/document/pixel_budget.py",
+    "trilingua-code/Model/document/regenerator.py",
+    "trilingua-code/Model/pipeline/document_pipeline.py",
+    "trilingua-code/Model/prompts/system.py",
+    "trilingua-code/Model/tests/test_ocr_documents.py"
+  ],
+  "env_unchanged": true
+}

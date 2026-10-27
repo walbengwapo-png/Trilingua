@@ -47,8 +47,12 @@
             <div class="stat-card__value">{{ $totals['total'] }}</div>
         </div>
         <div class="stat-card">
-            <div class="stat-card__label">Words Translated</div>
-            <div class="stat-card__value">{{ number_format($stats['wordsTranslated']) }}</div>
+            <div class="stat-card__label">Source words processed</div>
+            <div class="stat-card__value">{{ $sourceWords['complete_records'] + $sourceWords['partial_records'] > 0 ? number_format($sourceWords['known_words']) : 'Unavailable' }}</div>
+            <p class="text-muted">{{ $sourceWords['complete_records'] }} fully counted; {{ $sourceWords['partial_records'] }} partial; {{ $sourceWords['missing_records'] }} unavailable. Extraction completeness unverified.</p>
+            @if ($sourceWords['legacy_records'] > 0)
+                <p class="text-muted">Legacy count: {{ number_format($sourceWords['legacy_words']) }} across {{ $sourceWords['legacy_records'] }} records; earlier method, shown separately.</p>
+            @endif
         </div>
         <div class="stat-card">
             <div class="stat-card__label">Documents</div>

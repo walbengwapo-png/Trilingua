@@ -1,0 +1,64 @@
+{
+  "generated_at": "2026-09-21T14:24:07.437225+00:00",
+  "scope": "English to Filipino and English to Cebuano only",
+  "evaluation_status": "partial: stopped by user request",
+  "providers": {
+    "gptoss": {
+      "iteration_title": "Iteration 2 — Current GPT-OSS",
+      "model": "gpt-oss:20b-cloud"
+    },
+    "nllb": {
+      "iteration_title": "Iteration 1 — Local NLLB-200 600M",
+      "model": "facebook/nllb-200-distilled-600M@f8d333a098d19b4fd9a8b18f94170487ad3f821d"
+    }
+  },
+  "sona_comparison": [
+    {
+      "provider": "gptoss",
+      "target_language": "Filipino",
+      "status": "failed",
+      "bleu": null,
+      "chrf": null,
+      "elapsed_ms": 5390690.19,
+      "layout_validation": null,
+      "output_sha256": null
+    },
+    {
+      "provider": "nllb",
+      "target_language": "Filipino",
+      "status": "completed",
+      "bleu": 29.42,
+      "chrf": 69.47,
+      "elapsed_ms": 1529123.51,
+      "layout_validation": "pass",
+      "output_sha256": "7f510e0ec7ab210f4f2968704d417aa04c2310f9c1721fee3da1eaa96183cd3e"
+    },
+    {
+      "provider": "gptoss",
+      "target_language": "Cebuano",
+      "status": null,
+      "bleu": null,
+      "chrf": null,
+      "elapsed_ms": null,
+      "layout_validation": null,
+      "output_sha256": null
+    },
+    {
+      "provider": "nllb",
+      "target_language": "Cebuano",
+      "status": "completed",
+      "bleu": 19.08,
+      "chrf": 65.06,
+      "elapsed_ms": 1763559.85,
+      "layout_validation": "pass",
+      "output_sha256": "41ecc25f83af9612c2d6eabfd3c495ace0737eb35290ca6a34aa3286b588be7c"
+    }
+  ],
+  "gptoss_qualifies_for_future_iteration_3": false,
+  "decision_reasons": [
+    "GPT-OSS evaluation was stopped before the Cebuano SONA and stability measurements completed.",
+    "Filipino: one or both providers did not complete.",
+    "Cebuano: one or both providers did not complete."
+  ],
+  "pause": "No Iteration 3 translation-logic change was made by this evaluation."
+}

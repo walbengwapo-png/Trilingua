@@ -1,0 +1,468 @@
+{
+  "source_sha256": "df09eaad8e681a4c5792081db117b38d238f06a9bdadf7c8241b7b0c0b76e34f",
+  "image_streams_and_pixels_unchanged": true,
+  "source_images": [
+    {
+      "page": 0,
+      "bbox": [
+        112.0,
+        90.16256713867188,
+        500.0,
+        355.8374328613281
+      ],
+      "decoded_sha256": "73bf5450b318e818cd4f68aedf4f50ef69a4986679bff9939c42c01b0d22dea4",
+      "raw_sha256": "9c7e9d7e9837c774a0093e7e5e6d3ffb13fc27ec409800f50550139655c0f5d5"
+    },
+    {
+      "page": 0,
+      "bbox": [
+        48.0,
+        552.0,
+        564.0,
+        620.0
+      ],
+      "decoded_sha256": "1d8582f8f2d4f6ebd41209de7ca950ca16df7daad27698a4a3d6e6f0f9434988",
+      "raw_sha256": "85a10c311d1febe04b85cf2518d4d536ff61359f521748f1ffdb71fd6650bc67"
+    },
+    {
+      "page": 1,
+      "bbox": [
+        158.0,
+        42.16009521484375,
+        454.0,
+        244.83990478515625
+      ],
+      "decoded_sha256": "73bf5450b318e818cd4f68aedf4f50ef69a4986679bff9939c42c01b0d22dea4",
+      "raw_sha256": "9c7e9d7e9837c774a0093e7e5e6d3ffb13fc27ec409800f50550139655c0f5d5"
+    },
+    {
+      "page": 1,
+      "bbox": [
+        48.0,
+        505.0,
+        564.0,
+        585.0
+      ],
+      "decoded_sha256": "957bac88b12593ec8e31026a2f6a3db5ef5ff3742d4a9a093d1e083e33e640fa",
+      "raw_sha256": "bdeb127e6f827bbf10054154acdef7af79dd7719804110e3311f60e28e13b7f2"
+    }
+  ],
+  "output_images": [
+    {
+      "page": 0,
+      "bbox": [
+        112.0,
+        90.16256713867188,
+        500.0,
+        355.8374328613281
+      ],
+      "decoded_sha256": "73bf5450b318e818cd4f68aedf4f50ef69a4986679bff9939c42c01b0d22dea4",
+      "raw_sha256": "9c7e9d7e9837c774a0093e7e5e6d3ffb13fc27ec409800f50550139655c0f5d5"
+    },
+    {
+      "page": 0,
+      "bbox": [
+        48.0,
+        552.0,
+        564.0,
+        620.0
+      ],
+      "decoded_sha256": "1d8582f8f2d4f6ebd41209de7ca950ca16df7daad27698a4a3d6e6f0f9434988",
+      "raw_sha256": "85a10c311d1febe04b85cf2518d4d536ff61359f521748f1ffdb71fd6650bc67"
+    },
+    {
+      "page": 1,
+      "bbox": [
+        158.0,
+        42.16009521484375,
+        454.0,
+        244.83990478515625
+      ],
+      "decoded_sha256": "73bf5450b318e818cd4f68aedf4f50ef69a4986679bff9939c42c01b0d22dea4",
+      "raw_sha256": "9c7e9d7e9837c774a0093e7e5e6d3ffb13fc27ec409800f50550139655c0f5d5"
+    },
+    {
+      "page": 1,
+      "bbox": [
+        48.0,
+        505.0,
+        564.0,
+        585.0
+      ],
+      "decoded_sha256": "957bac88b12593ec8e31026a2f6a3db5ef5ff3742d4a9a093d1e083e33e640fa",
+      "raw_sha256": "bdeb127e6f827bbf10054154acdef7af79dd7719804110e3311f60e28e13b7f2"
+    }
+  ],
+  "page_geometry_unchanged": true,
+  "output_page_text": [
+    "1\nAng Leona ug ang Mice\nUsa ka Leona ang natulog sa kagubatan, ang iyang dako nga ulo\nnagapahimutang sa iyang mga paa. Usa ka gamay nga Mice ang nakit-an\nsiya nga wala magdahum, ug sa iyang kahadlok ug pagdali nga mabuak,\nmilakaw siya sa ibabaw sa ilong sa Leona. Gikaw sa iyang pahulay, ang\nLeona nagbutang sa iyang dakong paa nga buang sa gamay nga nilalang\naron patyon siya.\nAng Leona nalipay kaayo nga maghunahuna nga ang Mice mahimong\nmotabang kaniya. Apan siya mapinahong ug sa katapusan gihatag niya ang\nMice nga moagi.\n",
+    "2\nSa pipila ka adlaw pagkahuman, samtang nagtan-aw sa iyang pangayam sa\nkagubatan, ang Leona nadakpan sa mga kalayo sa usa ka net sa\nmangangayam. Dili makapalaya sa iyang kaugalingon, iyang gipuno ang\nkagubatan sa iyang kasuko nga pag-uyog. Ang Mice nakaila sa tingog ug\ndali nga nakit-an ang Leona nga naglisod sa net. Nagdagan siya sa usa sa\nmga dakong tali nga nagdugtong kaniya, iyang gikasang ang tali hangtod\nkini naputol, ug sa dali nga panahon ang Leona nagmalaya.\nAng kalooy dili gayud\nmapuslan.\nAesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg\n#19994\n"
+  ],
+  "source_alignment": [
+    {
+      "text": "The Lion and the Mouse",
+      "old_alignment": "left",
+      "new_alignment": "left"
+    },
+    {
+      "text": "A Lion lay asleep in the forest, his great head resting",
+      "old_alignment": "center",
+      "new_alignment": "left"
+    },
+    {
+      "text": "The Lion was much amused to think that a Mouse could ev",
+      "old_alignment": "center",
+      "new_alignment": "left"
+    },
+    {
+      "text": "Some days later, while stalking his prey in the forest,",
+      "old_alignment": "center",
+      "new_alignment": "left"
+    },
+    {
+      "text": "A kindness is never wasted.",
+      "old_alignment": "left",
+      "new_alignment": "left"
+    },
+    {
+      "text": "Aesop | Illustration: Milo Winter (1919) | Source: Proj",
+      "old_alignment": "left",
+      "new_alignment": "left"
+    }
+  ],
+  "blocks": [
+    {
+      "source_text": "The Lion and the Mouse",
+      "target_text": "Ang Leona ug ang Mice",
+      "alignment": "left",
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 0,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              33.99998092651367,
+              312.3419998884201,
+              70.00998145341873
+            ],
+            "font_size": 26.0,
+            "action": "fit",
+            "page": 0
+          }
+        ]
+      }
+    },
+    {
+      "source_text": "A Lion lay asleep in the forest, his great head resting on his paws. A timid little Mouse came upon him unexpectedly, and in her fright and haste to get away, ran across the Lion's nose. Roused from his nap, the Lion laid his huge paw angrily on the tiny creature to kill her.",
+      "target_text": "Usa ka Leona ang natulog sa kagubatan, ang iyang dako nga ulo nagapahimutang sa iyang mga paa. Usa ka gamay nga Mice ang nakit-an siya nga wala magdahum, ug sa iyang kahadlok ug pagdali nga mabuak, milakaw siya sa ibabaw sa ilong sa Leona. Gikaw sa iyang pahulay, ang Leona nagbutang sa iyang dakong paa nga buang sa gamay nga nilalang aron patyon siya.",
+      "alignment": "left",
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              380.0,
+              485.18900114297867,
+              402.67799934744835
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              404.17799934744835,
+              543.7200014591217,
+              426.8559986948967
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              428.3559986948967,
+              539.5040010213852,
+              451.03399804234505
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              452.53399804234505,
+              538.0760011672974,
+              475.2119973897934
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              476.7119973897934,
+              538.5350013375282,
+              499.38999673724174
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 1,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              500.88999673724174,
+              164.62000024318695,
+              523.5679960846901
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          }
+        ]
+      }
+    },
+    {
+      "source_text": "The Lion was much amused to think that a Mouse could ever help him. But he was generous and finally let the Mouse go.",
+      "target_text": "Ang Leona nalipay kaayo nga maghunahuna nga ang Mice mahimong motabang kaniya. Apan siya mapinahong ug sa katapusan gihatag niya ang Mice nga moagi.",
+      "alignment": "left",
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 2,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              641.0,
+              525.3260011672974,
+              663.6779993474483
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 2,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              665.1779993474483,
+              558.3910010457039,
+              687.8559986948967
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          },
+          {
+            "block_index": 2,
+            "source_page": 0,
+            "rect": [
+              48.0,
+              689.3559986948967,
+              162.73300021886826,
+              712.033998042345
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 0
+          }
+        ]
+      }
+    },
+    {
+      "source_text": "Some days later, while stalking his prey in the forest, the Lion was caught in the toils of a hunter's net. Unable to free himself, he filled the forest with his angry roaring. The Mouse knew the voice and quickly found the Lion struggling in the net. Running to one of the great ropes that bound him, she gnawed it until it parted, and soon the Lion was free.",
+      "target_text": "Sa pipila ka adlaw pagkahuman, samtang nagtan-aw sa iyang pangayam sa kagubatan, ang Leona nadakpan sa mga kalayo sa usa ka net sa mangangayam. Dili makapalaya sa iyang kaugalingon, iyang gipuno ang kagubatan sa iyang kasuko nga pag-uyog. Ang Mice nakaila sa tingog ug dali nga nakit-an ang Leona nga naglisod sa net. Nagdagan siya sa usa sa mga dakong tali nga nagdugtong kaniya, iyang gikasang ang tali hangtod kini naputol, ug sa dali nga panahon ang Leona nagmalaya.",
+      "alignment": "left",
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              278.0,
+              557.4220013618469,
+              300.67799934744835
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              302.17799934744835,
+              477.6070014834404,
+              324.8559986948967
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              326.3559986948967,
+              542.8190008997917,
+              349.03399804234505
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              350.53399804234505,
+              545.6410010457039,
+              373.2119973897934
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              374.7119973897934,
+              544.6720013618469,
+              397.38999673724174
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              398.88999673724174,
+              545.1990006566048,
+              421.5679960846901
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 3,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              423.0679960846901,
+              451.682000875473,
+              445.74599543213844
+            ],
+            "font_size": 17.0,
+            "action": "fit",
+            "page": 1
+          }
+        ]
+      }
+    },
+    {
+      "source_text": "A kindness is never wasted.",
+      "target_text": "Ang kalooy dili gayud mapuslan.",
+      "alignment": "left",
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 4,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              617.0,
+              237.60899966955185,
+              644.2160000801086
+            ],
+            "font_size": 21.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 4,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              645.7160000801086,
+              138.44699960947037,
+              672.9320001602173
+            ],
+            "font_size": 21.0,
+            "action": "fit",
+            "page": 1
+          }
+        ]
+      }
+    },
+    {
+      "source_text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+      "target_text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994",
+      "alignment": "left",
+      "rendered_layout": {
+        "status": "passed",
+        "fragments": [
+          {
+            "block_index": 5,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              691.0,
+              314.2829985022545,
+              703.3660003840923
+            ],
+            "font_size": 9.0,
+            "action": "fit",
+            "page": 1
+          },
+          {
+            "block_index": 5,
+            "source_page": 1,
+            "rect": [
+              48.0,
+              704.8660003840923,
+              78.02399969100952,
+              717.2320007681847
+            ],
+            "font_size": 9.0,
+            "action": "fit",
+            "page": 1
+          }
+        ]
+      }
+    }
+  ]
+}

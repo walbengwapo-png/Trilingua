@@ -1,0 +1,2785 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+new file mode 100644
+index 0000000..991b7b4
+--- /dev/null
++++ b/.github/workflows/ci.yml
+@@ -0,0 +1,118 @@
++name: CI
++
++on:
++  push:
++    branches: [main]
++  pull_request:
++
++permissions:
++  contents: read
++
++jobs:
++  laravel:
++    name: Laravel (PHPUnit + Composer audit)
++    runs-on: ubuntu-latest
++    defaults:
++      run:
++        working-directory: trilingua-code
++    steps:
++      - uses: actions/checkout@v4
++
++      - name: Setup PHP
++        uses: shivammathur/setup-php@v2
++        with:
++          php-version: '8.3'
++          extensions: mbstring, intl, sqlite, dom, fileinfo, zip
++          coverage: none
++          tools: composer:v2
++
++      - name: Cache Composer dependencies
++        uses: actions/cache@v4
++        with:
++          path: trilingua-code/vendor
++          key: composer-${{ runner.os }}-${{ hashFiles('trilingua-code/composer.lock') }}
++          restore-keys: composer-${{ runner.os }}-
++
++      - name: Install PHP dependencies
++        run: composer install --no-interaction --prefer-dist --no-progress
++
++      - name: Composer security audit
++        run: composer audit --no-interaction
++
++      - name: Setup Node (for asset build)
++        uses: actions/setup-node@v4
++        with:
++          node-version: 22
++          cache: npm
++          cache-dependency-path: trilingua-code/package-lock.json
++
++      - name: Build frontend assets (public/build is gitignored)
++        run: |
++          npm ci
++          npm run build
++
++      - name: Prepare environment
++        run: |
++          cp .env.example .env
++          touch database/database.sqlite
++          php artisan key:generate
++          php artisan config:clear
++
++      - name: Run test suite (safe-env guarded)
++        run: composer test
++
++      - name: Check deployment code style
++        run: vendor/bin/pint --test app/Console/Commands/ValidateProduction.php tests/Feature/ProductionConfigurationTest.php tests/Feature/CloudProxyTest.php
++
++  frontend:
++    name: Frontend (npm audit + build)
++    runs-on: ubuntu-latest
++    defaults:
++      run:
++        working-directory: trilingua-code
++    steps:
++      - uses: actions/checkout@v4
++
++      - name: Setup Node
++        uses: actions/setup-node@v4
++        with:
++          node-version: 22
++          cache: npm
++          cache-dependency-path: trilingua-code/package-lock.json
++
++      - name: Install dependencies
++        run: npm ci
++
++      - name: npm security audit
++        run: npm audit --audit-level=high
++
++      - name: Build production assets
++        run: npm run build
++
++  python:
++    name: Python microservice tests
++    runs-on: ubuntu-latest
++    defaults:
++      run:
++        working-directory: trilingua-code
++    steps:
++      - uses: actions/checkout@v4
++
++      - name: Setup Python
++        uses: actions/setup-python@v5
++        with:
++          python-version-file: trilingua-code/Model/.python-version
++
++      - name: Install dependencies
++        run: |
++          python -m pip install --upgrade pip setuptools
++          pip install -r requirements-dev.txt
++          pip install -r Model/requirements.txt
++
++      - name: Run pytest
++        run: >-
++          python -m pytest Model/tests -q
++          --ignore=Model/tests/test_concurrency_benchmark.py
++          --ignore=Model/tests/test_reference_gemini_workflow.py
++          -m "not slow and not golden and not font_regression"
++          -p no:cacheprovider
+diff --git a/trilingua-code/.env.cloud.example b/trilingua-code/.env.cloud.example
+new file mode 100644
+index 0000000..8b67db0
+--- /dev/null
++++ b/trilingua-code/.env.cloud.example
+@@ -0,0 +1,58 @@
++# Paste into the Laravel application's Cloud environment settings.
++# Fill blank values using Cloud secrets; never commit a populated copy.
++APP_NAME=TriLingua
++APP_ENV=production
++APP_DEBUG=false
++APP_KEY=
++APP_URL=
++LOG_CHANNEL=stderr
++LOG_LEVEL=warning
++
++# Keep the existing Supabase PostgreSQL database; do not attach a replacement.
++DB_CONNECTION=pgsql
++DB_HOST=
++DB_PORT=5432
++DB_DATABASE=postgres
++DB_USERNAME=
++DB_PASSWORD=
++DB_SSLMODE=require
++
++SESSION_DRIVER=database
++SESSION_LIFETIME=120
++SESSION_ENCRYPT=true
++SESSION_SECURE_COOKIE=true
++CACHE_STORE=database
++APP_MAINTENANCE_DRIVER=cache
++APP_MAINTENANCE_STORE=database
++
++QUEUE_CONNECTION=database
++PYTHON_DOCUMENT_JOBS=true
++PYTHON_SERVICE_TIMEOUT=1200
++TRANSLATION_JOB_TIMEOUT=1300
++QUEUE_WORKER_TIMEOUT=1500
++DB_QUEUE_RETRY_AFTER=1800
++RECONCILE_PROCESSING_TIMEOUT=2100
++RECONCILE_WAITING_TIMEOUT=7200
++QUEUE_CHECK_STALE_THRESHOLD=2100
++
++# HTTPS URL of the separately deployed Python application.
++PYTHON_SERVICE_URL=
++# Generate one random secret (at least 32 characters) and set it on both apps.
++PYTHON_SERVICE_TOKEN=
++SUPABASE_URL=
++SUPABASE_ANON_KEY=
++SUPABASE_SERVICE_ROLE_KEY=
++SUPABASE_BUCKET=trailingua
++FALLBACK_STORAGE_ENABLED=false
++
++GOOGLE_CLIENT_ID=
++GOOGLE_CLIENT_SECRET=
++GOOGLE_REDIRECT_URI=
++# Configure real SMTP for password resets; log mail does not deliver email.
++MAIL_MAILER=smtp
++MAIL_HOST=
++MAIL_PORT=587
++MAIL_USERNAME=
++MAIL_PASSWORD=
++MAIL_FROM_ADDRESS=
++MAIL_FROM_NAME=TriLingua
+diff --git a/trilingua-code/Model/.env.cloud.example b/trilingua-code/Model/.env.cloud.example
+new file mode 100644
+index 0000000..6d5c861
+--- /dev/null
++++ b/trilingua-code/Model/.env.cloud.example
+@@ -0,0 +1,28 @@
++# Paste into the Python application's Cloud environment settings.
++APP_ENV=production
++DOCUMENT_JOBS_ENABLED=true
++SUPABASE_URL=
++SUPABASE_SERVICE_ROLE_KEY=
++SUPABASE_BUCKET=trailingua
++PYTHON_SERVICE_TOKEN=
++TRANSLATION_PROVIDER=gptoss
++TRANSLATION_FALLBACK_PROVIDER=none
++ANALYSIS_PROVIDER=ollama
++ANALYSIS_FALLBACK_PROVIDER=none
++OLLAMA_CLOUD_URL=https://ollama.com/api/chat
++OLLAMA_API_KEY=
++OLLAMA_CLOUD_MODEL=gpt-oss:20b
++OLLAMA_ANALYSIS_MODEL=gemma4:31b
++TRANSLATION_ANALYZER_MODE=merged
++TRANSLATION_BATCHED_REVIEW=true
++QUALITY_REVIEW_BLIND=true
++ANALYSIS_PRIMARY_MIN_INTERVAL_SECONDS=5
++TRANSLATION_MAX_CONCURRENT=1
++GPTOSS_TRANSLATION_SLOTS=1
++OLLAMA_ANALYSIS_MAX_ATTEMPTS=1
++DOCUMENT_MAX_CONCURRENT=1
++TRANSLATION_THREADPOOL_SIZE=4
++TRANSLATION_UNIT_PIPELINE=false
++WEB_CONCURRENCY=1
++MODEL_SERVICE_RELOAD=false
++ALLOW_PROVIDER_WARMUP=false
+diff --git a/trilingua-code/Model/.python-version b/trilingua-code/Model/.python-version
+new file mode 100644
+index 0000000..2c07333
+--- /dev/null
++++ b/trilingua-code/Model/.python-version
+@@ -0,0 +1 @@
++3.11
+diff --git a/trilingua-code/Model/ai/fallback_provider.py b/trilingua-code/Model/ai/fallback_provider.py
+index 593cd3e..fe47e14 100644
+--- a/trilingua-code/Model/ai/fallback_provider.py
++++ b/trilingua-code/Model/ai/fallback_provider.py
+@@ -1,5 +1,6 @@
+ """Keep analysis available during a primary provider outage or rate limit."""
+ 
++from provider_usage import ProviderStopped
+ import os
+ import threading
+ import time
+@@ -55,6 +56,8 @@ class FallbackAnalysisProvider(AIAnalysisProvider):
+                     self._local.model = self._primary.model_name
+                     self._failure = (0.0, "")
+                     return result
++                except ProviderStopped:
++                    raise
+                 except (RuntimeError, ConnectionError) as exc:
+                     retry_at = time.monotonic() + max(
+                         self._cooldown_seconds, getattr(exc, "retry_after", 0)
+@@ -75,6 +78,8 @@ class FallbackAnalysisProvider(AIAnalysisProvider):
+ 
+         try:
+             result = self._fallback.analyze(system_prompt, user_prompt)
++        except ProviderStopped:
++            raise
+         except (RuntimeError, ConnectionError) as exc:
+             raise RuntimeError(
+                 f"Primary analysis unavailable: {primary_error}. "
+diff --git a/trilingua-code/Model/ai/gemini_provider.py b/trilingua-code/Model/ai/gemini_provider.py
+index 074fa69..b49f4bd 100644
+--- a/trilingua-code/Model/ai/gemini_provider.py
++++ b/trilingua-code/Model/ai/gemini_provider.py
+@@ -2,6 +2,7 @@
+ """Google Gemini provider for structured document-analysis tasks."""
+ 
+ import json
++from provider_usage import provider_post
+ import os
+ import re
+ import time as _time
+@@ -179,8 +180,8 @@ class GeminiAnalysisProvider(AIAnalysisProvider):
+         for attempt in range(self._max_attempts):
+             delay = 2 ** attempt
+             try:
+-                response = requests.post(
+-                    url, headers=headers, json=payload,
++                response = provider_post(requests.post,
++                    url, provider=self.name, model=self._model, purpose="analysis", headers=headers, json=payload,
+                     timeout=(10, int(os.environ.get("GEMINI_ANALYSIS_TIMEOUT_SECONDS", "30"))),
+                 )
+                 if response.status_code >= 400:
+diff --git a/trilingua-code/Model/ai/ollama_provider.py b/trilingua-code/Model/ai/ollama_provider.py
+index b3c8a03..0419b8d 100644
+--- a/trilingua-code/Model/ai/ollama_provider.py
++++ b/trilingua-code/Model/ai/ollama_provider.py
+@@ -15,6 +15,7 @@ This is NOT a translation provider. Translation is handled by
+ Model/providers/gptoss.py and Model/providers/gemini.py.
+ """
+ 
++from provider_usage import ProviderStopped, ollama_post, ollama_headers
+ import os
+ import json
+ import time as _time
+@@ -87,11 +88,11 @@ class OllamaAnalysisProvider(AIAnalysisProvider):
+ 
+         last_error = ""
+ 
+-        for attempt in range(3):
++        for attempt in range(max(1, int(os.environ.get("OLLAMA_ANALYSIS_MAX_ATTEMPTS", "3")))):
+             try:
+-                resp = requests.post(
+-                    self._api_url,
+-                    headers={"Content-Type": "application/json"},
++                resp = ollama_post(requests.post,
++                    self._api_url, provider=self.name, purpose="analysis",
++                    headers=ollama_headers(self._api_url),
+                     json=payload,
+                     timeout=120,  # Analysis can take longer for large docs
+                 )
+@@ -205,6 +206,8 @@ class OllamaAnalysisProvider(AIAnalysisProvider):
+                 "error": f"Ollama returned status {resp.status_code}",
+             }
+ 
++        except ProviderStopped:
++            raise
+         except Exception as e:
+             return {
+                 "status": "unavailable",
+diff --git a/trilingua-code/Model/document_jobs.py b/trilingua-code/Model/document_jobs.py
+new file mode 100644
+index 0000000..fbb82f7
+--- /dev/null
++++ b/trilingua-code/Model/document_jobs.py
+@@ -0,0 +1,170 @@
++"""Durable document queue in the existing Supabase database and private bucket."""
++import hashlib
++import io
++import json
++import logging
++import os
++import threading
++import time
++from uuid import UUID
++
++import requests
++from fastapi import HTTPException, UploadFile
++
++log = logging.getLogger("uvicorn.error")
++MAX_INPUT_BYTES = 50 * 1024 * 1024
++
++
++class DocumentJobStore:
++    def __init__(self):
++        self.url = os.environ.get("SUPABASE_URL", "").rstrip("/")
++        self.key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
++        self.bucket = os.environ.get("SUPABASE_BUCKET", "")
++        if not self.url.startswith("https://") or not self.key or not self.bucket:
++            raise RuntimeError("Document jobs require SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and SUPABASE_BUCKET")
++
++    def request(self, method, path, **kwargs):
++        headers = {"apikey": self.key, "Authorization": f"Bearer {self.key}"}
++        headers.update(kwargs.pop("headers", {}))
++        response = requests.request(method, self.url + path, headers=headers,
++                                    timeout=(3, 10), allow_redirects=False, **kwargs)
++        if not response.ok:
++            # Do not echo provider URLs, credentials or document content in errors.
++            raise HTTPException(503, f"Document job storage unavailable (HTTP {response.status_code})")
++        return response
++
++    def verify(self):
++        bucket = self.request("GET", f"/storage/v1/bucket/{self.bucket}").json()
++        if bucket.get("public") is not False:
++            raise RuntimeError("The document job bucket must be private")
++        self.request("GET", "/rest/v1/python_document_jobs", params={"select": "id", "limit": 0})
++
++    def get(self, job_id):
++        rows = self.request("GET", "/rest/v1/python_document_jobs",
++                            params={"id": f"eq.{job_id}", "select": "*"}).json()
++        return rows[0] if rows else None
++
++    def put_object(self, path, contents, content_type):
++        # Paths include the payload hash or lease UUID; never overwrite another payload.
++        response = requests.post(f"{self.url}/storage/v1/object/{self.bucket}/{path}",
++                                 headers={"apikey": self.key, "Authorization": f"Bearer {self.key}",
++                                          "Content-Type": content_type, "x-upsert": "false"},
++                                 data=contents, timeout=(3, 10), allow_redirects=False)
++        if not response.ok and response.status_code not in (400, 409):
++            raise HTTPException(503, "Could not durably store the document job file")
++        if not response.ok:
++            error = response.json()
++            if str(error.get("statusCode")) != "409" and error.get("error") != "Duplicate":
++                raise HTTPException(503, "Could not durably store the document job file")
++
++    def read_object(self, path):
++        return self.request("GET", f"/storage/v1/object/authenticated/{self.bucket}/{path}").content
++
++    def submit(self, job_id, filename, contents, options):
++        job_id = str(UUID(str(job_id)))
++        ext = os.path.splitext(filename)[1].lower()
++        fingerprint = hashlib.sha256(contents + json.dumps({"extension": ext, "options": options}, sort_keys=True).encode()).hexdigest()
++        existing = self.get(job_id)
++        if existing:
++            if existing["fingerprint"] != fingerprint:
++                raise HTTPException(409, "Job ID already belongs to a different document request")
++            return existing
++        input_path = f"engine-jobs/{job_id}/{fingerprint}/input{ext}"
++        self.put_object(input_path, contents, "application/octet-stream")
++        rows = self.request("POST", "/rest/v1/python_document_jobs",
++                            params={"on_conflict": "id"},
++                            headers={"Prefer": "resolution=ignore-duplicates,return=representation"},
++                            json={"id": job_id, "filename": filename, "fingerprint": fingerprint,
++                                  "input_path": input_path, "options": options}).json()
++        row = rows[0] if rows else self.get(job_id)
++        if not row or row["fingerprint"] != fingerprint:
++            raise HTTPException(409, "Job ID already belongs to a different document request")
++        return row
++
++    def claim(self):
++        rows = self.request("POST", "/rest/v1/rpc/claim_python_document_job", json={}).json()
++        return rows[0] if rows else None
++
++    def renew(self, row):
++        return self.request("POST", "/rest/v1/rpc/renew_python_document_job",
++                            json={"job_id": row["id"], "lease_id": row["lease_id"]}).json() is True
++
++    def finish(self, row, **changes):
++        return self.request("POST", "/rest/v1/rpc/finish_python_document_job",
++                            json={"job_id": row["id"], "lease_id": row["lease_id"],
++                                  "result_path": changes.get("result_path"), "error": changes.get("error"),
++                                  "error_status": changes.get("error_status")}).json() is True
++
++    def acknowledge(self, row):
++        # ponytail: failed/unacknowledged files need operator cleanup; add TTL cleanup before storage quota becomes tight.
++        if row["status"] != "completed":
++            raise HTTPException(409, "Only completed document jobs can be acknowledged")
++        paths = [path for path in (row["input_path"], row.get("result_path")) if path]
++        if paths:
++            self.request("DELETE", f"/storage/v1/object/{self.bucket}", json={"prefixes": paths})
++        self.request("PATCH", "/rest/v1/python_document_jobs", params={"id": f"eq.{row['id']}"},
++                     json={"acknowledged": True})
++
++
++def public_status(row):
++    return {key: row.get(key) for key in ("id", "status", "error", "error_status", "acknowledged")}
++
++
++class DocumentJobWorker:
++    def __init__(self, store, translate):
++        self.store, self.translate = store, translate
++        self.stop = threading.Event()
++        self.wake = threading.Event()
++        self.thread = threading.Thread(target=self.run, name="document-jobs", daemon=True)
++
++    def run_one(self, row):
++        from provider_usage import usage_scope
++        done = threading.Event()
++        monitor = None
++        try:
++            with usage_scope() as usage:
++                def heartbeat():
++                    while not done.wait(20):
++                        try:
++                            alive = self.store.renew(row)
++                        except Exception:
++                            alive = False
++                        if not alive:
++                            usage.stop_reason = "Document worker lost its durable lease or exceeded its deadline; no further AI calls permitted"
++                            return
++                monitor = threading.Thread(target=heartbeat, name="document-heartbeat", daemon=True)
++                monitor.start()
++                contents = self.store.read_object(row["input_path"])
++                if len(contents) > MAX_INPUT_BYTES:
++                    raise HTTPException(413, "Document exceeds the 50 MiB limit")
++                with io.BytesIO(contents) as stream:
++                    result = self.translate(file=UploadFile(filename=row["filename"], file=stream), **row["options"])
++                usage.check()
++                result_path = f"engine-jobs/{row['id']}/{row['lease_id']}/result.json"
++                self.store.put_object(result_path, json.dumps(result).encode(), "application/json")
++                if not self.store.finish(row, status="completed", result_path=result_path):
++                    log.warning("Document result refused after lease loss: %s", row["id"])
++
++        except Exception as error:
++            from provider_usage import ProviderStopped
++            status = 429 if isinstance(error, ProviderStopped) else error.status_code if isinstance(error, HTTPException) else 500
++            detail = str(error) if isinstance(error, ProviderStopped) else error.detail if isinstance(error, HTTPException) else "Document background processing failed"
++            if not isinstance(detail, str):
++                detail = json.dumps(detail)
++            self.store.finish(row, status="failed", error=detail[:2000], error_status=status)
++        finally:
++            done.set()
++            if monitor:
++                monitor.join(timeout=30)
++
++    def run(self):
++        while not self.stop.is_set():
++            try:
++                row = self.store.claim()
++                if row:
++                    self.run_one(row)
++                    continue
++            except Exception:
++                log.exception("Document background worker could not access its durable queue")
++            self.wake.wait(5)
++            self.wake.clear()
+diff --git a/trilingua-code/Model/pipeline/document_pipeline.py b/trilingua-code/Model/pipeline/document_pipeline.py
+index c37c059..9d3e5db 100644
+--- a/trilingua-code/Model/pipeline/document_pipeline.py
++++ b/trilingua-code/Model/pipeline/document_pipeline.py
+@@ -64,6 +64,7 @@ from prompts.prepass import (
+     build_prepass_injection,
+ )
+ 
++from provider_usage import submit_with_usage
+ from concurrent.futures import ThreadPoolExecutor
+ 
+ # OPTIMIZATION: Env var for prepass (Task 5)
+@@ -352,12 +353,12 @@ class DocumentPipeline:
+                     with phase_profile("document_analyzer", ctx):
+                         return self._document_analyzer.analyze(blocks)
+         
+-                analyzer_future = pool.submit(_run_analyzer)
++                analyzer_future = submit_with_usage(pool, _run_analyzer)
+         
+                 prepass_future = None
+                 if (_TRANSLATION_PREPASS_ENABLED and ctx.mode.prepass and
+                         self._ai_provider):
+-                    prepass_future = pool.submit(
++                    prepass_future = submit_with_usage(pool,
+                         self._execute_prepass_concurrent, blocks, request, ctx
+                     )
+         
+@@ -621,10 +622,10 @@ class DocumentPipeline:
+             if analyzer_mode == "concurrent":
+                 print("[ANALYZER] Running AI document analysis (concurrent)...")
+                 with ThreadPoolExecutor(max_workers=2) as pool:
+-                    analyzer = pool.submit(self._document_analyzer.analyze, blocks)
++                    analyzer = submit_with_usage(pool, self._document_analyzer.analyze, blocks)
+                     prepass = None
+                     if _TRANSLATION_PREPASS_ENABLED and ctx.mode.prepass and self._ai_provider:
+-                        prepass = pool.submit(self._execute_prepass_concurrent, blocks, request, ctx)
++                        prepass = submit_with_usage(pool, self._execute_prepass_concurrent, blocks, request, ctx)
+                     ctx.document_profile = analyzer.result()
+                     if prepass:
+                         prepass.result()
+diff --git a/trilingua-code/Model/pipeline/fair_scheduler.py b/trilingua-code/Model/pipeline/fair_scheduler.py
+index fd6b114..571b1a9 100644
+--- a/trilingua-code/Model/pipeline/fair_scheduler.py
++++ b/trilingua-code/Model/pipeline/fair_scheduler.py
+@@ -9,6 +9,7 @@ capacity rather than one starving the other.
+ from __future__ import annotations
+ 
+ import os
++from contextvars import copy_context
+ import threading
+ import time
+ from collections import deque
+@@ -39,6 +40,9 @@ class FairDocumentBatchScheduler:
+             ).start()
+ 
+     def submit(self, document_id: str, callback: Callable[[], T]) -> Future:
++        context = copy_context()
++        original_callback = callback
++        callback = lambda: context.run(original_callback)
+         future: Future = Future()
+         task = _Task(future=future, submitted_at=time.monotonic(), callback=callback)
+         with self._condition:
+diff --git a/trilingua-code/Model/pipeline/translation_pipeline.py b/trilingua-code/Model/pipeline/translation_pipeline.py
+index bd182db..1f5b785 100644
+--- a/trilingua-code/Model/pipeline/translation_pipeline.py
++++ b/trilingua-code/Model/pipeline/translation_pipeline.py
+@@ -35,6 +35,7 @@ import os
+ import re
+ import time
+ from contextlib import contextmanager
++from provider_usage import submit_with_usage
+ from concurrent.futures import ThreadPoolExecutor, as_completed
+ from typing import Any, Callable
+ 
+@@ -1087,7 +1088,7 @@ class TranslationPipeline:
+                     )
+                     future = (
+                         document_batch_scheduler.submit(str(id(ctx)), callback)
+-                        if use_fair_scheduler else executor.submit(callback)
++                        if use_fair_scheduler else submit_with_usage(executor, callback)
+                     )
+                     future_to_batch[future] = batch_idx
+ 
+diff --git a/trilingua-code/Model/provider_usage.py b/trilingua-code/Model/provider_usage.py
+new file mode 100644
+index 0000000..c7de7da
+--- /dev/null
++++ b/trilingua-code/Model/provider_usage.py
+@@ -0,0 +1,182 @@
++"""Provider request boundary: terminal Ollama failures cannot trigger failover."""
++from contextlib import contextmanager
++from contextvars import ContextVar, copy_context
++from threading import RLock
++import os
++import time
++from urllib.parse import urlsplit
++
++class ProviderStopped(RuntimeError):
++    """Authentication, quota or ambiguous rate limit requires operator action."""
++    def __init__(self, message, status_code=None):
++        super().__init__(message)
++        self.status_code = status_code
++
++class ProviderUsage:
++    def __init__(self, allowed_providers=None, max_requests=None):
++        self.lock = RLock()
++        self.stop_reason = None
++        self.allowed_providers = allowed_providers
++        self.max_requests = max_requests
++        self.attempts = []
++
++    def check(self):
++        if self.stop_reason:
++            raise ProviderStopped(self.stop_reason)
++        if _run_stop_reason:
++            raise ProviderStopped(_run_stop_reason)
++
++    def summary(self):
++        with self.lock:
++            attempts = [dict(row, tokens=dict(row['tokens'])) for row in self.attempts]
++        inputs = [row['tokens']['input'] for row in attempts]
++        outputs = [row['tokens']['output'] for row in attempts]
++        known_input = sum(value for value in inputs if value is not None)
++        known_output = sum(value for value in outputs if value is not None)
++        return {
++            'request_count': len(attempts),
++            'input_tokens': known_input if all(value is not None for value in inputs) else None,
++            'output_tokens': known_output if all(value is not None for value in outputs) else None,
++            'reported_input_tokens': known_input,
++            'reported_output_tokens': known_output,
++            'complete': all(value is not None for value in inputs + outputs),
++            'latency_ms': sum(row['latency_ms'] for row in attempts),
++            'attempts': attempts,
++        }
++
++_current = ContextVar('provider_usage', default=None)
++_run_stop_reason = None
++_purpose = ContextVar('provider_purpose', default=None)
++
++@contextmanager
++def usage_scope(allowed_providers=None, max_requests=None):
++    existing = _current.get()
++    usage = existing or ProviderUsage(allowed_providers, max_requests)
++    token = _current.set(usage)
++    try:
++        usage.check()
++        yield usage
++        usage.check()
++    finally:
++        _current.reset(token)
++
++def ollama_headers(url):
++    headers = {'Content-Type': 'application/json'}
++    endpoint = urlsplit(url)
++    if endpoint.hostname == 'ollama.com':
++        if endpoint.scheme != 'https':
++            raise ValueError('Direct Ollama Cloud API access requires HTTPS')
++        key = os.environ.get('OLLAMA_API_KEY', '').strip()
++        if not key:
++            raise ValueError('OLLAMA_API_KEY is required for direct Ollama Cloud API access')
++        headers['Authorization'] = f'Bearer {key}'
++    return headers
++
++def ollama_post(post, url, **kwargs):
++    global _run_stop_reason
++    usage = _current.get()
++    if usage:
++        usage.check()
++    elif _run_stop_reason:
++        raise ProviderStopped(_run_stop_reason)
++    response = provider_post(post, url, provider=kwargs.pop('provider', 'gptoss'),
++                             model=kwargs.get('json', {}).get('model', ''),
++                             purpose=kwargs.pop('purpose', 'translation'), **kwargs)
++    reason = None
++    if response.status_code in (401, 403, 429):
++        reason = f'Ollama request stopped: HTTP {response.status_code}; no retry or fallback permitted'
++    try:
++        data = response.json()
++        error = data.get('error', '') if isinstance(data, dict) else ''
++        if error and any(marker in str(error).lower() for marker in ('quota', 'allowance', 'limit', 'unauthorized', 'authentication')):
++            reason = 'Ollama request stopped: provider reported authentication/quota/allowance failure'
++    except (ValueError, TypeError, AttributeError):
++        pass
++    if reason:
++        if usage:
++            usage.stop_reason = reason
++        # Remain stopped across requests/cases until the process is deliberately restarted.
++        _run_stop_reason = reason
++        raise ProviderStopped(reason, response.status_code)
++    return response
++
++
++def reported_tokens(data):
++    """Keep provider counters separate; never infer token counts from words."""
++    if not isinstance(data, dict): data = {}
++    raw = data.get('usageMetadata') or data.get('usage') or data
++    if not isinstance(raw, dict): raw = {}
++    def get(*keys):
++        for key in keys:
++            value = raw.get(key)
++            if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
++                return value
++        return None
++    return {
++        'input': get('prompt_eval_count', 'promptTokenCount', 'total_input_tokens'),
++        'output': get('eval_count', 'candidatesTokenCount', 'total_output_tokens'),
++        'thinking': get('thoughtsTokenCount', 'total_thought_tokens', 'total_reasoning_tokens'),
++        'cached_input': get('prompt_eval_cached_count', 'cachedContentTokenCount', 'total_cached_tokens', 'total_cached_input_tokens'),
++        'total': get('totalTokenCount', 'total_tokens'),
++        'tool_use_input': get('toolUsePromptTokenCount', 'total_tool_use_tokens'),
++    }
++
++
++def provider_post(post, url, *, provider, model, purpose, **kwargs):
++    """Record an actual HTTP attempt even if parsing or content validation fails."""
++    if _run_stop_reason:
++        raise ProviderStopped(_run_stop_reason)
++    usage = _current.get()
++    row = {'provider': provider, 'model': model, 'requested_model': model, 'purpose': _purpose.get() or purpose,
++           'request_id': None, 'status': None, 'outcome': 'pending', 'latency_ms': 0,
++           'tokens': reported_tokens({})}
++    if usage:
++        with usage.lock:
++            usage.check()
++            if usage.allowed_providers is not None and provider not in usage.allowed_providers:
++                usage.stop_reason = 'Provider outside approved run allowlist'
++                usage.check()
++            if usage.max_requests is not None and len(usage.attempts) >= usage.max_requests:
++                usage.stop_reason = 'Approved outbound request budget exhausted'
++                usage.check()
++            row['sequence'] = len(usage.attempts) + 1
++            usage.attempts.append(row)
++    started = time.perf_counter()
++    try:
++        kwargs.setdefault("allow_redirects", False)
++        response = post(url, **kwargs)
++        row['status'] = response.status_code
++        row['outcome'] = 'http_error' if response.status_code >= 400 else 'response'
++        try:
++            data = response.json()
++        except (ValueError, TypeError, AttributeError):
++            data = {}
++            row['outcome'] = 'invalid_json'
++        row['tokens'] = reported_tokens(data)
++        if isinstance(data, dict):
++            returned_model = data.get('model') or data.get('modelVersion')
++            if isinstance(returned_model, str):
++                row['model'] = returned_model
++            row['provider_timing_ns'] = {key: data[key] for key in
++                ('total_duration', 'load_duration', 'prompt_eval_duration', 'eval_duration')
++                if isinstance(data.get(key), int)}
++        if isinstance(data, dict) and isinstance(data.get('id'), str):
++            row['request_id'] = data['id']
++        return response
++    except Exception:
++        row['outcome'] = 'transport_error'
++        raise
++    finally:
++        row['latency_ms'] = round((time.perf_counter() - started) * 1000, 3)
++
++
++def submit_with_usage(executor, callback, *args, **kwargs):
++    return executor.submit(copy_context().run, callback, *args, **kwargs)
++
++
++def call_with_purpose(purpose, callback, /, *args, **kwargs):
++    token = _purpose.set(purpose)
++    try:
++        return callback(*args, **kwargs)
++    finally:
++        _purpose.reset(token)
+diff --git a/trilingua-code/Model/providers/fallback.py b/trilingua-code/Model/providers/fallback.py
+index 61d6947..71f6a9e 100644
+--- a/trilingua-code/Model/providers/fallback.py
++++ b/trilingua-code/Model/providers/fallback.py
+@@ -1,5 +1,6 @@
+ """Translation-provider failover for temporary cloud API failures."""
+ 
++from provider_usage import ProviderStopped
+ import os
+ import threading
+ import time
+@@ -118,6 +119,8 @@ class FallbackTranslationProvider(TranslationProvider):
+         if use_primary:
+             try:
+                 response = self._primary.translate(*args, **kwargs)
++            except ProviderStopped:
++                raise
+             except Exception as error:  # provider boundary must fail open
+                 response = None
+                 primary_error = str(error)
+@@ -178,6 +181,8 @@ class FallbackTranslationProvider(TranslationProvider):
+                         ),
+                     )
+                 response = self._fallback.translate(*args, **kwargs)
++        except ProviderStopped:
++            raise
+         except Exception as error:
+             response = TranslationResponse(
+                 translated_text="", provider=self._fallback.name,
+diff --git a/trilingua-code/Model/providers/gemini.py b/trilingua-code/Model/providers/gemini.py
+index d0dfc28..cc8e9e4 100644
+--- a/trilingua-code/Model/providers/gemini.py
++++ b/trilingua-code/Model/providers/gemini.py
+@@ -1,6 +1,7 @@
+ # -*- coding: utf-8 -*-
+ """Google Gemini translation provider."""
+ 
++from provider_usage import provider_post, reported_tokens
+ import os
+ import re
+ import time
+@@ -203,8 +204,8 @@ class GeminiProvider(TranslationProvider):
+         max_attempts = max(1, int(os.environ.get("GEMINI_MAX_ATTEMPTS", "1")))
+         for attempt in range(max_attempts):
+             try:
+-                response = self._session.post(
+-                    url, headers=headers, json=payload,
++                response = provider_post(self._session.post,
++                    url, provider=self.name, model=self._model, purpose="translation", headers=headers, json=payload,
+                     timeout=(10, int(os.environ.get("GEMINI_REQUEST_TIMEOUT_SECONDS", "30"))),
+                 )
+                 if response.status_code == 429:
+@@ -265,7 +266,7 @@ class GeminiProvider(TranslationProvider):
+                     raise RuntimeError(f"Gemini returned empty translation for: {text[:60]}...")
+                 return TranslationResponse(
+                     translated_text=result, provider=self.name, model=self._model,
+-                    token_usage={"input": estimated_input_tokens, "output": len(result.split())},
++                    token_usage={key: value for key, value in reported_tokens(data).items() if value is not None},
+                     execution_time_ms=(time.time() - start_time) * 1000,
+                 )
+             except requests.exceptions.Timeout:
+diff --git a/trilingua-code/Model/providers/gptoss.py b/trilingua-code/Model/providers/gptoss.py
+index d965a06..d5cc0a5 100644
+--- a/trilingua-code/Model/providers/gptoss.py
++++ b/trilingua-code/Model/providers/gptoss.py
+@@ -8,12 +8,12 @@ Returns only assistant.message.content.
+ Never exposes reasoning or provider-specific JSON.
+ """
+ 
++from provider_usage import ProviderStopped, ollama_post, ollama_headers, reported_tokens
+ import os
+ import json
+ import re
+ import time as _time
+ import requests
+-from urllib.parse import urlsplit
+ from dto.responses import TranslationResponse
+ from dto.pipeline import ProviderCapabilities, TranslationUnitResult
+ from .base import TranslationProvider
+@@ -72,15 +72,7 @@ class GPTOSSProvider(TranslationProvider):
+     def __init__(self, api_url: str = "", model: str = ""):
+         self._api_url = api_url or os.environ.get("OLLAMA_CLOUD_URL", "http://localhost:11434/api/chat")
+         self._model = model or os.environ.get("OLLAMA_CLOUD_MODEL", "gpt-oss:20b-cloud")
+-        self._headers = {"Content-Type": "application/json"}
+-        endpoint = urlsplit(self._api_url)
+-        if endpoint.hostname == "ollama.com":
+-            if endpoint.scheme != "https":
+-                raise ValueError("Direct Ollama Cloud API access requires HTTPS")
+-            api_key = os.environ.get("OLLAMA_API_KEY", "").strip()
+-            if not api_key:
+-                raise ValueError("OLLAMA_API_KEY is required for direct Ollama Cloud API access")
+-            self._headers["Authorization"] = f"Bearer {api_key}"
++        self._headers = ollama_headers(self._api_url)
+         # keep_alive: how long Ollama keeps the model loaded between requests.
+         # Default 30m avoids GPU spin-up on every request without pinning the
+         # model in memory indefinitely. "-1" pins it forever.
+@@ -156,7 +148,7 @@ class GPTOSSProvider(TranslationProvider):
+                 }
+                 if response_format == "json":
+                     payload["format"] = "json"
+-                resp = self._session.post(
++                resp = ollama_post(self._session.post,
+                     self._api_url,
+                     headers=self._headers,
+                     json=payload,
+@@ -173,6 +165,8 @@ class GPTOSSProvider(TranslationProvider):
+                         body = ""
+                         try:
+                             body = resp.text[:200].strip()
++                        except ProviderStopped:
++                            raise
+                         except Exception:
+                             pass
+                         _diag(
+@@ -236,6 +230,8 @@ class GPTOSSProvider(TranslationProvider):
+ 
+                     try:
+                         result = sanitize_translation(result, text)
++                    except ProviderStopped:
++                        raise
+                     except RuntimeError as sanitize_err:
+                         if ("Hallucinated repetition" in str(sanitize_err)
+                                 and attempt < max_attempts - 1):
+@@ -253,14 +249,8 @@ class GPTOSSProvider(TranslationProvider):
+                         _time.sleep(1)
+                         continue
+ 
+-                # Estimate token usage from response
+-                token_usage = {}
+-                if "eval_count" in data:
+-                    token_usage["output"] = data["eval_count"]
+-                if "prompt_eval_count" in data:
+-                    token_usage["input"] = data["prompt_eval_count"]
+-                if not token_usage:
+-                    token_usage = {"input": len(text.split()), "output": len(result.split())}
++                reported = reported_tokens(data)
++                token_usage = {key: value for key, value in reported.items() if value is not None}
+ 
+                 elapsed_ms = (_time.time() - start_time) * 1000
+                 return TranslationResponse(
+@@ -301,6 +291,8 @@ class GPTOSSProvider(TranslationProvider):
+                 print(f"  Warning: Timeout, retrying ({attempt + 1}/{max_attempts})...")
+                 _time.sleep(1)
+ 
++            except ProviderStopped:
++                raise
+             except Exception as e:
+                 if attempt == max_attempts - 1:
+                     elapsed_ms = (_time.time() - start_time) * 1000
+@@ -550,7 +542,7 @@ class GPTOSSProvider(TranslationProvider):
+                     "format": "json",
+                     "options": options,
+                 }
+-                resp = self._session.post(
++                resp = ollama_post(self._session.post,
+                     self._api_url,
+                     headers=self._headers,
+                     json=payload,
+@@ -612,6 +604,9 @@ class GPTOSSProvider(TranslationProvider):
+                 print(f"  Warning: Timeout (batch), retrying "
+                       f"({attempt + 1}/{max_attempts})...")
+                 _time.sleep(1)
++            except ProviderStopped as error:
++                _record_failure(ctx, "rate_limit" if error.status_code == 429 else "authentication_or_allowance")
++                raise
+             except Exception as e:
+                 if attempt == max_attempts - 1:
+                     _record_failure(ctx, "provider_error")
+@@ -680,6 +675,8 @@ class GPTOSSProvider(TranslationProvider):
+         extracted = cls._extract_json_object(content)
+         try:
+             raw = json.loads(extracted, object_pairs_hook=_dupe_detecting)
++        except ProviderStopped:
++            raise
+         except Exception:
+             # Not even a parseable JSON object — every entry is unresolved.
+             return {}, expected_ids
+@@ -723,9 +720,11 @@ class GPTOSSProvider(TranslationProvider):
+         This sends a minimal "hello" request so the first real translation
+         doesn't pay the GPU spin-up penalty.
+         """
++        if os.environ.get("ALLOW_PROVIDER_WARMUP") != "1":
++            return False
+         try:
+-            resp = self._session.post(
+-                self._api_url,
++            resp = ollama_post(self._session.post,
++                self._api_url, purpose="warmup",
+                 headers=self._headers,
+                 json={
+                     "model": self._model,
+@@ -740,6 +739,8 @@ class GPTOSSProvider(TranslationProvider):
+             )
+             resp.raise_for_status()
+             return True
++        except ProviderStopped:
++            raise
+         except Exception:
+             return False
+ 
+@@ -765,6 +766,8 @@ class GPTOSSProvider(TranslationProvider):
+                 "model": self._model,
+                 "error": f"Ollama returned status {resp.status_code}",
+             }
++        except ProviderStopped:
++            raise
+         except Exception as e:
+             return {
+                 "status": "unavailable",
+diff --git a/trilingua-code/Model/requirements.txt b/trilingua-code/Model/requirements.txt
+index b9925ae..5c6b951 100644
+--- a/trilingua-code/Model/requirements.txt
++++ b/trilingua-code/Model/requirements.txt
+@@ -2,13 +2,15 @@
+ # Install with: pip install -r requirements.txt
+ # Dev/test deps live in ../requirements-dev.txt
+ 
+-fastapi>=0.115
+-uvicorn>=0.30
+-requests>=2.32
+-python-docx>=1.1
+-PyMuPDF>=1.24
+-python-pptx>=0.6.23
+-openpyxl>=3.1
+-odfpy>=1.4
+-striprtf>=0.0.26
+-pillow>=10.0
+\ No newline at end of file
++fastapi==0.136.3
++uvicorn==0.49.0
++python-multipart==0.0.32
++requests==2.34.2
++python-docx==1.2.0
++PyMuPDF==1.27.2.3
++pymupdf-fonts==1.0.5
++python-pptx==1.0.2
++openpyxl==3.1.5
++odfpy==1.4.1
++striprtf==0.0.32
++pillow==12.3.0
+diff --git a/trilingua-code/Model/server.py b/trilingua-code/Model/server.py
+index 251ff7b..e61372c 100644
+--- a/trilingua-code/Model/server.py
++++ b/trilingua-code/Model/server.py
+@@ -6,7 +6,7 @@ Supports: GPT-OSS (Ollama Cloud), Google Gemini
+ Document formats: .docx .pdf .txt .md .rtf .odt .csv .pptx .xlsx
+ 
+ Architecture:
+-  Laravel → server.py → pipeline/ → providers/ → AI API
++  Laravel â†’ server.py â†’ pipeline/ â†’ providers/ â†’ AI API
+ 
+ Usage:
+     set GEMINI_API_KEY=your_key_here     # For Gemini analysis and review
+@@ -21,6 +21,7 @@ import os
+ import hmac
+ import logging
+ import time as _time
++from uuid import UUID
+ 
+ # Ensure the Model directory is on the path
+ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+@@ -118,7 +119,7 @@ else:
+         print(f"  WARNING: Unknown analysis provider '{ANALYSIS_PROVIDER}'; using Ollama")
+     _analysis_provider = _ollama_analysis_provider
+ 
+-# Future providers (stubs — raise NotImplementedError when instantiated)
++# Future providers (stubs â€” raise NotImplementedError when instantiated)
+ # Uncomment imports above and these lines when ready to implement:
+ # _openai_provider = OpenAIProvider()
+ # _deepseek_provider = DeepSeekProvider()
+@@ -196,6 +197,12 @@ _BUSY_WAIT_SECONDS = max(
+ _translation_semaphore = threading.BoundedSemaphore(_MAX_CONCURRENT)
+ 
+ 
++class UsageHTTPException(HTTPException):
++    def __init__(self, status_code, detail, provider_usage):
++        super().__init__(status_code, detail)
++        self.provider_usage = provider_usage
++
++
+ def _run_pipeline_guarded(pipeline_call):
+     """Run a pipeline call under the concurrency guard.
+ 
+@@ -210,7 +217,26 @@ def _run_pipeline_guarded(pipeline_call):
+             f"{_BUSY_WAIT_SECONDS} seconds (max {_MAX_CONCURRENT} active).",
+         )
+     try:
+-        return pipeline_call()
++        from provider_usage import usage_scope, ProviderStopped
++        usage = None
++        try:
++            with usage_scope() as usage:
++                result = pipeline_call()
++                usage.check()
++                summary = usage.summary()
++                response = result[0] if isinstance(result, tuple) else result
++                if hasattr(response, 'token_usage'):
++                    response.provider_usage = summary
++                    response.token_usage = {'input': summary['input_tokens'], 'output': summary['output_tokens']}
++                if hasattr(response, 'metrics'):
++                    response.metrics.update(provider_usage=summary, llm_calls=summary['request_count'],
++                                            input_tokens=summary['input_tokens'], output_tokens=summary['output_tokens'])
++                return result
++        except ProviderStopped as error:
++            raise UsageHTTPException(429, str(error), usage.summary() if usage else None) from error
++        except Exception as error:
++            error.provider_usage = usage.summary() if usage else None
++            raise
+     finally:
+         _translation_semaphore.release()
+ 
+@@ -218,93 +244,7 @@ def _run_pipeline_guarded(pipeline_call):
+ print(f"  [OK] Concurrent translations limited to {_MAX_CONCURRENT}")
+ 
+ # ---------------------------------------------------------------------------
+-# COLD START PRE-WARMING
+-# Pre-import heavy libraries at startup so the first request doesn't pay
+-# the import penalty. Python's import system caches modules in sys.modules,
+-# so subsequent imports are instant dictionary lookups.
+-# ---------------------------------------------------------------------------
+-_COLD_START_WARMED = False
+-
+-def _warm_cold_start():
+-    """Pre-warm all heavy dependencies so the first request is fast.
+-    
+-    This resolves the "first translation slow, subsequent fast" issue.
+-    Call this once at server startup.
+-    """
+-    global _COLD_START_WARMED
+-    if _COLD_START_WARMED:
+-        return
+-    _COLD_START_WARMED = True
+-    
+-    warm_start = _time.time()
+-    print("  [WARMUP] Pre-warming cold-start dependencies...")
+-    
+-    # 1. Pre-import heavy document processing libraries
+-    # These are imported lazily inside function bodies in extractor.py and
+-    # reconstructor.py. Importing them here loads them into sys.modules
+-    # so the first request doesn't pay the 1-3s import penalty.
+-    libs = [
+-        ("python-docx",     lambda: __import__("docx")),
+-        ("PyMuPDF (fitz)",  lambda: __import__("fitz")),
+-        ("python-pptx",     lambda: __import__("pptx")),
+-        ("openpyxl",        lambda: __import__("openpyxl")),
+-        ("odfpy",           lambda: __import__("odf")),
+-        ("striprtf",        lambda: __import__("striprtf")),
+-    ]
+-    for name, loader in libs:
+-        try:
+-            loader()
+-            print(f"    [WARMUP] [OK] {name}")
+-        except ImportError:
+-            print(f"    [WARMUP] [MISSING] {name} (not installed)")
+-    
+-    # 2. Pre-warm SQLite translation cache
+-    # Create the database and schema at startup, not on first request.
+-    try:
+-        from cache.sqlite_cache import SQLiteTranslationCache
+-        cache = SQLiteTranslationCache(
+-            ttl_days=int(os.environ.get("TRANSLATION_CACHE_TTL_DAYS", "30")),
+-            enabled=os.environ.get("TRANSLATION_CACHE_ENABLED", "true").lower() == "true",
+-        )
+-        # Force table creation by doing a no-op lookup
+-        cache.get("__warmup__", "English", "__warmup__")
+-        print("    [WARMUP] [OK] SQLite cache initialized")
+-    except Exception as e:
+-        print(f"    [WARMUP] [FAIL] SQLite cache: {e}")
+-    
+-    # 3. Pre-warm HTTP connection pool
+-    # Send a lightweight health-check to the AI provider to establish
+-    # the TCP/TLS connection so the first translation request doesn't
+-    # need to do a cold handshake.
+-    try:
+-        provider = _get_active_provider()
+-        health_result = provider.health()
+-        if health_result.get("status") == "ok":
+-            print(f"    [WARMUP] [OK] {provider.name} connection pool warmed")
+-        else:
+-            print(f"    [WARMUP] [OK] {provider.name} connection pool warmed (status: {health_result.get('status')})")
+-    except Exception as e:
+-        print(f"    [WARMUP] [OK] {provider.name} connection pool warmed (health check: {e})")
+-
+-    # 4. Pre-warm GPT-OSS model into GPU memory
+-    # The health check above only does a GET /api/tags — it does NOT
+-    # load the model. This sends a real chat request to force Ollama
+-    # to spin up a GPU instance so the first translation is fast.
+-    if _gptoss_provider.name == provider.name:
+-        try:
+-            print(f"    [WARMUP] Loading {_gptoss_provider.model_name} (may take 1-2 min)...")
+-            if _gptoss_provider.warmup():
+-                print(f"    [WARMUP] [OK] {_gptoss_provider.model_name} loaded into memory")
+-            else:
+-                print(f"    [WARMUP] [INFO] Model will load on first request")
+-        except Exception as e:
+-            print(f"    [WARMUP] [INFO] Model warmup: {e}")
+-
+-    elapsed = (_time.time() - warm_start) * 1000
+-    print(f"  [WARMUP] Complete in {elapsed:.0f}ms")
+-
+-# Run pre-warming immediately at startup
+-_warm_cold_start()
++# Dependencies and SQLite cache remain lazy; startup makes no provider requests.
+ 
+ from contextlib import asynccontextmanager
+ 
+@@ -329,12 +269,33 @@ async def _runtime_lifespan(app: FastAPI):
+         print(f"  [OK] Threadpool limited to {_THREADPOOL_SIZE} worker threads")
+     except Exception as e:
+         print(f"  [WARN] Could not configure threadpool limiter: {e}")
+-    yield
++    worker = None
++    if os.environ.get("DOCUMENT_JOBS_ENABLED", "false").lower() == "true":
++        from document_jobs import DocumentJobStore, DocumentJobWorker
++        from anyio import to_thread
++        store = DocumentJobStore()
++        await to_thread.run_sync(store.verify)
++        worker = DocumentJobWorker(store, translate_document)
++        app.state.document_jobs = worker
++        worker.thread.start()
++    try:
++        yield
++    finally:
++        if worker:
++            worker.stop.set()
++            worker.wake.set()
+ 
+ 
+ app = FastAPI(title="TriLingua Translation Service v5", lifespan=_runtime_lifespan)
+ 
+ 
++@app.exception_handler(UsageHTTPException)
++async def usage_error_response(request, error):
++    from fastapi.responses import JSONResponse
++    return JSONResponse(status_code=error.status_code,
++                        content={'detail': error.detail, 'provider_usage': error.provider_usage})
++
++
+ @app.middleware("http")
+ async def log_translation_request(request, call_next):
+     if not request.url.path.startswith("/translate/"):
+@@ -549,7 +510,8 @@ def translate_text(req: TextRequest):
+             if not _text_quality_reviewer.needs_retranslation(review):
+                 return initial, review, warnings
+ 
+-            repaired = _translation_pipeline._translate_with_echo_guard(
++            from provider_usage import call_with_purpose
++            repaired = call_with_purpose("repair", _translation_pipeline._translate_with_echo_guard,
+                 text=source_text,
+                 source_lang=req.source_lang,
+                 target_lang=req.target_lang,
+@@ -584,7 +546,7 @@ def translate_text(req: TextRequest):
+         result, review, warnings = _run_pipeline_guarded(_translate_and_review)
+ 
+         if not result.success:
+-            raise HTTPException(500, result.error_message)
++            raise UsageHTTPException(500, result.error_message, getattr(result, "provider_usage", None))
+ 
+         if review is not None and not review.available:
+             warnings.append("AI quality review unavailable; translation was retained without a review score.")
+@@ -606,13 +568,14 @@ def translate_text(req: TextRequest):
+             ],
+             "warnings": warnings,
+             "token_usage": result.token_usage,
++            "provider_usage": getattr(result, "provider_usage", None),
+             "execution_time_ms": result.execution_time_ms,
+         }
+     except HTTPException:
+         raise
+     except Exception as e:
+         logging.getLogger("uvicorn.error").exception("Text translation failed")
+-        raise HTTPException(500, str(e))
++        raise UsageHTTPException(500, str(e), getattr(e, "provider_usage", None))
+ 
+ 
+ # ---------------------------------------------------------------------------
+@@ -635,22 +598,7 @@ def translate_document(
+     pdf_column_mode: str = Form("auto"),
+     mode: str = Form("balanced"),
+ ):
+-    if pdf_column_mode not in VALID_PDF_COLUMN_MODES:
+-        raise HTTPException(
+-            400,
+-            f"Invalid pdf_column_mode '{pdf_column_mode}'. "
+-            f"Must be one of: {sorted(VALID_PDF_COLUMN_MODES)}"
+-        )
+-    if source_lang not in LANGUAGES:
+-        raise HTTPException(400, f"Unknown source language: {source_lang}")
+-    if target_lang not in LANGUAGES:
+-        raise HTTPException(400, f"Unknown target language: {target_lang}")
+-    if source_lang == target_lang:
+-        raise HTTPException(400, "Source and target languages must differ.")
+-
+-    ext = os.path.splitext(file.filename)[1].lower()
+-    if ext not in EXTENSION_MAP:
+-        raise HTTPException(400, f"Unsupported file type: {ext}. Supported: {sorted(SUPPORTED_EXTENSIONS)}")
++    ext = validate_document_request(file.filename, source_lang, target_lang, pdf_column_mode)
+ 
+     out_ext = EXTENSION_MAP[ext]
+     tmp_dir = tempfile.mkdtemp()
+@@ -665,66 +613,119 @@ def translate_document(
+         with open(input_path, "wb") as f:
+             f.write(contents)
+ 
+-        print(f"[SERVER] Translating document: {file.filename} ({source_lang} → {target_lang})")
+-        print(f"[SERVER] Format: {ext}, Size: {len(contents)} bytes")
+-
+-        # Use the new DocumentPipeline
+         from dto.requests import DocumentTranslationRequest as DTR
+-        request = DTR(
+-            file_path=input_path,
+-            source_lang=source_lang,
+-            target_lang=target_lang,
+-            pdf_column_mode=pdf_column_mode,
+-            mode=mode,
+-        )
++        request = DTR(file_path=input_path, source_lang=source_lang,
++                      target_lang=target_lang, pdf_column_mode=pdf_column_mode, mode=mode)
+         result = _run_pipeline_guarded(lambda: _document_pipeline.translate(request))
+ 
+         if not result.success:
+-            raise HTTPException(500, result.error_message)
+-
++            raise UsageHTTPException(500, result.error_message, getattr(result, "provider_usage", None))
+         actual_output = result.output_path
+         if not os.path.exists(actual_output):
+             raise HTTPException(500, "Translation produced no output file.")
+-
+-        original_stem = os.path.splitext(file.filename)[0]
+-        download_name = f"{original_stem}_translated{out_ext}"
+-
+-        print(f"[SERVER] Translation complete. Output file ready at: {actual_output}")
+-        print(f"[SERVER] Provider: {result.provider}, Model: {result.model}")
+-        print(f"[SERVER] Execution time: {result.total_execution_time_ms:.0f}ms")
+-
+-        # Read the file into memory and clean up immediately
+         with open(actual_output, "rb") as f:
+             file_contents = f.read()
+-
+-        # Clean up the temporary directory
+-        shutil.rmtree(tmp_dir, ignore_errors=True)
+-
+-        # Return the JSON envelope: base64 file bytes + per-block review data.
+-        # Laravel decodes file_base64 and persists `blocks` for admin review.
+         return {
+             "file_base64": base64.b64encode(file_contents).decode("ascii"),
+             "blocks": getattr(result, "blocks", None) or [],
+             "sidecar": getattr(result, "sidecar", None),
+-            "download_filename": download_name,
++            "download_filename": f"{os.path.splitext(file.filename)[0]}_translated{out_ext}",
+             "mime_type": _content_type_for_ext(out_ext),
+             "metrics": result.metrics or {},
+             "validation": getattr(result, "output_validation", {}) or {},
+         }
+     except PDFValidationError as e:
+-        shutil.rmtree(tmp_dir, ignore_errors=True)
+         raise HTTPException(422, {"message": str(e), "validation": e.report})
+     except HTTPException:
+-        shutil.rmtree(tmp_dir, ignore_errors=True)
+         raise
+     except Exception as e:
++        raise UsageHTTPException(500, f"Translation error: {str(e)}", getattr(e, "provider_usage", None))
++    finally:
+         shutil.rmtree(tmp_dir, ignore_errors=True)
+-        print(f"[SERVER] Exception during translation: {str(e)}")
+-        raise HTTPException(500, f"Translation error: {str(e)}")
++
++
++def validate_document_request(filename, source_lang, target_lang, pdf_column_mode):
++    if pdf_column_mode not in VALID_PDF_COLUMN_MODES:
++        raise HTTPException(
++            400,
++            f"Invalid pdf_column_mode '{pdf_column_mode}'. "
++            f"Must be one of: {sorted(VALID_PDF_COLUMN_MODES)}"
++        )
++    if source_lang not in LANGUAGES:
++        raise HTTPException(400, f"Unknown source language: {source_lang}")
++    if target_lang not in LANGUAGES:
++        raise HTTPException(400, f"Unknown target language: {target_lang}")
++    if source_lang == target_lang:
++        raise HTTPException(400, "Source and target languages must differ.")
++
++    ext = os.path.splitext(filename)[1].lower()
++    if ext not in EXTENSION_MAP:
++        raise HTTPException(400, f"Unsupported file type: {ext}. Supported: {sorted(SUPPORTED_EXTENSIONS)}")
++
++    return ext
++
++
++def document_job_worker():
++    worker = getattr(app.state, "document_jobs", None)
++    if worker is None:
++        raise HTTPException(503, "Durable document jobs are not configured")
++    return worker
++
++
++@app.post("/translate/document/jobs", status_code=202, dependencies=[Depends(require_service_token)])
++def submit_document_job(
++    job_id: UUID = Form(...), file: UploadFile = File(...),
++    source_lang: str = Form(...), target_lang: str = Form(...),
++    pdf_column_mode: str = Form("auto"), mode: str = Form("balanced"),
++):
++    from document_jobs import MAX_INPUT_BYTES, public_status
++    validate_document_request(file.filename, source_lang, target_lang, pdf_column_mode)
++    if mode not in VALID_MODES:
++        raise HTTPException(400, "Invalid processing mode")
++    contents = file.file.read(MAX_INPUT_BYTES + 1)
++    if not contents or len(contents) > MAX_INPUT_BYTES:
++        raise HTTPException(413, "Document must contain between 1 byte and 50 MiB")
++    worker = document_job_worker()
++    row = worker.store.submit(job_id, os.path.basename(file.filename), contents,
++                              {"source_lang": source_lang, "target_lang": target_lang,
++                               "pdf_column_mode": pdf_column_mode, "mode": mode})
++    worker.wake.set()
++    return public_status(row)
++
++
++@app.get("/translate/document/jobs/{job_id}", dependencies=[Depends(require_service_token)])
++def document_job_status(job_id: UUID):
++    from document_jobs import public_status
++    row = document_job_worker().store.get(str(job_id))
++    if row is None:
++        raise HTTPException(404, "Document job not found")
++    return public_status(row)
++
++
++@app.get("/translate/document/jobs/{job_id}/result", dependencies=[Depends(require_service_token)])
++def document_job_result(job_id: UUID):
++    from fastapi.responses import Response
++    store = document_job_worker().store
++    row = store.get(str(job_id))
++    if row is None:
++        raise HTTPException(404, "Document job not found")
++    if row["status"] != "completed" or row.get("acknowledged"):
++        raise HTTPException(409, "Document job result is not available")
++    return Response(store.read_object(row["result_path"]), media_type="application/json")
++
++
++@app.delete("/translate/document/jobs/{job_id}", dependencies=[Depends(require_service_token)])
++def acknowledge_document_job(job_id: UUID):
++    store = document_job_worker().store
++    row = store.get(str(job_id))
++    if row is None:
++        raise HTTPException(404, "Document job not found")
++    store.acknowledge(row)
++    return {"acknowledged": True}
+ 
+ 
+ # ---------------------------------------------------------------------------
+-# POST /translate/document/regenerate — reconstruction-only re-render of an
++# POST /translate/document/regenerate â€” reconstruction-only re-render of an
+ # edited document. Requires a sidecar captured at translate time plus the
+ # ORIGINAL source file (needed for PDF and in-place DOCX/PPTX/XLSX replay).
+ # No extraction, analysis, prepass, memory, or AI translation runs here.
+@@ -808,7 +809,7 @@ def translate_document_regenerate(
+ 
+ # ---------------------------------------------------------------------------
+ # Cache management
+-# DELETE /cache/clear — clears the persistent SQLite translation cache
++# DELETE /cache/clear â€” clears the persistent SQLite translation cache
+ # ---------------------------------------------------------------------------
+ @app.delete("/cache/clear", dependencies=[Depends(require_service_token)])
+ def clear_cache():
+diff --git a/trilingua-code/Model/tests/conftest.py b/trilingua-code/Model/tests/conftest.py
+index f8193e9..1e3eb24 100644
+--- a/trilingua-code/Model/tests/conftest.py
++++ b/trilingua-code/Model/tests/conftest.py
+@@ -421,3 +421,16 @@ def block_list_factory():
+         return blocks
+     
+     return _create_blocks
++
++
++@pytest.fixture(autouse=True)
++def isolate_provider_run_stop_between_tests():
++    """Each offline test is a separate run; production has no automatic latch reset."""
++    import sys
++    module = sys.modules.get('provider_usage')
++    if module is not None:
++        module._run_stop_reason = None
++    yield
++    module = sys.modules.get('provider_usage')
++    if module is not None:
++        module._run_stop_reason = None
+diff --git a/trilingua-code/Model/tests/test_document_jobs.py b/trilingua-code/Model/tests/test_document_jobs.py
+new file mode 100644
+index 0000000..6fb7dbc
+--- /dev/null
++++ b/trilingua-code/Model/tests/test_document_jobs.py
+@@ -0,0 +1,86 @@
++"""No AI/network: test durable submission, authentication and worker failures."""
++import io
++from types import SimpleNamespace
++from unittest.mock import Mock
++from uuid import uuid4
++
++import pytest
++from fastapi import HTTPException
++from fastapi.testclient import TestClient
++
++from document_jobs import DocumentJobStore, DocumentJobWorker, public_status
++
++
++@pytest.fixture
++def store(monkeypatch):
++    monkeypatch.setenv("SUPABASE_URL", "https://test.supabase.co")
++    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "test-only-key")
++    monkeypatch.setenv("SUPABASE_BUCKET", "test-only-bucket")
++    return DocumentJobStore()
++
++
++def test_same_submission_reuses_durable_id_without_upload_or_ai(store):
++    id = str(uuid4())
++    rows = []
++    store.get = Mock(side_effect=lambda _: rows[0] if rows else None)
++    store.put_object = Mock()
++    def insert(*args, **kwargs):
++        rows.append(dict(kwargs["json"], status="queued"))
++        return SimpleNamespace(json=lambda: rows)
++    store.request = Mock(side_effect=insert)
++    first = store.submit(id, "first.txt", b"source", {"target_lang": "Filipino"})
++    assert store.submit(id, "renamed.txt", b"source", {"target_lang": "Filipino"}) == first
++    assert store.put_object.call_count == 1
++    with pytest.raises(HTTPException) as error:
++        store.submit(id, "first.txt", b"different", {"target_lang": "Filipino"})
++    assert error.value.status_code == 409
++    assert store.put_object.call_count == 1
++
++
++def test_queue_refuses_public_bucket(store):
++    store.request = Mock(return_value=SimpleNamespace(json=lambda: {"public": True}))
++    with pytest.raises(RuntimeError, match="must be private"):
++        store.verify()
++
++
++def test_status_never_exposes_storage_paths_or_document_options():
++    status = public_status({"id": "id", "status": "processing", "input_path": "private/path", "options": {"private": "text"}})
++    assert "input_path" not in status and "options" not in status
++
++
++def test_worker_persists_result_before_marking_complete(store, monkeypatch):
++    import provider_usage
++    monkeypatch.setattr(provider_usage, "_run_stop_reason", None)
++    events = []
++    store.read_object = Mock(return_value=b"source")
++    store.put_object = Mock(side_effect=lambda *args: events.append("stored"))
++    store.finish = Mock(side_effect=lambda *args, **kwargs: events.append(kwargs["status"]) or True)
++    worker = DocumentJobWorker(store, Mock(return_value={"file_base64": "dHJhbnNsYXRlZA==", "blocks": []}))
++    worker.run_one({"id": str(uuid4()), "lease_id": str(uuid4()), "input_path": "input", "filename": "source.txt", "options": {}})
++    assert events == ["stored", "completed"]
++
++
++def test_worker_records_an_existing_provider_stop_without_calling_translation(store, monkeypatch):
++    import provider_usage
++    monkeypatch.setattr(provider_usage, "_run_stop_reason", "Provider quota stopped")
++    store.finish = Mock(return_value=True)
++    translate = Mock()
++    DocumentJobWorker(store, translate).run_one({"id": str(uuid4()), "lease_id": str(uuid4())})
++    translate.assert_not_called()
++    assert store.finish.call_args.kwargs["error_status"] == 429
++
++
++def test_submission_returns_202_without_running_pipeline_and_requires_token(monkeypatch):
++    import server
++    monkeypatch.setenv("PYTHON_SERVICE_TOKEN", "test-token")
++    store = Mock()
++    store.submit.return_value = {"id": str(uuid4()), "status": "queued"}
++    monkeypatch.setattr(server.app.state, "document_jobs", SimpleNamespace(store=store, wake=Mock()), raising=False)
++    client = TestClient(server.app)
++    data = {"job_id": store.submit.return_value["id"], "source_lang": "English", "target_lang": "Filipino"}
++    files = {"file": ("source.txt", io.BytesIO(b"source"), "text/plain")}
++    assert client.post("/translate/document/jobs", data=data, files=files).status_code == 401
++    files = {"file": ("source.txt", io.BytesIO(b"source"), "text/plain")}
++    response = client.post("/translate/document/jobs", data=data, files=files, headers={"X-Service-Token": "test-token"})
++    assert response.status_code == 202 and response.json()["status"] == "queued"
++    store.submit.assert_called_once()
+diff --git a/trilingua-code/Model/tests/test_provider_safety.py b/trilingua-code/Model/tests/test_provider_safety.py
+new file mode 100644
+index 0000000..7ca14aa
+--- /dev/null
++++ b/trilingua-code/Model/tests/test_provider_safety.py
+@@ -0,0 +1,55 @@
++"""Offline regressions for F15: import safety and terminal Ollama errors."""
++import os
++import subprocess
++import sys
++from unittest.mock import Mock
++import pytest
++from pathlib import Path
++sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
++
++
++def test_server_import_does_not_initialize_cache_or_contact_provider():
++    code = """
++from unittest.mock import patch
++import requests
++from cache.sqlite_cache import SQLiteTranslationCache
++with patch.object(requests.Session, 'post') as post, patch.object(requests.Session, 'get') as get, patch.object(SQLiteTranslationCache, '__init__', return_value=None) as cache:
++    import server
++    assert post.call_count == 0, post.call_count
++    assert get.call_count == 0, get.call_count
++    assert cache.call_count == 0, cache.call_count
++"""
++    env = dict(os.environ, PYTHONPATH=os.pathsep.join([os.environ.get('PYTHONPATH',''), str(__import__('pathlib').Path('Model').resolve())]))
++    result = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True, env=env)
++    assert result.returncode == 0, result.stdout + result.stderr
++
++
++def test_warmup_requires_explicit_opt_in(monkeypatch):
++    from providers.gptoss import GPTOSSProvider
++    monkeypatch.delenv('ALLOW_PROVIDER_WARMUP', raising=False)
++    provider = GPTOSSProvider()
++    provider._session.post = Mock()
++    assert provider.warmup() is False
++    provider._session.post.assert_not_called()
++
++
++@pytest.mark.parametrize('status', [401, 403, 429])
++def test_ollama_terminal_status_never_retries_or_falls_back(monkeypatch, status):
++    from providers.gptoss import GPTOSSProvider
++    from providers.fallback import FallbackTranslationProvider
++    from provider_usage import ProviderStopped, usage_scope
++    monkeypatch.setenv('GPTOSS_MAX_ATTEMPTS', '3')
++    primary = GPTOSSProvider()
++    response = Mock(status_code=status)
++    response.json.return_value = {'error': 'allowance exhausted'}
++    primary._session.post = Mock(return_value=response)
++    fallback = Mock()
++    route = FallbackTranslationProvider(primary, fallback)
++    with pytest.raises(ProviderStopped):
++        with usage_scope() as usage:
++            with pytest.raises(ProviderStopped):
++                route.translate('Hello', 'English', 'Cebuano')
++            with pytest.raises(ProviderStopped):
++                primary.translate('Hello again', 'English', 'Cebuano')
++    assert primary._session.post.call_count == 1
++    fallback.translate.assert_not_called()
+diff --git a/trilingua-code/Model/tests/test_provider_usage.py b/trilingua-code/Model/tests/test_provider_usage.py
+new file mode 100644
+index 0000000..b3ede86
+--- /dev/null
++++ b/trilingua-code/Model/tests/test_provider_usage.py
+@@ -0,0 +1,177 @@
++"""F16 counts HTTP attempts, including discarded and threaded responses."""
++import sys
++from pathlib import Path
++sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
++from unittest.mock import Mock
++from concurrent.futures import ThreadPoolExecutor
++import pytest
++from provider_usage import provider_post, usage_scope, submit_with_usage, call_with_purpose, ProviderStopped
++
++
++def response(data, status=200):
++    result = Mock(status_code=status, headers={})
++    result.json.return_value = data
++    return result
++
++
++def test_all_attempts_count_before_content_validation():
++    post = Mock(side_effect=[response({'prompt_eval_count': 8, 'eval_count': 5, 'message': {'content': ''}}), response({'prompt_eval_count': 9, 'eval_count': 7})])
++    with usage_scope() as usage:
++        for _ in range(2):
++            provider_post(post, 'http://test', provider='gptoss', model='20b', purpose='translation')
++    summary = usage.summary()
++    assert summary['request_count'] == 2
++    assert summary['input_tokens'] == 17
++    assert summary['output_tokens'] == 12
++    assert summary['complete'] is True
++
++
++def test_missing_usage_is_unknown_and_transport_attempt_is_counted():
++    with usage_scope() as usage:
++        provider_post(Mock(return_value=response({})), 'http://test', provider='gemini', model='test', purpose='review')
++        with pytest.raises(TimeoutError):
++            provider_post(Mock(side_effect=TimeoutError()), 'http://test', provider='gemini', model='test', purpose='translation')
++    summary = usage.summary()
++    assert summary['request_count'] == 2
++    assert summary['input_tokens'] is None
++    assert summary['output_tokens'] is None
++    assert summary['complete'] is False
++    assert summary['attempts'][1]['outcome'] == 'transport_error'
++
++
++@pytest.mark.parametrize('data', [
++    {'usageMetadata': {'promptTokenCount': 11, 'candidatesTokenCount': 7, 'thoughtsTokenCount': 3, 'cachedContentTokenCount': 4, 'totalTokenCount': 21}},
++    {'usage': {'total_input_tokens': 11, 'total_output_tokens': 7, 'total_thought_tokens': 3, 'total_cached_tokens': 4, 'total_tokens': 21}},
++])
++def test_gemini_reported_usage_keeps_thinking_cached_and_total_distinct(data):
++    with usage_scope() as usage:
++        provider_post(Mock(return_value=response(data)), 'http://test', provider='gemini', model='test', purpose='review')
++    result = usage.summary()
++    assert result['input_tokens'] == 11
++    assert result['output_tokens'] == 7
++    assert result['attempts'][0]['tokens']['thinking'] == 3
++    assert result['attempts'][0]['tokens']['cached_input'] == 4
++    assert result['attempts'][0]['tokens']['total'] == 21
++
++
++def test_worker_threads_share_collector_and_review_purpose():
++    with usage_scope() as usage:
++        with ThreadPoolExecutor(max_workers=2) as pool:
++            futures = [submit_with_usage(pool, call_with_purpose, 'quality_review', provider_post, Mock(return_value=response({'prompt_eval_count': 1, 'eval_count': 2})), 'http://test', provider='ollama_analysis', model='gemma4', purpose='analysis') for _ in range(4)]
++            for future in futures: future.result()
++    result = usage.summary()
++    assert result['request_count'] == 4
++    assert result['input_tokens'] == 4
++    assert {row['purpose'] for row in result['attempts']} == {'quality_review'}
++
++
++def test_cache_only_operation_reports_zero_outbound_usage():
++    with usage_scope() as usage: pass
++    assert usage.summary()['request_count'] == 0
++    assert usage.summary()['input_tokens'] == 0
++
++
++def test_disallowed_provider_is_blocked_before_outbound_call():
++    post = Mock()
++    with pytest.raises(ProviderStopped):
++        with usage_scope(allowed_providers={'gptoss'}):
++            provider_post(post, 'http://test', provider='gemini', model='test', purpose='translation')
++    post.assert_not_called()
++
++
++def test_gptoss_discarded_empty_response_is_included_in_actual_usage(monkeypatch):
++    from providers.gptoss import GPTOSSProvider
++    monkeypatch.setenv('GPTOSS_MAX_ATTEMPTS', '2')
++    monkeypatch.setattr('providers.gptoss._time.sleep', lambda _: None)
++    provider = GPTOSSProvider()
++    provider._session.post = Mock(side_effect=[
++        response({'message': {'content': ''}, 'prompt_eval_count': 10, 'eval_count': 6}),
++        response({'message': {'content': 'Tubig'}, 'prompt_eval_count': 12, 'eval_count': 3})])
++    with usage_scope() as usage:
++        result = provider.translate('Water', 'English', 'Cebuano')
++    assert result.success
++    assert result.token_usage['input'] == 12
++    assert usage.summary()['request_count'] == 2
++    assert usage.summary()['input_tokens'] == 22
++    assert usage.summary()['output_tokens'] == 9
++
++
++def test_gptoss_batch_and_review_http_paths_are_both_accounted(monkeypatch):
++    from providers.gptoss import GPTOSSProvider
++    from ai.ollama_provider import OllamaAnalysisProvider
++    provider = GPTOSSProvider()
++    provider._session.post = Mock(return_value=response({'message': {'content': '{"0":"Tubig"}'}, 'prompt_eval_count': 4, 'eval_count': 3}))
++    monkeypatch.setattr('ai.ollama_provider.requests.post', Mock(return_value=response({'message': {'content': '{"score":90}'}, 'prompt_eval_count': 8, 'eval_count': 5})))
++    analysis = OllamaAnalysisProvider(model='gemma4:31b')
++    with usage_scope() as usage:
++        provider._request_batch_chat([{'role': 'user', 'content': 'Water'}])
++        call_with_purpose('quality_review', analysis.analyze, 'Return JSON', 'Review Tubig')
++    summary = usage.summary()
++    assert summary['request_count'] == 2
++    assert summary['input_tokens'] == 12
++    assert summary['output_tokens'] == 8
++    assert summary['attempts'][1]['model'] == 'gemma4:31b'
++    assert summary['attempts'][1]['purpose'] == 'quality_review'
++
++
++def test_server_guard_keeps_usage_on_a_stopped_failed_run(monkeypatch):
++    import server
++    from providers.gptoss import GPTOSSProvider
++    provider = GPTOSSProvider()
++    provider._session.post = Mock(return_value=response({'error': 'quota exhausted'}, 429))
++    with pytest.raises(server.UsageHTTPException) as error:
++        server._run_pipeline_guarded(lambda: provider.translate('Water', 'English', 'Cebuano'))
++    assert error.value.status_code == 429
++    assert error.value.provider_usage['request_count'] == 1
++    assert error.value.provider_usage['input_tokens'] is None
++
++
++def test_fair_scheduler_propagates_usage_to_document_workers():
++    from pipeline.fair_scheduler import document_batch_scheduler
++    with usage_scope() as usage:
++        future = document_batch_scheduler.submit('usage-test', lambda: provider_post(Mock(return_value=response({'prompt_eval_count': 2, 'eval_count': 3})), 'http://test', provider='gptoss', model='20b', purpose='translation'))
++        future.result(timeout=5)
++    assert usage.summary()['request_count'] == 1
++    assert usage.summary()['input_tokens'] == 2
++
++
++def test_ollama_cached_tokens_and_actual_model_are_preserved():
++    with usage_scope() as usage:
++        provider_post(Mock(return_value=response({'model': 'actual-model', 'prompt_eval_count': 11, 'prompt_eval_cached_count': 8, 'eval_count': 18, 'load_duration': 20})), 'http://test', provider='gptoss', model='requested-model', purpose='translation')
++    attempt = usage.summary()['attempts'][0]
++    assert attempt['model'] == 'actual-model'
++    assert attempt['requested_model'] == 'requested-model'
++    assert attempt['tokens']['cached_input'] == 8
++    assert attempt['provider_timing_ns']['load_duration'] == 20
++
++
++def test_server_lifespan_sends_no_startup_requests_and_initializes_no_cache(monkeypatch):
++    import server
++    import requests
++    from cache.sqlite_cache import SQLiteTranslationCache
++    from fastapi.testclient import TestClient
++    post, get, cache = Mock(), Mock(), Mock(return_value=None)
++    monkeypatch.setattr(requests.Session, 'post', post)
++    monkeypatch.setattr(requests.Session, 'get', get)
++    monkeypatch.setattr(SQLiteTranslationCache, '__init__', cache)
++    monkeypatch.setenv('APP_ENV', 'testing')
++    with TestClient(server.app): pass
++    post.assert_not_called()
++    get.assert_not_called()
++    cache.assert_not_called()
++
++
++def test_strict_run_stop_latch_blocks_the_next_case_before_http(monkeypatch):
++    import provider_usage
++    from providers.gptoss import GPTOSSProvider
++    monkeypatch.setattr(provider_usage, '_run_stop_reason', None)
++    monkeypatch.delenv('PROVIDER_STRICT_RUN', raising=False)
++    provider = GPTOSSProvider()
++    provider._session.post = Mock(return_value=response({'error': 'allowance exhausted'}, 429))
++    with pytest.raises(ProviderStopped):
++        with usage_scope():
++            provider.translate('Water', 'English', 'Cebuano')
++    with pytest.raises(ProviderStopped):
++        with usage_scope():
++            provider.translate('Next case', 'English', 'Filipino')
++    assert provider._session.post.call_count == 1
+diff --git a/trilingua-code/Model/validators/ai_quality_reviewer.py b/trilingua-code/Model/validators/ai_quality_reviewer.py
+index d57110f..d7fc972 100644
+--- a/trilingua-code/Model/validators/ai_quality_reviewer.py
++++ b/trilingua-code/Model/validators/ai_quality_reviewer.py
+@@ -21,6 +21,7 @@ deeper analysis. This way, simple hallucinations are caught instantly,
+ and the AI only reviews chunks that passed the regex check.
+ """
+ 
++from provider_usage import call_with_purpose, ProviderStopped
+ import os
+ import math
+ from dataclasses import dataclass, field
+@@ -171,7 +172,9 @@ class AIQualityReviewer:
+             )
+ 
+         try:
+-            batch_result = self._ai.analyze(system_prompt, user_prompt)
++            batch_result = call_with_purpose("quality_review", self._ai.analyze, system_prompt, user_prompt)
++        except ProviderStopped:
++            raise
+         except Exception as e:
+             print(f"  [QualityReview] Batch review failed: {e}")
+             print("  [QualityReview] Using deterministic checks; no per-item AI retries")
+@@ -305,7 +308,9 @@ class AIQualityReviewer:
+ 
+         # Call AI for deep review
+         try:
+-            result = self._ai.analyze(system_prompt, user_prompt)
++            result = call_with_purpose("quality_review", self._ai.analyze, system_prompt, user_prompt)
++        except ProviderStopped:
++            raise
+         except Exception as e:
+             # If AI review fails, pass the translation (don't block on review)
+             print(f"  [QualityReview] AI review failed: {e}")
+diff --git a/trilingua-code/app/Console/Commands/ValidateDeploymentTimeouts.php b/trilingua-code/app/Console/Commands/ValidateDeploymentTimeouts.php
+index 96e07e0..72012db 100644
+--- a/trilingua-code/app/Console/Commands/ValidateDeploymentTimeouts.php
++++ b/trilingua-code/app/Console/Commands/ValidateDeploymentTimeouts.php
+@@ -30,7 +30,7 @@ public function handle(): int
+         $effective = config('timeouts');
+ 
+         $stages = [
+-            'python_service'  => 'Python engine HTTP limit',
++            'python_service'  => 'Python engine processing budget (short polling requests on Cloud)',
+             'job'             => 'Illuminate job $timeout',
+             'worker'          => 'queue worker --timeout',
+             'retry_after'     => 'database queue lease (retry_after)',
+@@ -48,7 +48,7 @@ public function handle(): int
+         );
+ 
+         $pairwise = [
+-            ['job', 'python_service', 'job $timeout must exceed the Python engine HTTP limit'],
++            ['job', 'python_service', 'job $timeout must exceed the Python engine processing budget'],
+             ['worker', 'job', 'worker --timeout must exceed the job $timeout'],
+             ['retry_after', 'worker', 'database retry_after must exceed the worker --timeout so a live job is never re-leased'],
+             ['reconcile_processing', 'retry_after', 'reconcile processing timeout must exceed retry_after so the reconciler never kills a live job'],
+diff --git a/trilingua-code/app/Console/Commands/ValidateProduction.php b/trilingua-code/app/Console/Commands/ValidateProduction.php
+new file mode 100644
+index 0000000..474e9e1
+--- /dev/null
++++ b/trilingua-code/app/Console/Commands/ValidateProduction.php
+@@ -0,0 +1,56 @@
++<?php
++
++namespace App\Console\Commands;
++
++use Illuminate\Console\Command;
++
++class ValidateProduction extends Command
++{
++    protected $signature = 'deployment:validate-production {--check-migrations : Verify the deployed database schema}';
++
++    protected $description = 'Reject unsafe production configuration before a Laravel Cloud rollout.';
++
++    public function handle(): int
++    {
++        $checks = [
++            'APP_ENV must be production.' => config('app.env') === 'production',
++            'APP_DEBUG must be false.' => config('app.debug') === false,
++            'APP_KEY must be set.' => filled(config('app.key')),
++            'APP_URL must use HTTPS.' => $this->isRemoteHttps(config('app.url')),
++            'Use an external PostgreSQL or MySQL database, not ephemeral SQLite.' => in_array(config('database.default'), ['pgsql', 'mysql', 'mariadb'], true),
++            'PostgreSQL connections must require TLS.' => config('database.default') !== 'pgsql' || in_array(config('database.connections.pgsql.sslmode'), ['require', 'verify-ca', 'verify-full'], true),
++            'SESSION_DRIVER must be database or redis.' => in_array(config('session.driver'), ['database', 'redis'], true),
++            'Session cookies must be secure and HTTP-only.' => config('session.secure') === true && config('session.http_only') === true,
++            'CACHE_STORE must be database or redis.' => in_array(config('cache.default'), ['database', 'redis'], true),
++            'QUEUE_CONNECTION must remain database for transactional document dispatch.' => config('queue.default') === 'database',
++            'PYTHON_SERVICE_URL must be the remote HTTPS translation service.' => $this->isRemoteHttps(config('translation.python_service.url')),
++            'Cloud Python requires PYTHON_DOCUMENT_JOBS=true for long documents.' => ! str_ends_with((string) parse_url(config('translation.python_service.url'), PHP_URL_HOST), '.laravel.cloud') || config('translation.python_service.document_jobs') === true,
++            'Durable Python document jobs require PostgreSQL.' => ! config('translation.python_service.document_jobs') || config('database.default') === 'pgsql',
++            'PYTHON_SERVICE_TOKEN must contain at least 32 characters.' => strlen((string) config('translation.python_service.token')) >= 32,
++            'SUPABASE_URL must use HTTPS.' => $this->isRemoteHttps(config('supabase.url')),
++            'SUPABASE_SERVICE_ROLE_KEY and SUPABASE_BUCKET must be set.' => filled(config('supabase.service_role_key')) && filled(config('supabase.bucket')),
++            'Disable local fallback storage on Cloud; its disk is ephemeral.' => ! config('storage.fallback.enabled'),
++        ];
++
++        $failed = array_keys(array_filter($checks, static fn (bool $valid): bool => ! $valid));
++        foreach ($failed as $message) {
++            $this->error($message);
++        }
++        if ($failed !== []) {
++            return self::FAILURE;
++        }
++
++        $this->info('Production configuration checks passed (configuration only; live services are not tested).');
++
++        return $this->call('deployment:validate-timeouts', [
++            '--check-migrations' => $this->option('check-migrations'),
++        ]);
++    }
++
++    private function isRemoteHttps(?string $url): bool
++    {
++        return filter_var($url, FILTER_VALIDATE_URL) !== false
++            && parse_url($url, PHP_URL_SCHEME) === 'https'
++            && ! in_array(strtolower((string) parse_url($url, PHP_URL_HOST)), ['localhost', '127.0.0.1', '[::1]'], true);
++    }
++}
+diff --git a/trilingua-code/app/Http/Controllers/DocumentsController.php b/trilingua-code/app/Http/Controllers/DocumentsController.php
+index 0fdaa66..243ea00 100644
+--- a/trilingua-code/app/Http/Controllers/DocumentsController.php
++++ b/trilingua-code/app/Http/Controllers/DocumentsController.php
+@@ -302,9 +302,8 @@ public function retranslate(Request $request, int $id): JsonResponse
+                     ], 503);
+                 }
+ 
+-                FileCleanup::dir($persistDir);
+-
+                 if ($outcome->safeToCompensate) {
++                    FileCleanup::dir($persistDir);
+                     $this->quota->refund((int) Auth::id(), $fileSize, $quotaDay);
+                     $this->discardUnacceptedRow($jobRow, $jobId);
+                 }
+diff --git a/trilingua-code/app/Jobs/TranslateDocumentJob.php b/trilingua-code/app/Jobs/TranslateDocumentJob.php
+index 4666b69..5fca838 100644
+--- a/trilingua-code/app/Jobs/TranslateDocumentJob.php
++++ b/trilingua-code/app/Jobs/TranslateDocumentJob.php
+@@ -108,7 +108,9 @@ public function handle(
+         @set_time_limit(0);
+ 
+         $job = $this->resolveJob();
+-        $job?->markProcessing();
++        if ($job !== null && ! $job->markProcessing()) {
++            return;
++        }
+         $outputPath = null;
+ 
+         $this->storeProgress(10, 'Document queued for translation. Processing will begin shortly.');
+@@ -140,13 +142,17 @@ public function handle(
+             $this->storeProgress(15, 'Translating document...');
+ 
+             // 1. Translate the document via TranslationManager
+-            $translationResult = $translationManager->translateDocument(
+-                $uploadedFile,
+-                $this->sourceLang,
+-                $this->targetLang,
+-                $this->pdfColumnMode,
+-                $this->mode
+-            );
++            $arguments = [$uploadedFile, $this->sourceLang, $this->targetLang, $this->pdfColumnMode, $this->mode];
++            if (config('translation.python_service.document_jobs')) {
++                if ($job !== null && empty($job->engine_job_uuid)) {
++                    TranslationJob::whereKey($job->getKey())->whereNull('engine_job_uuid')
++                        ->update(['engine_job_uuid' => (string) Str::uuid()]);
++                    $job->refresh();
++                }
++                $arguments[] = $job?->engine_job_uuid ?? $this->uuid();
++                $arguments[] = fn () => $job?->noteProgress(15);
++            }
++            $translationResult = $translationManager->translateDocument(...$arguments);
+ 
+             $downloadFilename = $translationResult['download_filename'];
+ 
+@@ -303,6 +309,10 @@ public function handle(
+             $this->notifyCompleted($history);
+             $this->notifyAdminsAwaitingReview($history);
+ 
++            if (config('translation.python_service.document_jobs')) {
++                $translationManager->acknowledgeDocumentJob($job?->engine_job_uuid ?? $this->uuid());
++            }
++
+             // StorageService deliberately never removes caller-owned files.
+             // These are worker-local scratch copies and are safe to release
+             // only after the durable history/storage write has completed.
+diff --git a/trilingua-code/app/Models/TranslationJob.php b/trilingua-code/app/Models/TranslationJob.php
+index 3573f2c..16e446b 100644
+--- a/trilingua-code/app/Models/TranslationJob.php
++++ b/trilingua-code/app/Models/TranslationJob.php
+@@ -109,6 +109,7 @@ public function markQueued(bool $recovered = false): bool
+                 'completed_at'      => null,
+                 'terminal_failed_at' => null,
+                 'last_heartbeat_at' => now(),
++                ...($recovered ? ['engine_job_uuid' => null] : []),
+             ]);
+ 
+         if ($updated) {
+@@ -320,4 +321,4 @@ public static function payloadHash(
+             (string) ($parentDocumentId ?? ''),
+         ]));
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/trilingua-code/app/Services/Translation/TranslationManager.php b/trilingua-code/app/Services/Translation/TranslationManager.php
+index c153064..3490eaf 100644
+--- a/trilingua-code/app/Services/Translation/TranslationManager.php
++++ b/trilingua-code/app/Services/Translation/TranslationManager.php
+@@ -8,6 +8,8 @@
+ use Illuminate\Http\UploadedFile;
+ use Illuminate\Support\Facades\Http;
+ use Illuminate\Support\Facades\Log;
++use Illuminate\Support\Str;
++use Illuminate\Support\Sleep;
+ 
+ /**
+  * TranslationManager — Laravel's ONLY translation entry point.
+@@ -138,24 +140,29 @@ public function translateDocument(
+         string $targetLang,
+         string $pdfColumnMode = 'auto',
+         string $mode = 'balanced',
++        ?string $engineJobId = null,
++        ?callable $heartbeat = null,
+     ): array {
+         $ext = strtolower('.' . $file->getClientOriginalExtension());
+         $outExt = config('translation.extension_map.' . ltrim($ext, '.'), $ext);
+ 
+         $startTime = microtime(true);
++        $async = (bool) config('translation.python_service.document_jobs');
++        $engineJobId ??= (string) Str::uuid();
+ 
+         try {
+-            $response = $this->withToken(Http::timeout($this->timeout))
++            $response = $this->withToken(Http::timeout($async ? 45 : $this->timeout)->connectTimeout(10))
+                 ->attach(
+                     'file',
+                     file_get_contents($file->getRealPath()),
+                     $file->getClientOriginalName()
+                 )
+-                ->post("{$this->pythonUrl}/translate/document", [
++                ->post("{$this->pythonUrl}/translate/document" . ($async ? '/jobs' : ''), [
+                     'source_lang' => $sourceLang,
+                     'target_lang' => $targetLang,
+                     'pdf_column_mode' => $pdfColumnMode,
+                     'mode' => $mode,
++                    ...($async ? ['job_id' => $engineJobId] : []),
+                 ]);
+ 
+             if ($response->failed()) {
+@@ -173,6 +180,9 @@ public function translateDocument(
+                 throw new TranslationException($errorMessage, $response->status());
+             }
+ 
++            if ($async) {
++                $response = $this->waitForDocumentJob($engineJobId, $heartbeat, $startTime + $this->timeout);
++            }
+             $data = $response->json();
+             $elapsedMs = (microtime(true) - $startTime) * 1000;
+ 
+@@ -224,6 +234,50 @@ public function translateDocument(
+         }
+     }
+ 
++    private function waitForDocumentJob(string $id, ?callable $heartbeat, float $deadline)
++    {
++        while (microtime(true) < $deadline) {
++            if ($heartbeat !== null) {
++                $heartbeat();
++            }
++            $http = $this->withToken(Http::timeout(min(45, max(1, $deadline - microtime(true))))->connectTimeout(10));
++            $response = $http->get("{$this->pythonUrl}/translate/document/jobs/{$id}");
++            if ($response->failed()) {
++                throw new TranslationException("Document job polling failed (HTTP {$response->status()}).", $response->status());
++            }
++            $status = $response->json('status');
++            if ($status === 'failed') {
++                throw new TranslationException((string) ($response->json('error') ?? 'Document background job failed.'),
++                    (int) ($response->json('error_status') ?? 500));
++            }
++            if ($status === 'completed') {
++                $result = $http->get("{$this->pythonUrl}/translate/document/jobs/{$id}/result");
++                if ($result->failed()) {
++                    throw new TranslationException('Document job result could not be retrieved.', $result->status());
++                }
++                return $result;
++            }
++            if (! in_array($status, ['queued', 'processing'], true)) {
++                throw new TranslationException('Document service returned an invalid job status.');
++            }
++            Sleep::for(min(5, max(0, $deadline - microtime(true))))->seconds();
++        }
++        throw new TranslationException('Document translation exceeded the allowed processing time.', 408);
++    }
++
++    public function acknowledgeDocumentJob(string $id): void
++    {
++        try {
++            $response = $this->withToken(Http::timeout(45)->connectTimeout(10))
++                ->delete("{$this->pythonUrl}/translate/document/jobs/{$id}");
++            if ($response->failed()) {
++                Log::warning('Document job temporary files could not be acknowledged', ['job_id' => $id]);
++            }
++        } catch (\Throwable $e) {
++            Log::warning('Document job acknowledgement unavailable', ['job_id' => $id]);
++        }
++    }
++
+     /**
+      * Regenerate an edited document via the Python AI Engine.
+      *
+@@ -355,4 +409,4 @@ public function getOutputFilename(string $originalName, string $ext): string
+         $stem = pathinfo($originalName, PATHINFO_FILENAME);
+         return $stem . '_translated.' . $outExt;
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/trilingua-code/bootstrap/app.php b/trilingua-code/bootstrap/app.php
+index c762400..42417b7 100644
+--- a/trilingua-code/bootstrap/app.php
++++ b/trilingua-code/bootstrap/app.php
+@@ -15,10 +15,8 @@
+         health: '/up',
+     )
+     ->withMiddleware(function (Middleware $middleware): void {
+-        // Trust only Cloudflare edge proxies (Tunnel/CDN) so X-Forwarded-* headers
+-        // cannot be spoofed by arbitrary clients. Never use `*` here.
+-        // If the deployment moves to a different ingress/CDN, update this list.
+-        $middleware->trustProxies(at: [
++        // Laravel handles Cloud's ingress natively; other hosts trust Cloudflare only.
++        $middleware->trustProxies(at: laravel_cloud() ? null : [
+             // Cloudflare IPv4
+             '173.245.48.0/20',
+             '103.21.244.0/22',
+@@ -63,13 +61,22 @@
+         //
+     })
+     ->withSchedule(function (Schedule $schedule): void {
+-        // Reconcile the durable job state machine and flag stuck workers.
+-        $schedule->command('translations:reconcile --fail')
++        // Reconcile the durable job state machine. The processing timeout must
++        // exceed the queue retry_after (see config/timeouts.php); the reconciler
++        // checks for live worker/lease evidence before failing a job.
++        $schedule->command('translations:reconcile --fail --processing-timeout=' . config('timeouts.reconcile_processing'))
+             ->everyFiveMinutes()
+             ->withoutOverlapping();
+ 
+-        // Surface queue jobs whose lease expired without completing.
+-        $schedule->command('queue:check-stale --threshold=900')
++        // Retry storage-object cleanups left pending by history deletion
++        // (immediate best-effort runs in HistoryController::destroy).
++        $schedule->command('translations:cleanup-storage')
++            ->everyFiveMinutes()
++            ->withoutOverlapping();
++
++        // Surface queue jobs whose lease expired without completing
++        // (advisory only; reconciliation above is the terminal authority).
++        $schedule->command('queue:check-stale --threshold=' . config('timeouts.check_stale'))
+             ->everyFifteenMinutes()
+             ->withoutOverlapping();
+     })
+diff --git a/trilingua-code/composer.lock b/trilingua-code/composer.lock
+index 6e26ea2..1a79a79 100644
+--- a/trilingua-code/composer.lock
++++ b/trilingua-code/composer.lock
+@@ -1611,16 +1611,16 @@
+         },
+         {
+             "name": "league/commonmark",
+-            "version": "2.10.0",
++            "version": "2.10.3",
+             "source": {
+                 "type": "git",
+                 "url": "https://github.com/thephpleague/commonmark.git",
+-                "reference": "d2d1aa8b35e072966c89bc0c66cf926e56767dc4"
++                "reference": "6efbd9c472b91db0a3350fcd601c8332c2382e1f"
+             },
+             "dist": {
+                 "type": "zip",
+-                "url": "https://api.github.com/repos/thephpleague/commonmark/zipball/d2d1aa8b35e072966c89bc0c66cf926e56767dc4",
+-                "reference": "d2d1aa8b35e072966c89bc0c66cf926e56767dc4",
++                "url": "https://api.github.com/repos/thephpleague/commonmark/zipball/6efbd9c472b91db0a3350fcd601c8332c2382e1f",
++                "reference": "6efbd9c472b91db0a3350fcd601c8332c2382e1f",
+                 "shasum": ""
+             },
+             "require": {
+@@ -1714,7 +1714,7 @@
+                     "type": "tidelift"
+                 }
+             ],
+-            "time": "2026-08-11T16:06:25+00:00"
++            "time": "2026-09-21T13:07:34+00:00"
+         },
+         {
+             "name": "league/config",
+@@ -5136,16 +5136,16 @@
+         },
+         {
+             "name": "symfony/polyfill-php80",
+-            "version": "v1.37.0",
++            "version": "v1.43.0",
+             "source": {
+                 "type": "git",
+                 "url": "https://github.com/symfony/polyfill-php80.git",
+-                "reference": "dfb55726c3a76ea3b6459fcfda1ec2d80a682411"
++                "reference": "9c6a5d6b01ca51d486c813e9a9c0ed55f208bb74"
+             },
+             "dist": {
+                 "type": "zip",
+-                "url": "https://api.github.com/repos/symfony/polyfill-php80/zipball/dfb55726c3a76ea3b6459fcfda1ec2d80a682411",
+-                "reference": "dfb55726c3a76ea3b6459fcfda1ec2d80a682411",
++                "url": "https://api.github.com/repos/symfony/polyfill-php80/zipball/9c6a5d6b01ca51d486c813e9a9c0ed55f208bb74",
++                "reference": "9c6a5d6b01ca51d486c813e9a9c0ed55f208bb74",
+                 "shasum": ""
+             },
+             "require": {
+@@ -5196,7 +5196,7 @@
+                 "shim"
+             ],
+             "support": {
+-                "source": "https://github.com/symfony/polyfill-php80/tree/v1.37.0"
++                "source": "https://github.com/symfony/polyfill-php80/tree/v1.43.0"
+             },
+             "funding": [
+                 {
+@@ -5216,7 +5216,7 @@
+                     "type": "tidelift"
+                 }
+             ],
+-            "time": "2026-04-10T16:19:22+00:00"
++            "time": "2026-09-25T15:50:05+00:00"
+         },
+         {
+             "name": "symfony/polyfill-php82",
+diff --git a/trilingua-code/config/timeouts.php b/trilingua-code/config/timeouts.php
+new file mode 100644
+index 0000000..d884d0f
+--- /dev/null
++++ b/trilingua-code/config/timeouts.php
+@@ -0,0 +1,40 @@
++<?php
++
++/*
++|--------------------------------------------------------------------------
++| Timeout ladder (single source of truth)
++|--------------------------------------------------------------------------
++|
++| Every layer that limits how long a document translation may run must obey
++| one strict ordering so a legitimately slow (but alive) job is never
++| re-leased to a second worker, reconciled as dead, or pushed out of its own
++| worker's window. Each value must strictly exceed the previous with margin:
++|
++|   python_service (1200)  <  job (1300)  <  worker (1500)  <
++|     retry_after (1800)  <  reconcile/check-stale (2100)
++|
++|   - python_service : Total engine budget; Cloud document polls each use <=45s.
++|   - job            : Illuminate job `$timeout` (CPU timeout for one attempt).
++|   - worker         : queue:listen/queue:work `--timeout` (kill window).
++|   - retry_after    : database queue lease; must exceed the worker timeout so a
++|                      busy worker finishes BEFORE its job look available again.
++|   - reconcile      : translations:reconcile --processing-timeout AND the
++|                      advisory queue:check-stale --threshold. Must exceed
++|                      retry_after so the reconciler only fails jobs whose lease
++|                      would already have lapsed, never a healthy long call.
++|   - waiting        : how long a created/queued job may wait before the
++|                      reconciler flags it as never-started.
++|
++| deployment:validate-timeouts enforces these inequalities against the
++| effective (post-.env) values at every startup.
++*/
++
++return [
++    'python_service' => (int) env('PYTHON_SERVICE_TIMEOUT', 1200),
++    'job' => (int) env('TRANSLATION_JOB_TIMEOUT', 1300),
++    'worker' => (int) env('QUEUE_WORKER_TIMEOUT', 1500),
++    'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 1800),
++    'reconcile_processing' => (int) env('RECONCILE_PROCESSING_TIMEOUT', 2100),
++    'reconcile_waiting' => (int) env('RECONCILE_WAITING_TIMEOUT', 7200),
++    'check_stale' => (int) env('QUEUE_CHECK_STALE_THRESHOLD', 2100),
++];
+diff --git a/trilingua-code/config/translation.php b/trilingua-code/config/translation.php
+index 6755dd2..c428433 100644
+--- a/trilingua-code/config/translation.php
++++ b/trilingua-code/config/translation.php
+@@ -13,7 +13,8 @@
+ 
+     'python_service' => [
+         'url' => env('PYTHON_SERVICE_URL', 'http://127.0.0.1:5000'),
+-        'timeout' => env('PYTHON_SERVICE_TIMEOUT', 600),
++        'timeout' => env('PYTHON_SERVICE_TIMEOUT', 1200),
++        'document_jobs' => (bool) env('PYTHON_DOCUMENT_JOBS', false),
+         // Shared secret the Laravel client presents as X-Service-Token so the
+         // python service can reject non-app callers. Deploy both sides together.
+         'token' => env('PYTHON_SERVICE_TOKEN'),
+diff --git a/trilingua-code/database/migrations/2026_10_05_000001_add_provider_usage_to_translation_metrics.php b/trilingua-code/database/migrations/2026_10_05_000001_add_provider_usage_to_translation_metrics.php
+new file mode 100644
+index 0000000..ccd7fcc
+--- /dev/null
++++ b/trilingua-code/database/migrations/2026_10_05_000001_add_provider_usage_to_translation_metrics.php
+@@ -0,0 +1,33 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\DB;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    public function up(): void
++    {
++        Schema::table('translation_metrics', function (Blueprint $table) {
++            $table->json('provider_usage')->nullable();
++            $table->unsignedInteger('llm_calls')->nullable()->default(null)->change();
++            $table->unsignedBigInteger('input_tokens')->nullable()->default(null)->change();
++            $table->unsignedBigInteger('output_tokens')->nullable()->default(null)->change();
++        });
++    }
++
++    public function down(): void
++    {
++        // The legacy schema requires numbers; detailed unknown markers are lost on rollback.
++        foreach (['llm_calls', 'input_tokens', 'output_tokens'] as $column) {
++            DB::table('translation_metrics')->whereNull($column)->update([$column => 0]);
++        }
++        Schema::table('translation_metrics', function (Blueprint $table) {
++            $table->dropColumn('provider_usage');
++            $table->unsignedInteger('llm_calls')->nullable(false)->default(0)->change();
++            $table->unsignedBigInteger('input_tokens')->nullable(false)->default(0)->change();
++            $table->unsignedBigInteger('output_tokens')->nullable(false)->default(0)->change();
++        });
++    }
++};
+diff --git a/trilingua-code/database/migrations/2026_10_08_161834_create_python_document_jobs_table.php b/trilingua-code/database/migrations/2026_10_08_161834_create_python_document_jobs_table.php
+new file mode 100644
+index 0000000..69d9fe9
+--- /dev/null
++++ b/trilingua-code/database/migrations/2026_10_08_161834_create_python_document_jobs_table.php
+@@ -0,0 +1,51 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++use Illuminate\Support\Facades\DB;
++
++return new class extends Migration
++{
++    /**
++     * Run the migrations.
++     */
++    public function up(): void
++    {
++        Schema::create('python_document_jobs', function (Blueprint $table) {
++            $table->uuid('id')->primary();
++            $table->string('fingerprint', 64);
++            $table->string('filename');
++            $table->string('input_path');
++            $table->json('options');
++            $table->string('status')->default('queued')->index();
++            $table->uuid('lease_id')->nullable();
++            $table->timestampTz('lease_until')->nullable();
++            $table->timestampTz('deadline')->nullable();
++            $table->string('result_path')->nullable();
++            $table->text('error')->nullable();
++            $table->unsignedSmallInteger('error_status')->nullable();
++            $table->boolean('provider_stop_released')->default(false);
++            $table->boolean('acknowledged')->default(false);
++            $table->timestampTz('created_at')->useCurrent();
++            $table->timestampTz('updated_at')->useCurrent();
++        });
++
++        Schema::table('translation_jobs', fn (Blueprint $table) => $table->uuid('engine_job_uuid')->nullable());
++        if (DB::getDriverName() === 'pgsql') {
++            DB::unprepared(file_get_contents(database_path('sql/python_document_jobs.sql')));
++        }
++    }
++
++    /**
++     * Reverse the migrations.
++     */
++    public function down(): void
++    {
++        if (DB::getDriverName() === 'pgsql') {
++            DB::unprepared('DROP FUNCTION IF EXISTS public.claim_python_document_job(), public.renew_python_document_job(uuid, uuid), public.finish_python_document_job(uuid, uuid, text, text, integer)');
++        }
++        Schema::table('translation_jobs', fn (Blueprint $table) => $table->dropColumn('engine_job_uuid'));
++        Schema::dropIfExists('python_document_jobs');
++    }
++};
+diff --git a/trilingua-code/database/sql/python_document_jobs.sql b/trilingua-code/database/sql/python_document_jobs.sql
+new file mode 100644
+index 0000000..b92cf4c
+--- /dev/null
++++ b/trilingua-code/database/sql/python_document_jobs.sql
+@@ -0,0 +1,64 @@
++ALTER TABLE public.python_document_jobs ENABLE ROW LEVEL SECURITY;
++REVOKE ALL ON public.python_document_jobs FROM PUBLIC, anon, authenticated;
++GRANT SELECT, INSERT, UPDATE, DELETE ON public.python_document_jobs TO service_role;
++
++CREATE FUNCTION public.claim_python_document_job()
++RETURNS SETOF public.python_document_jobs
++LANGUAGE plpgsql SECURITY INVOKER SET search_path = '' AS $$
++BEGIN
++    -- A dead worker may have spent AI credits: never automatically replay its work.
++    UPDATE public.python_document_jobs
++    SET status = 'failed', error_status = 408,
++        error = 'Document worker stopped or exceeded its deadline. Explicit operator retry is required.', updated_at = now()
++    WHERE (status = 'processing' AND (lease_until <= now() OR deadline <= now()))
++       OR (status = 'queued' AND created_at < now() - interval '20 minutes');
++
++    -- Keep terminal provider failures latched across Cloud process restarts.
++    IF EXISTS (SELECT 1 FROM public.python_document_jobs
++               WHERE error_status = 429 AND NOT provider_stop_released) THEN
++        UPDATE public.python_document_jobs SET status = 'failed', error_status = 429,
++            error = 'AI provider is stopped. An operator must resolve credentials or quota before retrying.', updated_at = now()
++        WHERE status = 'queued';
++        RETURN;
++    END IF;
++
++    RETURN QUERY
++    UPDATE public.python_document_jobs j
++    SET status = 'processing', lease_id = pg_catalog.gen_random_uuid(),
++        lease_until = now() + interval '90 seconds', deadline = now() + interval '20 minutes', updated_at = now()
++    WHERE j.id = (SELECT q.id FROM public.python_document_jobs q WHERE q.status = 'queued'
++                  ORDER BY q.created_at FOR UPDATE SKIP LOCKED LIMIT 1)
++    RETURNING j.*;
++END;
++$$;
++
++CREATE FUNCTION public.renew_python_document_job(job_id uuid, lease_id uuid)
++RETURNS boolean LANGUAGE sql SECURITY INVOKER SET search_path = '' AS $$
++    WITH renewed AS (
++        UPDATE public.python_document_jobs j
++        SET lease_until = least(now() + interval '90 seconds', j.deadline), updated_at = now()
++        WHERE j.id = $1 AND j.lease_id = $2 AND j.status = 'processing'
++          AND j.lease_until > now() AND j.deadline > now()
++        RETURNING j.id
++    ) SELECT EXISTS(SELECT 1 FROM renewed);
++$$;
++
++CREATE FUNCTION public.finish_python_document_job(job_id uuid, lease_id uuid,
++    result_path text DEFAULT NULL, error text DEFAULT NULL, error_status integer DEFAULT NULL)
++RETURNS boolean LANGUAGE sql SECURITY INVOKER SET search_path = '' AS $$
++    WITH finished AS (
++        UPDATE public.python_document_jobs j
++        SET status = CASE WHEN $3 IS NULL THEN 'failed' ELSE 'completed' END,
++            result_path = $3, error = $4, error_status = $5, updated_at = now()
++        WHERE j.id = $1 AND j.lease_id = $2 AND j.status = 'processing'
++          AND j.lease_until > now() AND j.deadline > now()
++        RETURNING j.id
++    ) SELECT EXISTS(SELECT 1 FROM finished);
++$$;
++
++REVOKE EXECUTE ON FUNCTION public.claim_python_document_job(),
++    public.renew_python_document_job(uuid, uuid), public.finish_python_document_job(uuid, uuid, text, text, integer)
++    FROM PUBLIC, anon, authenticated;
++GRANT EXECUTE ON FUNCTION public.claim_python_document_job(),
++    public.renew_python_document_job(uuid, uuid), public.finish_python_document_job(uuid, uuid, text, text, integer)
++    TO service_role;
+diff --git a/trilingua-code/tests/Feature/CloudProxyTest.php b/trilingua-code/tests/Feature/CloudProxyTest.php
+new file mode 100644
+index 0000000..eb7d300
+--- /dev/null
++++ b/trilingua-code/tests/Feature/CloudProxyTest.php
+@@ -0,0 +1,36 @@
++<?php
++
++namespace Tests\Feature;
++
++use Illuminate\Http\Middleware\TrustProxies;
++use Illuminate\Http\Request;
++use Illuminate\Support\Facades\Route;
++use Tests\TestCase;
++
++class CloudProxyTest extends TestCase
++{
++    public function test_cloud_ingress_preserves_https_and_client_address(): void
++    {
++        $previous = $_ENV['LARAVEL_CLOUD'] ?? null;
++        try {
++            $_ENV['LARAVEL_CLOUD'] = '1';
++            TrustProxies::flushState();
++            $this->refreshApplication();
++            Route::get('/cloud-proxy-test', static fn (Request $request): array => [
++                'secure' => $request->isSecure(),
++                'client' => $request->ip(),
++            ]);
++            $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.10'])
++                ->withHeaders(['X-Forwarded-Proto' => 'https', 'X-Forwarded-For' => '203.0.113.8'])
++                ->get('/cloud-proxy-test')
++                ->assertOk()->assertJson(['secure' => true, 'client' => '203.0.113.8']);
++        } finally {
++            if ($previous === null) {
++                unset($_ENV['LARAVEL_CLOUD']);
++            } else {
++                $_ENV['LARAVEL_CLOUD'] = $previous;
++            }
++            TrustProxies::flushState();
++        }
++    }
++}
+diff --git a/trilingua-code/tests/Feature/ProductionConfigurationTest.php b/trilingua-code/tests/Feature/ProductionConfigurationTest.php
+new file mode 100644
+index 0000000..af2d553
+--- /dev/null
++++ b/trilingua-code/tests/Feature/ProductionConfigurationTest.php
+@@ -0,0 +1,76 @@
++<?php
++
++namespace Tests\Feature;
++
++use PHPUnit\Framework\Attributes\DataProvider;
++use Tests\TestCase;
++
++class ProductionConfigurationTest extends TestCase
++{
++    protected function setUp(): void
++    {
++        parent::setUp();
++        // Configuration checks do not connect to these synthetic services.
++        config([
++            'app.env' => 'production',
++            'app.debug' => false,
++            'app.url' => 'https://app.example.com',
++            'database.default' => 'pgsql',
++            'database.connections.pgsql.sslmode' => 'require',
++            'session.driver' => 'database',
++            'session.secure' => true,
++            'session.http_only' => true,
++            'cache.default' => 'database',
++            'queue.default' => 'database',
++            'translation.python_service.url' => 'https://engine.example.com',
++            'translation.python_service.token' => str_repeat('a', 32),
++            'supabase.url' => 'https://test.supabase.co',
++            'storage.fallback.enabled' => false,
++        ]);
++    }
++
++    public function test_valid_configuration_passes_without_contacting_services(): void
++    {
++        $this->artisan('deployment:validate-production')->assertSuccessful();
++    }
++
++    public function test_cloud_python_requires_durable_jobs_on_postgres(): void
++    {
++        config(['translation.python_service.url' => 'https://engine.laravel.cloud',
++            'translation.python_service.document_jobs' => false]);
++        $this->artisan('deployment:validate-production')->assertFailed();
++        config(['translation.python_service.document_jobs' => true]);
++        $this->artisan('deployment:validate-production')->assertSuccessful();
++        config(['database.default' => 'mysql']);
++        $this->artisan('deployment:validate-production')->assertFailed();
++    }
++
++    #[DataProvider('unsafeSettings')]
++    public function test_unsafe_configuration_is_rejected(string $key, mixed $value): void
++    {
++        config([$key => $value]);
++        $this->artisan('deployment:validate-production')->assertFailed();
++    }
++
++    public static function unsafeSettings(): array
++    {
++        return [
++            ['app.env', 'local'],
++            ['app.debug', true],
++            ['app.key', ''],
++            ['app.url', 'http://app.example.com'],
++            ['database.default', 'sqlite'],
++            ['database.connections.pgsql.sslmode', 'prefer'],
++            ['session.driver', 'file'],
++            ['session.secure', false],
++            ['session.http_only', false],
++            ['cache.default', 'file'],
++            ['queue.default', 'cloud'],
++            ['translation.python_service.url', 'http://127.0.0.1:5000'],
++            ['translation.python_service.url', 'https://localhost'],
++            ['translation.python_service.token', 'short'],
++            ['supabase.service_role_key', ''],
++            ['storage.fallback.enabled', true],
++        ];
++    }
++}
+diff --git a/trilingua-code/tests/Integration/python_document_jobs.sql b/trilingua-code/tests/Integration/python_document_jobs.sql
+new file mode 100644
+index 0000000..ebc5012
+--- /dev/null
++++ b/trilingua-code/tests/Integration/python_document_jobs.sql
+@@ -0,0 +1,54 @@
++-- Run only against a disposable local PostgreSQL database after Laravel migrations.
++\set ON_ERROR_STOP on
++BEGIN;
++DO $$
++DECLARE
++    first_job public.python_document_jobs;
++    second_job public.python_document_jobs;
++    new_id uuid := gen_random_uuid();
++    claimed_count integer;
++BEGIN
++    IF current_database() <> 'trilingua_engine_test' THEN
++        RAISE EXCEPTION 'Refusing to run queue mutation tests outside trilingua_engine_test';
++    END IF;
++    IF has_table_privilege('anon', 'public.python_document_jobs', 'SELECT') OR
++       has_function_privilege('authenticated', 'public.claim_python_document_job()', 'EXECUTE') THEN
++        RAISE EXCEPTION 'Anonymous/authenticated clients can access the internal queue';
++    END IF;
++    INSERT INTO public.python_document_jobs(id, fingerprint, filename, input_path, options)
++    VALUES (gen_random_uuid(), 'one', 'source.txt', 'one/input', '{}'),
++           (gen_random_uuid(), 'two', 'source.txt', 'two/input', '{}');
++    SELECT * INTO first_job FROM public.claim_python_document_job();
++    SELECT * INTO second_job FROM public.claim_python_document_job();
++    IF first_job.id IS NULL OR second_job.id IS NULL OR first_job.id = second_job.id OR
++       EXISTS(SELECT 1 FROM public.claim_python_document_job()) THEN
++        RAISE EXCEPTION 'Queue claim did not reserve distinct jobs';
++    END IF;
++    IF public.finish_python_document_job(first_job.id, gen_random_uuid(), 'wrong/result') THEN
++        RAISE EXCEPTION 'Wrong lease was allowed to complete';
++    END IF;
++    IF NOT public.renew_python_document_job(first_job.id, first_job.lease_id) THEN
++        RAISE EXCEPTION 'Active lease could not renew';
++    END IF;
++    UPDATE public.python_document_jobs SET lease_until = now() - interval '1 second' WHERE id = first_job.id;
++    IF public.renew_python_document_job(first_job.id, first_job.lease_id) OR
++       public.finish_python_document_job(first_job.id, first_job.lease_id, 'late/result') THEN
++        RAISE EXCEPTION 'Expired lease was revived or completed';
++    END IF;
++    PERFORM public.claim_python_document_job();
++    IF NOT EXISTS(SELECT 1 FROM public.python_document_jobs WHERE id = first_job.id AND status = 'failed' AND error_status = 408) THEN
++        RAISE EXCEPTION 'Dead worker was replayed instead of failed';
++    END IF;
++    IF NOT public.finish_python_document_job(second_job.id, second_job.lease_id, NULL, 'Provider stopped', 429) THEN
++        RAISE EXCEPTION 'Terminal provider failure could not be stored';
++    END IF;
++    INSERT INTO public.python_document_jobs(id, fingerprint, filename, input_path, options)
++    VALUES (new_id, 'three', 'source.txt', 'three/input', '{}');
++    SELECT count(*) INTO claimed_count FROM public.claim_python_document_job();
++    IF claimed_count <> 0 OR NOT EXISTS(SELECT 1 FROM public.python_document_jobs WHERE id = new_id AND status = 'failed' AND error_status = 429) THEN
++        RAISE EXCEPTION 'Persisted provider stop did not block new work';
++    END IF;
++    RAISE NOTICE 'Queue assertions passed: restricted access, distinct claims, renewal, lease fencing, terminal expiry, persistent provider stop';
++END;
++$$;
++ROLLBACK;
+diff --git a/trilingua-code/tests/Unit/TranslateDocumentJobPythonIdTest.php b/trilingua-code/tests/Unit/TranslateDocumentJobPythonIdTest.php
+new file mode 100644
+index 0000000..fd9f579
+--- /dev/null
++++ b/trilingua-code/tests/Unit/TranslateDocumentJobPythonIdTest.php
+@@ -0,0 +1,62 @@
++<?php
++
++namespace Tests\Unit;
++
++use App\Exceptions\TranslationException;
++use App\Jobs\TranslateDocumentJob;
++use App\Models\TranslationJob;
++use App\Models\User;
++use App\Services\BlockService;
++use App\Services\HistoryService;
++use App\Services\MetricsService;
++use App\Services\StorageService;
++use App\Services\Translation\TranslationManager;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Illuminate\Support\Facades\Notification;
++use Mockery;
++use Tests\TestCase;
++
++class TranslateDocumentJobPythonIdTest extends TestCase
++{
++    use RefreshDatabase;
++
++    public function test_connection_retry_keeps_python_id_and_operator_recovery_starts_a_new_attempt(): void
++    {
++        config(['translation.python_service.document_jobs' => true]);
++        Notification::fake();
++        $user = User::factory()->create();
++        $state = TranslationJob::create(['user_id' => $user->id, 'payload_hash' => hash('sha256', 'source'),
++            'original_name' => 'source.txt', 'original_ext' => '.txt', 'file_size' => 6,
++            'source_lang' => 'English', 'target_lang' => 'Filipino', 'status' => 'queued']);
++        $path = tempnam(sys_get_temp_dir(), 'trilingua-engine-test-');
++        file_put_contents($path, 'source');
++        $job = new TranslateDocumentJob('source.txt', '.txt', 6, 'English', 'Filipino', 'auto', $path, $user->id,
++            'original/source.txt', translationJobId: $state->id, presetUuid: $state->uuid);
++        $ids = [];
++        $manager = Mockery::mock(TranslationManager::class);
++        $manager->shouldReceive('translateDocument')->twice()->andReturnUsing(function ($file, $source, $target, $columns, $mode, $id) use (&$ids) {
++            $ids[] = $id;
++            throw new TranslationException(count($ids) === 1 ? 'Could not connect' : 'Provider stopped', count($ids) === 1 ? 503 : 429);
++        });
++        $storage = Mockery::mock(StorageService::class);
++        $history = Mockery::mock(HistoryService::class);
++        $blocks = Mockery::mock(BlockService::class);
++        $metrics = Mockery::mock(MetricsService::class);
++        try {
++            $job->handle($manager, $storage, $history, $blocks, $metrics);
++            $this->assertSame('queued', $state->fresh()->status);
++            $job->handle($manager, $storage, $history, $blocks, $metrics);
++            $this->assertSame($ids[0], $ids[1]);
++            $this->assertSame($ids[0], $state->fresh()->engine_job_uuid);
++            $this->assertSame('failed', $state->fresh()->status);
++            $job->handle($manager, $storage, $history, $blocks, $metrics);
++            $state->refresh();
++            $this->assertTrue($state->markQueued(recovered: true));
++            $this->assertNull($state->fresh()->engine_job_uuid);
++        } finally {
++            if (file_exists($path)) {
++                unlink($path);
++            }
++        }
++    }
++}
+diff --git a/trilingua-code/tests/Unit/TranslationManagerDocumentJobsTest.php b/trilingua-code/tests/Unit/TranslationManagerDocumentJobsTest.php
+new file mode 100644
+index 0000000..e4500cc
+--- /dev/null
++++ b/trilingua-code/tests/Unit/TranslationManagerDocumentJobsTest.php
+@@ -0,0 +1,83 @@
++<?php
++
++namespace Tests\Unit;
++
++use App\Exceptions\TranslationException;
++use App\Services\Translation\TranslationManager;
++use Illuminate\Http\UploadedFile;
++use Illuminate\Support\Facades\Http;
++use Illuminate\Support\Sleep;
++use Tests\TestCase;
++
++class TranslationManagerDocumentJobsTest extends TestCase
++{
++    protected function setUp(): void
++    {
++        parent::setUp();
++        config(['translation.python_service.document_jobs' => true,
++            'translation.python_service.url' => 'https://engine.example.test',
++            'translation.python_service.token' => 'test-service-token']);
++        Sleep::fake();
++        Http::preventStrayRequests();
++    }
++
++    public function test_submission_polls_short_requests_and_preserves_review_data(): void
++    {
++        $id = 'eaef25cc-fd3f-463b-9e73-db49dab738cd';
++        $url = 'https://engine.example.test/translate/document/jobs';
++        Http::fake([
++            $url => Http::response(['id' => $id, 'status' => 'queued'], 202),
++            "$url/$id" => Http::sequence()->push(['status' => 'queued'])->push(['status' => 'processing'])->push(['status' => 'completed']),
++            "$url/$id/result" => Http::response(['file_base64' => base64_encode('translated bytes'),
++                'blocks' => [['block_index' => 0]], 'sidecar' => ['format' => '.txt'],
++                'metrics' => ['provider_usage' => ['request_count' => 2]], 'download_filename' => 'translated.txt']),
++        ]);
++        $beats = 0;
++        $result = app(TranslationManager::class)->translateDocument(UploadedFile::fake()->createWithContent('original.txt', 'source'),
++            'English', 'Filipino', engineJobId: $id, heartbeat: function () use (&$beats) { $beats++; });
++        $this->assertSame('translated bytes', $result['body']);
++        $this->assertSame([['block_index' => 0]], $result['blocks']);
++        $this->assertSame(['format' => '.txt'], $result['sidecar']);
++        $this->assertSame(3, $beats);
++        Http::assertSentCount(5);
++        Http::assertSent(fn ($request) => $request->method() === 'POST' && $request->url() === $url
++            && collect($request->data())->contains(fn ($field) => ($field['name'] ?? null) === 'job_id' && $field['contents'] === $id));
++        Http::assertSent(fn ($request) => $request->hasHeader('X-Service-Token', 'test-service-token'));
++    }
++
++    public function test_provider_stop_is_terminal_without_a_second_submission_or_fallback(): void
++    {
++        Http::fake([
++            '*/jobs' => Http::response(['status' => 'queued'], 202),
++            '*/jobs/*' => Http::response(['status' => 'failed', 'error_status' => 429, 'error' => 'Provider stopped']),
++        ]);
++        try {
++            app(TranslationManager::class)->translateDocument(UploadedFile::fake()->createWithContent('original.txt', 'source'), 'English', 'Filipino');
++            $this->fail('Expected a terminal provider failure');
++        } catch (TranslationException $error) {
++            $this->assertSame(429, $error->getCode());
++        }
++        Http::assertSentCount(2);
++    }
++
++    public function test_acknowledgement_failure_does_not_remove_a_completed_translation(): void
++    {
++        Http::fake(['*/jobs/*' => Http::response([], 503)]);
++        app(TranslationManager::class)->acknowledgeDocumentJob('eaef25cc-fd3f-463b-9e73-db49dab738cd');
++        Http::assertSent(fn ($request) => $request->method() === 'DELETE');
++    }
++
++    public function test_polling_auth_failure_is_terminal_and_is_not_reported_as_a_connection_retry(): void
++    {
++        Http::fake(['*/jobs' => Http::response(['status' => 'queued'], 202),
++            '*/jobs/*' => Http::response([], 401)]);
++        try {
++            app(TranslationManager::class)->translateDocument(UploadedFile::fake()->createWithContent('original.txt', 'source'), 'English', 'Filipino');
++            $this->fail('Expected a terminal service authentication failure');
++        } catch (TranslationException $error) {
++            $this->assertSame(401, $error->getCode());
++            $this->assertStringNotContainsString('could not connect', strtolower($error->getMessage()));
++        }
++        Http::assertSentCount(2);
++    }
++}

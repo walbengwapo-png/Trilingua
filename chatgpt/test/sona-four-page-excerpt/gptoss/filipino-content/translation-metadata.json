@@ -1,0 +1,16 @@
+{
+  "source": "C:\\dev\\Trilingua\\chatgpt\\test\\sona-four-page-excerpt\\SONA_2019_English__pages-3-to-6.pdf",
+  "source_sha256": "1d13ee35254191600d5208b7479807b7825d5e50dbc9680d704dbfe061d5c1a5",
+  "target_language": "Filipino",
+  "provider": "gptoss",
+  "model": "gpt-oss:20b-cloud",
+  "fallback_disabled": true,
+  "cache_disabled": true,
+  "mode": "fast",
+  "elapsed_ms": 668745.83,
+  "status": "failed",
+  "engine_response": {
+    "status": 500,
+    "error": "{\"detail\":\"Translation error: Translation failed for 1 block(s). block 0: Translation failed: providers returned the source text unchanged for target language Filipino.. The source document was not returned as a false successful translation.\"}"
+  }
+}

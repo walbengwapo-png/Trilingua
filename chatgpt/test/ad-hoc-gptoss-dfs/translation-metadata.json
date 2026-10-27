@@ -1,0 +1,57 @@
+{
+  "source": "C:\\dev\\Trilingua\\chatgpt\\test\\Original Files\\DFS_Website_Foundation_Agreement.pdf",
+  "source_sha256": "bfabde7b0effb68878affd1c9edb5efde19907ba8dba1f1d6a0fecbeed012e48",
+  "target_language": "Cebuano",
+  "provider": "gptoss",
+  "model": "gpt-oss:20b-cloud",
+  "fallback_disabled": true,
+  "cache_disabled": true,
+  "mode": "fast",
+  "elapsed_ms": 1183042.75,
+  "status": "completed",
+  "engine_response": {
+    "download_filename": "DFS_Website_Foundation_Agreement_translated.pdf",
+    "mime_type": "application/pdf",
+    "metrics": {
+      "provider": "gptoss",
+      "model": "gpt-oss:20b-cloud",
+      "mode": "fast",
+      "total_time_ms": 1182958.4,
+      "llm_calls": 80,
+      "llm_total_time_ms": 1181802.7,
+      "scheduler_wait_ms": 46585593.0,
+      "scheduler_batches": 80,
+      "scheduler_slots": 1,
+      "echo_retries": 0,
+      "semantic_fallbacks": 0,
+      "batch_fallbacks": 0,
+      "total_blocks": 80,
+      "blocks_translated": 80,
+      "blocks_cached": 0,
+      "blocks_passthrough": 0,
+      "retranslated_chunks": 0,
+      "cache_hits": 0,
+      "cache_misses": 0,
+      "document_type": "unknown",
+      "providers_used": {
+        "gptoss": {
+          "model": "gpt-oss:20b-cloud",
+          "calls": 80
+        }
+      },
+      "provider_chain": [
+        "gptoss"
+      ]
+    }
+  },
+  "output_path": "C:\\dev\\Trilingua\\chatgpt\\test\\ad-hoc-gptoss-dfs\\DFS_Website_Foundation_Agreement__en-to-ceb.pdf",
+  "output_sha256": "210a5846b5a35d9c4bcb5d627a49750e63e60815e1e2f1a1ca3c82c27a66d3f3",
+  "output_bytes": 3636803,
+  "structure": {
+    "page_count": 4,
+    "text_characters": 6572,
+    "non_empty_text": true,
+    "page_count_matches_source": true,
+    "layout_validation": "pass"
+  }
+}

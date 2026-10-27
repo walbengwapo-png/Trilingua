@@ -1,0 +1,5 @@
+{
+  "javascript_uri_retained": true,
+  "html": "<p><a href=\"javascript:void(0)\">Harmless audit link</a></p>",
+  "browser_execution_tested": false
+}

@@ -1,0 +1,103 @@
+{
+  "input": "C:\\dev\\Trilingua\\.tmp_google_classroom_tests\\Sample_Test Case Template.docx",
+  "fonts_by_char_count": {},
+  "direct_run_formatting_runs": 7,
+  "direct_paragraph_formatting_paragraphs": 46,
+  "heading_like_paragraphs_not_heading_style": [
+    {
+      "para_index": 11,
+      "text": "TEST CASE",
+      "style": "normal"
+    },
+    {
+      "para_index": 12,
+      "text": "PRE-CONDITION(S)",
+      "style": "normal"
+    },
+    {
+      "para_index": 13,
+      "text": "PROCEDURE(S)",
+      "style": "normal"
+    },
+    {
+      "para_index": 14,
+      "text": "TEST DATA",
+      "style": "normal"
+    },
+    {
+      "para_index": 15,
+      "text": "EXPECTED RESULT",
+      "style": "normal"
+    },
+    {
+      "para_index": 16,
+      "text": "ACTUAL RESULT",
+      "style": "normal"
+    },
+    {
+      "para_index": 17,
+      "text": "STATUS",
+      "style": "normal"
+    }
+  ],
+  "examples": {
+    "direct_paragraph_formatting": [
+      {
+        "para_index": 7,
+        "text": "",
+        "style": "normal"
+      },
+      {
+        "para_index": 8,
+        "text": "",
+        "style": "normal"
+      },
+      {
+        "para_index": 9,
+        "text": "",
+        "style": "normal"
+      },
+      {
+        "para_index": 10,
+        "text": "",
+        "style": "normal"
+      },
+      {
+        "para_index": 11,
+        "text": "TEST CASE",
+        "style": "normal"
+      }
+    ],
+    "direct_run_formatting": [
+      {
+        "para_index": 11,
+        "run_text": "TEST CASE",
+        "style": "normal"
+      },
+      {
+        "para_index": 12,
+        "run_text": "PRE-CONDITION(S)",
+        "style": "normal"
+      },
+      {
+        "para_index": 13,
+        "run_text": "PROCEDURE(S)",
+        "style": "normal"
+      },
+      {
+        "para_index": 14,
+        "run_text": "TEST DATA",
+        "style": "normal"
+      },
+      {
+        "para_index": 15,
+        "run_text": "EXPECTED RESULT",
+        "style": "normal"
+      }
+    ]
+  },
+  "notes": [
+    "Direct formatting is not always wrong, but it often causes inconsistent output when templates change.",
+    "Heading-like paragraphs not using Heading styles can break TOC and accessibility."
+  ]
+}

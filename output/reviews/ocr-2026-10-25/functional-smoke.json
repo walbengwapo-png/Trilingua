@@ -1,0 +1,20 @@
+{
+  "status": "passed",
+  "recognition": "actual local Tesseract",
+  "translation": "mock provider; no translation quality claim",
+  "gate": "overridden only inside this isolated test process",
+  "blocks": 9,
+  "output": "C:\\dev\\Trilingua\\output\\reviews\\ocr-2026-10-25\\translated_mixed-live-ocr-source.pdf",
+  "regenerated": "C:\\dev\\Trilingua\\output\\reviews\\ocr-2026-10-25\\mixed-mock-regenerated.pdf",
+  "validation": {
+    "status": "passed",
+    "content_coverage": "passed",
+    "layout": "separate_translated_text",
+    "linguistic_accuracy": "unverified",
+    "source_pages": [
+      0,
+      1
+    ],
+    "output_pages": 2
+  }
+}

@@ -30,7 +30,7 @@ Stop everything:
 ## Pre-demo checklist (2 minutes)
 
 - [ ] Ollama app is running (system tray icon)
-- [ ] Internet connected (Supabase, Mistral, Ollama Cloud, tunnel all need it)
+- [ ] Internet connected (Supabase, Gemini, Ollama Cloud, tunnel all need it)
 - [ ] `.\start-demo.ps1 -Tunnel` printed **DEMO READY**
 - [ ] Opened the URL once on your phone to confirm it loads from outside
 - [ ] Logged in with an **email/password** account

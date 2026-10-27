@@ -162,4 +162,25 @@ class DocumentPreviewTest extends TestCase
             ->assertSee('review-pane__frame', false)
             ->assertDontSee('id="converter-host"', false);
     }
+
+    public function test_admin_review_shows_ocr_warnings_separately_from_ai_quality(): void
+    {
+        $admin = $this->makeUser(admin: true);
+        $doc = $this->makeDoc($admin, [
+            'original_filename' => 'worksheet.png', 'translated_filename' => 'worksheet_translated.pdf',
+            'sidecar' => [
+                'extraction' => ['warnings' => ['Check <script>uncertain</script> text.']],
+                'blocks' => [['block_index' => 0, 'ocr' => [
+                    'confidence' => 55.5, 'uncertain_words' => [['text' => 'ambiguous']],
+                ]]],
+            ],
+        ]);
+        $this->makeBlock($doc, ['quality_score' => null]);
+        $this->actingAs($admin)->get("/admin/review/{$doc->id}")->assertOk()
+            ->assertSee('Extraction warnings')
+            ->assertSee('OCR confidence: 55.5 / 100.')
+            ->assertSee('ambiguous')
+            ->assertSee('Check &lt;script&gt;uncertain&lt;/script&gt; text.', false)
+            ->assertDontSee('<script>uncertain</script>', false);
+    }
 }

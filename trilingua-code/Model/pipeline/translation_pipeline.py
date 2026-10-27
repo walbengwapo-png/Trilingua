@@ -695,6 +695,14 @@ class TranslationPipeline:
                     model=self.provider.model_name,
                     warnings=["Translation served from the configured provider-chain cache."],
                     execution_time_ms=(time.time() - start_time) * 1000,
+                    measurement_metadata={
+                        "schema_version": 1, "cache_served": True,
+                        "llm_calls": 0, "calls_complete": True,
+                        "calls_scope": "translation", "calls_provenance": "measured locally",
+                        "observed_providers": [],
+                        "usage_provenance": {"input": "unknown", "output": "unknown"},
+                        "timing_scope": "translation_result_elapsed", "timing_observed": True,
+                    },
                 )
 
         if context_buffer is None:
@@ -725,6 +733,9 @@ class TranslationPipeline:
 
         # 5. Update execution time
         response.execution_time_ms = (time.time() - start_time) * 1000
+        response.measurement_metadata.update({
+            "schema_version": 1, "timing_scope": "translation_result_elapsed", "timing_observed": True,
+        })
 
         return response
 

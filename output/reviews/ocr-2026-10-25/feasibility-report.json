@@ -1,0 +1,223 @@
+{
+  "minimum_word_accuracy_percent": 95.0,
+  "engine": {
+    "available": true,
+    "binary": "C:/Program Files/Tesseract-OCR/tesseract.exe",
+    "version": "tesseract v5.4.0.20240606",
+    "installed_packs": [
+      "ceb",
+      "eng",
+      "fil",
+      "osd"
+    ],
+    "list_languages_output": "List of available languages in \"C:/Users/walbe/AppData/Local/TriLingua/ocr/tessdata/\" (4):\nceb\neng\nfil\nosd\n",
+    "pack_sha256": {
+      "ceb": "346a39de801495c93ece6656d018d7d19d298af7db42d82ebae99dfe8ee14961",
+      "eng": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+      "fil": "2b17f68014ab44b88b5e2334ebcd0ce0090d9af7c6fbef6fab22e0bbd9a934dd",
+      "osd": "9cf5d576fcc47564f11265841e5ca839001e7e6f38ff7f7aacf46d15a96b00ff"
+    }
+  },
+  "source_cases": 8,
+  "cases": [
+    {
+      "id": "01-eng-rasterized",
+      "language": "English",
+      "pack": "eng",
+      "input_category": "scan",
+      "source_url": "https://files.consumerfinance.gov/f/documents/cfpb_your-money-your-goals_spending_tracker_2018-11_ADA.pdf",
+      "acceptance_eligible": false,
+      "reference_words": 85,
+      "word_errors": 0,
+      "reference_characters": 482,
+      "character_errors": 0,
+      "wer": 0.0,
+      "cer": 0.0,
+      "word_accuracy_percent": 100.0,
+      "status": "measured",
+      "ocr_text": "Keeping track of what you earn and everything you spend money on for a month,\nrather than just a week or two, lets you see all of your income and expenses in one\nplace. Many people who track their spending for a month discover that they're\nspending money in small ways that add up and sometimes don’t match their priorities.\nOnce they track their spending, many people can find money to save for emergencies,\nunexpected expenses, and goals. Others are able to balance their budgets.",
+      "image_sha256": "79a7e6fd9ae793416fbca15d708134b0dbcf5af9aa3a79a6a23fb0a6acc2f152",
+      "reference_sha256": "0fd18b8afba8aa64df0eeb9be5797f4912b88f2566ac50f1b8515a26a9d07140"
+    },
+    {
+      "id": "02-eng-rasterized",
+      "language": "English",
+      "pack": "eng",
+      "input_category": "scan",
+      "source_url": "https://www.cdc.gov/think-test-treat-tb/media/pdfs/2024/08/Why_Should_I_Be_Tested_Fact_Sheet.pdf",
+      "acceptance_eligible": false,
+      "reference_words": 79,
+      "word_errors": 0,
+      "reference_characters": 464,
+      "character_errors": 0,
+      "wer": 0.0,
+      "cer": 0.0,
+      "word_accuracy_percent": 100.0,
+      "status": "measured",
+      "ocr_text": "Tuberculosis, or TB disease, is highly contagious and can be deadly. TB germs can live in your\nbody for years without causing symptoms. This is called inactive TB or latent TB infection. Without\ntreatment, inactive TB can become active TB disease at any time and make you sick. Once TB\nbecomes active, it can spread from person to person through the air. Getting tested and treated\nfor inactive TB can protect yourself, your family and friends, and your community.",
+      "image_sha256": "e04b1ca37540818ce977463aefeaecc191ee76b32481084a702c09869dd5f63a",
+      "reference_sha256": "277fbb4938c9d511a843261543ed2990d6ad88bc1806a2080b3bff7e5cf62cad"
+    },
+    {
+      "id": "03-fil-rasterized",
+      "language": "Filipino",
+      "pack": "fil",
+      "input_category": "scan",
+      "source_url": "https://consumer.ftc.gov/system/files/consumer_ftc_gov/pdf/How-to-avoid-a-scam_Tagalog_August2023.pdf",
+      "acceptance_eligible": false,
+      "reference_words": 68,
+      "word_errors": 7,
+      "reference_characters": 437,
+      "character_errors": 22,
+      "wer": 0.10294117647058823,
+      "cer": 0.05034324942791762,
+      "word_accuracy_percent": 89.70588235294117,
+      "status": "measured",
+      "ocr_text": "“r-3m Madalas na nagpapanggap ang mga scammer na nakikipag-ugnayan sila sa iyo sa ngalan\n( -- )) ng gobyerno. Maaari silang gumamit ng totoong pangalan, gaya ng Social Security\nms Administration, IRS, o Medicare, o gumawa ng pangalan na mukhang opisyal. Ang ilan ay\nTC AZ nagpapanggap na galing sa isang negosyo na kilala mo, gaya ng kompanya ng utility, isang\nkompanya ng teknolohiya, o maging organisasyon sa pagkakawanggawa na humihingi ng mga donasyon.",
+      "image_sha256": "8e0492eb2dc1e0b3aff6ff27d16b07e7ff65a86ed3f4a6fabad8eeae2a0252b9",
+      "reference_sha256": "7e4822f861394d8ad90181f89eb6d56a811a6647b4fb82b36e4735d55f4e0b6a"
+    },
+    {
+      "id": "04-fil-rasterized",
+      "language": "Filipino",
+      "pack": "fil",
+      "input_category": "scan",
+      "source_url": "https://www.consumer.ftc.gov/sites/www.consumer.ftc.gov/files/articles/design-files/tech_support_scams_tl-508.pdf",
+      "acceptance_eligible": false,
+      "reference_words": 76,
+      "word_errors": 1,
+      "reference_characters": 473,
+      "character_errors": 3,
+      "wer": 0.013157894736842105,
+      "cer": 0.006342494714587738,
+      "word_accuracy_percent": 98.68421052631578,
+      "status": "measured",
+      "ocr_text": "..lpasa ang impormasyon\nMga Scam ng Tech Support\nMakakakuha ka ng tawag mula sa isang taong magsasabing siya ay isang teknisyan\nsa computer. Maaari niyang sabihin siya ay mula sa isang kilalang kumpanyang\nkagaya ng Microsoft, o maaaring iyong internet service provider. Sasabihin niya sa\niyong may mga virus o iba pang malware sa iyong computer. Sasabihin niyang\nkakailanganin mong bigyan siya ng remote access sa iyong computer o bumili ng\nbagong software upang ayusin ito.",
+      "image_sha256": "0cdbad82cd2bab6eb5e86a1f498882cef9b9ad11814cc3108179d617699213a0",
+      "reference_sha256": "048a9e47bfbb487e912c7633bca9ef08ad556009f4a64cce2508759d6c96a0bc"
+    },
+    {
+      "id": "05-ceb-rasterized",
+      "language": "Cebuano",
+      "pack": "ceb",
+      "input_category": "scan",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Ang_Wikipedya.pdf",
+      "acceptance_eligible": false,
+      "reference_words": 169,
+      "word_errors": 5,
+      "reference_characters": 1069,
+      "character_errors": 8,
+      "wer": 0.029585798816568046,
+      "cer": 0.007483629560336763,
+      "word_accuracy_percent": 97.0414201183432,
+      "status": "measured",
+      "ocr_text": "Kami mismo nahibalo sa among\nkalidad\nDili kami tigpakaaron-ingnon dinhi sa\nWikipedya. Kon bati ang usa ka\nartikulo, amo gayod kining tamlaan\nnga \"Bati\". Gani, adunay pipila ka\nmga artikulo nga, bisan tuod ug dili bandalismo\nang sulod, among gipapas -- tungod kay wala kini\nmakatungtong sa among gikinahanglang matang\nsa kalidad. Apan kadtong wala makatungtong sa\nmaong ang-ang, apan mahimo pang palapdan,\namo unang gitala isip mga \"Saha nga Artikulo\"\n-- mga artikulong nagkinahanglan sa inyong\ntabang aron \"motubo\".\nApan dili ra kami kutob sa pagsuta sa bati.\nDaghan usab sa among mga artikulo ang adunay\nmaayo nga kalidad. Kini sila maoy\namong itala isip \"Maayong O6\nArtiklo\". Ug gikan niining mga\nmaayong artikulo, among kuhaon\nang mga \"Piniling Artikulo\". ang\nkinanindotang mga sinulat sa Wikipedya. Sa\nSinugboanong Wikipedya, kami modalit ug usa\nka piniling artikulo: matag bulan. APan kon\nmagkadaghan na ang mga artikulo nga adunay\nsusamang kalidad, mahimo kaming modalit ug\nusa ka Piniling Artikulo matag semana, o gani\nmatag adlaw Osama sa Iningles gna Wikipedya).",
+      "image_sha256": "72559d63b16aea5f29f70fad334c9e9a0e99b0e7ea0ed380bc89b225dcb5b03f",
+      "reference_sha256": "71447b2616c09a0e0bb2cbf00d6cde7c7b7faef55dbe8af2afc4da32c667ce28"
+    },
+    {
+      "id": "06-ceb-rasterized",
+      "language": "Cebuano",
+      "pack": "ceb",
+      "input_category": "scan",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Ang_Wikipedya.pdf",
+      "acceptance_eligible": false,
+      "reference_words": 24,
+      "word_errors": 5,
+      "reference_characters": 173,
+      "character_errors": 11,
+      "wer": 0.20833333333333334,
+      "cer": 0.06358381502890173,
+      "word_accuracy_percent": 79.16666666666666,
+      "status": "measured",
+      "ocr_text": ". Usa ka ensayklopedya\nAng Wikipedya usa ka libre ug gawasnong\nensayklopedya. Kini Jin\ngipadagan ug gipanag- \" =\niya sa Pundasyong =\nWikimedya, usa ka\ndili-pangnegosyong\norganisasyon.",
+      "image_sha256": "2c03d8fcfe70f39a5067ce799dc03fc83985f00d26462fc6da3b684392bfdb79",
+      "reference_sha256": "79f3e3b1070489433c92bdcf423d5e9020fbe36dbb4162a7aa7bc563d7a76fe6"
+    },
+    {
+      "id": "07-eng-upstream",
+      "language": "English",
+      "pack": "eng",
+      "input_category": "scan",
+      "source_url": "https://raw.githubusercontent.com/tesseract-ocr/test/main/testing/phototest.tif",
+      "acceptance_eligible": false,
+      "reference_words": 60,
+      "word_errors": 0,
+      "reference_characters": 284,
+      "character_errors": 0,
+      "wer": 0.0,
+      "cer": 0.0,
+      "word_accuracy_percent": 100.0,
+      "status": "measured",
+      "ocr_text": "This is a lot of 12 point text to test the\nocr code and see if it works on all types\nof file format.\nThe quick brown dog jumped over the\nlazy fox. The quick brown dog jumped\nover the lazy fox. The quick brown dog\njumped over the lazy fox. The quick\nbrown dog jumped over the lazy fox.",
+      "image_sha256": "d2241a1eb6d6cd2eb6544b8e228c2862c852b7467d16ed636caa32179b780692",
+      "reference_sha256": "07256f036a19353ca822d69b1398fcbc7fe44a5e410846599305e4fe3f2d2d3c"
+    },
+    {
+      "id": "08-photos-pending",
+      "language": "English",
+      "pack": "eng",
+      "input_category": "photo",
+      "source_url": null,
+      "acceptance_eligible": false,
+      "status": "hold",
+      "reasons": [
+        "Image not downloaded",
+        "Checked reference unavailable"
+      ]
+    }
+  ],
+  "categories": {
+    "English / scan": {
+      "cases": [
+        "01-eng-rasterized",
+        "02-eng-rasterized",
+        "07-eng-upstream"
+      ],
+      "decision": "hold",
+      "word_accuracy_percent": 100.0,
+      "measurement_decision": "go"
+    },
+    "Filipino / scan": {
+      "cases": [
+        "03-fil-rasterized",
+        "04-fil-rasterized"
+      ],
+      "decision": "hold",
+      "word_accuracy_percent": 94.44444444444444,
+      "measurement_decision": "no-go"
+    },
+    "Cebuano / scan": {
+      "cases": [
+        "05-ceb-rasterized",
+        "06-ceb-rasterized"
+      ],
+      "decision": "hold",
+      "word_accuracy_percent": 94.81865284974094,
+      "measurement_decision": "no-go"
+    },
+    "English / photo": {
+      "cases": [
+        "08-photos-pending"
+      ],
+      "decision": "hold"
+    }
+  },
+  "normalization": "Unicode NFC and collapsed whitespace only",
+  "engine_requests": 7,
+  "provider_requests": 0,
+  "settings": {
+    "version": 1,
+    "dpi": 300,
+    "psm": 3,
+    "preprocessing": "exif-transpose,grayscale,autocontrast",
+    "retain_uncertain_words": true
+  },
+  "sample_count_valid": true,
+  "outcome": "hold",
+  "alternatives_if_no_go": [
+    "Evaluate another OCR engine and repeat the spike",
+    "Owner restricts supported language/input scope",
+    "Defer OCR for the failing language/input category"
+  ]
+}

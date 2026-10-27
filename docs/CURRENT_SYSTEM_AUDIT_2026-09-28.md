@@ -1,0 +1,37 @@
+# TriLingua current-system audit and implementation plan
+
+**Scope:** Working tree on 28 September 2026. Code and automated-test review of existing web flows; no live deployment, provider-quality, cross-browser, or load validation. The checkout contains substantial pre-existing uncommitted work. **Verdict:** the regular-user and admin paths are broadly connected, but this state is **not production-ready**.
+
+## Feature and role assessment
+
+| Existing flow | Assessment |
+| --- | --- |
+| Registration, login, Google sign-in, account settings | Routes and role separation are coherent; auth tests pass. A migration-created admin with a public, fixed password is a release blocker. |
+| Text translation and history | Request validation, Python call, history, notifications, and metrics are connected. History insertion is deliberately non-blocking, so a successful translation can be returned without a saved record or admin review item. |
+| Document translation and re-translation | Upload, queue, storage, polling, and dedup are implemented. Queue lease timing and failed-job replay can break or duplicate long jobs. Completion can be recorded without a history row. |
+| Saved translations, downloads, bookmarks, priority, notifications | Ownership checks and role-specific links are present and tested. Deletion removes database records before best-effort file deletion, so storage failures can leave orphaned objects. |
+| Admin review and audit | Admin middleware protects routes; text and block edits log previous values. Document block changes persist before regeneration succeeds, and local-fallback documents are not handled consistently by preview/regeneration. |
+| Translation quality and layout | The provider-neutral/unit pipeline has deterministic tests, but human-calibrated quality and full format/language-pair acceptance are unverified. Automatic quality scores must not be treated as proven accuracy. |
+
+There are **two application roles** in code: regular user and admin (`users.is_admin`). Admins review and operate jobs; no independent reviewer or translator role exists. Authorization tests show the intended boundary at the HTTP layer, but they do not prove every role workflow works in a deployed system.
+
+## Findings, ordered by release risk
+
+1. **Critical — fixed admin credential.** `trilingua-code/database/migrations/2026_09_06_000003_seed_default_admin_user.php:17-27` creates `admin@example.com` with password `password` on a fresh install. Remove automatic creation, provision an admin through a controlled one-time process, and rotate/remove any account created by this migration before exposure.
+2. **High — duplicate execution window for document jobs.** `config/queue.php:43` sets database `retry_after=900`, while `TranslateDocumentJob.php:42` allows 1300 seconds and `start-all.bat:18` / `start-demo.ps1:174` run workers at 1500 seconds. The queue can release a still-running job to another worker. Set `retry_after` above the worker timeout with margin, then test two-worker long-job behavior.
+3. **High — failed-job replay cannot reliably work.** `TranslateDocumentJob.php:233-254` deletes the persisted upload on terminal failure, while `Admin/JobController.php:57-87` calls `queue:retry` on that same serialized job. The replay then reaches the missing-file check in `TranslateDocumentJob.php:105-107`. Restore input from durable original storage for retry, or stop offering replay when recovery is impossible; test both cases.
+4. **High — a completed document can lack a usable history record.** `TranslateDocumentJob.php:166-205` catches history/block persistence errors and still marks the job completed. For local fallback, the download URL requires a history ID (`:274-282`), so the user can receive a completed job with no link. Make history/block persistence part of the success condition, with a recoverable failure state and cleanup/reconciliation of stored output.
+5. **High — admin document edits and files can diverge.** `Admin/DocumentReviewController.php:120-154` saves edits before regeneration; `Services/Admin/ReviewService.php:395-450` writes review state before download, reconstruction, and upload succeed. A failure leaves `current_text`/audit/status ahead of the downloadable file. Save a new file and review changes as one controlled commit, or explicitly expose a pending-regeneration state; test a failed upload. Separately, `ReviewService.php:414,435` and `DocumentReviewController.php:185-200` use Supabase-only methods even when `storage_backend` is `local`. Use backend-aware `read` and `uploadWithFallback`, plus a local route for downloads.
+6. **Medium — quota does not cover queued submissions.** `TranslationController.php:574-598` counts completed history rows, so several concurrent uploads can each pass the daily cap before any history is written. Count accepted active jobs and completed records under a per-user atomic reservation or transaction; include re-translation if it is meant to consume the same quota.
+7. **Medium — test contract is red.** `Model/tests/test_properties.py:225-269` fails for `0  0`: the chunker preserves internal spaces while the test expects normalized spaces. Decide whether exact spacing or normalized text is the contract, then align implementation and property test. This is a confirmed test failure, not yet a confirmed user-facing translation defect.
+8. **Medium — cleanup and maintainability.** `HistoryService.php:175+` deletes rows before `HistoryController.php:559-568` deletes objects, and `Admin/ReviewController.php:138-204` loads all document blocks in addition to a paginated block query. Add retryable orphan cleanup and measure large-document review pages before changing query shape. Remove stale architecture claims and unused provider stubs only after the functional fixes.
+
+## Implementation sequence and acceptance gates
+
+1. **Secure provisioning:** remove the fixed-credential migration behavior, audit existing environments for that account, and prove fresh migrations create no known admin login. Keep the existing user/admin model.
+2. **Make document jobs durable:** fix queue lease/timeout ordering; recover failed inputs from durable storage; make completion depend on persisted history and blocks. Verify duplicate-worker, terminal-failure, retry, polling, and storage-failure cases.
+3. **Make review state match downloadable output:** make regeneration backend-aware and failure-safe; verify text review, document block edit, flag, verify, regenerate, and local-fallback download across both roles.
+4. **Close lifecycle gaps:** enforce upload quota at acceptance, handle file-delete failures with observable retry, and check status/notification links after deletion and re-translation.
+5. **Validate existing product claims:** fix the Python spacing test contract; run the Laravel and deterministic Python suites; run a format × language-pair smoke matrix with real configured services and human review of representative outputs. Set quality and layout acceptance thresholds from those results before calling the system production-ready.
+
+**Checks performed:** `php tests/assert-safe-test-env.php` passed; `php artisan test` reported 294 passed and 1 skipped; focused Python pipeline/review/regeneration tests reported 123 passed; broad Python run stopped at a failing property test (58 passed before failure). Live provider, deployment, concurrency, and visual output checks were not run. No application feature code was changed for this audit.

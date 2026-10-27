@@ -1,0 +1,17 @@
+{
+  "a_docx": "C:\\dev\\Trilingua\\.tmp_google_classroom_tests\\Sample_Test Case Template.docx",
+  "b_docx": "C:\\dev\\Trilingua\\Google Classroom Student Test Cases.docx",
+  "pages_a": 2,
+  "pages_b": 8,
+  "changed_pages": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "num_changed_pages": 8
+}

@@ -52,7 +52,7 @@ class JobController extends Controller
         if ($recoverableByUuid !== []) {
             $recoverableMap = TranslationJob::whereIn('uuid', $recoverableByUuid)
                 ->where('status', TranslationJob::STATUS_FAILED)
-                ->where('recoverable', true)
+                ->whereRaw('recoverable = TRUE')
                 ->pluck('recoverable', 'uuid')
                 ->map(fn () => true)
                 ->all();

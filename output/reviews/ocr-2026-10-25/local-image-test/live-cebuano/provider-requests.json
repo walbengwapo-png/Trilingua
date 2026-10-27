@@ -1,0 +1,9 @@
+[
+  {
+    "model": "gpt-oss:20b-cloud",
+    "http_status": 200,
+    "prompt_eval_count": 1048,
+    "eval_count": 5263,
+    "elapsed_seconds": 32.0
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "categories": {
+    "English / scan": "OCR English / scan is on hold: a representative, checked 95% acceptance report is required.",
+    "English / photo": "OCR English / photo is on hold: a representative, checked 95% acceptance report is required.",
+    "Cebuano / scan": "OCR Cebuano / scan is on hold: a representative, checked 95% acceptance report is required.",
+    "Cebuano / photo": "OCR Cebuano / photo is on hold: a representative, checked 95% acceptance report is required.",
+    "Filipino / scan": "OCR Filipino / scan is on hold: a representative, checked 95% acceptance report is required.",
+    "Filipino / photo": "OCR Filipino / photo is on hold: a representative, checked 95% acceptance report is required."
+  },
+  "image_uploads_enabled": false
+}

@@ -1,0 +1,66 @@
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\DashboardControllerComputeStatsTest::test_property_stats_are_non_negative_and_bounded(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Unit\DashboardControllerComputeStatsTest::test_property_match_percentage_in_range_0_to_100(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\DownloadAvailabilityTest::test_a_missing_object_returns_404(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\DownloadAvailabilityTest::test_an_outage_whose_message_says_not_found_is_not_reported_as_loss(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\DownloadAvailabilityTest::test_a_deletion_whose_message_does_not_say_not_found_is_still_404(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\DownloadAvailabilityTest::test_unknown_presence_still_delivers_the_file_when_signing_succeeds(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\DownloadAvailabilityTest::test_a_failing_probe_never_claims_the_file_is_gone(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\DownloadAvailabilityTest::test_ownership_is_still_enforced_before_storage_is_touched(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\StorageCleanupJobReferenceTest::test_an_original_held_by_a_live_job_is_never_reclaimed(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+   WARN  Metadata found in doc-comment for method Tests\Feature\StorageCleanupJobReferenceTest::test_a_translated_object_a_retry_would_reuse_is_never_reclaimed(). Metadata in doc-comments is deprecated and will no longer be supported in PHPUnit 12. Update your test code to use attributes instead.
+
+  ....................................................................................................................
+  ....................................................................................................................
+  ........⨯s.⨯........................................................................................................
+  ....................................................................................................................
+  ...........
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\AuthCssRenderingTest > vite manifest includes css entries                                      
+  Vite manifest.json not found. Run "npm run build" or "npm run dev" to generate assets.
+Failed asserting that file "C:\Users\walbe\AppData\Local\Temp\trilingua-production-audit-20261009\snapshot\trilingua-code\public\build/manifest.json" exists.
+
+  at tests\Feature\AuthCssRenderingTest.php:132
+    128▕     {
+    129▕         $manifestPath = public_path('build/manifest.json');
+    130▕ 
+    131▕         // Check if manifest exists
+  ➜ 132▕         $this->assertFileExists(
+    133▕             $manifestPath,
+    134▕             'Vite manifest.json not found. Run "npm run build" or "npm run dev" to generate assets.'
+    135▕         );
+    136▕
+
+  1   tests\Feature\AuthCssRenderingTest.php:132
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\AuthCssRenderingTest > app css loads correctly for authenticated pages                         
+  Vite manifest.json not found. Run "npm run build" or "npm run dev" to generate assets.
+Failed asserting that file "C:\Users\walbe\AppData\Local\Temp\trilingua-production-audit-20261009\snapshot\trilingua-code\public\build/manifest.json" exists.
+
+  at tests\Feature\AuthCssRenderingTest.php:341
+    337▕     {
+    338▕         $manifestPath = public_path('build/manifest.json');
+    339▕ 
+    340▕         // Check if manifest exists
+  ➜ 341▕         $this->assertFileExists(
+    342▕             $manifestPath,
+    343▕             'Vite manifest.json not found. Run "npm run build" or "npm run dev" to generate assets.'
+    344▕         );
+    345▕
+
+  1   tests\Feature\AuthCssRenderingTest.php:341
+
+
+  Tests:    2 failed, 1 skipped, 472 passed (1786 assertions)
+  Duration: 49.25s
+

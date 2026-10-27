@@ -1,0 +1,172 @@
+{
+  "input": "C:\\Users\\walbe\\Downloads\\Lion_and_Mouse_2_pages_10_blocks_2_image_text.pdf",
+  "input_sha256": "df09eaad8e681a4c5792081db117b38d238f06a9bdadf7c8241b7b0c0b76e34f",
+  "pages": [
+    {
+      "page": 1,
+      "size": [
+        0.0,
+        0.0,
+        612.0,
+        792.0
+      ],
+      "native_blocks": [
+        {
+          "bbox": [
+            48.0,
+            33.99998092651367,
+            319.5960388183594,
+            70.00997924804688
+          ],
+          "text": "The Lion and the Mouse\n"
+        },
+        {
+          "bbox": [
+            48.0,
+            380.0,
+            562.6581420898438,
+            475.17706298828125
+          ],
+          "text": "A Lion lay asleep in the forest, his great head resting on his paws. A timid\nlittle Mouse came upon him unexpectedly, and in her fright and haste to get\naway, ran across the Lion's nose. Roused from his nap, the Lion laid his\nhuge paw angrily on the tiny creature to kill her.\n"
+        },
+        {
+          "bbox": [
+            48.0,
+            641.0,
+            561.26416015625,
+            687.8443603515625
+          ],
+          "text": "The Lion was much amused to think that a Mouse could ever help him. But\nhe was generous and finally let the Mouse go.\n"
+        },
+        {
+          "bbox": [
+            280.0,
+            754.0,
+            285.55999755859375,
+            767.739990234375
+          ],
+          "text": "1\n"
+        }
+      ],
+      "images": [
+        {
+          "xref": 8,
+          "bbox": [
+            112.0,
+            90.16256713867188,
+            500.0,
+            355.8374328613281
+          ],
+          "width": 609,
+          "height": 417
+        },
+        {
+          "xref": 14,
+          "bbox": [
+            48.0,
+            552.0,
+            564.0,
+            620.0
+          ],
+          "width": 1548,
+          "height": 204
+        }
+      ]
+    },
+    {
+      "page": 2,
+      "size": [
+        0.0,
+        0.0,
+        612.0,
+        792.0
+      ],
+      "native_blocks": [
+        {
+          "bbox": [
+            48.0,
+            278.0,
+            560.5162353515625,
+            397.3434143066406
+          ],
+          "text": "Some days later, while stalking his prey in the forest, the Lion was caught\nin the toils of a hunter's net. Unable to free himself, he filled the forest with\nhis angry roaring. The Mouse knew the voice and quickly found the Lion\nstruggling in the net. Running to one of the great ropes that bound him, she\ngnawed it until it parted, and soon the Lion was free.\n"
+        },
+        {
+          "bbox": [
+            48.0,
+            617.0,
+            284.27105712890625,
+            644.2160034179688
+          ],
+          "text": "A kindness is never wasted.\n"
+        },
+        {
+          "bbox": [
+            48.0,
+            691.0,
+            346.8089904785156,
+            703.365966796875
+          ],
+          "text": "Aesop | Illustration: Milo Winter (1919) | Source: Project Gutenberg #19994\n"
+        },
+        {
+          "bbox": [
+            280.0,
+            754.0,
+            285.55999755859375,
+            767.739990234375
+          ],
+          "text": "2\n"
+        }
+      ],
+      "images": [
+        {
+          "xref": 8,
+          "bbox": [
+            158.0,
+            42.16009521484375,
+            454.0,
+            244.83990478515625
+          ],
+          "width": 609,
+          "height": 417
+        },
+        {
+          "xref": 23,
+          "bbox": [
+            48.0,
+            505.0,
+            564.0,
+            585.0
+          ],
+          "width": 1548,
+          "height": 240
+        }
+      ]
+    }
+  ],
+  "configuration": {
+    "OCR_PLAN_KEY_FILE": {
+      "configured": false,
+      "file_exists": false
+    },
+    "OCR_ACCEPTANCE_REPORT": {
+      "configured": false,
+      "file_exists": false
+    },
+    "OCR_ACCEPTANCE_KEY_FILE": {
+      "configured": false,
+      "file_exists": false
+    },
+    "OCR_CORPUS_MANIFEST": {
+      "configured": false,
+      "file_exists": false
+    }
+  },
+  "provider": {
+    "TRANSLATION_PROVIDER": "gptoss",
+    "TRANSLATION_PROVIDER_CHAIN": null,
+    "OLLAMA_CLOUD_MODEL": "gpt-oss:20b-cloud",
+    "GEMINI_MODEL": "gemini-3.5-flash-lite"
+  }
+}
