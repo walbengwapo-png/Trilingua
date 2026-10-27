@@ -60,9 +60,9 @@ Full extracted historical text follows. Original binary documents preserve image
 - [chatgpt/test3/Test3 Current Pipeline Evaluation Report.md](#source-b97bafe82fd30abd) — [chatgpt/test3/Test3 Current Pipeline Evaluation Report.md](chatgpt/test3/Test3%20Current%20Pipeline%20Evaluation%20Report.md)
 - [codex/HANDOFF_REMAINING_POST_AUDIT_2026-09-28.md](#source-c7efcd70636bcf2f) — [codex/HANDOFF_REMAINING_POST_AUDIT_2026-09-28.md](archive_candidates/codex/HANDOFF_REMAINING_POST_AUDIT_2026-09-28.md)
 - [codex/IMPLEMENTATION_PLAN_POST_AUDIT_2026-09-28.md](#source-e9e10657099b7a3a) — [codex/IMPLEMENTATION_PLAN_POST_AUDIT_2026-09-28.md](archive_candidates/codex/IMPLEMENTATION_PLAN_POST_AUDIT_2026-09-28.md)
-- [docs/CURRENT_SYSTEM_AUDIT_2026-09-28.md](#source-e2486f28e6f89d8f) — [docs/CURRENT_SYSTEM_AUDIT_2026-09-28.md](docs/CURRENT_SYSTEM_AUDIT_2026-09-28.md)
-- [docs/CURRENT_SYSTEM_REEVALUATION_2026-09-29.md](#source-bde972ced33a44dd) — [docs/CURRENT_SYSTEM_REEVALUATION_2026-09-29.md](docs/CURRENT_SYSTEM_REEVALUATION_2026-09-29.md)
-- [docs/FEATURE_EVIDENCE_AUDIT.md](#source-af743f96d35befa1) — [docs/FEATURE_EVIDENCE_AUDIT.md](docs/FEATURE_EVIDENCE_AUDIT.md)
+- [docs/CURRENT_SYSTEM_AUDIT_2026-09-28.md](#source-e2486f28e6f89d8f) — [docs/CURRENT_SYSTEM_AUDIT_2026-09-28.md](archive_candidates/docs/CURRENT_SYSTEM_AUDIT_2026-09-28.md)
+- [docs/CURRENT_SYSTEM_REEVALUATION_2026-09-29.md](#source-bde972ced33a44dd) — [docs/CURRENT_SYSTEM_REEVALUATION_2026-09-29.md](archive_candidates/docs/CURRENT_SYSTEM_REEVALUATION_2026-09-29.md)
+- [docs/FEATURE_EVIDENCE_AUDIT.md](#source-af743f96d35befa1) — [docs/FEATURE_EVIDENCE_AUDIT.md](archive_candidates/docs/FEATURE_EVIDENCE_AUDIT.md)
 - [Google Classroom Student Test Cases.docx](#source-d9c460bf87b098fa) — [Google Classroom Student Test Cases.docx](Google%20Classroom%20Student%20Test%20Cases.docx)
 - [output/pdf/lion-mouse-pipeline-test-2026-10-26/RUN_REPORT.md](#source-0178fe843ff3d73b) — [output/pdf/lion-mouse-pipeline-test-2026-10-26/RUN_REPORT.md](archive_candidates/output/pdf/lion-mouse-pipeline-test-2026-10-26/RUN_REPORT.md)
 - [output/pdf/lion-mouse-retest-2026-10-26-222800/RUN_REPORT.md](#source-fe0dd5ae2620c4e8) — [output/pdf/lion-mouse-retest-2026-10-26-222800/RUN_REPORT.md](archive_candidates/output/pdf/lion-mouse-retest-2026-10-26-222800/RUN_REPORT.md)
@@ -78,31 +78,31 @@ Full extracted historical text follows. Original binary documents preserve image
 - [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/translation-layout-quality/design.md](#source-3b8b3e91d0842b34) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/translation-layout-quality/design.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/translation-layout-quality/design.md)
 - [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/translation-layout-quality/tasks.md](#source-cc50bcbb8d9b9525) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/translation-layout-quality/tasks.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/translation-layout-quality/tasks.md)
 - [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/user-id-history-fix/bugfix.md](#source-cda4a90ebc7a4c28) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/user-id-history-fix/bugfix.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/user-id-history-fix/bugfix.md)
-- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/AUTHENTICATION_TESTING.md](#source-d0e39953fb8c3b39) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/AUTHENTICATION_TESTING.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/AUTHENTICATION_TESTING.md)
+- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/AUTHENTICATION_TESTING.md](#source-d0e39953fb8c3b39) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/AUTHENTICATION_TESTING.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/AUTHENTICATION_TESTING.md)
 - [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/Model/benchmarks/README.md](#source-075e2a87c1808bca) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/Model/benchmarks/README.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/Model/benchmarks/README.md)
-- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/evidence-runbook.md](#source-1279e4574ff04f70) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/evidence-runbook.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/evidence-runbook.md)
+- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/evidence-runbook.md](#source-1279e4574ff04f70) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/evidence-runbook.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/evidence-runbook.md)
 - [output/reviews/layout-preserving-ocr-investigation-2026-10-25/FINDINGS_AND_DESIGN.md](#source-b5151f0cbcf93934) — [output/reviews/layout-preserving-ocr-investigation-2026-10-25/FINDINGS_AND_DESIGN.md](archive_candidates/output/reviews/layout-preserving-ocr-investigation-2026-10-25/FINDINGS_AND_DESIGN.md)
 - [output/reviews/ocr-2026-10-25/local-image-test/live-cebuano/REVIEW.md](#source-dddc4ddf3c57976a) — [output/reviews/ocr-2026-10-25/local-image-test/live-cebuano/REVIEW.md](archive_candidates/output/reviews/ocr-2026-10-25/local-image-test/live-cebuano/REVIEW.md)
 - [output/test-cases-2026-10-12/qa/artifact.md](#source-8bd65230739cdf8a) — [output/test-cases-2026-10-12/qa/artifact.md](output/test-cases-2026-10-12/qa/artifact.md)
 - [output/test-cases-2026-10-12/qa/reference.docx](#source-16999b0547b52c68) — [output/test-cases-2026-10-12/qa/reference.docx](output/test-cases-2026-10-12/qa/reference.docx)
 - [output/test-cases-2026-10-12/TriLingua_Test_Cases_Template.docx](#source-50801e43277e7b80) — [output/test-cases-2026-10-12/TriLingua_Test_Cases_Template.docx](output/test-cases-2026-10-12/TriLingua_Test_Cases_Template.docx)
-- [trilingua-code/.kiro/specs/auth-css-rendering-fix/bugfix.md](#source-4f96b0777024fa23) — [trilingua-code/.kiro/specs/auth-css-rendering-fix/bugfix.md](trilingua-code/.kiro/specs/auth-css-rendering-fix/bugfix.md)
-- [trilingua-code/.kiro/specs/dashboard-ui-fix/bugfix.md](#source-5f52441ea653460d) — [trilingua-code/.kiro/specs/dashboard-ui-fix/bugfix.md](trilingua-code/.kiro/specs/dashboard-ui-fix/bugfix.md)
-- [trilingua-code/.kiro/specs/translation-layout-quality/design.md](#source-80d125a64f0b69c5) — [trilingua-code/.kiro/specs/translation-layout-quality/design.md](trilingua-code/.kiro/specs/translation-layout-quality/design.md)
-- [trilingua-code/.kiro/specs/translation-layout-quality/tasks.md](#source-8b3bc6bd6fe265ce) — [trilingua-code/.kiro/specs/translation-layout-quality/tasks.md](trilingua-code/.kiro/specs/translation-layout-quality/tasks.md)
-- [trilingua-code/.kiro/specs/user-id-history-fix/bugfix.md](#source-b9661a0e05d92aae) — [trilingua-code/.kiro/specs/user-id-history-fix/bugfix.md](trilingua-code/.kiro/specs/user-id-history-fix/bugfix.md)
-- [trilingua-code/AUTHENTICATION_TESTING.md](#source-52c768bb89c4e2fa) — [trilingua-code/AUTHENTICATION_TESTING.md](trilingua-code/AUTHENTICATION_TESTING.md)
-- [trilingua-code/docs/implementation-records/phase-07-release-evidence.md](#source-2d21328bc7e21e4c) — [trilingua-code/docs/implementation-records/phase-07-release-evidence.md](trilingua-code/docs/implementation-records/phase-07-release-evidence.md)
-- [trilingua-code/docs/implementation-records/post-audit-package-A.md](#source-d062648fd8195b27) — [trilingua-code/docs/implementation-records/post-audit-package-A.md](trilingua-code/docs/implementation-records/post-audit-package-A.md)
-- [trilingua-code/docs/implementation-records/post-audit-package-B.md](#source-e2bf2e4eb67297a9) — [trilingua-code/docs/implementation-records/post-audit-package-B.md](trilingua-code/docs/implementation-records/post-audit-package-B.md)
-- [trilingua-code/docs/implementation-records/post-audit-package-C.md](#source-106ffa9793a709a4) — [trilingua-code/docs/implementation-records/post-audit-package-C.md](trilingua-code/docs/implementation-records/post-audit-package-C.md)
-- [trilingua-code/docs/implementation-records/post-audit-package-D.md](#source-37eb3b411a878d28) — [trilingua-code/docs/implementation-records/post-audit-package-D.md](trilingua-code/docs/implementation-records/post-audit-package-D.md)
-- [trilingua-code/docs/implementation-records/post-audit-package-E.md](#source-721d147429d62e22) — [trilingua-code/docs/implementation-records/post-audit-package-E.md](trilingua-code/docs/implementation-records/post-audit-package-E.md)
-- [trilingua-code/docs/implementation-records/post-audit-package-F.md](#source-ae7632eac6ecc81f) — [trilingua-code/docs/implementation-records/post-audit-package-F.md](trilingua-code/docs/implementation-records/post-audit-package-F.md)
-- [trilingua-code/docs/implementation-records/post-audit-package-G.md](#source-4c14bdf95b591651) — [trilingua-code/docs/implementation-records/post-audit-package-G.md](trilingua-code/docs/implementation-records/post-audit-package-G.md)
-- [trilingua-code/docs/implementation-records/post-audit-release-report.md](#source-3b60bc8fa960137d) — [trilingua-code/docs/implementation-records/post-audit-release-report.md](trilingua-code/docs/implementation-records/post-audit-release-report.md)
-- [trilingua-code/Model/benchmarks/README.md](#source-c71fa52ed4df9b36) — [trilingua-code/Model/benchmarks/README.md](trilingua-code/Model/benchmarks/README.md)
-- [trilingua-code/security/evidence-runbook.md](#source-c127f38407def380) — [trilingua-code/security/evidence-runbook.md](trilingua-code/security/evidence-runbook.md)
+- [trilingua-code/.kiro/specs/auth-css-rendering-fix/bugfix.md](#source-4f96b0777024fa23) — [trilingua-code/.kiro/specs/auth-css-rendering-fix/bugfix.md](archive_candidates/trilingua-code/.kiro/specs/auth-css-rendering-fix/bugfix.md)
+- [trilingua-code/.kiro/specs/dashboard-ui-fix/bugfix.md](#source-5f52441ea653460d) — [trilingua-code/.kiro/specs/dashboard-ui-fix/bugfix.md](archive_candidates/trilingua-code/.kiro/specs/dashboard-ui-fix/bugfix.md)
+- [trilingua-code/.kiro/specs/translation-layout-quality/design.md](#source-80d125a64f0b69c5) — [trilingua-code/.kiro/specs/translation-layout-quality/design.md](archive_candidates/trilingua-code/.kiro/specs/translation-layout-quality/design.md)
+- [trilingua-code/.kiro/specs/translation-layout-quality/tasks.md](#source-8b3bc6bd6fe265ce) — [trilingua-code/.kiro/specs/translation-layout-quality/tasks.md](archive_candidates/trilingua-code/.kiro/specs/translation-layout-quality/tasks.md)
+- [trilingua-code/.kiro/specs/user-id-history-fix/bugfix.md](#source-b9661a0e05d92aae) — [trilingua-code/.kiro/specs/user-id-history-fix/bugfix.md](archive_candidates/trilingua-code/.kiro/specs/user-id-history-fix/bugfix.md)
+- [trilingua-code/AUTHENTICATION_TESTING.md](#source-52c768bb89c4e2fa) — [trilingua-code/AUTHENTICATION_TESTING.md](archive_candidates/trilingua-code/AUTHENTICATION_TESTING.md)
+- [trilingua-code/docs/implementation-records/phase-07-release-evidence.md](#source-2d21328bc7e21e4c) — [trilingua-code/docs/implementation-records/phase-07-release-evidence.md](archive_candidates/trilingua-code/docs/implementation-records/phase-07-release-evidence.md)
+- [trilingua-code/docs/implementation-records/post-audit-package-A.md](#source-d062648fd8195b27) — [trilingua-code/docs/implementation-records/post-audit-package-A.md](archive_candidates/trilingua-code/docs/implementation-records/post-audit-package-A.md)
+- [trilingua-code/docs/implementation-records/post-audit-package-B.md](#source-e2bf2e4eb67297a9) — [trilingua-code/docs/implementation-records/post-audit-package-B.md](archive_candidates/trilingua-code/docs/implementation-records/post-audit-package-B.md)
+- [trilingua-code/docs/implementation-records/post-audit-package-C.md](#source-106ffa9793a709a4) — [trilingua-code/docs/implementation-records/post-audit-package-C.md](archive_candidates/trilingua-code/docs/implementation-records/post-audit-package-C.md)
+- [trilingua-code/docs/implementation-records/post-audit-package-D.md](#source-37eb3b411a878d28) — [trilingua-code/docs/implementation-records/post-audit-package-D.md](archive_candidates/trilingua-code/docs/implementation-records/post-audit-package-D.md)
+- [trilingua-code/docs/implementation-records/post-audit-package-E.md](#source-721d147429d62e22) — [trilingua-code/docs/implementation-records/post-audit-package-E.md](archive_candidates/trilingua-code/docs/implementation-records/post-audit-package-E.md)
+- [trilingua-code/docs/implementation-records/post-audit-package-F.md](#source-ae7632eac6ecc81f) — [trilingua-code/docs/implementation-records/post-audit-package-F.md](archive_candidates/trilingua-code/docs/implementation-records/post-audit-package-F.md)
+- [trilingua-code/docs/implementation-records/post-audit-package-G.md](#source-4c14bdf95b591651) — [trilingua-code/docs/implementation-records/post-audit-package-G.md](archive_candidates/trilingua-code/docs/implementation-records/post-audit-package-G.md)
+- [trilingua-code/docs/implementation-records/post-audit-release-report.md](#source-3b60bc8fa960137d) — [trilingua-code/docs/implementation-records/post-audit-release-report.md](archive_candidates/trilingua-code/docs/implementation-records/post-audit-release-report.md)
+- [trilingua-code/Model/benchmarks/README.md](#source-c71fa52ed4df9b36) — [trilingua-code/Model/benchmarks/README.md](archive_candidates/trilingua-code/Model/benchmarks/README.md)
+- [trilingua-code/security/evidence-runbook.md](#source-c127f38407def380) — [trilingua-code/security/evidence-runbook.md](archive_candidates/trilingua-code/security/evidence-runbook.md)
 
 <a id="source-e28caa3f92bde09d"></a>
 
@@ -2215,7 +2215,7 @@ For each package, write a short implementation record under `trilingua-code/docs
 
 ### Preserved source: docs/CURRENT_SYSTEM_AUDIT_2026-09-28.md
 
-Original: [docs/CURRENT_SYSTEM_AUDIT_2026-09-28.md](docs/CURRENT_SYSTEM_AUDIT_2026-09-28.md). SHA-256: `67bab6110b015a34bd6e3e9379f33e9459bb871757e761713ec687764e4bc0ac`.
+Original: [docs/CURRENT_SYSTEM_AUDIT_2026-09-28.md](archive_candidates/docs/CURRENT_SYSTEM_AUDIT_2026-09-28.md). SHA-256: `67bab6110b015a34bd6e3e9379f33e9459bb871757e761713ec687764e4bc0ac`.
 
 ````text
 # TriLingua current-system audit and implementation plan
@@ -2262,7 +2262,7 @@ There are **two application roles** in code: regular user and admin (`users.is_a
 
 ### Preserved source: docs/CURRENT_SYSTEM_REEVALUATION_2026-09-29.md
 
-Original: [docs/CURRENT_SYSTEM_REEVALUATION_2026-09-29.md](docs/CURRENT_SYSTEM_REEVALUATION_2026-09-29.md). SHA-256: `8786f1bac47e9a73fd0f4023fc64acb76e9d7f37abc21afa73a17ac6c7c65da5`.
+Original: [docs/CURRENT_SYSTEM_REEVALUATION_2026-09-29.md](archive_candidates/docs/CURRENT_SYSTEM_REEVALUATION_2026-09-29.md). SHA-256: `8786f1bac47e9a73fd0f4023fc64acb76e9d7f37abc21afa73a17ac6c7c65da5`.
 
 ````text
 # TriLingua web system: current evaluation and implementation plan
@@ -2308,7 +2308,7 @@ Original: [docs/CURRENT_SYSTEM_REEVALUATION_2026-09-29.md](docs/CURRENT_SYSTEM_R
 
 ### Preserved source: docs/FEATURE_EVIDENCE_AUDIT.md
 
-Original: [docs/FEATURE_EVIDENCE_AUDIT.md](docs/FEATURE_EVIDENCE_AUDIT.md). SHA-256: `3e44fc4b4e085f39eddec62a2b13f78890d2fea84c334eab1e9fc3761c7c80e5`.
+Original: [docs/FEATURE_EVIDENCE_AUDIT.md](archive_candidates/docs/FEATURE_EVIDENCE_AUDIT.md). SHA-256: `3e44fc4b4e085f39eddec62a2b13f78890d2fea84c334eab1e9fc3761c7c80e5`.
 
 ````text
 # TriLingua feature-evidence audit
@@ -4570,7 +4570,7 @@ Translation history records and translated documents are tied to a session ID ra
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/AUTHENTICATION_TESTING.md
 
-Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/AUTHENTICATION_TESTING.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/AUTHENTICATION_TESTING.md). SHA-256: `c09a1dd98b780820ea7cae8602a5f65eb3c50ec55be0dc228408847ee37f4dd6`.
+Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/AUTHENTICATION_TESTING.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/AUTHENTICATION_TESTING.md). SHA-256: `c09a1dd98b780820ea7cae8602a5f65eb3c50ec55be0dc228408847ee37f4dd6`.
 
 ````text
 # Authentication Testing Guide
@@ -4823,7 +4823,7 @@ building the reviewed corpus.
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/evidence-runbook.md
 
-Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/evidence-runbook.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/evidence-runbook.md). SHA-256: `bc85cb8004c73132ca80d7865c2d68600774e41a115965d3a7f125b6020552c3`.
+Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/evidence-runbook.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/evidence-runbook.md). SHA-256: `bc85cb8004c73132ca80d7865c2d68600774e41a115965d3a7f125b6020552c3`.
 
 ````text
 # 0A — Evidence Preservation Runbook
@@ -8099,7 +8099,7 @@ N-X  routes/web.php; HistoryController.php; NotificationController.php; Model/se
 
 ### Preserved source: trilingua-code/.kiro/specs/auth-css-rendering-fix/bugfix.md
 
-Original: [trilingua-code/.kiro/specs/auth-css-rendering-fix/bugfix.md](trilingua-code/.kiro/specs/auth-css-rendering-fix/bugfix.md). SHA-256: `5e2d6bd119613df6d34776e284624d46219984709f4fb2a9724941e1cafa9846`.
+Original: [trilingua-code/.kiro/specs/auth-css-rendering-fix/bugfix.md](archive_candidates/trilingua-code/.kiro/specs/auth-css-rendering-fix/bugfix.md). SHA-256: `5e2d6bd119613df6d34776e284624d46219984709f4fb2a9724941e1cafa9846`.
 
 ````text
 # Bugfix Requirements Document
@@ -8150,7 +8150,7 @@ The authentication pages (login and register) in the Laravel application are not
 
 ### Preserved source: trilingua-code/.kiro/specs/dashboard-ui-fix/bugfix.md
 
-Original: [trilingua-code/.kiro/specs/dashboard-ui-fix/bugfix.md](trilingua-code/.kiro/specs/dashboard-ui-fix/bugfix.md). SHA-256: `1a7b66e3c1cca9a321dcb707f8ad26d6f84ebc1ade98ae6e669d967d4fe511b3`.
+Original: [trilingua-code/.kiro/specs/dashboard-ui-fix/bugfix.md](archive_candidates/trilingua-code/.kiro/specs/dashboard-ui-fix/bugfix.md). SHA-256: `1a7b66e3c1cca9a321dcb707f8ad26d6f84ebc1ade98ae6e669d967d4fe511b3`.
 
 ````text
 # Bugfix Requirements Document
@@ -8249,7 +8249,7 @@ Four pages in the TriLingua application — Dashboard, New Translation, My Docum
 
 ### Preserved source: trilingua-code/.kiro/specs/translation-layout-quality/design.md
 
-Original: [trilingua-code/.kiro/specs/translation-layout-quality/design.md](trilingua-code/.kiro/specs/translation-layout-quality/design.md). SHA-256: `691e528ae96d475c1767ddcc534aeca45d3faff43953223427311a2a3d56cfdb`.
+Original: [trilingua-code/.kiro/specs/translation-layout-quality/design.md](archive_candidates/trilingua-code/.kiro/specs/translation-layout-quality/design.md). SHA-256: `691e528ae96d475c1767ddcc534aeca45d3faff43953223427311a2a3d56cfdb`.
 
 ````text
 # Design Document: Translation Layout Quality
@@ -8926,7 +8926,7 @@ Assert: each full-width block precedes all columnar blocks with greater top y-co
 
 ### Preserved source: trilingua-code/.kiro/specs/translation-layout-quality/tasks.md
 
-Original: [trilingua-code/.kiro/specs/translation-layout-quality/tasks.md](trilingua-code/.kiro/specs/translation-layout-quality/tasks.md). SHA-256: `465e846e55b67f5b0a5dd620ecf3544c5f216c4f43924a326dbb849a113ec9fd`.
+Original: [trilingua-code/.kiro/specs/translation-layout-quality/tasks.md](archive_candidates/trilingua-code/.kiro/specs/translation-layout-quality/tasks.md). SHA-256: `465e846e55b67f5b0a5dd620ecf3544c5f216c4f43924a326dbb849a113ec9fd`.
 
 ````text
 # Implementation Plan: Translation Layout Quality
@@ -9287,7 +9287,7 @@ Implement ten focused components inside `Model/document_translator_v3.py` that i
 
 ### Preserved source: trilingua-code/.kiro/specs/user-id-history-fix/bugfix.md
 
-Original: [trilingua-code/.kiro/specs/user-id-history-fix/bugfix.md](trilingua-code/.kiro/specs/user-id-history-fix/bugfix.md). SHA-256: `04684d620431984ed45b9bdcc54f37f9fae6172629a051b98be9cb56b42247be`.
+Original: [trilingua-code/.kiro/specs/user-id-history-fix/bugfix.md](archive_candidates/trilingua-code/.kiro/specs/user-id-history-fix/bugfix.md). SHA-256: `04684d620431984ed45b9bdcc54f37f9fae6172629a051b98be9cb56b42247be`.
 
 ````text
 # Bugfix Requirements Document
@@ -9344,7 +9344,7 @@ Translation history records and translated documents are tied to a session ID ra
 
 ### Preserved source: trilingua-code/AUTHENTICATION_TESTING.md
 
-Original: [trilingua-code/AUTHENTICATION_TESTING.md](trilingua-code/AUTHENTICATION_TESTING.md). SHA-256: `c09a1dd98b780820ea7cae8602a5f65eb3c50ec55be0dc228408847ee37f4dd6`.
+Original: [trilingua-code/AUTHENTICATION_TESTING.md](archive_candidates/trilingua-code/AUTHENTICATION_TESTING.md). SHA-256: `c09a1dd98b780820ea7cae8602a5f65eb3c50ec55be0dc228408847ee37f4dd6`.
 
 ````text
 # Authentication Testing Guide
@@ -9569,7 +9569,7 @@ Your authentication system is production-ready with enterprise-grade security! �
 
 ### Preserved source: trilingua-code/docs/implementation-records/phase-07-release-evidence.md
 
-Original: [trilingua-code/docs/implementation-records/phase-07-release-evidence.md](trilingua-code/docs/implementation-records/phase-07-release-evidence.md). SHA-256: `aef042c7cd416a1e10734e0cf24d5a2f87c610d9fdd89ce7a730be596134faa1`.
+Original: [trilingua-code/docs/implementation-records/phase-07-release-evidence.md](archive_candidates/trilingua-code/docs/implementation-records/phase-07-release-evidence.md). SHA-256: `aef042c7cd416a1e10734e0cf24d5a2f87c610d9fdd89ce7a730be596134faa1`.
 
 ````text
 # Phase 7 — Release evidence (R8)
@@ -9634,7 +9634,7 @@ Evidence codes: **V-auto** = verified by automated Laravel/Python tests (mock pr
 
 ### Preserved source: trilingua-code/docs/implementation-records/post-audit-package-A.md
 
-Original: [trilingua-code/docs/implementation-records/post-audit-package-A.md](trilingua-code/docs/implementation-records/post-audit-package-A.md). SHA-256: `61a069b96333beec7f077b13b640ec281fc287cd1a508f59b149b3f1f43a4cfb`.
+Original: [trilingua-code/docs/implementation-records/post-audit-package-A.md](archive_candidates/trilingua-code/docs/implementation-records/post-audit-package-A.md). SHA-256: `61a069b96333beec7f077b13b640ec281fc287cd1a508f59b149b3f1f43a4cfb`.
 
 ````text
 # Post-audit Package A — authoritative job acceptance
@@ -9670,7 +9670,7 @@ work.
 
 ### Preserved source: trilingua-code/docs/implementation-records/post-audit-package-B.md
 
-Original: [trilingua-code/docs/implementation-records/post-audit-package-B.md](trilingua-code/docs/implementation-records/post-audit-package-B.md). SHA-256: `a00f98f3a23d397ac4366d4f8f76f76c082c240f01474e64cf1b1d13c1912cae`.
+Original: [trilingua-code/docs/implementation-records/post-audit-package-B.md](archive_candidates/trilingua-code/docs/implementation-records/post-audit-package-B.md). SHA-256: `a00f98f3a23d397ac4366d4f8f76f76c082c240f01474e64cf1b1d13c1912cae`.
 
 ````text
 # Post-audit Package B - Publication and audit integrity
@@ -9828,7 +9828,7 @@ node --check resources/js/document-preview.js   -> ok
 
 ### Preserved source: trilingua-code/docs/implementation-records/post-audit-package-C.md
 
-Original: [trilingua-code/docs/implementation-records/post-audit-package-C.md](trilingua-code/docs/implementation-records/post-audit-package-C.md). SHA-256: `866746c4d70715d24f074189ee0ef9f922abdd21a6413cdb141edcb9701a4468`.
+Original: [trilingua-code/docs/implementation-records/post-audit-package-C.md](archive_candidates/trilingua-code/docs/implementation-records/post-audit-package-C.md). SHA-256: `866746c4d70715d24f074189ee0ef9f922abdd21a6413cdb141edcb9701a4468`.
 
 ````text
 # Post-audit Package C - Downloads and cleanup
@@ -9943,7 +9943,7 @@ php artisan test tests/Unit                                               -> 131
 
 ### Preserved source: trilingua-code/docs/implementation-records/post-audit-package-D.md
 
-Original: [trilingua-code/docs/implementation-records/post-audit-package-D.md](trilingua-code/docs/implementation-records/post-audit-package-D.md). SHA-256: `6408db33aecc83b962610033eb815762c3cd998fd5f9dae34c9f36dd89e44506`.
+Original: [trilingua-code/docs/implementation-records/post-audit-package-D.md](archive_candidates/trilingua-code/docs/implementation-records/post-audit-package-D.md). SHA-256: `6408db33aecc83b962610033eb815762c3cd998fd5f9dae34c9f36dd89e44506`.
 
 ````text
 # Post-audit Package D — client and text-state truthfulness
@@ -10005,7 +10005,7 @@ client alone would hide backend partial-success truth; rollback D as a unit.
 
 ### Preserved source: trilingua-code/docs/implementation-records/post-audit-package-E.md
 
-Original: [trilingua-code/docs/implementation-records/post-audit-package-E.md](trilingua-code/docs/implementation-records/post-audit-package-E.md). SHA-256: `f0846c2f3ee029fde0de849e755a7d50ba918fcf56e4c1ad44eae9c3adf73cee`.
+Original: [trilingua-code/docs/implementation-records/post-audit-package-E.md](archive_candidates/trilingua-code/docs/implementation-records/post-audit-package-E.md). SHA-256: `f0846c2f3ee029fde0de849e755a7d50ba918fcf56e4c1ad44eae9c3adf73cee`.
 
 ````text
 # Post-audit Package E — quality availability and spacing evidence
@@ -10064,7 +10064,7 @@ spacing contract only from that evidence.
 
 ### Preserved source: trilingua-code/docs/implementation-records/post-audit-package-F.md
 
-Original: [trilingua-code/docs/implementation-records/post-audit-package-F.md](trilingua-code/docs/implementation-records/post-audit-package-F.md). SHA-256: `10af91ea770b021897f2e58a2aba1500709339f4dfef086088989ddea7ca1db3`.
+Original: [trilingua-code/docs/implementation-records/post-audit-package-F.md](archive_candidates/trilingua-code/docs/implementation-records/post-audit-package-F.md). SHA-256: `10af91ea770b021897f2e58a2aba1500709339f4dfef086088989ddea7ca1db3`.
 
 ````text
 # Post-audit Package F — targeted performance and UI inspection
@@ -10095,7 +10095,7 @@ intended size/concurrency limits. No migration, data repair, or rollback step.
 
 ### Preserved source: trilingua-code/docs/implementation-records/post-audit-package-G.md
 
-Original: [trilingua-code/docs/implementation-records/post-audit-package-G.md](trilingua-code/docs/implementation-records/post-audit-package-G.md). SHA-256: `c85d651979b9a57026f82de4c28c1d31bf5c8027ee1460a62e2de88d6ce4e035`.
+Original: [trilingua-code/docs/implementation-records/post-audit-package-G.md](archive_candidates/trilingua-code/docs/implementation-records/post-audit-package-G.md). SHA-256: `c85d651979b9a57026f82de4c28c1d31bf5c8027ee1460a62e2de88d6ce4e035`.
 
 ````text
 # Post-audit Package G — integrated acceptance record
@@ -10167,7 +10167,7 @@ outbox until queued work and stored object references are reconciled.
 
 ### Preserved source: trilingua-code/docs/implementation-records/post-audit-release-report.md
 
-Original: [trilingua-code/docs/implementation-records/post-audit-release-report.md](trilingua-code/docs/implementation-records/post-audit-release-report.md). SHA-256: `daa727ea3a90107740727923bda5c05de1c4b1158a9d26ebe1865734e6362b30`.
+Original: [trilingua-code/docs/implementation-records/post-audit-release-report.md](archive_candidates/trilingua-code/docs/implementation-records/post-audit-release-report.md). SHA-256: `daa727ea3a90107740727923bda5c05de1c4b1158a9d26ebe1865734e6362b30`.
 
 ````text
 # TriLingua post-audit release report — 2026-09-28
@@ -10206,7 +10206,7 @@ claim is supported by this local evidence.
 
 ### Preserved source: trilingua-code/Model/benchmarks/README.md
 
-Original: [trilingua-code/Model/benchmarks/README.md](trilingua-code/Model/benchmarks/README.md). SHA-256: `d8246ea5ddc9e7faf5870a7bcacb33b626c24f262be0c20ac2a21a3225e43269`.
+Original: [trilingua-code/Model/benchmarks/README.md](archive_candidates/trilingua-code/Model/benchmarks/README.md). SHA-256: `d8246ea5ddc9e7faf5870a7bcacb33b626c24f262be0c20ac2a21a3225e43269`.
 
 ````text
 # Translation quality benchmark v1
@@ -10234,7 +10234,7 @@ building the reviewed corpus.
 
 ### Preserved source: trilingua-code/security/evidence-runbook.md
 
-Original: [trilingua-code/security/evidence-runbook.md](trilingua-code/security/evidence-runbook.md). SHA-256: `bc85cb8004c73132ca80d7865c2d68600774e41a115965d3a7f125b6020552c3`.
+Original: [trilingua-code/security/evidence-runbook.md](archive_candidates/trilingua-code/security/evidence-runbook.md). SHA-256: `bc85cb8004c73132ca80d7865c2d68600774e41a115965d3a7f125b6020552c3`.
 
 ````text
 # 0A — Evidence Preservation Runbook

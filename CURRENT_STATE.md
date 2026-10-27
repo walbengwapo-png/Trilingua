@@ -553,13 +553,13 @@ support) and only confused users. Remove them to keep the toolbar clean.
 
 Full extracted historical text follows. Original binary documents preserve images, tables and formatting beyond this text representation. Older commands/settings and contradicted claims are historical evidence. Sensitive-looking values are redacted only in the canonical copy; original files remain unchanged and private backup precautions still apply.
 
-- [chatgpt/trilingua-investigation-and-remediation-plan.md](#source-8dee3855947c1eed) — [chatgpt/trilingua-investigation-and-remediation-plan.md](chatgpt/trilingua-investigation-and-remediation-plan.md)
+- [chatgpt/trilingua-investigation-and-remediation-plan.md](#source-8dee3855947c1eed) — [chatgpt/trilingua-investigation-and-remediation-plan.md](archive_candidates/chatgpt/trilingua-investigation-and-remediation-plan.md)
 - [clip-studio-feasibility/IMPLEMENTATION-PLAN.md](#source-24bf3730f8bee25d) — [clip-studio-feasibility/IMPLEMENTATION-PLAN.md](archive_candidates/clip-studio-feasibility/IMPLEMENTATION-PLAN.md)
 - [clip-studio-feasibility/technical-fact-check.md](#source-93c5037889591ea9) — [clip-studio-feasibility/technical-fact-check.md](archive_candidates/clip-studio-feasibility/technical-fact-check.md)
 - [codex/IMPLEMENTATION_PLAN_EXISTING_SYSTEM_2026-09-28.md](#source-d27b42a211bd3ee2) — [codex/IMPLEMENTATION_PLAN_EXISTING_SYSTEM_2026-09-28.md](archive_candidates/codex/IMPLEMENTATION_PLAN_EXISTING_SYSTEM_2026-09-28.md)
 - [codex/PRODUCTION_READINESS_IMPLEMENTATION_PLAN_2026-09-29.md](#source-fd02bd1f9b635044) — [codex/PRODUCTION_READINESS_IMPLEMENTATION_PLAN_2026-09-29.md](archive_candidates/codex/PRODUCTION_READINESS_IMPLEMENTATION_PLAN_2026-09-29.md)
-- [COMMIT_MESSAGE.txt](#source-43923fb73d86c0a7) — [COMMIT_MESSAGE.txt](COMMIT_MESSAGE.txt)
-- [docs/TRILINGUA_CURRENT_STANDING_2026-10-01.md](#source-80bb8beb157a569a) — [docs/TRILINGUA_CURRENT_STANDING_2026-10-01.md](docs/TRILINGUA_CURRENT_STANDING_2026-10-01.md)
+- [COMMIT_MESSAGE.txt](#source-43923fb73d86c0a7) — [COMMIT_MESSAGE.txt](archive_candidates/COMMIT_MESSAGE.txt)
+- [docs/TRILINGUA_CURRENT_STANDING_2026-10-01.md](#source-80bb8beb157a569a) — [docs/TRILINGUA_CURRENT_STANDING_2026-10-01.md](archive_candidates/docs/TRILINGUA_CURRENT_STANDING_2026-10-01.md)
 - [output/ocr-acceptance/lion-mouse-review-2026-10-26/AI_COORDINATOR.md](#source-8a8e7ad1283de0c0) — [output/ocr-acceptance/lion-mouse-review-2026-10-26/AI_COORDINATOR.md](archive_candidates/output/ocr-acceptance/lion-mouse-review-2026-10-26/AI_COORDINATOR.md)
 - [output/ocr-acceptance/lion-mouse-review-2026-10-26/REVIEW_NOTES.md](#source-a3923c8b2d03df70) — [output/ocr-acceptance/lion-mouse-review-2026-10-26/REVIEW_NOTES.md](archive_candidates/output/ocr-acceptance/lion-mouse-review-2026-10-26/REVIEW_NOTES.md)
 - [output/pdf/lion-mouse-ocr-preview-final-2026-10-27/RUN_REPORT.md](#source-1903120a5655b125) — [output/pdf/lion-mouse-ocr-preview-final-2026-10-27/RUN_REPORT.md](archive_candidates/output/pdf/lion-mouse-ocr-preview-final-2026-10-27/RUN_REPORT.md)
@@ -572,51 +572,51 @@ Full extracted historical text follows. Original binary documents preserve image
 - [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/translation-fixes/tasks.md](#source-99ac44b2ed2378f6) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/translation-fixes/tasks.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/translation-fixes/tasks.md)
 - [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/user-id-history-fix/tasks.md](#source-3e5747a91a2821e3) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/user-id-history-fix/tasks.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/user-id-history-fix/tasks.md)
 - [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/user-settings/tasks.md](#source-8ca5dbacd531bbe2) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/user-settings/tasks.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/user-settings/tasks.md)
-- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md](#source-2a0e7eae97ce2102) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md)
-- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/DASHBOARD_FIX.md](#source-8e3aca3db64a8bcb) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/DASHBOARD_FIX.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/DASHBOARD_FIX.md)
-- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/mistral-analysis-investigation.md](#source-48216e12284a0a7a) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/mistral-analysis-investigation.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/mistral-analysis-investigation.md)
-- [output/reviews/hybrid-pdf-implementation/FINISH.md](#source-ea4c767ac45d0128) — [output/reviews/hybrid-pdf-implementation/FINISH.md](output/reviews/hybrid-pdf-implementation/FINISH.md)
-- [output/reviews/hybrid-pdf-implementation/HANDOFF.md](#source-b340fea2702a4047) — [output/reviews/hybrid-pdf-implementation/HANDOFF.md](output/reviews/hybrid-pdf-implementation/HANDOFF.md)
-- [output/reviews/hybrid-pdf-implementation/PROGRESS.md](#source-eab15ffc677d34a0) — [output/reviews/hybrid-pdf-implementation/PROGRESS.md](output/reviews/hybrid-pdf-implementation/PROGRESS.md)
-- [output/reviews/hybrid-pdf-implementation/REVIEW.md](#source-321d5fd35a87af65) — [output/reviews/hybrid-pdf-implementation/REVIEW.md](output/reviews/hybrid-pdf-implementation/REVIEW.md)
-- [output/reviews/hybrid-pdf-implementation/TASKS.md](#source-7ff9fdd005a841ab) — [output/reviews/hybrid-pdf-implementation/TASKS.md](output/reviews/hybrid-pdf-implementation/TASKS.md)
+- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md](#source-2a0e7eae97ce2102) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md)
+- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/DASHBOARD_FIX.md](#source-8e3aca3db64a8bcb) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/DASHBOARD_FIX.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/DASHBOARD_FIX.md)
+- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/mistral-analysis-investigation.md](#source-48216e12284a0a7a) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/mistral-analysis-investigation.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/mistral-analysis-investigation.md)
+- [output/reviews/hybrid-pdf-implementation/FINISH.md](#source-ea4c767ac45d0128) — [output/reviews/hybrid-pdf-implementation/FINISH.md](archive_candidates/output/reviews/hybrid-pdf-implementation/FINISH.md)
+- [output/reviews/hybrid-pdf-implementation/HANDOFF.md](#source-b340fea2702a4047) — [output/reviews/hybrid-pdf-implementation/HANDOFF.md](archive_candidates/output/reviews/hybrid-pdf-implementation/HANDOFF.md)
+- [output/reviews/hybrid-pdf-implementation/PROGRESS.md](#source-eab15ffc677d34a0) — [output/reviews/hybrid-pdf-implementation/PROGRESS.md](archive_candidates/output/reviews/hybrid-pdf-implementation/PROGRESS.md)
+- [output/reviews/hybrid-pdf-implementation/REVIEW.md](#source-321d5fd35a87af65) — [output/reviews/hybrid-pdf-implementation/REVIEW.md](archive_candidates/output/reviews/hybrid-pdf-implementation/REVIEW.md)
+- [output/reviews/hybrid-pdf-implementation/TASKS.md](#source-7ff9fdd005a841ab) — [output/reviews/hybrid-pdf-implementation/TASKS.md](archive_candidates/output/reviews/hybrid-pdf-implementation/TASKS.md)
 - [output/reviews/layout-preserving-ocr-investigation-2026-10-25/IMPLEMENTATION_PLAN.md](#source-07c992ab4083b7da) — [output/reviews/layout-preserving-ocr-investigation-2026-10-25/IMPLEMENTATION_PLAN.md](archive_candidates/output/reviews/layout-preserving-ocr-investigation-2026-10-25/IMPLEMENTATION_PLAN.md)
 - [output/reviews/layout-preserving-ocr-investigation-2026-10-25/ocr-options-primary-sources.md](#source-1fae0bf8676c761b) — [output/reviews/layout-preserving-ocr-investigation-2026-10-25/ocr-options-primary-sources.md](archive_candidates/output/reviews/layout-preserving-ocr-investigation-2026-10-25/ocr-options-primary-sources.md)
-- [output/reviews/ocr-acceptance-workflow-2026-10-26/PROGRESS.md](#source-3a847362d82d0cd5) — [output/reviews/ocr-acceptance-workflow-2026-10-26/PROGRESS.md](output/reviews/ocr-acceptance-workflow-2026-10-26/PROGRESS.md)
-- [output/reviews/ocr-ai-coordinator-2026-10-26/PROGRESS.md](#source-9717116b0387b529) — [output/reviews/ocr-ai-coordinator-2026-10-26/PROGRESS.md](output/reviews/ocr-ai-coordinator-2026-10-26/PROGRESS.md)
+- [output/reviews/ocr-acceptance-workflow-2026-10-26/PROGRESS.md](#source-3a847362d82d0cd5) — [output/reviews/ocr-acceptance-workflow-2026-10-26/PROGRESS.md](archive_candidates/output/reviews/ocr-acceptance-workflow-2026-10-26/PROGRESS.md)
+- [output/reviews/ocr-ai-coordinator-2026-10-26/PROGRESS.md](#source-9717116b0387b529) — [output/reviews/ocr-ai-coordinator-2026-10-26/PROGRESS.md](archive_candidates/output/reviews/ocr-ai-coordinator-2026-10-26/PROGRESS.md)
 - [output/reviews/ocr-functional-diagnostic-2026-10-26/FUNCTIONAL_PLAN.md](#source-78379c9eeda1bc69) — [output/reviews/ocr-functional-diagnostic-2026-10-26/FUNCTIONAL_PLAN.md](archive_candidates/output/reviews/ocr-functional-diagnostic-2026-10-26/FUNCTIONAL_PLAN.md)
-- [output/reviews/ocr-functional-implementation/PROGRESS.md](#source-dd3739f87f8d4b90) — [output/reviews/ocr-functional-implementation/PROGRESS.md](output/reviews/ocr-functional-implementation/PROGRESS.md)
-- [output/reviews/ocr-preview-implementation-2026-10-27/PROGRESS.md](#source-801c1d6ace4ec358) — [output/reviews/ocr-preview-implementation-2026-10-27/PROGRESS.md](output/reviews/ocr-preview-implementation-2026-10-27/PROGRESS.md)
+- [output/reviews/ocr-functional-implementation/PROGRESS.md](#source-dd3739f87f8d4b90) — [output/reviews/ocr-functional-implementation/PROGRESS.md](archive_candidates/output/reviews/ocr-functional-implementation/PROGRESS.md)
+- [output/reviews/ocr-preview-implementation-2026-10-27/PROGRESS.md](#source-801c1d6ace4ec358) — [output/reviews/ocr-preview-implementation-2026-10-27/PROGRESS.md](archive_candidates/output/reviews/ocr-preview-implementation-2026-10-27/PROGRESS.md)
 - [output/reviews/TriLingua_Document_Handling_Implementation_Report_2026-10-19.md](#source-320868c8a2d7a7de) — [output/reviews/TriLingua_Document_Handling_Implementation_Report_2026-10-19.md](archive_candidates/output/reviews/TriLingua_Document_Handling_Implementation_Report_2026-10-19.md)
 - [output/reviews/TriLingua_Fix_First_Detailed_Plan_2026-10-19.md](#source-d4fc2bf8d1ad6337) — [output/reviews/TriLingua_Fix_First_Detailed_Plan_2026-10-19.md](archive_candidates/output/reviews/TriLingua_Fix_First_Detailed_Plan_2026-10-19.md)
 - [output/reviews/TriLingua_System_and_Manuscript_Gaps_2026-10-19.md](#source-f210d2d81b6bd257) — [output/reviews/TriLingua_System_and_Manuscript_Gaps_2026-10-19.md](archive_candidates/output/reviews/TriLingua_System_and_Manuscript_Gaps_2026-10-19.md)
-- [REPOSITORY_CHECKLIST.md](#source-ed866e602843454a) — [REPOSITORY_CHECKLIST.md](REPOSITORY_CHECKLIST.md)
-- [TRANSLATION_FIX_PLAN.md](#source-6fe5cd727b452902) — [TRANSLATION_FIX_PLAN.md](TRANSLATION_FIX_PLAN.md)
-- [TRANSLATION_FIXES_IMPLEMENTED.md](#source-7297e3b989cbb932) — [TRANSLATION_FIXES_IMPLEMENTED.md](TRANSLATION_FIXES_IMPLEMENTED.md)
-- [TRANSLATION_FIXES_SUMMARY.md](#source-58129ed59283a247) — [TRANSLATION_FIXES_SUMMARY.md](TRANSLATION_FIXES_SUMMARY.md)
-- [trilingua-code/.kiro/specs/auth-css-rendering-fix/tasks.md](#source-da57462ba9a19582) — [trilingua-code/.kiro/specs/auth-css-rendering-fix/tasks.md](trilingua-code/.kiro/specs/auth-css-rendering-fix/tasks.md)
-- [trilingua-code/.kiro/specs/dashboard-ui-fix/tasks.md](#source-87594546c439d65a) — [trilingua-code/.kiro/specs/dashboard-ui-fix/tasks.md](trilingua-code/.kiro/specs/dashboard-ui-fix/tasks.md)
-- [trilingua-code/.kiro/specs/new-translation-page/tasks.md](#source-9a79a5f1d2142cec) — [trilingua-code/.kiro/specs/new-translation-page/tasks.md](trilingua-code/.kiro/specs/new-translation-page/tasks.md)
-- [trilingua-code/.kiro/specs/supabase-cloud-storage/tasks.md](#source-49a81cec44f061c8) — [trilingua-code/.kiro/specs/supabase-cloud-storage/tasks.md](trilingua-code/.kiro/specs/supabase-cloud-storage/tasks.md)
-- [trilingua-code/.kiro/specs/translation-fixes/tasks.md](#source-cf855a854d2e1349) — [trilingua-code/.kiro/specs/translation-fixes/tasks.md](trilingua-code/.kiro/specs/translation-fixes/tasks.md)
-- [trilingua-code/.kiro/specs/user-id-history-fix/tasks.md](#source-c64afe822afc2c52) — [trilingua-code/.kiro/specs/user-id-history-fix/tasks.md](trilingua-code/.kiro/specs/user-id-history-fix/tasks.md)
-- [trilingua-code/.kiro/specs/user-settings/tasks.md](#source-9359bdf95170601e) — [trilingua-code/.kiro/specs/user-settings/tasks.md](trilingua-code/.kiro/specs/user-settings/tasks.md)
-- [trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md](#source-061f3f5631620509) — [trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md](trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md)
-- [trilingua-code/DASHBOARD_FIX.md](#source-85e634126379c260) — [trilingua-code/DASHBOARD_FIX.md](trilingua-code/DASHBOARD_FIX.md)
-- [trilingua-code/docs/HYBRID_OCR_PREVIEW_2026-10-27.md](#source-28be56b1c6c92bd1) — [trilingua-code/docs/HYBRID_OCR_PREVIEW_2026-10-27.md](trilingua-code/docs/HYBRID_OCR_PREVIEW_2026-10-27.md)
-- [trilingua-code/docs/implementation-records/phase-00-baseline.md](#source-7255187ef916cf94) — [trilingua-code/docs/implementation-records/phase-00-baseline.md](trilingua-code/docs/implementation-records/phase-00-baseline.md)
-- [trilingua-code/docs/implementation-records/phase-01-admin-provisioning.md](#source-88071093a45e8cd2) — [trilingua-code/docs/implementation-records/phase-01-admin-provisioning.md](trilingua-code/docs/implementation-records/phase-01-admin-provisioning.md)
-- [trilingua-code/docs/implementation-records/phase-02-timeouts-retry.md](#source-fbb6dacd79702ec4) — [trilingua-code/docs/implementation-records/phase-02-timeouts-retry.md](trilingua-code/docs/implementation-records/phase-02-timeouts-retry.md)
-- [trilingua-code/docs/implementation-records/phase-03-completion-integrity.md](#source-8747c154d6a56220) — [trilingua-code/docs/implementation-records/phase-03-completion-integrity.md](trilingua-code/docs/implementation-records/phase-03-completion-integrity.md)
-- [trilingua-code/docs/implementation-records/phase-04-review-publish-integrity.md](#source-4e9b159fe7cd342e) — [trilingua-code/docs/implementation-records/phase-04-review-publish-integrity.md](trilingua-code/docs/implementation-records/phase-04-review-publish-integrity.md)
-- [trilingua-code/docs/implementation-records/phase-05-quota-outbox.md](#source-6ccb29a4a642edfd) — [trilingua-code/docs/implementation-records/phase-05-quota-outbox.md](trilingua-code/docs/implementation-records/phase-05-quota-outbox.md)
-- [trilingua-code/docs/implementation-records/phase-06-ui-ux-corrections.md](#source-ddef0bd7704c17fd) — [trilingua-code/docs/implementation-records/phase-06-ui-ux-corrections.md](trilingua-code/docs/implementation-records/phase-06-ui-ux-corrections.md)
-- [trilingua-code/docs/implementation-records/phase-08-baseline-staging.md](#source-9171a3d56b997877) — [trilingua-code/docs/implementation-records/phase-08-baseline-staging.md](trilingua-code/docs/implementation-records/phase-08-baseline-staging.md)
-- [trilingua-code/docs/implementation-records/phase-09-local-continuation.md](#source-b2a6c2ca0a5d0821) — [trilingua-code/docs/implementation-records/phase-09-local-continuation.md](trilingua-code/docs/implementation-records/phase-09-local-continuation.md)
-- [trilingua-code/docs/mistral-analysis-investigation.md](#source-3ce389b32ab3ab69) — [trilingua-code/docs/mistral-analysis-investigation.md](trilingua-code/docs/mistral-analysis-investigation.md)
-- [trilingua-code/docs/OCR_ACCEPTANCE_WORKFLOW_2026-10-26.md](#source-3fa25517291c3ab8) — [trilingua-code/docs/OCR_ACCEPTANCE_WORKFLOW_2026-10-26.md](trilingua-code/docs/OCR_ACCEPTANCE_WORKFLOW_2026-10-26.md)
-- [trilingua-code/docs/OCR_AI_COORDINATOR_2026-10-26.md](#source-d86638d668b930bf) — [trilingua-code/docs/OCR_AI_COORDINATOR_2026-10-26.md](trilingua-code/docs/OCR_AI_COORDINATOR_2026-10-26.md)
-- [trilingua-code/docs/OCR_FUNCTIONAL_CORRECTIONS_2026-10-26.md](#source-de1bdf0e7d98f2c7) — [trilingua-code/docs/OCR_FUNCTIONAL_CORRECTIONS_2026-10-26.md](trilingua-code/docs/OCR_FUNCTIONAL_CORRECTIONS_2026-10-26.md)
+- [REPOSITORY_CHECKLIST.md](#source-ed866e602843454a) — [REPOSITORY_CHECKLIST.md](archive_candidates/REPOSITORY_CHECKLIST.md)
+- [TRANSLATION_FIX_PLAN.md](#source-6fe5cd727b452902) — [TRANSLATION_FIX_PLAN.md](archive_candidates/TRANSLATION_FIX_PLAN.md)
+- [TRANSLATION_FIXES_IMPLEMENTED.md](#source-7297e3b989cbb932) — [TRANSLATION_FIXES_IMPLEMENTED.md](archive_candidates/TRANSLATION_FIXES_IMPLEMENTED.md)
+- [TRANSLATION_FIXES_SUMMARY.md](#source-58129ed59283a247) — [TRANSLATION_FIXES_SUMMARY.md](archive_candidates/TRANSLATION_FIXES_SUMMARY.md)
+- [trilingua-code/.kiro/specs/auth-css-rendering-fix/tasks.md](#source-da57462ba9a19582) — [trilingua-code/.kiro/specs/auth-css-rendering-fix/tasks.md](archive_candidates/trilingua-code/.kiro/specs/auth-css-rendering-fix/tasks.md)
+- [trilingua-code/.kiro/specs/dashboard-ui-fix/tasks.md](#source-87594546c439d65a) — [trilingua-code/.kiro/specs/dashboard-ui-fix/tasks.md](archive_candidates/trilingua-code/.kiro/specs/dashboard-ui-fix/tasks.md)
+- [trilingua-code/.kiro/specs/new-translation-page/tasks.md](#source-9a79a5f1d2142cec) — [trilingua-code/.kiro/specs/new-translation-page/tasks.md](archive_candidates/trilingua-code/.kiro/specs/new-translation-page/tasks.md)
+- [trilingua-code/.kiro/specs/supabase-cloud-storage/tasks.md](#source-49a81cec44f061c8) — [trilingua-code/.kiro/specs/supabase-cloud-storage/tasks.md](archive_candidates/trilingua-code/.kiro/specs/supabase-cloud-storage/tasks.md)
+- [trilingua-code/.kiro/specs/translation-fixes/tasks.md](#source-cf855a854d2e1349) — [trilingua-code/.kiro/specs/translation-fixes/tasks.md](archive_candidates/trilingua-code/.kiro/specs/translation-fixes/tasks.md)
+- [trilingua-code/.kiro/specs/user-id-history-fix/tasks.md](#source-c64afe822afc2c52) — [trilingua-code/.kiro/specs/user-id-history-fix/tasks.md](archive_candidates/trilingua-code/.kiro/specs/user-id-history-fix/tasks.md)
+- [trilingua-code/.kiro/specs/user-settings/tasks.md](#source-9359bdf95170601e) — [trilingua-code/.kiro/specs/user-settings/tasks.md](archive_candidates/trilingua-code/.kiro/specs/user-settings/tasks.md)
+- [trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md](#source-061f3f5631620509) — [trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md](archive_candidates/trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md)
+- [trilingua-code/DASHBOARD_FIX.md](#source-85e634126379c260) — [trilingua-code/DASHBOARD_FIX.md](archive_candidates/trilingua-code/DASHBOARD_FIX.md)
+- [trilingua-code/docs/HYBRID_OCR_PREVIEW_2026-10-27.md](#source-28be56b1c6c92bd1) — [trilingua-code/docs/HYBRID_OCR_PREVIEW_2026-10-27.md](archive_candidates/trilingua-code/docs/HYBRID_OCR_PREVIEW_2026-10-27.md)
+- [trilingua-code/docs/implementation-records/phase-00-baseline.md](#source-7255187ef916cf94) — [trilingua-code/docs/implementation-records/phase-00-baseline.md](archive_candidates/trilingua-code/docs/implementation-records/phase-00-baseline.md)
+- [trilingua-code/docs/implementation-records/phase-01-admin-provisioning.md](#source-88071093a45e8cd2) — [trilingua-code/docs/implementation-records/phase-01-admin-provisioning.md](archive_candidates/trilingua-code/docs/implementation-records/phase-01-admin-provisioning.md)
+- [trilingua-code/docs/implementation-records/phase-02-timeouts-retry.md](#source-fbb6dacd79702ec4) — [trilingua-code/docs/implementation-records/phase-02-timeouts-retry.md](archive_candidates/trilingua-code/docs/implementation-records/phase-02-timeouts-retry.md)
+- [trilingua-code/docs/implementation-records/phase-03-completion-integrity.md](#source-8747c154d6a56220) — [trilingua-code/docs/implementation-records/phase-03-completion-integrity.md](archive_candidates/trilingua-code/docs/implementation-records/phase-03-completion-integrity.md)
+- [trilingua-code/docs/implementation-records/phase-04-review-publish-integrity.md](#source-4e9b159fe7cd342e) — [trilingua-code/docs/implementation-records/phase-04-review-publish-integrity.md](archive_candidates/trilingua-code/docs/implementation-records/phase-04-review-publish-integrity.md)
+- [trilingua-code/docs/implementation-records/phase-05-quota-outbox.md](#source-6ccb29a4a642edfd) — [trilingua-code/docs/implementation-records/phase-05-quota-outbox.md](archive_candidates/trilingua-code/docs/implementation-records/phase-05-quota-outbox.md)
+- [trilingua-code/docs/implementation-records/phase-06-ui-ux-corrections.md](#source-ddef0bd7704c17fd) — [trilingua-code/docs/implementation-records/phase-06-ui-ux-corrections.md](archive_candidates/trilingua-code/docs/implementation-records/phase-06-ui-ux-corrections.md)
+- [trilingua-code/docs/implementation-records/phase-08-baseline-staging.md](#source-9171a3d56b997877) — [trilingua-code/docs/implementation-records/phase-08-baseline-staging.md](archive_candidates/trilingua-code/docs/implementation-records/phase-08-baseline-staging.md)
+- [trilingua-code/docs/implementation-records/phase-09-local-continuation.md](#source-b2a6c2ca0a5d0821) — [trilingua-code/docs/implementation-records/phase-09-local-continuation.md](archive_candidates/trilingua-code/docs/implementation-records/phase-09-local-continuation.md)
+- [trilingua-code/docs/mistral-analysis-investigation.md](#source-3ce389b32ab3ab69) — [trilingua-code/docs/mistral-analysis-investigation.md](archive_candidates/trilingua-code/docs/mistral-analysis-investigation.md)
+- [trilingua-code/docs/OCR_ACCEPTANCE_WORKFLOW_2026-10-26.md](#source-3fa25517291c3ab8) — [trilingua-code/docs/OCR_ACCEPTANCE_WORKFLOW_2026-10-26.md](archive_candidates/trilingua-code/docs/OCR_ACCEPTANCE_WORKFLOW_2026-10-26.md)
+- [trilingua-code/docs/OCR_AI_COORDINATOR_2026-10-26.md](#source-d86638d668b930bf) — [trilingua-code/docs/OCR_AI_COORDINATOR_2026-10-26.md](archive_candidates/trilingua-code/docs/OCR_AI_COORDINATOR_2026-10-26.md)
+- [trilingua-code/docs/OCR_FUNCTIONAL_CORRECTIONS_2026-10-26.md](#source-de1bdf0e7d98f2c7) — [trilingua-code/docs/OCR_FUNCTIONAL_CORRECTIONS_2026-10-26.md](archive_candidates/trilingua-code/docs/OCR_FUNCTIONAL_CORRECTIONS_2026-10-26.md)
 - [trilingua-code/docs/OCR_IMPLEMENTATION_2026-10-25.md](#source-13ab5b9c574a6685) — [trilingua-code/docs/OCR_IMPLEMENTATION_2026-10-25.md](archive_candidates/trilingua-code/docs/OCR_IMPLEMENTATION_2026-10-25.md)
 - [TRILINGUA_PRODUCTION_STATE_REPORT_2026-10-09.md](#source-dd33efddc2ccc7cc) — [TRILINGUA_PRODUCTION_STATE_REPORT_2026-10-09.md](archive_candidates/TRILINGUA_PRODUCTION_STATE_REPORT_2026-10-09.md)
 
@@ -624,7 +624,7 @@ Full extracted historical text follows. Original binary documents preserve image
 
 ### Preserved source: chatgpt/trilingua-investigation-and-remediation-plan.md
 
-Original: [chatgpt/trilingua-investigation-and-remediation-plan.md](chatgpt/trilingua-investigation-and-remediation-plan.md). SHA-256: `62667c66804b5f0072d33144c20bb0982e97c62b136ccb976f1852f6fa88ad1f`.
+Original: [chatgpt/trilingua-investigation-and-remediation-plan.md](archive_candidates/chatgpt/trilingua-investigation-and-remediation-plan.md). SHA-256: `62667c66804b5f0072d33144c20bb0982e97c62b136ccb976f1852f6fa88ad1f`.
 
 ````text
 # Trilingua Investigation and Remediation Plan
@@ -1488,7 +1488,7 @@ Original: [codex/PRODUCTION_READINESS_IMPLEMENTATION_PLAN_2026-09-29.md](archive
 
 ### Preserved source: COMMIT_MESSAGE.txt
 
-Original: [COMMIT_MESSAGE.txt](COMMIT_MESSAGE.txt). SHA-256: `6a4c5bc8f8d41475fc2d2dee6a87aefed8f682899326e54a9d589f051999d27f`.
+Original: [COMMIT_MESSAGE.txt](archive_candidates/COMMIT_MESSAGE.txt). SHA-256: `6a4c5bc8f8d41475fc2d2dee6a87aefed8f682899326e54a9d589f051999d27f`.
 
 ````text
 docs: Add comprehensive README and capstone project documentation
@@ -1551,7 +1551,7 @@ it as a capstone project for academic purposes.
 
 ### Preserved source: docs/TRILINGUA_CURRENT_STANDING_2026-10-01.md
 
-Original: [docs/TRILINGUA_CURRENT_STANDING_2026-10-01.md](docs/TRILINGUA_CURRENT_STANDING_2026-10-01.md). SHA-256: `23176971ff84f0b4e37e92bfff8e8250e0a69627ab71cd00b49c27fd6d6be19b`.
+Original: [docs/TRILINGUA_CURRENT_STANDING_2026-10-01.md](archive_candidates/docs/TRILINGUA_CURRENT_STANDING_2026-10-01.md). SHA-256: `23176971ff84f0b4e37e92bfff8e8250e0a69627ab71cd00b49c27fd6d6be19b`.
 
 ````text
 # TriLingua Current Standing and Translation Evaluation
@@ -3387,7 +3387,7 @@ This plan implements a comprehensive user settings feature for the TriLingua Lar
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md
 
-Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md). SHA-256: `60ba87d4917be0ad7b09c707eed0fcb190308a2da7a19936e1da303a2a1a97ce`.
+Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md). SHA-256: `60ba87d4917be0ad7b09c707eed0fcb190308a2da7a19936e1da303a2a1a97ce`.
 
 ````text
 # CSS Not Loading - Troubleshooting Guide
@@ -3678,7 +3678,7 @@ npm run build
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/DASHBOARD_FIX.md
 
-Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/DASHBOARD_FIX.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/DASHBOARD_FIX.md). SHA-256: `53b3d1c4582429fa983843a7312c6fec34ff25aae07a1b631810c15344086057`.
+Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/DASHBOARD_FIX.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/DASHBOARD_FIX.md). SHA-256: `53b3d1c4582429fa983843a7312c6fec34ff25aae07a1b631810c15344086057`.
 
 ````text
 # Dashboard Error Fix
@@ -3746,7 +3746,7 @@ Document uploads still require Supabase for file storage. Text translations work
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/mistral-analysis-investigation.md
 
-Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/mistral-analysis-investigation.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/mistral-analysis-investigation.md). SHA-256: `e983e1fe3415664a586635746250c6f41f485dd44d43a0abdc8f13da60ba676c`.
+Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/mistral-analysis-investigation.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/mistral-analysis-investigation.md). SHA-256: `e983e1fe3415664a586635746250c6f41f485dd44d43a0abdc8f13da60ba676c`.
 
 ````text
 # Mistral analysis failure investigation
@@ -3791,7 +3791,7 @@ The application can recover from Mistral rejection; these changes cannot increas
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/FINISH.md
 
-Original: [output/reviews/hybrid-pdf-implementation/FINISH.md](output/reviews/hybrid-pdf-implementation/FINISH.md). SHA-256: `d1bc71b59a9337021e5bb3820b466a953040e2bc9b7b90ad542b970601363696`.
+Original: [output/reviews/hybrid-pdf-implementation/FINISH.md](archive_candidates/output/reviews/hybrid-pdf-implementation/FINISH.md). SHA-256: `d1bc71b59a9337021e5bb3820b466a953040e2bc9b7b90ad542b970601363696`.
 
 ````text
 # Hybrid PDF engineering finish
@@ -3874,7 +3874,7 @@ Final cleanup verification: 254 Python passed (81.94 s), 52 PHP/255 assertions p
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/HANDOFF.md
 
-Original: [output/reviews/hybrid-pdf-implementation/HANDOFF.md](output/reviews/hybrid-pdf-implementation/HANDOFF.md). SHA-256: `1ca3bce86bc5585047c0015a7d18a89de4ff87609fa802a5325bd48f257928cc`.
+Original: [output/reviews/hybrid-pdf-implementation/HANDOFF.md](archive_candidates/output/reviews/hybrid-pdf-implementation/HANDOFF.md). SHA-256: `1ca3bce86bc5585047c0015a7d18a89de4ff87609fa802a5325bd48f257928cc`.
 
 ````text
 # Hybrid PDF implementation handoff
@@ -3967,7 +3967,7 @@ Final engineering-finish source commit `a410a7a`: **254 Python tests passed;52 P
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/PROGRESS.md
 
-Original: [output/reviews/hybrid-pdf-implementation/PROGRESS.md](output/reviews/hybrid-pdf-implementation/PROGRESS.md). SHA-256: `b45d02e3e243541d1cfc617e5b1f5383effa9a65387458a3c4254f74b7458d2e`.
+Original: [output/reviews/hybrid-pdf-implementation/PROGRESS.md](archive_candidates/output/reviews/hybrid-pdf-implementation/PROGRESS.md). SHA-256: `b45d02e3e243541d1cfc617e5b1f5383effa9a65387458a3c4254f74b7458d2e`.
 
 ````text
 # Hybrid PDF implementation progress
@@ -4029,7 +4029,7 @@ Final engineering-finish source commit `a410a7a`: **254 Python tests passed;52 P
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/REVIEW.md
 
-Original: [output/reviews/hybrid-pdf-implementation/REVIEW.md](output/reviews/hybrid-pdf-implementation/REVIEW.md). SHA-256: `8473612e1cfe3f2a4401262e84ffceee826e2db2bdff2fd7127ad49d3ea9090a`.
+Original: [output/reviews/hybrid-pdf-implementation/REVIEW.md](archive_candidates/output/reviews/hybrid-pdf-implementation/REVIEW.md). SHA-256: `8473612e1cfe3f2a4401262e84ffceee826e2db2bdff2fd7127ad49d3ea9090a`.
 
 ````text
 # Hybrid PDF review and cleanup
@@ -4129,7 +4129,7 @@ Remaining: P1/P2 trust decisions, real evidence, capacity/crash cleanup, Linux/v
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/TASKS.md
 
-Original: [output/reviews/hybrid-pdf-implementation/TASKS.md](output/reviews/hybrid-pdf-implementation/TASKS.md). SHA-256: `f5eb9b7427931e5ee874c1c9774552f0abe59f68bd312e1cfa3707c57740ce0b`.
+Original: [output/reviews/hybrid-pdf-implementation/TASKS.md](archive_candidates/output/reviews/hybrid-pdf-implementation/TASKS.md). SHA-256: `f5eb9b7427931e5ee874c1c9774552f0abe59f68bd312e1cfa3707c57740ce0b`.
 
 ````text
 # Hybrid PDF implementation tasks
@@ -4474,7 +4474,7 @@ Skipped: installing or benchmarking alternative engines, cloud requests, font/mo
 
 ### Preserved source: output/reviews/ocr-acceptance-workflow-2026-10-26/PROGRESS.md
 
-Original: [output/reviews/ocr-acceptance-workflow-2026-10-26/PROGRESS.md](output/reviews/ocr-acceptance-workflow-2026-10-26/PROGRESS.md). SHA-256: `cbd02c1def5e686a6405aee5491ebc62cc75dbe1cf6d92d4997b89a6969ab78f`.
+Original: [output/reviews/ocr-acceptance-workflow-2026-10-26/PROGRESS.md](archive_candidates/output/reviews/ocr-acceptance-workflow-2026-10-26/PROGRESS.md). SHA-256: `cbd02c1def5e686a6405aee5491ebc62cc75dbe1cf6d92d4997b89a6969ab78f`.
 
 ````text
 Technical workflow COMPLETE. Real acceptance evidence PENDING.
@@ -4515,7 +4515,7 @@ Technical workflow COMPLETE. Real acceptance evidence PENDING.
 
 ### Preserved source: output/reviews/ocr-ai-coordinator-2026-10-26/PROGRESS.md
 
-Original: [output/reviews/ocr-ai-coordinator-2026-10-26/PROGRESS.md](output/reviews/ocr-ai-coordinator-2026-10-26/PROGRESS.md). SHA-256: `0b950534ca245388f10ca9e16fd6ac2b3eb9da87dfd6e69c26eb3a4fa8fd0da1`.
+Original: [output/reviews/ocr-ai-coordinator-2026-10-26/PROGRESS.md](archive_candidates/output/reviews/ocr-ai-coordinator-2026-10-26/PROGRESS.md). SHA-256: `0b950534ca245388f10ca9e16fd6ac2b3eb9da87dfd6e69c26eb3a4fa8fd0da1`.
 
 ````text
 Advisory coordinator IMPLEMENTED; live connection checked. Acceptance/release NOT granted.
@@ -4578,7 +4578,7 @@ The next code package should fix baseline geometry first and prove straight/desc
 
 ### Preserved source: output/reviews/ocr-functional-implementation/PROGRESS.md
 
-Original: [output/reviews/ocr-functional-implementation/PROGRESS.md](output/reviews/ocr-functional-implementation/PROGRESS.md). SHA-256: `7975504b0fc964436fa09b78c03436fea547ed60606ba2b928a5740591e838e0`.
+Original: [output/reviews/ocr-functional-implementation/PROGRESS.md](archive_candidates/output/reviews/ocr-functional-implementation/PROGRESS.md). SHA-256: `7975504b0fc964436fa09b78c03436fea547ed60606ba2b928a5740591e838e0`.
 
 ````text
 # Functional OCR corrections
@@ -4616,7 +4616,7 @@ Evidence: baseline-*.log, final-*.log, committed-python.log, diagnostic.json, pr
 
 ### Preserved source: output/reviews/ocr-preview-implementation-2026-10-27/PROGRESS.md
 
-Original: [output/reviews/ocr-preview-implementation-2026-10-27/PROGRESS.md](output/reviews/ocr-preview-implementation-2026-10-27/PROGRESS.md). SHA-256: `12a162d75477ddac3936ee6519dc1f12695a6df103321b5a36e518dde7114b60`.
+Original: [output/reviews/ocr-preview-implementation-2026-10-27/PROGRESS.md](archive_candidates/output/reviews/ocr-preview-implementation-2026-10-27/PROGRESS.md). SHA-256: `12a162d75477ddac3936ee6519dc1f12695a6df103321b5a36e518dde7114b60`.
 
 ````text
 # Hybrid OCR preview — 2026-10-27
@@ -5157,7 +5157,7 @@ Source implements the three languages, text translation, queued document transla
 
 ### Preserved source: REPOSITORY_CHECKLIST.md
 
-Original: [REPOSITORY_CHECKLIST.md](REPOSITORY_CHECKLIST.md). SHA-256: `564a412bc0eb5ec35cb7cd7327ea9d866e9eba98c90fd81bbcf57d1618f6e189`.
+Original: [REPOSITORY_CHECKLIST.md](archive_candidates/REPOSITORY_CHECKLIST.md). SHA-256: `564a412bc0eb5ec35cb7cd7327ea9d866e9eba98c90fd81bbcf57d1618f6e189`.
 
 ````text
 # 📋 GitHub Repository Setup Checklist
@@ -5327,7 +5327,7 @@ Prepare to discuss:
 
 ### Preserved source: TRANSLATION_FIX_PLAN.md
 
-Original: [TRANSLATION_FIX_PLAN.md](TRANSLATION_FIX_PLAN.md). SHA-256: `c5184466192ee09e7fdec21c9b909cc2b893150d5de0c808239f8df98e9634bf`.
+Original: [TRANSLATION_FIX_PLAN.md](archive_candidates/TRANSLATION_FIX_PLAN.md). SHA-256: `c5184466192ee09e7fdec21c9b909cc2b893150d5de0c808239f8df98e9634bf`.
 
 ````text
 # TriLingua Translation System — Comprehensive Fix Plan
@@ -5599,7 +5599,7 @@ output_ids = model.generate(
 
 ### Preserved source: TRANSLATION_FIXES_IMPLEMENTED.md
 
-Original: [TRANSLATION_FIXES_IMPLEMENTED.md](TRANSLATION_FIXES_IMPLEMENTED.md). SHA-256: `63b627be1a9c34d426531cc10dad1acda86185d9ec5833ef8b577adeed05b1be`.
+Original: [TRANSLATION_FIXES_IMPLEMENTED.md](archive_candidates/TRANSLATION_FIXES_IMPLEMENTED.md). SHA-256: `63b627be1a9c34d426531cc10dad1acda86185d9ec5833ef8b577adeed05b1be`.
 
 ````text
 # TriLingua Translation System — Fixes Implemented
@@ -5837,7 +5837,7 @@ For issues or questions:
 
 ### Preserved source: TRANSLATION_FIXES_SUMMARY.md
 
-Original: [TRANSLATION_FIXES_SUMMARY.md](TRANSLATION_FIXES_SUMMARY.md). SHA-256: `adebb8ed8da3393dba1588f05f06706c198ac724e62430b765a5b51d2ebf8f06`.
+Original: [TRANSLATION_FIXES_SUMMARY.md](archive_candidates/TRANSLATION_FIXES_SUMMARY.md). SHA-256: `adebb8ed8da3393dba1588f05f06706c198ac724e62430b765a5b51d2ebf8f06`.
 
 ````text
 # Trilingua Translation System - Issues Fixed
@@ -6059,7 +6059,7 @@ The server will:
 
 ### Preserved source: trilingua-code/.kiro/specs/auth-css-rendering-fix/tasks.md
 
-Original: [trilingua-code/.kiro/specs/auth-css-rendering-fix/tasks.md](trilingua-code/.kiro/specs/auth-css-rendering-fix/tasks.md). SHA-256: `02249fd8089246faae2dcab9d8df0cde0c1aa45d54f78ab5b461a6ec6c62270a`.
+Original: [trilingua-code/.kiro/specs/auth-css-rendering-fix/tasks.md](archive_candidates/trilingua-code/.kiro/specs/auth-css-rendering-fix/tasks.md). SHA-256: `02249fd8089246faae2dcab9d8df0cde0c1aa45d54f78ab5b461a6ec6c62270a`.
 
 ````text
 # Implementation Plan
@@ -6181,7 +6181,7 @@ Original: [trilingua-code/.kiro/specs/auth-css-rendering-fix/tasks.md](trilingua
 
 ### Preserved source: trilingua-code/.kiro/specs/dashboard-ui-fix/tasks.md
 
-Original: [trilingua-code/.kiro/specs/dashboard-ui-fix/tasks.md](trilingua-code/.kiro/specs/dashboard-ui-fix/tasks.md). SHA-256: `85b46af12407fa03d1803293748c885053f9ba9b9069c80e3fcfb5e2f26de890`.
+Original: [trilingua-code/.kiro/specs/dashboard-ui-fix/tasks.md](archive_candidates/trilingua-code/.kiro/specs/dashboard-ui-fix/tasks.md). SHA-256: `85b46af12407fa03d1803293748c885053f9ba9b9069c80e3fcfb5e2f26de890`.
 
 ````text
 # Implementation Plan
@@ -6346,7 +6346,7 @@ Original: [trilingua-code/.kiro/specs/dashboard-ui-fix/tasks.md](trilingua-code/
 
 ### Preserved source: trilingua-code/.kiro/specs/new-translation-page/tasks.md
 
-Original: [trilingua-code/.kiro/specs/new-translation-page/tasks.md](trilingua-code/.kiro/specs/new-translation-page/tasks.md). SHA-256: `daf1bad02d992c1d2a01cdd83fbaa7d4fa4477d031558107ba77e6687e162d6b`.
+Original: [trilingua-code/.kiro/specs/new-translation-page/tasks.md](archive_candidates/trilingua-code/.kiro/specs/new-translation-page/tasks.md). SHA-256: `daf1bad02d992c1d2a01cdd83fbaa7d4fa4477d031558107ba77e6687e162d6b`.
 
 ````text
 # Implementation Plan: New Translation Page
@@ -6646,7 +6646,7 @@ Implement the `/translate` route end-to-end: a `TranslationException` class, a `
 
 ### Preserved source: trilingua-code/.kiro/specs/supabase-cloud-storage/tasks.md
 
-Original: [trilingua-code/.kiro/specs/supabase-cloud-storage/tasks.md](trilingua-code/.kiro/specs/supabase-cloud-storage/tasks.md). SHA-256: `ece2f4e014a8d3cd437793f11de9f8a008a42540125bed459527caab4c27470a`.
+Original: [trilingua-code/.kiro/specs/supabase-cloud-storage/tasks.md](archive_candidates/trilingua-code/.kiro/specs/supabase-cloud-storage/tasks.md). SHA-256: `ece2f4e014a8d3cd437793f11de9f8a008a42540125bed459527caab4c27470a`.
 
 ````text
 # Implementation Plan: Supabase Cloud Storage
@@ -6858,7 +6858,7 @@ Integrate Supabase Storage and Supabase Database (PostgREST) into the Trilingua 
 
 ### Preserved source: trilingua-code/.kiro/specs/translation-fixes/tasks.md
 
-Original: [trilingua-code/.kiro/specs/translation-fixes/tasks.md](trilingua-code/.kiro/specs/translation-fixes/tasks.md). SHA-256: `49fa938e7a8ab1f0fe6524ff778d95f8faf15d5e19c6eaf3376a13411f24c184`.
+Original: [trilingua-code/.kiro/specs/translation-fixes/tasks.md](archive_candidates/trilingua-code/.kiro/specs/translation-fixes/tasks.md). SHA-256: `49fa938e7a8ab1f0fe6524ff778d95f8faf15d5e19c6eaf3376a13411f24c184`.
 
 ````text
 # Implementation Plan: translation-fixes
@@ -7027,7 +7027,7 @@ Three surgical bug fixes across the FastAPI microservice, Laravel controller/ser
 
 ### Preserved source: trilingua-code/.kiro/specs/user-id-history-fix/tasks.md
 
-Original: [trilingua-code/.kiro/specs/user-id-history-fix/tasks.md](trilingua-code/.kiro/specs/user-id-history-fix/tasks.md). SHA-256: `0108901b67c07e906c31e73855b8ef76243078fc4e49bdaff666fd609fe93499`.
+Original: [trilingua-code/.kiro/specs/user-id-history-fix/tasks.md](archive_candidates/trilingua-code/.kiro/specs/user-id-history-fix/tasks.md). SHA-256: `0108901b67c07e906c31e73855b8ef76243078fc4e49bdaff666fd609fe93499`.
 
 ````text
 # Implementation Plan
@@ -7167,7 +7167,7 @@ Original: [trilingua-code/.kiro/specs/user-id-history-fix/tasks.md](trilingua-co
 
 ### Preserved source: trilingua-code/.kiro/specs/user-settings/tasks.md
 
-Original: [trilingua-code/.kiro/specs/user-settings/tasks.md](trilingua-code/.kiro/specs/user-settings/tasks.md). SHA-256: `717d00e3d6b50d564b02321219900e50858a73afa4c2ace56025d8f0da353415`.
+Original: [trilingua-code/.kiro/specs/user-settings/tasks.md](archive_candidates/trilingua-code/.kiro/specs/user-settings/tasks.md). SHA-256: `717d00e3d6b50d564b02321219900e50858a73afa4c2ace56025d8f0da353415`.
 
 ````text
 # Implementation Plan: User Settings Feature
@@ -7328,7 +7328,7 @@ This plan implements a comprehensive user settings feature for the TriLingua Lar
 
 ### Preserved source: trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md
 
-Original: [trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md](trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md). SHA-256: `60ba87d4917be0ad7b09c707eed0fcb190308a2da7a19936e1da303a2a1a97ce`.
+Original: [trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md](archive_candidates/trilingua-code/CSS_NOT_LOADING_TROUBLESHOOTING.md). SHA-256: `60ba87d4917be0ad7b09c707eed0fcb190308a2da7a19936e1da303a2a1a97ce`.
 
 ````text
 # CSS Not Loading - Troubleshooting Guide
@@ -7619,7 +7619,7 @@ npm run build
 
 ### Preserved source: trilingua-code/DASHBOARD_FIX.md
 
-Original: [trilingua-code/DASHBOARD_FIX.md](trilingua-code/DASHBOARD_FIX.md). SHA-256: `53b3d1c4582429fa983843a7312c6fec34ff25aae07a1b631810c15344086057`.
+Original: [trilingua-code/DASHBOARD_FIX.md](archive_candidates/trilingua-code/DASHBOARD_FIX.md). SHA-256: `53b3d1c4582429fa983843a7312c6fec34ff25aae07a1b631810c15344086057`.
 
 ````text
 # Dashboard Error Fix
@@ -7687,7 +7687,7 @@ Document uploads still require Supabase for file storage. Text translations work
 
 ### Preserved source: trilingua-code/docs/HYBRID_OCR_PREVIEW_2026-10-27.md
 
-Original: [trilingua-code/docs/HYBRID_OCR_PREVIEW_2026-10-27.md](trilingua-code/docs/HYBRID_OCR_PREVIEW_2026-10-27.md). SHA-256: `12a162d75477ddac3936ee6519dc1f12695a6df103321b5a36e518dde7114b60`.
+Original: [trilingua-code/docs/HYBRID_OCR_PREVIEW_2026-10-27.md](archive_candidates/trilingua-code/docs/HYBRID_OCR_PREVIEW_2026-10-27.md). SHA-256: `12a162d75477ddac3936ee6519dc1f12695a6df103321b5a36e518dde7114b60`.
 
 ````text
 # Hybrid OCR preview — 2026-10-27
@@ -7738,7 +7738,7 @@ Automatic approval review rejected starting local web/API/queue services with on
 
 ### Preserved source: trilingua-code/docs/implementation-records/phase-00-baseline.md
 
-Original: [trilingua-code/docs/implementation-records/phase-00-baseline.md](trilingua-code/docs/implementation-records/phase-00-baseline.md). SHA-256: `a3811cc31391676b800aecd192c2677002ef887847d675e28e5194a02d4b4856`.
+Original: [trilingua-code/docs/implementation-records/phase-00-baseline.md](archive_candidates/trilingua-code/docs/implementation-records/phase-00-baseline.md). SHA-256: `a3811cc31391676b800aecd192c2677002ef887847d675e28e5194a02d4b4856`.
 
 ````text
 # Phase 0 — Baseline & failure reproductions
@@ -7776,7 +7776,7 @@ Date: 2026-09-28 · Branch: `walben` · Work tree: 96 modified files + untracked
 
 ### Preserved source: trilingua-code/docs/implementation-records/phase-01-admin-provisioning.md
 
-Original: [trilingua-code/docs/implementation-records/phase-01-admin-provisioning.md](trilingua-code/docs/implementation-records/phase-01-admin-provisioning.md). SHA-256: `3362c257d647445b75ae9ae9e8ae6bf128beadc839d9b9815e657fb215a03bc5`.
+Original: [trilingua-code/docs/implementation-records/phase-01-admin-provisioning.md](archive_candidates/trilingua-code/docs/implementation-records/phase-01-admin-provisioning.md). SHA-256: `3362c257d647445b75ae9ae9e8ae6bf128beadc839d9b9815e657fb215a03bc5`.
 
 ````text
 # Phase 1 — Admin provisioning (R1)
@@ -7820,7 +7820,7 @@ Date: 2026-09-28 · Branch: `walben`
 
 ### Preserved source: trilingua-code/docs/implementation-records/phase-02-timeouts-retry.md
 
-Original: [trilingua-code/docs/implementation-records/phase-02-timeouts-retry.md](trilingua-code/docs/implementation-records/phase-02-timeouts-retry.md). SHA-256: `c0c7a10ea0f6fb45f58685bad1fe93956a53cb81b8d0064cf7ce9a8699965e24`.
+Original: [trilingua-code/docs/implementation-records/phase-02-timeouts-retry.md](archive_candidates/trilingua-code/docs/implementation-records/phase-02-timeouts-retry.md). SHA-256: `c0c7a10ea0f6fb45f58685bad1fe93956a53cb81b8d0064cf7ce9a8699965e24`.
 
 ````text
 # Phase 2 — Timeout ladder & recoverable admin retry (R2 + R3)
@@ -7876,7 +7876,7 @@ Date: 2026-09-28 · Branch: `walben`
 
 ### Preserved source: trilingua-code/docs/implementation-records/phase-03-completion-integrity.md
 
-Original: [trilingua-code/docs/implementation-records/phase-03-completion-integrity.md](trilingua-code/docs/implementation-records/phase-03-completion-integrity.md). SHA-256: `73da7893ee7416670416d23a217379a38d716789baaf036a6d604ce5d1875702`.
+Original: [trilingua-code/docs/implementation-records/phase-03-completion-integrity.md](archive_candidates/trilingua-code/docs/implementation-records/phase-03-completion-integrity.md). SHA-256: `73da7893ee7416670416d23a217379a38d716789baaf036a6d604ce5d1875702`.
 
 ````text
 # Phase 3 — Completion integrity (R4)
@@ -7924,7 +7924,7 @@ Date: 2026-09-28 · Branch: `walben`
 
 ### Preserved source: trilingua-code/docs/implementation-records/phase-04-review-publish-integrity.md
 
-Original: [trilingua-code/docs/implementation-records/phase-04-review-publish-integrity.md](trilingua-code/docs/implementation-records/phase-04-review-publish-integrity.md). SHA-256: `37c6f5363d3e7022ae2a4fdd44b1a9a1767e28469e5768e397761cb0708b046c`.
+Original: [trilingua-code/docs/implementation-records/phase-04-review-publish-integrity.md](archive_candidates/trilingua-code/docs/implementation-records/phase-04-review-publish-integrity.md). SHA-256: `37c6f5363d3e7022ae2a4fdd44b1a9a1767e28469e5768e397761cb0708b046c`.
 
 ````text
 # Phase 4 — Review edit/publish integrity (R5)
@@ -7985,7 +7985,7 @@ Date: 2026-09-28 · Branch: `walben`
 
 ### Preserved source: trilingua-code/docs/implementation-records/phase-05-quota-outbox.md
 
-Original: [trilingua-code/docs/implementation-records/phase-05-quota-outbox.md](trilingua-code/docs/implementation-records/phase-05-quota-outbox.md). SHA-256: `e0c310ef154c99450fbd392b8e6fa0a59e98d78b68f8ce79f1f4f041993fd9a6`.
+Original: [trilingua-code/docs/implementation-records/phase-05-quota-outbox.md](archive_candidates/trilingua-code/docs/implementation-records/phase-05-quota-outbox.md). SHA-256: `e0c310ef154c99450fbd392b8e6fa0a59e98d78b68f8ce79f1f4f041993fd9a6`.
 
 ````text
 # Phase 05 — Quota atomicity (R6) + deletion integrity/outbox (R7)
@@ -8115,7 +8115,7 @@ Plan reference: `codex/IMPLEMENTATION_PLAN_EXISTING_SYSTEM_2026-09-28.md`.
 
 ### Preserved source: trilingua-code/docs/implementation-records/phase-06-ui-ux-corrections.md
 
-Original: [trilingua-code/docs/implementation-records/phase-06-ui-ux-corrections.md](trilingua-code/docs/implementation-records/phase-06-ui-ux-corrections.md). SHA-256: `cccc9b4198c398d4177e8930c8714ebe8770a5115911b9130111987810b8c090`.
+Original: [trilingua-code/docs/implementation-records/phase-06-ui-ux-corrections.md](archive_candidates/trilingua-code/docs/implementation-records/phase-06-ui-ux-corrections.md). SHA-256: `cccc9b4198c398d4177e8930c8714ebe8770a5115911b9130111987810b8c090`.
 
 ````text
 # Phase 6 — UI/UX corrections (U1–U4)
@@ -8158,7 +8158,7 @@ Date: 2026-09-28 · Branch: `walben` · Scope per plan packages 6 (U1–U4); no 
 
 ### Preserved source: trilingua-code/docs/implementation-records/phase-08-baseline-staging.md
 
-Original: [trilingua-code/docs/implementation-records/phase-08-baseline-staging.md](trilingua-code/docs/implementation-records/phase-08-baseline-staging.md). SHA-256: `fc81bcb66f49e4a8cd36d0f4c2e759b6c06026835f58e86efda4cfd189f0fb1f`.
+Original: [trilingua-code/docs/implementation-records/phase-08-baseline-staging.md](archive_candidates/trilingua-code/docs/implementation-records/phase-08-baseline-staging.md). SHA-256: `fc81bcb66f49e4a8cd36d0f4c2e759b6c06026835f58e86efda4cfd189f0fb1f`.
 
 ````text
 # Phase 08 — Gate 0: Baseline and safe staging
@@ -8486,7 +8486,7 @@ assertions (ownership, expiry, quota accounting, race refunds) are unchanged.
 
 ### Preserved source: trilingua-code/docs/implementation-records/phase-09-local-continuation.md
 
-Original: [trilingua-code/docs/implementation-records/phase-09-local-continuation.md](trilingua-code/docs/implementation-records/phase-09-local-continuation.md). SHA-256: `51082bf55cdce55031722dd4cc163bc214ef27ce783ed259060752e037d6d726`.
+Original: [trilingua-code/docs/implementation-records/phase-09-local-continuation.md](archive_candidates/trilingua-code/docs/implementation-records/phase-09-local-continuation.md). SHA-256: `51082bf55cdce55031722dd4cc163bc214ef27ce783ed259060752e037d6d726`.
 
 ````text
 # Phase 09 — Local continuation without a new Supabase project
@@ -8527,7 +8527,7 @@ PostgreSQL queue races, live Supabase Storage responses, provider translation, 5
 
 ### Preserved source: trilingua-code/docs/mistral-analysis-investigation.md
 
-Original: [trilingua-code/docs/mistral-analysis-investigation.md](trilingua-code/docs/mistral-analysis-investigation.md). SHA-256: `e983e1fe3415664a586635746250c6f41f485dd44d43a0abdc8f13da60ba676c`.
+Original: [trilingua-code/docs/mistral-analysis-investigation.md](archive_candidates/trilingua-code/docs/mistral-analysis-investigation.md). SHA-256: `e983e1fe3415664a586635746250c6f41f485dd44d43a0abdc8f13da60ba676c`.
 
 ````text
 # Mistral analysis failure investigation
@@ -8572,7 +8572,7 @@ The application can recover from Mistral rejection; these changes cannot increas
 
 ### Preserved source: trilingua-code/docs/OCR_ACCEPTANCE_WORKFLOW_2026-10-26.md
 
-Original: [trilingua-code/docs/OCR_ACCEPTANCE_WORKFLOW_2026-10-26.md](trilingua-code/docs/OCR_ACCEPTANCE_WORKFLOW_2026-10-26.md). SHA-256: `79eee08cacbc35762c2aeb0359fc29db362f8fca9ae85e07619cf0eb26cf01e8`.
+Original: [trilingua-code/docs/OCR_ACCEPTANCE_WORKFLOW_2026-10-26.md](archive_candidates/trilingua-code/docs/OCR_ACCEPTANCE_WORKFLOW_2026-10-26.md). SHA-256: `79eee08cacbc35762c2aeb0359fc29db362f8fca9ae85e07619cf0eb26cf01e8`.
 
 ````text
 # OCR acceptance workflow handoff - 26 October 2026
@@ -8610,7 +8610,7 @@ Exact commands and behavior are documented in `trilingua-code/Model/tools/ocr_ki
 
 ### Preserved source: trilingua-code/docs/OCR_AI_COORDINATOR_2026-10-26.md
 
-Original: [trilingua-code/docs/OCR_AI_COORDINATOR_2026-10-26.md](trilingua-code/docs/OCR_AI_COORDINATOR_2026-10-26.md). SHA-256: `368ac12457419afab99c676ec5e145d23721238ff760c5811f71bbb6a1972be4`.
+Original: [trilingua-code/docs/OCR_AI_COORDINATOR_2026-10-26.md](archive_candidates/trilingua-code/docs/OCR_AI_COORDINATOR_2026-10-26.md). SHA-256: `368ac12457419afab99c676ec5e145d23721238ff760c5811f71bbb6a1972be4`.
 
 ````text
 # Connected OCR advisory coordinator - 26 October 2026
@@ -8649,7 +8649,7 @@ The existing acceptance workflow still needs genuine acquisition/rights/capture 
 
 ### Preserved source: trilingua-code/docs/OCR_FUNCTIONAL_CORRECTIONS_2026-10-26.md
 
-Original: [trilingua-code/docs/OCR_FUNCTIONAL_CORRECTIONS_2026-10-26.md](trilingua-code/docs/OCR_FUNCTIONAL_CORRECTIONS_2026-10-26.md). SHA-256: `66e7d99efbe944fa41eeda9e1ecd1ec17ba4f00d9c536cff1d98af912ede5327`.
+Original: [trilingua-code/docs/OCR_FUNCTIONAL_CORRECTIONS_2026-10-26.md](archive_candidates/trilingua-code/docs/OCR_FUNCTIONAL_CORRECTIONS_2026-10-26.md). SHA-256: `66e7d99efbe944fa41eeda9e1ecd1ec17ba4f00d9c536cff1d98af912ede5327`.
 
 ````text
 # Hybrid OCR functional corrections - 26 October 2026

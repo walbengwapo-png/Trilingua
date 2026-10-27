@@ -46,10 +46,10 @@ Use the four root documents for current orientation. Historical appendices retai
 
 Full extracted historical text follows. Original binary documents preserve images, tables and formatting beyond this text representation. Older commands/settings and contradicted claims are historical evidence. Sensitive-looking values are redacted only in the canonical copy; original files remain unchanged and private backup precautions still apply.
 
-- [docs/DEPLOYMENT_STRATEGY_REPORT_2026-09-13.md](#source-c9b53d34acd7cb74) — [docs/DEPLOYMENT_STRATEGY_REPORT_2026-09-13.md](docs/DEPLOYMENT_STRATEGY_REPORT_2026-09-13.md)
+- [docs/DEPLOYMENT_STRATEGY_REPORT_2026-09-13.md](#source-c9b53d34acd7cb74) — [docs/DEPLOYMENT_STRATEGY_REPORT_2026-09-13.md](archive_candidates/docs/DEPLOYMENT_STRATEGY_REPORT_2026-09-13.md)
 - [docs/hosting-options-2026-10-19.md](#source-b85783c08fc9f145) — [docs/hosting-options-2026-10-19.md](archive_candidates/docs/hosting-options-2026-10-19.md)
-- [GITHUB_DESCRIPTION.md](#source-968241be041cd655) — [GITHUB_DESCRIPTION.md](GITHUB_DESCRIPTION.md)
-- [GITHUB_SETUP_COMPLETE.md](#source-220dcaf449450a37) — [GITHUB_SETUP_COMPLETE.md](GITHUB_SETUP_COMPLETE.md)
+- [GITHUB_DESCRIPTION.md](#source-968241be041cd655) — [GITHUB_DESCRIPTION.md](archive_candidates/GITHUB_DESCRIPTION.md)
+- [GITHUB_SETUP_COMPLETE.md](#source-220dcaf449450a37) — [GITHUB_SETUP_COMPLETE.md](archive_candidates/GITHUB_SETUP_COMPLETE.md)
 - [output/ocr-acceptance/lion-mouse-review-2026-10-26/START_HERE.md](#source-4ecee5209bbf70c4) — [output/ocr-acceptance/lion-mouse-review-2026-10-26/START_HERE.md](output/ocr-acceptance/lion-mouse-review-2026-10-26/START_HERE.md)
 - [output/pdf/ocr-poster-pack-2026-10-27/cebuano-reference/README.md](#source-f9e454af889cb044) — [output/pdf/ocr-poster-pack-2026-10-27/cebuano-reference/README.md](archive_candidates/output/pdf/ocr-poster-pack-2026-10-27/cebuano-reference/README.md)
 - [output/pdf/ocr-poster-pack-2026-10-27/README.md](#source-aee6882f3d45d1c6) — [output/pdf/ocr-poster-pack-2026-10-27/README.md](archive_candidates/output/pdf/ocr-poster-pack-2026-10-27/README.md)
@@ -65,15 +65,15 @@ Full extracted historical text follows. Original binary documents preserve image
 - [output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/SETUP.md](#source-20e313c9001b1cce) — [output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/SETUP.md](archive_candidates/output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/SETUP.md)
 - [output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/trilingua-code/DEMO.md](#source-5f28ab73e0fe4414) — [output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/trilingua-code/DEMO.md](archive_candidates/output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/trilingua-code/DEMO.md)
 - [README.md](#source-b335630551682c19) — [README.md](archive_candidates/README.md)
-- [SETUP.md](#source-0040e607148899ae) — [SETUP.md](SETUP.md)
-- [trilingua-code/DEMO.md](#source-fd2f0c52d5026c88) — [trilingua-code/DEMO.md](trilingua-code/DEMO.md)
-- [trilingua-code/README.md](#source-20ba7d0f4971ba56) — [trilingua-code/README.md](trilingua-code/README.md)
+- [SETUP.md](#source-0040e607148899ae) — [SETUP.md](archive_candidates/SETUP.md)
+- [trilingua-code/DEMO.md](#source-fd2f0c52d5026c88) — [trilingua-code/DEMO.md](archive_candidates/trilingua-code/DEMO.md)
+- [trilingua-code/README.md](#source-20ba7d0f4971ba56) — [trilingua-code/README.md](archive_candidates/trilingua-code/README.md)
 
 <a id="source-c9b53d34acd7cb74"></a>
 
 ### Preserved source: docs/DEPLOYMENT_STRATEGY_REPORT_2026-09-13.md
 
-Original: [docs/DEPLOYMENT_STRATEGY_REPORT_2026-09-13.md](docs/DEPLOYMENT_STRATEGY_REPORT_2026-09-13.md). SHA-256: `32f02396a7c79d0a266617348e34286fd5968e8a817e31bfe061fc4dee0eb92d`.
+Original: [docs/DEPLOYMENT_STRATEGY_REPORT_2026-09-13.md](archive_candidates/docs/DEPLOYMENT_STRATEGY_REPORT_2026-09-13.md). SHA-256: `32f02396a7c79d0a266617348e34286fd5968e8a817e31bfe061fc4dee0eb92d`.
 
 ````text
 # TriLingua deployment strategy report
@@ -353,7 +353,7 @@ The outstanding decisions are the acceptable restoration/monthly spend and exact
 
 ### Preserved source: GITHUB_DESCRIPTION.md
 
-Original: [GITHUB_DESCRIPTION.md](GITHUB_DESCRIPTION.md). SHA-256: `1c822d8532c111fc018340bdd612d95822d0efcc4ab7381ce965f8b3ddf40f5f`.
+Original: [GITHUB_DESCRIPTION.md](archive_candidates/GITHUB_DESCRIPTION.md). SHA-256: `1c822d8532c111fc018340bdd612d95822d0efcc4ab7381ce965f8b3ddf40f5f`.
 
 ````text
 # GitHub Repository Settings
@@ -514,7 +514,7 @@ storage/logs/*.log
 
 ### Preserved source: GITHUB_SETUP_COMPLETE.md
 
-Original: [GITHUB_SETUP_COMPLETE.md](GITHUB_SETUP_COMPLETE.md). SHA-256: `187f976d05741db0d97f04442e6f93fbc244a9e824e563950c46dc5d5150efb2`.
+Original: [GITHUB_SETUP_COMPLETE.md](archive_candidates/GITHUB_SETUP_COMPLETE.md). SHA-256: `187f976d05741db0d97f04442e6f93fbc244a9e824e563950c46dc5d5150efb2`.
 
 ````text
 # ✅ GitHub Repository Setup Complete!
@@ -2616,7 +2616,7 @@ For questions or feedback about this capstone project, please open an issue on G
 
 ### Preserved source: SETUP.md
 
-Original: [SETUP.md](SETUP.md). SHA-256: `2d7269ce408f277b7a9fbbcce93ec0147988baa62e03b6a2e4101364e2102d23`.
+Original: [SETUP.md](archive_candidates/SETUP.md). SHA-256: `2d7269ce408f277b7a9fbbcce93ec0147988baa62e03b6a2e4101364e2102d23`.
 
 ````text
 # TriLingua Python Engine — Setup Guide
@@ -2853,7 +2853,7 @@ For Laravel frontend setup, see `README.md` in the repo root.
 
 ### Preserved source: trilingua-code/DEMO.md
 
-Original: [trilingua-code/DEMO.md](trilingua-code/DEMO.md). SHA-256: `1887a0f98d3a474871bafd120e646f79f0145fd623b2b7990347febebdda9133`.
+Original: [trilingua-code/DEMO.md](archive_candidates/trilingua-code/DEMO.md). SHA-256: `1887a0f98d3a474871bafd120e646f79f0145fd623b2b7990347febebdda9133`.
 
 ````text
 # TriLingua Demo Runbook
@@ -2965,7 +2965,7 @@ Your data (Supabase DB/users/translations) is never touched.
 
 ### Preserved source: trilingua-code/README.md
 
-Original: [trilingua-code/README.md](trilingua-code/README.md). SHA-256: `d8b15dfcda5b6e61a96730afedc1ed5376e46ba367e21749a9d789cc222009c4`.
+Original: [trilingua-code/README.md](archive_candidates/trilingua-code/README.md). SHA-256: `d8b15dfcda5b6e61a96730afedc1ed5376e46ba367e21749a9d789cc222009c4`.
 
 ````text
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>

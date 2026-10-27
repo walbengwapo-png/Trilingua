@@ -44,12 +44,12 @@ Full extracted historical text follows. Original binary documents preserve image
 
 - [docs/CODEBASE_WALKTHROUGH_2026-10-15.md](#source-0352c442c49370be) — [docs/CODEBASE_WALKTHROUGH_2026-10-15.md](docs/CODEBASE_WALKTHROUGH_2026-10-15.md)
 - [output/codebase-walkthrough-docx/TriLingua_Codebase_Walkthrough.pdf](#source-91e4ecea131dd560) — [output/codebase-walkthrough-docx/TriLingua_Codebase_Walkthrough.pdf](archive_candidates/output/codebase-walkthrough-docx/TriLingua_Codebase_Walkthrough.pdf)
-- [output/reviews/hybrid-pdf-implementation/baseline/finish-mutations/Model/tools/ocr_kit/CAPTURE_GUIDE.md](#source-81f31b7d782e19bb) — [output/reviews/hybrid-pdf-implementation/baseline/finish-mutations/Model/tools/ocr_kit/CAPTURE_GUIDE.md](output/reviews/hybrid-pdf-implementation/baseline/finish-mutations/Model/tools/ocr_kit/CAPTURE_GUIDE.md)
+- [output/reviews/hybrid-pdf-implementation/baseline/finish-mutations/Model/tools/ocr_kit/CAPTURE_GUIDE.md](#source-81f31b7d782e19bb) — [output/reviews/hybrid-pdf-implementation/baseline/finish-mutations/Model/tools/ocr_kit/CAPTURE_GUIDE.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/finish-mutations/Model/tools/ocr_kit/CAPTURE_GUIDE.md)
 - [output/reviews/hybrid-pdf-implementation/baseline/finish-mutations/Model/tools/ocr_kit/README.md](#source-435554ac5d9a7831) — [output/reviews/hybrid-pdf-implementation/baseline/finish-mutations/Model/tools/ocr_kit/README.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/finish-mutations/Model/tools/ocr_kit/README.md)
-- [output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](#source-017aa0f6ef2c4efd) — [output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md)
-- [output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/TRILINGUA_COMPLETE_GUIDE.md](#source-9b46a5a23ef3a8a0) — [output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/TRILINGUA_COMPLETE_GUIDE.md](output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/TRILINGUA_COMPLETE_GUIDE.md)
-- [output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](#source-c866c00fa5a601cf) — [output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md)
-- [output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/TRILINGUA_COMPLETE_GUIDE.md](#source-86d72714f41b596f) — [output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/TRILINGUA_COMPLETE_GUIDE.md](output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/TRILINGUA_COMPLETE_GUIDE.md)
+- [output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](#source-017aa0f6ef2c4efd) — [output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md)
+- [output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/TRILINGUA_COMPLETE_GUIDE.md](#source-9b46a5a23ef3a8a0) — [output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/TRILINGUA_COMPLETE_GUIDE.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/TRILINGUA_COMPLETE_GUIDE.md)
+- [output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](#source-c866c00fa5a601cf) — [output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md)
+- [output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/TRILINGUA_COMPLETE_GUIDE.md](#source-86d72714f41b596f) — [output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/TRILINGUA_COMPLETE_GUIDE.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/TRILINGUA_COMPLETE_GUIDE.md)
 - [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/auth-css-rendering-fix/design.md](#source-9af131179e3e2464) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/auth-css-rendering-fix/design.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/auth-css-rendering-fix/design.md)
 - [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/dashboard-ui-fix/design.md](#source-5bab4d4e89f9ff63) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/dashboard-ui-fix/design.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/dashboard-ui-fix/design.md)
 - [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/new-translation-page/design.md](#source-c11bbf4c5dc25710) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/new-translation-page/design.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/new-translation-page/design.md)
@@ -61,35 +61,35 @@ Full extracted historical text follows. Original binary documents preserve image
 - [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/translation-pipeline-optimization/tasks.md](#source-b5bb9ef791ec86d6) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/translation-pipeline-optimization/tasks.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/translation-pipeline-optimization/tasks.md)
 - [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/user-id-history-fix/design.md](#source-d24d4d0013fdc821) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/user-id-history-fix/design.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/user-id-history-fix/design.md)
 - [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/user-settings/design.md](#source-8ae3335805fd5508) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/user-settings/design.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/.kiro/specs/user-settings/design.md)
-- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](#source-97b5712d25f4f442) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/ARCHITECTURAL_DESIGN.md)
-- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/containment-runbook.md](#source-a6c4ec90342e3167) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/containment-runbook.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/containment-runbook.md)
-- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/rotation-runbook.md](#source-201ad5b974c7b338) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/rotation-runbook.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/rotation-runbook.md)
-- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/SECRETS_INVENTORY.md](#source-286a556ffa6bb147) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/SECRETS_INVENTORY.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/SECRETS_INVENTORY.md)
-- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/SECURITY_FEATURES.md](#source-88375f1b414f775b) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/SECURITY_FEATURES.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/SECURITY_FEATURES.md)
-- [output/reviews/ocr-functional-implementation/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](#source-59ec50433312ab49) — [output/reviews/ocr-functional-implementation/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](output/reviews/ocr-functional-implementation/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md)
-- [output/reviews/ocr-functional-implementation/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md](#source-1802cd9187536bc0) — [output/reviews/ocr-functional-implementation/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md](output/reviews/ocr-functional-implementation/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md)
-- [output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](#source-00df69ba9d80a974) — [output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md)
-- [output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md](#source-42ee674a0c0909f6) — [output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md](output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md)
+- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](#source-97b5712d25f4f442) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/ARCHITECTURAL_DESIGN.md)
+- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/containment-runbook.md](#source-a6c4ec90342e3167) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/containment-runbook.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/containment-runbook.md)
+- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/rotation-runbook.md](#source-201ad5b974c7b338) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/rotation-runbook.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/rotation-runbook.md)
+- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/SECRETS_INVENTORY.md](#source-286a556ffa6bb147) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/SECRETS_INVENTORY.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/SECRETS_INVENTORY.md)
+- [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/SECURITY_FEATURES.md](#source-88375f1b414f775b) — [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/SECURITY_FEATURES.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/SECURITY_FEATURES.md)
+- [output/reviews/ocr-functional-implementation/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](#source-59ec50433312ab49) — [output/reviews/ocr-functional-implementation/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](archive_candidates/output/reviews/ocr-functional-implementation/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md)
+- [output/reviews/ocr-functional-implementation/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md](#source-1802cd9187536bc0) — [output/reviews/ocr-functional-implementation/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md](archive_candidates/output/reviews/ocr-functional-implementation/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md)
+- [output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](#source-00df69ba9d80a974) — [output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](archive_candidates/output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md)
+- [output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md](#source-42ee674a0c0909f6) — [output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md](archive_candidates/output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md)
 - [TriLingua Provider Neutral Pipeline Improvement Report.docx](#source-7facedd941adcf3c) — [TriLingua Provider Neutral Pipeline Improvement Report.docx](TriLingua%20Provider%20Neutral%20Pipeline%20Improvement%20Report.docx)
-- [trilingua-code/.kiro/specs/auth-css-rendering-fix/design.md](#source-a1e11a015a5f055b) — [trilingua-code/.kiro/specs/auth-css-rendering-fix/design.md](trilingua-code/.kiro/specs/auth-css-rendering-fix/design.md)
-- [trilingua-code/.kiro/specs/dashboard-ui-fix/design.md](#source-7370164fb0d387b1) — [trilingua-code/.kiro/specs/dashboard-ui-fix/design.md](trilingua-code/.kiro/specs/dashboard-ui-fix/design.md)
-- [trilingua-code/.kiro/specs/new-translation-page/design.md](#source-552a1c99b85c3f1c) — [trilingua-code/.kiro/specs/new-translation-page/design.md](trilingua-code/.kiro/specs/new-translation-page/design.md)
-- [trilingua-code/.kiro/specs/per-view-css-architecture/design.md](#source-84f33651f50bcfbe) — [trilingua-code/.kiro/specs/per-view-css-architecture/design.md](trilingua-code/.kiro/specs/per-view-css-architecture/design.md)
-- [trilingua-code/.kiro/specs/per-view-css-architecture/tasks.md](#source-267b84795c5d3a75) — [trilingua-code/.kiro/specs/per-view-css-architecture/tasks.md](trilingua-code/.kiro/specs/per-view-css-architecture/tasks.md)
-- [trilingua-code/.kiro/specs/supabase-cloud-storage/design.md](#source-8f99815eb3634327) — [trilingua-code/.kiro/specs/supabase-cloud-storage/design.md](trilingua-code/.kiro/specs/supabase-cloud-storage/design.md)
-- [trilingua-code/.kiro/specs/translation-fixes/design.md](#source-4226899e6601d957) — [trilingua-code/.kiro/specs/translation-fixes/design.md](trilingua-code/.kiro/specs/translation-fixes/design.md)
-- [trilingua-code/.kiro/specs/translation-pipeline-optimization/design.md](#source-69b9789c7ce1386b) — [trilingua-code/.kiro/specs/translation-pipeline-optimization/design.md](trilingua-code/.kiro/specs/translation-pipeline-optimization/design.md)
-- [trilingua-code/.kiro/specs/translation-pipeline-optimization/tasks.md](#source-d15bd221a65673ef) — [trilingua-code/.kiro/specs/translation-pipeline-optimization/tasks.md](trilingua-code/.kiro/specs/translation-pipeline-optimization/tasks.md)
-- [trilingua-code/.kiro/specs/user-id-history-fix/design.md](#source-68036160e64a2d71) — [trilingua-code/.kiro/specs/user-id-history-fix/design.md](trilingua-code/.kiro/specs/user-id-history-fix/design.md)
-- [trilingua-code/.kiro/specs/user-settings/design.md](#source-6fe525a2f1ef5f27) — [trilingua-code/.kiro/specs/user-settings/design.md](trilingua-code/.kiro/specs/user-settings/design.md)
-- [trilingua-code/docs/ARCHITECTURAL_DESIGN.md](#source-a1f61c4c356bdc1e) — [trilingua-code/docs/ARCHITECTURAL_DESIGN.md](trilingua-code/docs/ARCHITECTURAL_DESIGN.md)
-- [trilingua-code/Model/tools/ocr_kit/CAPTURE_GUIDE.md](#source-fd1f7bf96e117fdf) — [trilingua-code/Model/tools/ocr_kit/CAPTURE_GUIDE.md](trilingua-code/Model/tools/ocr_kit/CAPTURE_GUIDE.md)
-- [trilingua-code/Model/tools/ocr_kit/README.md](#source-3781340dbeaa67ff) — [trilingua-code/Model/tools/ocr_kit/README.md](trilingua-code/Model/tools/ocr_kit/README.md)
-- [trilingua-code/security/containment-runbook.md](#source-b5d386b2388c781f) — [trilingua-code/security/containment-runbook.md](trilingua-code/security/containment-runbook.md)
-- [trilingua-code/security/rotation-runbook.md](#source-93839900d82bfd59) — [trilingua-code/security/rotation-runbook.md](trilingua-code/security/rotation-runbook.md)
-- [trilingua-code/security/SECRETS_INVENTORY.md](#source-645889f43436f469) — [trilingua-code/security/SECRETS_INVENTORY.md](trilingua-code/security/SECRETS_INVENTORY.md)
-- [trilingua-code/SECURITY_FEATURES.md](#source-8b0b65087bd7bb06) — [trilingua-code/SECURITY_FEATURES.md](trilingua-code/SECURITY_FEATURES.md)
-- [TRILINGUA_COMPLETE_GUIDE.md](#source-73004bf051cfcd3c) — [TRILINGUA_COMPLETE_GUIDE.md](TRILINGUA_COMPLETE_GUIDE.md)
+- [trilingua-code/.kiro/specs/auth-css-rendering-fix/design.md](#source-a1e11a015a5f055b) — [trilingua-code/.kiro/specs/auth-css-rendering-fix/design.md](archive_candidates/trilingua-code/.kiro/specs/auth-css-rendering-fix/design.md)
+- [trilingua-code/.kiro/specs/dashboard-ui-fix/design.md](#source-7370164fb0d387b1) — [trilingua-code/.kiro/specs/dashboard-ui-fix/design.md](archive_candidates/trilingua-code/.kiro/specs/dashboard-ui-fix/design.md)
+- [trilingua-code/.kiro/specs/new-translation-page/design.md](#source-552a1c99b85c3f1c) — [trilingua-code/.kiro/specs/new-translation-page/design.md](archive_candidates/trilingua-code/.kiro/specs/new-translation-page/design.md)
+- [trilingua-code/.kiro/specs/per-view-css-architecture/design.md](#source-84f33651f50bcfbe) — [trilingua-code/.kiro/specs/per-view-css-architecture/design.md](archive_candidates/trilingua-code/.kiro/specs/per-view-css-architecture/design.md)
+- [trilingua-code/.kiro/specs/per-view-css-architecture/tasks.md](#source-267b84795c5d3a75) — [trilingua-code/.kiro/specs/per-view-css-architecture/tasks.md](archive_candidates/trilingua-code/.kiro/specs/per-view-css-architecture/tasks.md)
+- [trilingua-code/.kiro/specs/supabase-cloud-storage/design.md](#source-8f99815eb3634327) — [trilingua-code/.kiro/specs/supabase-cloud-storage/design.md](archive_candidates/trilingua-code/.kiro/specs/supabase-cloud-storage/design.md)
+- [trilingua-code/.kiro/specs/translation-fixes/design.md](#source-4226899e6601d957) — [trilingua-code/.kiro/specs/translation-fixes/design.md](archive_candidates/trilingua-code/.kiro/specs/translation-fixes/design.md)
+- [trilingua-code/.kiro/specs/translation-pipeline-optimization/design.md](#source-69b9789c7ce1386b) — [trilingua-code/.kiro/specs/translation-pipeline-optimization/design.md](archive_candidates/trilingua-code/.kiro/specs/translation-pipeline-optimization/design.md)
+- [trilingua-code/.kiro/specs/translation-pipeline-optimization/tasks.md](#source-d15bd221a65673ef) — [trilingua-code/.kiro/specs/translation-pipeline-optimization/tasks.md](archive_candidates/trilingua-code/.kiro/specs/translation-pipeline-optimization/tasks.md)
+- [trilingua-code/.kiro/specs/user-id-history-fix/design.md](#source-68036160e64a2d71) — [trilingua-code/.kiro/specs/user-id-history-fix/design.md](archive_candidates/trilingua-code/.kiro/specs/user-id-history-fix/design.md)
+- [trilingua-code/.kiro/specs/user-settings/design.md](#source-6fe525a2f1ef5f27) — [trilingua-code/.kiro/specs/user-settings/design.md](archive_candidates/trilingua-code/.kiro/specs/user-settings/design.md)
+- [trilingua-code/docs/ARCHITECTURAL_DESIGN.md](#source-a1f61c4c356bdc1e) — [trilingua-code/docs/ARCHITECTURAL_DESIGN.md](archive_candidates/trilingua-code/docs/ARCHITECTURAL_DESIGN.md)
+- [trilingua-code/Model/tools/ocr_kit/CAPTURE_GUIDE.md](#source-fd1f7bf96e117fdf) — [trilingua-code/Model/tools/ocr_kit/CAPTURE_GUIDE.md](archive_candidates/trilingua-code/Model/tools/ocr_kit/CAPTURE_GUIDE.md)
+- [trilingua-code/Model/tools/ocr_kit/README.md](#source-3781340dbeaa67ff) — [trilingua-code/Model/tools/ocr_kit/README.md](archive_candidates/trilingua-code/Model/tools/ocr_kit/README.md)
+- [trilingua-code/security/containment-runbook.md](#source-b5d386b2388c781f) — [trilingua-code/security/containment-runbook.md](archive_candidates/trilingua-code/security/containment-runbook.md)
+- [trilingua-code/security/rotation-runbook.md](#source-93839900d82bfd59) — [trilingua-code/security/rotation-runbook.md](archive_candidates/trilingua-code/security/rotation-runbook.md)
+- [trilingua-code/security/SECRETS_INVENTORY.md](#source-645889f43436f469) — [trilingua-code/security/SECRETS_INVENTORY.md](archive_candidates/trilingua-code/security/SECRETS_INVENTORY.md)
+- [trilingua-code/SECURITY_FEATURES.md](#source-8b0b65087bd7bb06) — [trilingua-code/SECURITY_FEATURES.md](archive_candidates/trilingua-code/SECURITY_FEATURES.md)
+- [TRILINGUA_COMPLETE_GUIDE.md](#source-73004bf051cfcd3c) — [TRILINGUA_COMPLETE_GUIDE.md](archive_candidates/TRILINGUA_COMPLETE_GUIDE.md)
 
 <a id="source-0352c442c49370be"></a>
 
@@ -1210,7 +1210,7 @@ execution
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/baseline/finish-mutations/Model/tools/ocr_kit/CAPTURE_GUIDE.md
 
-Original: [output/reviews/hybrid-pdf-implementation/baseline/finish-mutations/Model/tools/ocr_kit/CAPTURE_GUIDE.md](output/reviews/hybrid-pdf-implementation/baseline/finish-mutations/Model/tools/ocr_kit/CAPTURE_GUIDE.md). SHA-256: `772c3e12f085a9d9f5eb2b64eda6a63d2d62b0ec0044297a7c7c6a865067b45e`.
+Original: [output/reviews/hybrid-pdf-implementation/baseline/finish-mutations/Model/tools/ocr_kit/CAPTURE_GUIDE.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/finish-mutations/Model/tools/ocr_kit/CAPTURE_GUIDE.md). SHA-256: `772c3e12f085a9d9f5eb2b64eda6a63d2d62b0ec0044297a7c7c6a865067b45e`.
 
 ````text
 # One-page capture and reference guide
@@ -1320,7 +1320,7 @@ Real-document replacement remains HOLD until genuine signed held-out evidence pa
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md
 
-Original: [output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md). SHA-256: `449cabe769bd5bf168aa19ec4289ad9cea48b02d27f5e2767481b51c6026ed59`.
+Original: [output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md). SHA-256: `449cabe769bd5bf168aa19ec4289ad9cea48b02d27f5e2767481b51c6026ed59`.
 
 ````text
 # Trilingua — Enterprise Document Localization Platform
@@ -3796,7 +3796,7 @@ Phase 5 (18+ months)
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/TRILINGUA_COMPLETE_GUIDE.md
 
-Original: [output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/TRILINGUA_COMPLETE_GUIDE.md](output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/TRILINGUA_COMPLETE_GUIDE.md). SHA-256: `74db4e9f97c6637517e29efa24058e761244d34349c75000ef3c64ff101da753`.
+Original: [output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/TRILINGUA_COMPLETE_GUIDE.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/finish-start/dirty/TRILINGUA_COMPLETE_GUIDE.md). SHA-256: `74db4e9f97c6637517e29efa24058e761244d34349c75000ef3c64ff101da753`.
 
 ````text
 # Trilingua — Complete Guide
@@ -4727,7 +4727,7 @@ Think of Trilingua as a **translation factory assembly line**:
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md
 
-Original: [output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md). SHA-256: `449cabe769bd5bf168aa19ec4289ad9cea48b02d27f5e2767481b51c6026ed59`.
+Original: [output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md). SHA-256: `449cabe769bd5bf168aa19ec4289ad9cea48b02d27f5e2767481b51c6026ed59`.
 
 ````text
 # Trilingua — Enterprise Document Localization Platform
@@ -7203,7 +7203,7 @@ Phase 5 (18+ months)
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/TRILINGUA_COMPLETE_GUIDE.md
 
-Original: [output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/TRILINGUA_COMPLETE_GUIDE.md](output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/TRILINGUA_COMPLETE_GUIDE.md). SHA-256: `74db4e9f97c6637517e29efa24058e761244d34349c75000ef3c64ff101da753`.
+Original: [output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/TRILINGUA_COMPLETE_GUIDE.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/review-start/dirty/TRILINGUA_COMPLETE_GUIDE.md). SHA-256: `74db4e9f97c6637517e29efa24058e761244d34349c75000ef3c64ff101da753`.
 
 ````text
 # Trilingua — Complete Guide
@@ -12805,7 +12805,7 @@ CSS variables are defined for both themes:
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/ARCHITECTURAL_DESIGN.md
 
-Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/ARCHITECTURAL_DESIGN.md). SHA-256: `449cabe769bd5bf168aa19ec4289ad9cea48b02d27f5e2767481b51c6026ed59`.
+Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/docs/ARCHITECTURAL_DESIGN.md). SHA-256: `449cabe769bd5bf168aa19ec4289ad9cea48b02d27f5e2767481b51c6026ed59`.
 
 ````text
 # Trilingua — Enterprise Document Localization Platform
@@ -15281,7 +15281,7 @@ Phase 5 (18+ months)
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/containment-runbook.md
 
-Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/containment-runbook.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/containment-runbook.md). SHA-256: `0bff24cb2adc5015a356400359072b8100c0e1f9052c45b229b83c113a8f64ba`.
+Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/containment-runbook.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/containment-runbook.md). SHA-256: `0bff24cb2adc5015a356400359072b8100c0e1f9052c45b229b83c113a8f64ba`.
 
 ````text
 # 0B — Containment Runbook
@@ -15430,7 +15430,7 @@ known plaintext.
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/rotation-runbook.md
 
-Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/rotation-runbook.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/rotation-runbook.md). SHA-256: `ef3e7328a207b93393baa8d69a742fa05aa09fc39d1a0a1092c0c4068e364c5c`.
+Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/rotation-runbook.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/rotation-runbook.md). SHA-256: `ef3e7328a207b93393baa8d69a742fa05aa09fc39d1a0a1092c0c4068e364c5c`.
 
 ````text
 # 0C — Secret Rotation Runbook
@@ -15545,7 +15545,7 @@ Rollback: restore prior APP_KEY (users logged back in with old cookies that are 
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/SECRETS_INVENTORY.md
 
-Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/SECRETS_INVENTORY.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/SECRETS_INVENTORY.md). SHA-256: `94e84c66c4e36b8f743024c18d24a23d5a2450a2e9f4da4868c2cc934e7b28fb`.
+Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/SECRETS_INVENTORY.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/security/SECRETS_INVENTORY.md). SHA-256: `94e84c66c4e36b8f743024c18d24a23d5a2450a2e9f4da4868c2cc934e7b28fb`.
 
 ````text
 # Trilingua — Secret Inventory (raw findings, 2026-09-07)
@@ -15615,7 +15615,7 @@ The earlier audit note that `.env` was committed is NOT confirmed; the confirmed
 
 ### Preserved source: output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/SECURITY_FEATURES.md
 
-Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/SECURITY_FEATURES.md](output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/SECURITY_FEATURES.md). SHA-256: `93e34482d0ecf5958ab28bf02f8e7511d143f074f09cef3c7f07153bd9c433a9`.
+Original: [output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/SECURITY_FEATURES.md](archive_candidates/output/reviews/hybrid-pdf-implementation/baseline/source/trilingua-code/SECURITY_FEATURES.md). SHA-256: `93e34482d0ecf5958ab28bf02f8e7511d143f074f09cef3c7f07153bd9c433a9`.
 
 ````text
 # Authentication Security Features
@@ -15793,7 +15793,7 @@ tail -f storage/logs/laravel.log
 
 ### Preserved source: output/reviews/ocr-functional-implementation/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md
 
-Original: [output/reviews/ocr-functional-implementation/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](output/reviews/ocr-functional-implementation/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md). SHA-256: `449cabe769bd5bf168aa19ec4289ad9cea48b02d27f5e2767481b51c6026ed59`.
+Original: [output/reviews/ocr-functional-implementation/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](archive_candidates/output/reviews/ocr-functional-implementation/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md). SHA-256: `449cabe769bd5bf168aa19ec4289ad9cea48b02d27f5e2767481b51c6026ed59`.
 
 ````text
 # Trilingua — Enterprise Document Localization Platform
@@ -18269,7 +18269,7 @@ Phase 5 (18+ months)
 
 ### Preserved source: output/reviews/ocr-functional-implementation/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md
 
-Original: [output/reviews/ocr-functional-implementation/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md](output/reviews/ocr-functional-implementation/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md). SHA-256: `74db4e9f97c6637517e29efa24058e761244d34349c75000ef3c64ff101da753`.
+Original: [output/reviews/ocr-functional-implementation/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md](archive_candidates/output/reviews/ocr-functional-implementation/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md). SHA-256: `74db4e9f97c6637517e29efa24058e761244d34349c75000ef3c64ff101da753`.
 
 ````text
 # Trilingua — Complete Guide
@@ -19200,7 +19200,7 @@ Think of Trilingua as a **translation factory assembly line**:
 
 ### Preserved source: output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md
 
-Original: [output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md). SHA-256: `449cabe769bd5bf168aa19ec4289ad9cea48b02d27f5e2767481b51c6026ed59`.
+Original: [output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md](archive_candidates/output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/trilingua-code/docs/ARCHITECTURAL_DESIGN.md). SHA-256: `449cabe769bd5bf168aa19ec4289ad9cea48b02d27f5e2767481b51c6026ed59`.
 
 ````text
 # Trilingua — Enterprise Document Localization Platform
@@ -21676,7 +21676,7 @@ Phase 5 (18+ months)
 
 ### Preserved source: output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md
 
-Original: [output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md](output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md). SHA-256: `74db4e9f97c6637517e29efa24058e761244d34349c75000ef3c64ff101da753`.
+Original: [output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md](archive_candidates/output/reviews/ocr-preview-implementation-2026-10-27/baseline/dirty/TRILINGUA_COMPLETE_GUIDE.md). SHA-256: `74db4e9f97c6637517e29efa24058e761244d34349c75000ef3c64ff101da753`.
 
 ````text
 # Trilingua — Complete Guide
@@ -22677,7 +22677,7 @@ Identical NLLB and GPT OSS benchmark and provider selection per quality profile.
 
 ### Preserved source: trilingua-code/.kiro/specs/auth-css-rendering-fix/design.md
 
-Original: [trilingua-code/.kiro/specs/auth-css-rendering-fix/design.md](trilingua-code/.kiro/specs/auth-css-rendering-fix/design.md). SHA-256: `2165048d2172a381cc41760d2f45d27f36c60da273a88b8f809751551de123b8`.
+Original: [trilingua-code/.kiro/specs/auth-css-rendering-fix/design.md](archive_candidates/trilingua-code/.kiro/specs/auth-css-rendering-fix/design.md). SHA-256: `2165048d2172a381cc41760d2f45d27f36c60da273a88b8f809751551de123b8`.
 
 ````text
 # Auth CSS Rendering Fix - Bugfix Design
@@ -22918,7 +22918,7 @@ END FOR
 
 ### Preserved source: trilingua-code/.kiro/specs/dashboard-ui-fix/design.md
 
-Original: [trilingua-code/.kiro/specs/dashboard-ui-fix/design.md](trilingua-code/.kiro/specs/dashboard-ui-fix/design.md). SHA-256: `5536fa9d6dd870732eae2c0c189d05f400ad23899ce5c368a8ba17d6543065bf`.
+Original: [trilingua-code/.kiro/specs/dashboard-ui-fix/design.md](archive_candidates/trilingua-code/.kiro/specs/dashboard-ui-fix/design.md). SHA-256: `5536fa9d6dd870732eae2c0c189d05f400ad23899ce5c368a8ba17d6543065bf`.
 
 ````text
 # Dashboard UI Fix — Bugfix Design
@@ -23448,7 +23448,7 @@ modal flows, then write property-based tests capturing that behavior.
 
 ### Preserved source: trilingua-code/.kiro/specs/new-translation-page/design.md
 
-Original: [trilingua-code/.kiro/specs/new-translation-page/design.md](trilingua-code/.kiro/specs/new-translation-page/design.md). SHA-256: `afa3c573301ea823286f18551bcb7c1a407c886afe45e8b23af02a545842e392`.
+Original: [trilingua-code/.kiro/specs/new-translation-page/design.md](archive_candidates/trilingua-code/.kiro/specs/new-translation-page/design.md). SHA-256: `afa3c573301ea823286f18551bcb7c1a407c886afe45e8b23af02a545842e392`.
 
 ````text
 # Design Document — New Translation Page
@@ -24019,7 +24019,7 @@ The inline JS is tested manually or with Playwright end-to-end tests:
 
 ### Preserved source: trilingua-code/.kiro/specs/per-view-css-architecture/design.md
 
-Original: [trilingua-code/.kiro/specs/per-view-css-architecture/design.md](trilingua-code/.kiro/specs/per-view-css-architecture/design.md). SHA-256: `c118284e6368bbe3641d3f334a0c4b3a9583cfbeb1bdbe0d025042a184db1106`.
+Original: [trilingua-code/.kiro/specs/per-view-css-architecture/design.md](archive_candidates/trilingua-code/.kiro/specs/per-view-css-architecture/design.md). SHA-256: `c118284e6368bbe3641d3f334a0c4b3a9583cfbeb1bdbe0d025042a184db1106`.
 
 ````text
 # Design Document: Per-View CSS Architecture
@@ -24454,7 +24454,7 @@ All tests must pass before migration is considered complete:
 
 ### Preserved source: trilingua-code/.kiro/specs/per-view-css-architecture/tasks.md
 
-Original: [trilingua-code/.kiro/specs/per-view-css-architecture/tasks.md](trilingua-code/.kiro/specs/per-view-css-architecture/tasks.md). SHA-256: `eb38ca17da265767a4c93ae4232d53a5d8389e2fcf11487334b09f2d3a687edf`.
+Original: [trilingua-code/.kiro/specs/per-view-css-architecture/tasks.md](archive_candidates/trilingua-code/.kiro/specs/per-view-css-architecture/tasks.md). SHA-256: `eb38ca17da265767a4c93ae4232d53a5d8389e2fcf11487334b09f2d3a687edf`.
 
 ````text
 # Implementation Plan: Per-View CSS Architecture
@@ -24752,7 +24752,7 @@ This plan migrates the Laravel application from a two-file CSS architecture (app
 
 ### Preserved source: trilingua-code/.kiro/specs/supabase-cloud-storage/design.md
 
-Original: [trilingua-code/.kiro/specs/supabase-cloud-storage/design.md](trilingua-code/.kiro/specs/supabase-cloud-storage/design.md). SHA-256: `e38fdc554cefaa132076d87502a3b22aca848c4a4b6b47376cadf7b7cc7cfa7e`.
+Original: [trilingua-code/.kiro/specs/supabase-cloud-storage/design.md](archive_candidates/trilingua-code/.kiro/specs/supabase-cloud-storage/design.md). SHA-256: `e38fdc554cefaa132076d87502a3b22aca848c4a4b6b47376cadf7b7cc7cfa7e`.
 
 ````text
 # Design Document — Supabase Cloud Storage
@@ -25410,7 +25410,7 @@ Avoid duplicating coverage between unit and property tests.
 
 ### Preserved source: trilingua-code/.kiro/specs/translation-fixes/design.md
 
-Original: [trilingua-code/.kiro/specs/translation-fixes/design.md](trilingua-code/.kiro/specs/translation-fixes/design.md). SHA-256: `8ed1179df54d57e19aff93560d792e37380feb88b6b83662e31254fa01c47fe9`.
+Original: [trilingua-code/.kiro/specs/translation-fixes/design.md](archive_candidates/trilingua-code/.kiro/specs/translation-fixes/design.md). SHA-256: `8ed1179df54d57e19aff93560d792e37380feb88b6b83662e31254fa01c47fe9`.
 
 ````text
 # Design Document — translation-fixes
@@ -25912,7 +25912,7 @@ def test_non_json_fallback_contains_status(status_code, body_text):
 
 ### Preserved source: trilingua-code/.kiro/specs/translation-pipeline-optimization/design.md
 
-Original: [trilingua-code/.kiro/specs/translation-pipeline-optimization/design.md](trilingua-code/.kiro/specs/translation-pipeline-optimization/design.md). SHA-256: `040df6123cb026b1d3c00f50f266c5628fb68fdff9743b8c8c30505b0ab9e83d`.
+Original: [trilingua-code/.kiro/specs/translation-pipeline-optimization/design.md](archive_candidates/trilingua-code/.kiro/specs/translation-pipeline-optimization/design.md). SHA-256: `040df6123cb026b1d3c00f50f266c5628fb68fdff9743b8c8c30505b0ab9e83d`.
 
 ````text
 # Design Document: Translation Pipeline Optimization
@@ -26632,7 +26632,7 @@ pytest Model/tests/test_units.py -v
 
 ### Preserved source: trilingua-code/.kiro/specs/translation-pipeline-optimization/tasks.md
 
-Original: [trilingua-code/.kiro/specs/translation-pipeline-optimization/tasks.md](trilingua-code/.kiro/specs/translation-pipeline-optimization/tasks.md). SHA-256: `79c0a817be0e3a739a263814491ff39e47251cf0a610c2e513662cbc8d0f9214`.
+Original: [trilingua-code/.kiro/specs/translation-pipeline-optimization/tasks.md](archive_candidates/trilingua-code/.kiro/specs/translation-pipeline-optimization/tasks.md). SHA-256: `79c0a817be0e3a739a263814491ff39e47251cf0a610c2e513662cbc8d0f9214`.
 
 ````text
 # Implementation Plan: Translation Pipeline Optimization
@@ -26818,7 +26818,7 @@ Implement eleven targeted fixes to `Model/document_translator_v3.py`. The work i
 
 ### Preserved source: trilingua-code/.kiro/specs/user-id-history-fix/design.md
 
-Original: [trilingua-code/.kiro/specs/user-id-history-fix/design.md](trilingua-code/.kiro/specs/user-id-history-fix/design.md). SHA-256: `93dd55f8b290367fd3b279e8d6765f48001080ac9514c3411a65b80da4aeec77`.
+Original: [trilingua-code/.kiro/specs/user-id-history-fix/design.md](archive_candidates/trilingua-code/.kiro/specs/user-id-history-fix/design.md). SHA-256: `93dd55f8b290367fd3b279e8d6765f48001080ac9514c3411a65b80da4aeec77`.
 
 ````text
 # User ID History Fix — Bugfix Design
@@ -27103,7 +27103,7 @@ END FOR
 
 ### Preserved source: trilingua-code/.kiro/specs/user-settings/design.md
 
-Original: [trilingua-code/.kiro/specs/user-settings/design.md](trilingua-code/.kiro/specs/user-settings/design.md). SHA-256: `64e8af573a00c0058f57957f18f07173724da278d29977657750a1f86d42c643`.
+Original: [trilingua-code/.kiro/specs/user-settings/design.md](archive_candidates/trilingua-code/.kiro/specs/user-settings/design.md). SHA-256: `64e8af573a00c0058f57957f18f07173724da278d29977657750a1f86d42c643`.
 
 ````text
 # Design Document: User Settings Feature
@@ -27348,7 +27348,7 @@ CSS variables are defined for both themes:
 
 ### Preserved source: trilingua-code/docs/ARCHITECTURAL_DESIGN.md
 
-Original: [trilingua-code/docs/ARCHITECTURAL_DESIGN.md](trilingua-code/docs/ARCHITECTURAL_DESIGN.md). SHA-256: `449cabe769bd5bf168aa19ec4289ad9cea48b02d27f5e2767481b51c6026ed59`.
+Original: [trilingua-code/docs/ARCHITECTURAL_DESIGN.md](archive_candidates/trilingua-code/docs/ARCHITECTURAL_DESIGN.md). SHA-256: `449cabe769bd5bf168aa19ec4289ad9cea48b02d27f5e2767481b51c6026ed59`.
 
 ````text
 # Trilingua — Enterprise Document Localization Platform
@@ -29824,7 +29824,7 @@ Phase 5 (18+ months)
 
 ### Preserved source: trilingua-code/Model/tools/ocr_kit/CAPTURE_GUIDE.md
 
-Original: [trilingua-code/Model/tools/ocr_kit/CAPTURE_GUIDE.md](trilingua-code/Model/tools/ocr_kit/CAPTURE_GUIDE.md). SHA-256: `8619b67a9db069feba276cbaab9c4c2d5caae68e23dbd9f33f153d30c34adaf2`.
+Original: [trilingua-code/Model/tools/ocr_kit/CAPTURE_GUIDE.md](archive_candidates/trilingua-code/Model/tools/ocr_kit/CAPTURE_GUIDE.md). SHA-256: `8619b67a9db069feba276cbaab9c4c2d5caae68e23dbd9f33f153d30c34adaf2`.
 
 ````text
 # One-page capture and reference guide
@@ -29849,7 +29849,7 @@ The owner confirms actual acquisition, rights basis, representativeness and spli
 
 ### Preserved source: trilingua-code/Model/tools/ocr_kit/README.md
 
-Original: [trilingua-code/Model/tools/ocr_kit/README.md](trilingua-code/Model/tools/ocr_kit/README.md). SHA-256: `f7a621af234010034b4b31abdad91ffbf3bf3dfee474717f2eb457394845b133`.
+Original: [trilingua-code/Model/tools/ocr_kit/README.md](archive_candidates/trilingua-code/Model/tools/ocr_kit/README.md). SHA-256: `f7a621af234010034b4b31abdad91ffbf3bf3dfee474717f2eb457394845b133`.
 
 ````text
 # Local OCR feasibility and collection kit
@@ -29974,7 +29974,7 @@ Plan/report HMAC canonicalization sorts keys and normalizes integral floats and 
 
 ### Preserved source: trilingua-code/security/containment-runbook.md
 
-Original: [trilingua-code/security/containment-runbook.md](trilingua-code/security/containment-runbook.md). SHA-256: `0bff24cb2adc5015a356400359072b8100c0e1f9052c45b229b83c113a8f64ba`.
+Original: [trilingua-code/security/containment-runbook.md](archive_candidates/trilingua-code/security/containment-runbook.md). SHA-256: `0bff24cb2adc5015a356400359072b8100c0e1f9052c45b229b83c113a8f64ba`.
 
 ````text
 # 0B — Containment Runbook
@@ -30123,7 +30123,7 @@ known plaintext.
 
 ### Preserved source: trilingua-code/security/rotation-runbook.md
 
-Original: [trilingua-code/security/rotation-runbook.md](trilingua-code/security/rotation-runbook.md). SHA-256: `ef3e7328a207b93393baa8d69a742fa05aa09fc39d1a0a1092c0c4068e364c5c`.
+Original: [trilingua-code/security/rotation-runbook.md](archive_candidates/trilingua-code/security/rotation-runbook.md). SHA-256: `ef3e7328a207b93393baa8d69a742fa05aa09fc39d1a0a1092c0c4068e364c5c`.
 
 ````text
 # 0C — Secret Rotation Runbook
@@ -30238,7 +30238,7 @@ Rollback: restore prior APP_KEY (users logged back in with old cookies that are 
 
 ### Preserved source: trilingua-code/security/SECRETS_INVENTORY.md
 
-Original: [trilingua-code/security/SECRETS_INVENTORY.md](trilingua-code/security/SECRETS_INVENTORY.md). SHA-256: `94e84c66c4e36b8f743024c18d24a23d5a2450a2e9f4da4868c2cc934e7b28fb`.
+Original: [trilingua-code/security/SECRETS_INVENTORY.md](archive_candidates/trilingua-code/security/SECRETS_INVENTORY.md). SHA-256: `94e84c66c4e36b8f743024c18d24a23d5a2450a2e9f4da4868c2cc934e7b28fb`.
 
 ````text
 # Trilingua — Secret Inventory (raw findings, 2026-09-07)
@@ -30308,7 +30308,7 @@ The earlier audit note that `.env` was committed is NOT confirmed; the confirmed
 
 ### Preserved source: trilingua-code/SECURITY_FEATURES.md
 
-Original: [trilingua-code/SECURITY_FEATURES.md](trilingua-code/SECURITY_FEATURES.md). SHA-256: `93e34482d0ecf5958ab28bf02f8e7511d143f074f09cef3c7f07153bd9c433a9`.
+Original: [trilingua-code/SECURITY_FEATURES.md](archive_candidates/trilingua-code/SECURITY_FEATURES.md). SHA-256: `93e34482d0ecf5958ab28bf02f8e7511d143f074f09cef3c7f07153bd9c433a9`.
 
 ````text
 # Authentication Security Features
@@ -30486,7 +30486,7 @@ tail -f storage/logs/laravel.log
 
 ### Preserved source: TRILINGUA_COMPLETE_GUIDE.md
 
-Original: [TRILINGUA_COMPLETE_GUIDE.md](TRILINGUA_COMPLETE_GUIDE.md). SHA-256: `74db4e9f97c6637517e29efa24058e761244d34349c75000ef3c64ff101da753`.
+Original: [TRILINGUA_COMPLETE_GUIDE.md](archive_candidates/TRILINGUA_COMPLETE_GUIDE.md). SHA-256: `74db4e9f97c6637517e29efa24058e761244d34349c75000ef3c64ff101da753`.
 
 ````text
 # Trilingua — Complete Guide
