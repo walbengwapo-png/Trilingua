@@ -88,3 +88,8 @@ __pycache__/
 /trilingua-code/pass.txt
 /trilingua-code/storage/logs/laravel.log
 /trilingua-code/vendor/laravel/pint/builds/pint
+
+# Environment templates are permitted; real environments remain ignored.
+!/.env.example
+!/.env.sample
+!/.env.template
