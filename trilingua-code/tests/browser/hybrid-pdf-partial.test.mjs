@@ -24,6 +24,35 @@ function translationHtml(){
         {cwd:root,input:JSON.stringify({source:body,capabilities}),env:{...process.env,APP_ENV:'testing',DB_CONNECTION:'sqlite',DB_DATABASE:':memory:',DB_URL:''}}).toString();
 }
 
+for(const preview of [false,true]){
+    test(`PDF OCR preview is opt-in and forwarded (${preview})`,async()=>{
+        const page=await browser.newPage();let posted='';
+        await page.route('**/*',async route=>{
+            const url=new URL(route.request().url());
+            if(url.pathname==='/')return route.fulfill({contentType:'text/html',body:`<meta name="csrf-token" content="test">${translationHtml()}`});
+            if(url.pathname==='/translate'){
+                posted=route.request().postDataBuffer().toString();
+                return route.fulfill({json:{status:'completed',download_url:'/download',
+                    content_summary:{status:'complete',translated:1,held:0,...(preview?{ocr_mode:'preview',ocr_verified:false}:{})}}});
+            }
+            return route.abort();
+        });
+        try{
+            await page.goto('https://hybrid.test/');
+            assert.equal(await page.locator('#ocr-preview').isChecked(),false);
+            await page.locator('#file-input').setInputFiles(resolve(root,'tests/testPDFs/M1_Q1_ENGLISH 8.pdf'));
+            assert.equal(await page.locator('#ocr-preview-option').isVisible(),true);
+            if(preview)await page.locator('#ocr-preview').check();
+            await page.locator('#translate-btn').click();
+            await page.waitForFunction(()=>!document.querySelector('#output-download').hidden);
+            assert.match(posted,new RegExp(`name="ocr_mode"\\r\\n\\r\\n${preview?'preview':'strict'}`));
+            if(preview)assert.match(await page.locator('#output-text').innerText(),/Unverified OCR preview/);
+            await page.locator('#remove-file').click();
+            assert.equal(await page.locator('#ocr-preview').isChecked(),false);
+        }finally{await page.close();}
+    });
+}
+
 for(const status of ['partial','untranslated']){
     test(`actual completion UI labels ${status} and original-language holds`,async()=>{
         const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));

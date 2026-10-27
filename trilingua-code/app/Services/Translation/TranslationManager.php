@@ -138,6 +138,7 @@ class TranslationManager
         string $targetLang,
         string $pdfColumnMode = 'auto',
         string $mode = 'balanced',
+        string $ocrMode = 'strict',
     ): array {
         $ext = strtolower('.' . $file->getClientOriginalExtension());
         $outExt = config('translation.extension_map.' . ltrim($ext, '.'), $ext);
@@ -156,6 +157,7 @@ class TranslationManager
                     'target_lang' => $targetLang,
                     'pdf_column_mode' => $pdfColumnMode,
                     'mode' => $mode,
+                    'ocr_mode' => $ocrMode,
                 ]);
 
             if ($response->failed()) {

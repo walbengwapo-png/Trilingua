@@ -68,6 +68,7 @@
         @if ($contentSummary)
             <div class="review-form-card" role="note">
                 <h4>Content: {{ ucfirst($contentSummary['status']) }}</h4>
+                @if (($contentSummary['ocr_mode'] ?? null) === 'preview')<p>Unverified OCR preview for testing.</p>@endif
                 <p>{{ $contentSummary['translated'] }} translated, {{ $contentSummary['held'] }} held, {{ $contentSummary['passthrough'] }} passthrough regions.</p>
                 @foreach ($record->sidecar['render_plan']['regions'] ?? [] as $region)
                     @if ($region['status'] === 'held')
@@ -111,7 +112,7 @@
                 <form method="POST" action="{{ route('admin.review.document.verify', $record->id) }}" class="review-inline-form"
                       data-review-form data-reload="true" data-confirm-dirty="true">
                     @csrf
-                    <button type="submit" class="review-btn review-btn--success" @disabled($contentSummary && $contentSummary['status'] !== 'complete')>Verify Document</button>
+                    <button type="submit" class="review-btn review-btn--success" @disabled($contentSummary && ($contentSummary['status'] !== 'complete' || ($contentSummary['ocr_mode'] ?? null) === 'preview'))>Verify Document</button>
                 </form>
 
                 <form method="POST" action="{{ route('admin.review.document.flag', $record->id) }}" class="review-inline-form"

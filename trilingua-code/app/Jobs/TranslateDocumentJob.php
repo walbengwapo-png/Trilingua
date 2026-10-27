@@ -75,6 +75,7 @@ class TranslateDocumentJob implements ShouldQueue
         public ?string $originalStorageBackend = 'supabase',
         public ?int $translationJobId = null,
         public ?string $presetUuid = null,
+        public string $ocrMode = 'strict',
     ) {
         $this->timeout = (int) config('timeouts.job', 1300);
     }
@@ -145,7 +146,8 @@ class TranslateDocumentJob implements ShouldQueue
                 $this->sourceLang,
                 $this->targetLang,
                 $this->pdfColumnMode,
-                $this->mode
+                $this->mode,
+                $this->ocrMode ?? 'strict',
             );
 
             $downloadFilename = $translationResult['download_filename'];

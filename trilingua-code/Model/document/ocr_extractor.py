@@ -71,7 +71,7 @@ def inventory(binary):
         return {'available': False, 'binary': resolved, 'installed_packs': None, 'reason': str(exc)}
 
 
-def require_ready(source_lang, category):
+def require_ready(source_lang, category, preview=False):
     """Fail closed until this language/category passes the agreed real-input gate."""
     state = readiness()
     pack = PACKS.get(source_lang)
@@ -79,6 +79,8 @@ def require_ready(source_lang, category):
         raise OCRUnavailable("OCR runtime unavailable: install Tesseract and pytesseract; check OCR_TESSERACT_CMD.")
     if not pack or pack not in (state.get("installed_packs") or []):
         raise OCRUnavailable(f"OCR language pack unavailable for {source_lang}: required {pack}.")
+    if preview:
+        return pack
     try:
         from document.artifact_auth import load_json
         from document.report_trust import verify_report

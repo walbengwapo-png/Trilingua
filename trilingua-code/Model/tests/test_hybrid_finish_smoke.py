@@ -31,7 +31,7 @@ def invoke(source,pipeline,monkeypatch):
     import server
     monkeypatch.setattr(server,'_document_pipeline',pipeline)
     return server.translate_document(UploadFile(filename=source.name,file=io.BytesIO(source.read_bytes())),
-        'English','Cebuano','auto','fast')
+        'English','Cebuano','auto','fast','strict')
 
 
 @pytest.mark.parametrize('caption',[False,True])
@@ -55,9 +55,10 @@ def test_no_report_keeps_raster_original_through_service(tmp_path,document_pipel
 def inline_fixture_worker(operation,*args,deadline=None):
     """Test-owned in-process dependency: fixture trust patches cannot enter spawn."""
     if operation in {'inspect','extract'}:
-        source,language,column=args
+        source,language,column=args[:3]
         native,ext=analyze_document(source,pdf_column_mode=column)
-        return (native,ext) if operation=='inspect' else inventory_pdf(source,native,language,column)
+        return (native,ext) if operation=='inspect' else inventory_pdf(source,native,language,column,
+                                                                    ocr_mode=args[3] if len(args)>3 else 'strict')
     if operation=='render':
         source,blocks,output,language,target=args
         actions,held=plan_images(source,blocks)

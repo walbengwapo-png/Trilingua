@@ -288,7 +288,7 @@ def reconstruct_from_sidecar(sidecar, overrides, original_file, output_file,
             next_plan = sign_plan(next_plan, edited_blocks)
             from document.pdf_regions import content_summary
             updated = dict(sidecar, blocks=edited_blocks, render_plan=next_plan,
-                           content_summary=content_summary(next_plan['regions']))
+                           content_summary=content_summary(next_plan['regions'],next_plan.get('ocr_mode','strict')))
             check_bounds(next_plan)
             if len(json.dumps(updated,ensure_ascii=False).encode('utf-8')) > 24_000_000:
                 raise ValueError('Regenerated sidecar exceeds bounded payload')

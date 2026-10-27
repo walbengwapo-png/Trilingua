@@ -144,7 +144,9 @@ Write-Ok "APP_URL=$appUrl | migrations ran | config/view cached"
 # Python translation microservice (:5000)
 # ---------------------------------------------------------------------------
 Write-Step 'Starting Python translation server'
-$pyProc = Start-Process -FilePath 'python' `
+$pythonPath = Join-Path $root '.venv-ocr-layout\Scripts\python.exe'
+if (-not (Test-Path -LiteralPath $pythonPath)) { $pythonPath = 'python' }
+$pyProc = Start-Process -FilePath $pythonPath `
     -ArgumentList '-m', 'uvicorn', 'server:app', '--app-dir', 'Model', '--host', '127.0.0.1', '--port', '5000', '--log-level', 'info' `
     -WorkingDirectory $root -WindowStyle Hidden `
     -RedirectStandardOutput (Join-Path $demoDir 'python.out.log') `

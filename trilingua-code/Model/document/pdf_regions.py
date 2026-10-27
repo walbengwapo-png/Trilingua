@@ -50,12 +50,15 @@ def _visible(page, block, images):
     return bool(text.strip()) and sum(c == '\ufffd' or 0xe000 <= ord(c) <= 0xf8ff for c in text) / len(text) < .05
 
 
-def inventory_pdf(path, native_blocks, language, column_mode='auto', source_identity=None):
+def inventory_pdf(path, native_blocks, language, column_mode='auto', source_identity=None, ocr_mode='strict'):
     from document.ocr_extractor import OCRUnavailable, require_ready
     from document.pdf_source import _check_pdf_limits
+    if ocr_mode not in {'strict','preview'}:raise ValueError('Invalid OCR mode')
     _check_pdf_limits(path)
     identity = source_identity or sha256(path)
     regions, pages, blocks, warnings = [], [], [], []
+    if ocr_mode=='preview':
+        warnings.append('Unverified OCR preview: image text was recognized without a qualifying accuracy report. Review the translation and layout.')
     with fitz.open(path) as doc:
         if len(doc) > MAX_PAGES:
             raise ValueError('Hybrid PDF limit is 50 pages')
@@ -98,8 +101,11 @@ def inventory_pdf(path, native_blocks, language, column_mode='auto', source_iden
                     entry.update(reason=BUDGET_REASON)
                     continue
                 try:
-                    for category in entry['capture_scope']:
-                        require_ready(language, category)
+                    if ocr_mode=='preview':
+                        require_ready(language,'scan',preview=True)
+                    else:
+                        for category in entry['capture_scope']:
+                            require_ready(language, category)
                 except OCRUnavailable as exc:
                     entry.update(reason='ocr_acceptance_hold', detail=str(exc))
                 else:
@@ -110,7 +116,9 @@ def inventory_pdf(path, native_blocks, language, column_mode='auto', source_iden
                     try:
                         occurrence_safety(doc, number, image['xref'])
                         source = source_image(doc, image['xref'])
-                        found = recognize_image(source, require_ready(language, 'scan'), number, source.size,
+                        pack = (require_ready(language,'scan',preview=True) if ocr_mode=='preview'
+                                else require_ready(language,'scan'))
+                        found = recognize_image(source, pack, number, source.size,
                                                 retry_budget=retry_budget)
                         entry.update(status='container', reason=None)
                         for recognized in found:
@@ -157,7 +165,7 @@ def inventory_pdf(path, native_blocks, language, column_mode='auto', source_iden
     for r in regions:
         if r['status'] == 'held':
             warnings.append(f"Page {r['page'] + 1}: original region retained ({r['reason']}).")
-    return blocks, {'pages': pages, 'regions': regions, 'warnings': warnings,
+    return blocks, {'pages': pages, 'regions': regions, 'warnings': warnings, 'ocr_mode':ocr_mode,
                     'original_sha256': identity, 'signals_version': SIGNALS_VERSION}
 
 
@@ -166,10 +174,12 @@ def completed_status(block):
     return 'passthrough' if block.get('passthrough') or unchanged else 'translated'
 
 
-def content_summary(regions):
+def content_summary(regions, ocr_mode='strict'):
     counts = Counter(r['status'] for r in regions)
     held, translated = counts['held'], counts['translated']
     status = ('partial' if translated else 'untranslated') if held else 'complete'
-    return {'status': status, 'translated': translated, 'held': held,
+    result = {'status': status, 'translated': translated, 'held': held,
             'passthrough': counts['passthrough'], 'source_coverage': 'unknown' if held else 'inventoried',
             'held_region_ids': [r['region_id'] for r in regions if r['status'] == 'held']}
+    if ocr_mode=='preview':result.update(ocr_mode='preview',ocr_verified=False)
+    return result

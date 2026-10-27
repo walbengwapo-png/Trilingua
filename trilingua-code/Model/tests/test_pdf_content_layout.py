@@ -271,6 +271,6 @@ def test_document_endpoint_returns_structured_validation_failure(monkeypatch, re
             server.translate_document_regenerate(
                 upload, json.dumps({"format": ".pdf"}), "", "{}", "English", "Cebuano", "auto")
         else:
-            server.translate_document(upload, "English", "Cebuano", "auto", "balanced")
+            server.translate_document(upload, "English", "Cebuano", "auto", "balanced", 'strict')
     assert caught.value.status_code == 422
     assert caught.value.detail["validation"] == report

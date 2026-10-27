@@ -12,7 +12,7 @@ import fitz
 from PIL import Image
 
 FONT_ROOT = Path(__file__).resolve().parents[1] / 'assets' / 'fonts'
-ALGORITHM_VERSION = 2
+ALGORITHM_VERSION = 3
 MAX_PIXELS = 40_000_000
 MAX_MASK_BYTES = 16_000_000
 
@@ -218,12 +218,19 @@ def occurrence_safety(doc, page_number, xref):
         raise ImageHold('Clipping/transparency state is not proven safe')
     box = fitz.Rect(info['bbox'])
     if not page.rect.contains(box): raise ImageHold('Clipped image')
+    image_paints = [seq for seq,(kind,bounds) in enumerate(page.get_bboxlog())
+                    if kind=='fill-image' and all(abs(a-b)<.001 for a,b in zip(bounds,box))]
+    if len(image_paints)!=1:raise ImageHold('Image paint order is ambiguous')
     for other in inventory[page_number]:
         if other['xref'] != xref and (box & fitz.Rect(other['bbox'])).get_area() > 0:
             raise ImageHold('Overlapping image')
     if any((box & fitz.Rect(t['bbox'])).get_area() > 0 for t in page.get_texttrace()):
         raise ImageHold('Native or hidden text overlaps image')
     for drawing in page.get_drawings():
+        # An opaque image covers earlier paths; later paths must remain protected.
+        sequence = drawing.get('seqno')
+        if isinstance(sequence,int) and sequence+(drawing.get('type')=='fs') < image_paints[0]:
+            continue
         bounds = fitz.Rect(drawing['rect'])
         if drawing.get('type') in {'s','fs'}:
             half_width = float(drawing.get('width') or 0)/2

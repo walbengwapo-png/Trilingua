@@ -40,6 +40,7 @@ def make_plan(extraction, entries):
             'regions': extraction['regions'], 'pages': extraction['pages'],
             'image_actions': extraction.get('image_actions', []),
             'native_fit_decisions': {b['region_id']:b.get('rendered_layout', {}) for b in entries if b.get('region_id') and not b.get('image_region')}}
+    if extraction.get('ocr_mode')=='preview':plan.update(ocr_mode='preview',ocr_verified=False)
     return sign_plan(plan, entries)
 
 

@@ -168,6 +168,9 @@ class ReviewService
             if (in_array($history->sidecar['content_summary']['status'] ?? null, ['partial', 'untranslated'], true)) {
                 throw new TranslationException('Held regions remain in the original language. This incomplete document cannot be verified.');
             }
+            if (($history->sidecar['content_summary']['ocr_mode'] ?? null) === 'preview') {
+                throw new TranslationException('This is an unverified OCR preview for testing and cannot be verified as production output.');
+            }
 
             // The published file is what a verification vouches for. Approved
             // contract: a document carrying edits the downloadable file does not

@@ -258,7 +258,7 @@ def test_unvalidated_image_api_failure_is_422_and_cleans_upload(server_module, t
     monkeypatch.setattr(server_module._document_pipeline, 'translate', reject)
     with pytest.raises(HTTPException) as failure:
         server_module.translate_document(UploadFile(filename='worksheet.png', file=io.BytesIO(b'fixture')),
-                                         'English', 'Cebuano', 'auto', 'fast')
+                                         'English', 'Cebuano', 'auto', 'fast', 'strict')
     assert failure.value.status_code == 422
     assert not folder.exists()
 

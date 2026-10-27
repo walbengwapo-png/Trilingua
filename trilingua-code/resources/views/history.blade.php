@@ -119,6 +119,7 @@
                 @php
                     $isDoc    = ($record['translation_type'] ?? 'document') === 'document';
                     $contentStatus = $record['sidecar']['content_summary']['status'] ?? null;
+                    $ocrPreview = ($record['sidecar']['content_summary']['ocr_mode'] ?? null) === 'preview';
                     $matchPct = $isDoc
                         ? 100
                         : min(100, (int)(
@@ -162,6 +163,7 @@
                         @if ($isDoc)
                             <p class="history-card__sub">→ {{ $record['translated_filename'] ?? '' }}</p>
                             @if (!empty($record['sidecar']['content_summary']))
+                                @if ($ocrPreview)<p role="note">Unverified OCR preview for testing.</p>@endif
                                 <p role="note">Content: {{ ucfirst($record['sidecar']['content_summary']['status']) }} · {{ $record['sidecar']['content_summary']['held'] }} held regions.</p>
                             @endif
                         @endif

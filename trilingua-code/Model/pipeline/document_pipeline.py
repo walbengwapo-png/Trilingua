@@ -237,6 +237,10 @@ class DocumentPipeline:
         ctx.mode = self._determine_mode(request, ctx.pdf_deadline)
 
         ext = os.path.splitext(request.file_path)[1].lower()
+        if request.ocr_mode not in {'strict','preview'}:
+            raise ValueError('Invalid OCR mode')
+        if request.ocr_mode=='preview' and ext not in {'.pdf', *IMAGE_EXTENSIONS}:
+            raise ValueError('OCR preview is available only for PDFs and images')
         ctx.source_format = ext
         print(f"\n{'='*60}")
         print(f"  Document Translation — Mode: {ctx.mode.name}")
@@ -277,7 +281,8 @@ class DocumentPipeline:
             if ext in {'.pdf', *IMAGE_EXTENSIONS}:
                 from document.pdf_worker import run_pdf
                 data, extraction = run_pdf('extract', request.file_path, request.source_lang,
-                                           request.pdf_column_mode, deadline=ctx.pdf_deadline)
+                                           request.pdf_column_mode, *(['preview'] if request.ocr_mode=='preview' else []),
+                                           deadline=ctx.pdf_deadline)
                 detected_ext = '.pdf'
             else:
                 data, detected_ext = analyze_document(request.file_path, pdf_column_mode=request.pdf_column_mode)
@@ -612,7 +617,7 @@ class DocumentPipeline:
                     extraction['warnings'].append(f"Page {region['page']+1}: original region retained ({region['reason']}).")
                     entry.update(text=entry.get('source_text', ''), current_text=entry.get('source_text', ''),
                                  ai_translated_text=entry.get('source_text', ''), passthrough=True)
-        summary = content_summary(extraction['regions'])
+        summary = content_summary(extraction['regions'],extraction.get('ocr_mode','strict'))
         from document.render_plan import make_plan
         sidecar.update(version=3, content_summary=summary, render_plan=make_plan(extraction,sidecar['blocks']))
         extraction.pop('image_actions', None)

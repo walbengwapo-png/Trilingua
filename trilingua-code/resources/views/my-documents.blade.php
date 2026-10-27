@@ -187,7 +187,7 @@
                 @php
                     $isTranslated = !empty($doc['original_filename']) && !empty($doc['translated_filename']);
                     $contentSummary = $doc['sidecar']['content_summary'] ?? null;
-                    $incompleteContent = $contentSummary && $contentSummary['status'] !== 'complete';
+                    $incompleteContent = $contentSummary && ($contentSummary['status'] !== 'complete' || ($contentSummary['ocr_mode'] ?? null) === 'preview');
                     $isOriginal   = empty($doc['parent_document_id']);
                     $hasParent    = !empty($doc['parent_document_id']);
                     // Get child translations for this record
@@ -259,6 +259,7 @@
 
                         {{-- Translation progress bar --}}
                         @if ($incompleteContent)
+                            @if (($contentSummary['ocr_mode'] ?? null) === 'preview')<p role="note">Unverified OCR preview for testing.</p>@endif
                             <p class="doc-card__progress-label" role="note">{{ ucfirst($contentSummary['status']) }}: {{ $contentSummary['held'] }} held regions retain their original language.</p>
                         @else
                         <div class="doc-card__progress">

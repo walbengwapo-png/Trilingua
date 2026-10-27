@@ -63,6 +63,10 @@
                 </div>
             </div>
 
+            <div id="ocr-preview-option" class="translation-job-hint" hidden>
+                <label for="ocr-preview"><input type="checkbox" id="ocr-preview" aria-describedby="ocr-preview-hint"> Try OCR preview (unverified)</label>
+                <p id="ocr-preview-hint">Translate text inside PDF images for testing. Check the wording and layout carefully.</p>
+            </div>
             <div class="translation-panel__footer">
                 {{-- Speak --}}
                 <button id="speak-source-btn" type="button" class="speak-btn" aria-label="Read source text aloud" title="Read aloud">
@@ -191,6 +195,8 @@
     var removeFile    = document.getElementById('remove-file');
     var fileInfo      = document.getElementById('file-info');
     var pdfColumnMode = document.getElementById('pdf-column-mode');
+    var ocrPreviewOption = document.getElementById('ocr-preview-option');
+    var ocrPreview = document.getElementById('ocr-preview');
     var sourceError   = document.getElementById('source-error');
     var outputError   = document.getElementById('output-error');
     var translateBtn  = document.getElementById('translate-btn');
@@ -273,6 +279,8 @@
         charCounter.style.display = 'none';
         fileInfo.style.display = '';
         pdfColumnMode.style.display = ext === '.pdf' ? '' : 'none';
+        ocrPreviewOption.hidden = !['.pdf', '.png', '.jpg', '.jpeg'].includes(ext);
+        if (ocrPreviewOption.hidden) ocrPreview.checked = false;
         if (ext !== '.pdf') pdfColumnMode.value = 'auto';
     });
 
@@ -284,6 +292,8 @@
         clearError(sourceError);
         pdfColumnMode.style.display = 'none';
         pdfColumnMode.value = 'auto';
+        ocrPreview.checked = false;
+        ocrPreviewOption.hidden = true;
     });
 
     // ── Translate ─────────────────────────────────────────────────────────────
@@ -359,6 +369,7 @@
             formData.append('document', file);
             var ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
             if (ext === '.pdf') formData.append('pdf_column_mode', pdfColumnMode.value);
+            formData.append('ocr_mode', !ocrPreviewOption.hidden && ocrPreview.checked ? 'preview' : 'strict');
         } else {
             var text = sourceText.value.trim();
             if (!text) { showError(sourceError, 'Please enter text to translate.'); setLoading(false); hideProgress(); return; }
@@ -397,16 +408,18 @@
                     documentJobHint.hidden = true;
                     const summary = data.content_summary;
                     const incomplete = summary && summary.status !== 'complete';
+                    const unverified = summary && summary.ocr_mode === 'preview';
                     outputText.textContent = incomplete
                         ? `${summary.status}: ${summary.translated} translated, ${summary.held} held regions. Held content remains in the original language.`
                         : 'Your document has been translated. Download the translated file below to view the result.';
+                    if (unverified) outputText.textContent = 'Unverified OCR preview. ' + outputText.textContent;
                     outputDownload.removeAttribute('hidden');
                     downloadLink.href = data.download_data || data.download_url;
                     downloadLink.download = data.download_filename || 'translated_document';
                     downloadLabel.textContent = 'Download: ' + (data.download_filename || 'translated_document');
                     copyBtn.setAttribute('aria-disabled', 'true');
                     saveBtn.setAttribute('aria-disabled', 'true');
-                    if (window.showToast) showToast(incomplete ? 'warning' : 'success', incomplete ? 'Incomplete translation' : 'Document translated!', outputText.textContent);
+                    if (window.showToast) showToast(incomplete || unverified ? 'warning' : 'success', unverified ? 'Unverified preview' : incomplete ? 'Incomplete translation' : 'Document translated!', outputText.textContent);
                 } else if (res.ok && data && data.translated) {
                     sessionStorage.removeItem(JOB_STORAGE_KEY);
                     hideProgress();
@@ -516,16 +529,18 @@
                     documentJobHint.hidden = true;
                     const summary = data.content_summary;
                     const incomplete = summary && summary.status !== 'complete';
+                    const unverified = summary && summary.ocr_mode === 'preview';
                     outputText.textContent = incomplete
                         ? `${summary.status}: ${summary.translated} translated, ${summary.held} held regions. Held content remains in the original language.`
                         : 'Your document has been translated. Download the translated file below to view the result.';
+                    if (unverified) outputText.textContent = 'Unverified OCR preview. ' + outputText.textContent;
                     outputDownload.removeAttribute('hidden');
                     downloadLink.href = data.download_data || data.download_url;
                     downloadLink.download = data.download_filename || 'translated_document';
                     downloadLabel.textContent = 'Download: ' + (data.download_filename || 'translated_document');
                     copyBtn.setAttribute('aria-disabled', 'true');
                     saveBtn.setAttribute('aria-disabled', 'true');
-                    if (window.showToast) showToast(incomplete ? 'warning' : 'success', incomplete ? 'Incomplete translation' : 'Document translated!', outputText.textContent);
+                    if (window.showToast) showToast(incomplete || unverified ? 'warning' : 'success', unverified ? 'Unverified preview' : incomplete ? 'Incomplete translation' : 'Document translated!', outputText.textContent);
                     return;
                 }
 

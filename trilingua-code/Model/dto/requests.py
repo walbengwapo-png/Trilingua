@@ -53,6 +53,7 @@ class DocumentTranslationRequest:
     mode: str = "balanced"               # Processing mode: fast, balanced, thorough, auto
     glossary_pairs: Optional[list] = None  # List of (source, target) tuples
     reference_file: Optional[str] = None   # Optional BLEU reference
+    ocr_mode: str = 'strict'              # strict or explicitly unverified preview
 
     def to_dict(self) -> dict:
         return asdict(self)

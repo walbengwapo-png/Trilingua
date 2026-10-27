@@ -74,14 +74,15 @@ def _execute(connection, operation, args, scratch=None):
             args=(stack.enter_context(original_pdf(original)),*args[1:])
         if operation in {'extract', 'inspect'}:
             from document.extractor import analyze_document
-            path, language, column_mode = args
+            path, language, column_mode = args[:3]
             blocks, ext = analyze_document(path, pdf_column_mode=column_mode)
             if operation == 'inspect':
                 result = blocks, ext
             else:
                 from document.pdf_regions import inventory_pdf
                 from document.pdf_regions import sha256
-                result = inventory_pdf(path, blocks, language, column_mode, source_identity=sha256(original))
+                result = inventory_pdf(path, blocks, language, column_mode, source_identity=sha256(original),
+                                       ocr_mode=args[3] if len(args)>3 else 'strict')
         elif operation == 'preserve':
             import shutil
             shutil.copyfile(args[0],args[1])

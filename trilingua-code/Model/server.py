@@ -655,7 +655,10 @@ def translate_document(
     target_lang: str = Form(...),
     pdf_column_mode: str = Form("auto"),
     mode: str = Form("balanced"),
+    ocr_mode: str = Form('strict'),
 ):
+    if ocr_mode not in {'strict','preview'}:
+        raise HTTPException(400,'Invalid OCR mode')
     if pdf_column_mode not in VALID_PDF_COLUMN_MODES:
         raise HTTPException(
             400,
@@ -697,6 +700,7 @@ def translate_document(
             target_lang=target_lang,
             pdf_column_mode=pdf_column_mode,
             mode=mode,
+            ocr_mode=ocr_mode,
         )
         result = _run_pipeline_guarded(lambda: _document_pipeline.translate(request))
 
@@ -708,6 +712,7 @@ def translate_document(
             raise HTTPException(500, "Translation produced no output file.")
 
         original_stem = os.path.splitext(file.filename)[0]
+        if ocr_mode=='preview':original_stem += '_ocr_preview'
         content_summary = (result.sidecar or {}).get('content_summary', {})
         suffix = content_summary.get('status', 'translated')
         if suffix == 'complete': suffix = 'translated'
@@ -820,6 +825,7 @@ def translate_document_regenerate(
 
         original_stem = os.path.splitext(file.filename)[0]
         status = decoded.get('content_summary', {}).get('status', 'complete')
+        if decoded.get('content_summary',{}).get('ocr_mode')=='preview':original_stem += '_ocr_preview'
         suffix = '_regenerated_' + status if status in {'partial','untranslated'} else '_regenerated'
         download_name = f"{original_stem}{suffix}{out_ext}"
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -835,12 +841,12 @@ def translate_document_regenerate(
             media_type=_content_type_for_ext(out_ext),
             headers={"Content-Disposition": f"attachment; filename={download_name}"}
         )
-    except (ValueError, TimeoutError) as e:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-        raise HTTPException(422, str(e))
     except PDFValidationError as e:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         raise HTTPException(422, {"message": str(e), "validation": e.report})
+    except (ValueError, TimeoutError) as e:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise HTTPException(422, str(e))
     except HTTPException:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         raise

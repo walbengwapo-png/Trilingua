@@ -309,6 +309,7 @@ class TranslationJob extends Model
         string $mode = 'balanced',
         string $pdfColumnMode = 'auto',
         ?int $parentDocumentId = null,
+        string $ocrMode = 'strict',
     ): string {
         return hash('sha256', implode('|', [
             (string) $userId,
@@ -317,7 +318,7 @@ class TranslationJob extends Model
             $targetLang,
             $mode,
             $pdfColumnMode,
-            (string) ($parentDocumentId ?? ''),
+            (string) ($parentDocumentId ?? '').($ocrMode === 'preview' ? '|ocr_preview' : ''),
         ]));
     }
 }

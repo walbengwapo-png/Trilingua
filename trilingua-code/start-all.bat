@@ -5,6 +5,8 @@ echo ==========================================
 echo.
 
 cd /d "%~dp0"
+set "MODEL_PYTHON=python"
+if exist "%~dp0.venv-ocr-layout\Scripts\python.exe" set "MODEL_PYTHON=%~dp0.venv-ocr-layout\Scripts\python.exe"
 set "PHPRC=C:\php82"
 echo Checking for existing TriLingua services...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$ports = 5000, 8000; $listeners = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $ports -contains $_.LocalPort }; $workers = Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'php.exe' -and $_.CommandLine -match 'artisan queue:(listen|work)' }; if ($listeners -or $workers) { Write-Host 'Services are already running. Close their windows before restarting; wait for active translations to finish first.'; exit 1 }"
@@ -22,7 +24,7 @@ if %errorlevel% neq 0 (
 )
 
 echo [1/4] Starting visible Python Translation Server (port 5000)...
-start "TriLingua - Python Translation Server" /D "%~dp0" cmd /k "python -u -m uvicorn server:app --app-dir Model --host 127.0.0.1 --port 5000 --log-level info"
+start "TriLingua - Python Translation Server" /D "%~dp0" cmd /k ""%MODEL_PYTHON%" -u -m uvicorn server:app --app-dir Model --host 127.0.0.1 --port 5000 --log-level info"
 
 echo Waiting for Python readiness...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$deadline = (Get-Date).AddSeconds(120); while ((Get-Date) -lt $deadline) { try { $r = Invoke-WebRequest -Uri 'http://127.0.0.1:5000/health' -TimeoutSec 5 -UseBasicParsing; if ($r.StatusCode -eq 200) { exit 0 } } catch {}; Start-Sleep -Seconds 2 }; Write-Host 'FATAL: Python did not become healthy. Check its window before restarting.'; exit 1"
