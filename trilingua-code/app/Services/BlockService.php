@@ -16,8 +16,8 @@ use Illuminate\Support\Facades\Log;
  * Invariants enforced here:
  *  - ai_translated_text is IMMUTABLE: it is written exactly once at persist
  *    time and never touched by admin edits.
- *  - current_text starts equal to ai_translated_text and is the ONLY field
- *    admin edits may change.
+ *  - current_text starts with the rendered text (source text for fit holds)
+ *    and is the ONLY field admin edits may change.
  */
 class BlockService
 {
@@ -34,25 +34,21 @@ class BlockService
      */
     public function persistBlocks(TranslationHistory $history, array $blocks, ?array $sidecar = null): int
     {
-        if ($blocks === []) {
-            if ($history->source_word_metadata === null && $history->document_word_count === null) {
-                $history->source_word_metadata = SourceWordCounter::fromBlocks([]);
-                $history->save();
-            }
-            return 0;
-        }
-
         $count = DB::transaction(function () use ($history, $blocks, $sidecar) {
             $created = 0;
             $scores = [];
+            $eligible = 0;
 
             foreach ($blocks as $index => $block) {
                 $sourceText = (string) ($block['source_text'] ?? $block['text'] ?? '');
                 $aiText = (string) ($block['ai_translated_text']
                     ?? $block['current_text']
                     ?? $block['text'] ?? '');
+                $currentText = (string) ($block['current_text'] ?? $aiText);
 
-                $score = $this->normalizeScore($block['quality_score'] ?? null);
+                $isEligible = empty($block['passthrough']) && trim($sourceText) !== '';
+                $eligible += (int) $isEligible;
+                $score = $isEligible ? $this->normalizeScore($block['quality_score'] ?? null) : null;
                 if ($score !== null) {
                     $scores[] = $score;
                 }
@@ -63,8 +59,8 @@ class BlockService
                     'block_type'             => (string) ($block['block_type'] ?? $block['type'] ?? 'paragraph'),
                     'source_text'            => $sourceText,
                     'ai_translated_text'     => $aiText,
-                    'current_text'           => $aiText,
-                    'published_text'         => $aiText,
+                    'current_text'           => $currentText,
+                    'published_text'         => $currentText,
                     'quality_score'          => $score,
                     'quality_issues'         => $this->normalizeIssues($block['quality_issues'] ?? null),
                     'status'                 => ReviewStatus::PENDING,
@@ -75,10 +71,7 @@ class BlockService
             }
 
             // Roll the aggregate quality score up onto the history row.
-            if ($scores !== []) {
-                $average = (int) round(array_sum($scores) / count($scores));
-                $history->quality_score = $average;
-            }
+            $history->quality_score = $scores === [] ? null : (int) round(array_sum($scores) / count($scores));
 
             // Preserve original volume on regeneration/replay and retain legacy counts.
             if ($history->source_word_metadata === null && $history->document_word_count === null) {
@@ -89,7 +82,30 @@ class BlockService
             if ($sidecar !== null) {
                 $history->sidecar = $sidecar;
             }
+            $savedSidecar = $history->sidecar ?? [];
+            $review = $savedSidecar['quality_review'] ?? [];
+            $reviewStatus = count($scores) === $eligible ? 'scored' : 'partial';
+            if ($scores === []) {
+                $reviewStatus = $eligible > 0 && ($review['status'] ?? null) === 'unavailable' ? 'unavailable' : 'not_reviewed';
+            }
+            $savedSidecar['quality_review'] = [
+                'status' => $reviewStatus,
+                'reason' => $scores !== [] ? null : ($eligible === 0 ? 'no_eligible_blocks' : ($review['reason'] ?? 'review_not_recorded')),
+                'eligible_blocks' => $eligible,
+                'scored_blocks' => count($scores),
+            ];
+            $history->sidecar = $savedSidecar;
 
+            if (($sidecar['content_summary']['held'] ?? 0) > 0) {
+                $history->document_word_count = null;
+                if ($history->source_word_metadata !== null) {
+                    $metadata = $history->source_word_metadata;
+                    $metadata['count'] = null;
+                    $metadata['completeness'] = ($metadata['known_words'] ?? 0) > 0 ? 'partial' : 'missing';
+                    $metadata['extraction_coverage'] = 'unknown';
+                    $history->source_word_metadata = $metadata;
+                }
+            }
             $history->save();
 
             return $created;
@@ -109,13 +125,7 @@ class BlockService
      */
     private function normalizeScore(mixed $score): ?int
     {
-        if ($score === null || $score === '') {
-            return null;
-        }
-        if (is_numeric($score)) {
-            return (int) round((float) $score);
-        }
-        return null;
+        return \App\Support\TranslationQuality::score($score);
     }
 
     /**

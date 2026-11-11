@@ -157,6 +157,103 @@ class TranslationStatusTerminalStatesTest extends TestCase
             ->assertJsonPath('download_url', route('history.file', ['id' => $history->id]));
     }
 
+    public function test_active_job_stops_polling_when_same_attempt_has_terminal_failure_cache(): void
+    {
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $job = TranslationJob::create([
+            'uuid'                      => (string) Str::uuid(),
+            'user_id'                   => $user->id,
+            'payload_hash'              => hash('sha256', 'payload'),
+            'original_name'             => 'input.pdf',
+            'original_ext'              => '.pdf',
+            'source_lang'               => 'English',
+            'target_lang'               => 'Cebuano',
+            'pdf_column_mode'           => 'auto',
+            'mode'                      => 'balanced',
+            'file_size'                 => 10,
+            'status'                    => TranslationJob::STATUS_PROCESSING,
+            'attempts'                  => 2,
+            'original_storage_path'     => $user->id.'/originals/x.pdf',
+            'original_storage_backend'  => 'supabase',
+        ]);
+
+        Cache::put('translation_job_'.$job->uuid, [
+            'status' => 'failed',
+            'error' => 'Layout reconstruction failed.',
+            'attempt' => 2,
+            'user_id' => $user->id,
+        ], 60);
+
+        $this->get('/translate/status/'.$job->uuid)
+            ->assertOk()
+            ->assertJsonPath('status', 'failed')
+            ->assertJsonPath('error', 'Layout reconstruction failed.')
+            ->assertJsonPath('recoverable', true);
+    }
+
+    public function test_active_job_ignores_terminal_failure_cache_from_an_older_attempt(): void
+    {
+        $user = $this->makeUser();
+        $this->actingAs($user);
+
+        $job = TranslationJob::create([
+            'uuid'                      => (string) Str::uuid(),
+            'user_id'                   => $user->id,
+            'payload_hash'              => hash('sha256', 'payload'),
+            'original_name'             => 'input.pdf',
+            'original_ext'              => '.pdf',
+            'source_lang'               => 'English',
+            'target_lang'               => 'Cebuano',
+            'pdf_column_mode'           => 'auto',
+            'mode'                      => 'balanced',
+            'file_size'                 => 10,
+            'status'                    => TranslationJob::STATUS_PROCESSING,
+            'attempts'                  => 2,
+        ]);
+
+        Cache::put('translation_job_'.$job->uuid, [
+            'status' => 'failed',
+            'error' => 'Old attempt failed.',
+            'attempt' => 1,
+            'user_id' => $user->id,
+        ], 60);
+
+        $this->get('/translate/status/'.$job->uuid)
+            ->assertOk()
+            ->assertJsonPath('status', 'processing');
+    }
+
+    public function test_recovered_queued_job_ignores_a_late_failure_from_the_previous_worker(): void
+    {
+        $user = $this->makeUser();
+        $job = TranslationJob::create([
+            'uuid' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'payload_hash' => hash('sha256', 'recovered-payload'),
+            'original_name' => 'input.pdf',
+            'original_ext' => '.pdf',
+            'source_lang' => 'Cebuano',
+            'target_lang' => 'Filipino',
+            'status' => TranslationJob::STATUS_FAILED,
+            'attempts' => 2,
+        ]);
+        $this->assertTrue($job->markQueued(recovered: true));
+
+        // An old worker can publish after the retry cleared its cached result.
+        Cache::put('translation_job_'.$job->uuid, [
+            'status' => 'failed', 'error' => 'Previous attempt failed.',
+            'attempt' => 2, 'user_id' => $user->id,
+        ], 60);
+
+        $this->actingAs($user)->get('/translate/status/'.$job->uuid)
+            ->assertOk()->assertJsonPath('status', 'processing');
+        $this->assertTrue($job->markProcessing());
+        $this->get('/translate/status/'.$job->uuid)
+            ->assertOk()->assertJsonPath('status', 'processing');
+    }
+
     public function test_failed_job_reports_recoverability(): void
     {
         $user = $this->makeUser();

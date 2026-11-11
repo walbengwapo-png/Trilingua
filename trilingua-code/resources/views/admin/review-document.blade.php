@@ -9,6 +9,9 @@
 @section('content')
 @php
     $hasDraft = $record->hasUnpublishedEdits();
+    $ocrBlocks = collect($record->sidecar['blocks'] ?? [])->keyBy('block_index');
+    $contentSummary = $record->sidecar['content_summary'] ?? null;
+    $regionsById = collect($record->sidecar['render_plan']['regions'] ?? [])->keyBy('region_id');
 @endphp
 <div class="stack">
 
@@ -62,6 +65,38 @@
         </div>
 
         {{-- Document-level actions --}}
+        @if ($contentSummary)
+            <div class="review-form-card" role="note">
+                <h4>Content: {{ ucfirst($contentSummary['status']) }}</h4>
+                @if (($contentSummary['ocr_mode'] ?? null) === 'preview')<p>Unverified OCR preview for testing.</p>@endif
+                <p>{{ $contentSummary['translated'] }} translated, {{ $contentSummary['held'] }} held, {{ $contentSummary['passthrough'] }} passthrough regions.</p>
+                @foreach ($record->sidecar['render_plan']['regions'] ?? [] as $region)
+                    @if ($region['status'] === 'held')
+                        <p>Page {{ $region['page'] + 1 }} · {{ $region['source_kind'] }} · {{ $region['reason'] }} · {{ implode(', ', $region['bbox']) }}. Original content retained.</p>
+                    @endif
+                @endforeach
+                <details>
+                    <summary>Region placement and font decisions</summary>
+                    @foreach ($record->sidecar['render_plan']['image_actions'] ?? [] as $action)
+                        <p>Page {{ $action['page'] + 1 }} · Region {{ $action['region_id'] }} ·
+                            {{ $action['fit']['font_id'] }} at {{ $action['fit']['font_size'] }} pt ·
+                            Box {{ implode(', ', $action['fit']['bbox']) }} ·
+                            Text RGB {{ implode(', ', $action['foreground']) }} ·
+                            Background RGB {{ implode(', ', $action['background']) }}.</p>
+                    @endforeach
+                </details>
+            </div>
+        @endif
+        @if (!empty($record->sidecar['extraction']['warnings']))
+            <div class="review-form-card" role="note" aria-label="Extraction warnings">
+                <h4 class="review-form-card__title">Check extracted text against the original</h4>
+                <ul>
+                    @foreach ($record->sidecar['extraction']['warnings'] as $warning)
+                        <li>{{ $warning }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         <div class="review-form-card">
             <h4 class="review-form-card__title">Document Actions</h4>
 
@@ -77,7 +112,7 @@
                 <form method="POST" action="{{ route('admin.review.document.verify', $record->id) }}" class="review-inline-form"
                       data-review-form data-reload="true" data-confirm-dirty="true">
                     @csrf
-                    <button type="submit" class="review-btn review-btn--success">Verify Document</button>
+                    <button type="submit" class="review-btn review-btn--success" @disabled($contentSummary && ($contentSummary['status'] !== 'complete' || ($contentSummary['ocr_mode'] ?? null) === 'preview'))>Verify Document</button>
                 </form>
 
                 <form method="POST" action="{{ route('admin.review.document.flag', $record->id) }}" class="review-inline-form"
@@ -229,6 +264,8 @@
                                 $different = isset($block->current_text) && $block->current_text !== $block->ai_translated_text;
                                 $score     = $block->quality_score;
                                 $level     = $score === null ? '' : ($score < 60 ? 'low' : ($score < 80 ? 'medium' : 'high'));
+                                $regionId = $ocrBlocks[$block->block_index]['region_id'] ?? null;
+                                $regionHeld = ($regionsById[$regionId]['status'] ?? null) === 'held';
                             @endphp
                             <div class="doc-block" data-block-id="{{ $block->id }}" data-block-index="{{ $block->block_index }}">
                                 <div class="doc-block__head">
@@ -250,11 +287,23 @@
                                     Block #{{ $block->block_index }} ({{ $block->block_type ?? 'block' }}) — review translation text
                                 </label>
                                 <textarea id="block-editor-{{ $block->id }}" class="doc-block__editor" name="current_text" data-block-current
+                                          @disabled($regionHeld)
                                           data-saved="{{ htmlspecialchars($block->current_text ?? '', ENT_QUOTES) }}">{{ $block->current_text ?? '' }}</textarea>
 
                                 <details class="doc-block__ref">
                                     <summary>Source &amp; AI reference</summary>
                                     <div class="doc-block__ref-content">
+                                        @if (!empty($ocrBlocks[$block->block_index]['ocr']))
+                                            @php($ocr = $ocrBlocks[$block->block_index]['ocr'])
+                                            <p class="review-form-note">
+                                                OCR confidence: {{ round($ocr['confidence'], 1) }} / 100.
+                                                This is a recognition signal, not measured accuracy or translation quality.
+                                                @if (!empty($ocr['uncertain_words']))
+                                                    Check uncertain words:
+                                                    {{ implode(', ', array_column($ocr['uncertain_words'], 'text')) }}.
+                                                @endif
+                                            </p>
+                                        @endif
                                         <div class="block-card__pair">
                                             <span class="block-card__pair-label">Source</span>
                                             <div class="block-card__text">{{ $block->source_text ?? '—' }}</div>

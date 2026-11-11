@@ -92,7 +92,7 @@ class FontMapper:
         4. Fall back to the original *font_name* from *embedded_font_programs*
            (no glyph guarantee, matches old behaviour).
         """
-        import fitz
+        import pymupdf as fitz
 
         if not font_name:
             return ("helv", None)
@@ -142,7 +142,7 @@ class FontMapper:
 
     @staticmethod
     def _covers_codepoints(fontbuffer: bytes, codepoints: set[int]) -> bool:
-        import fitz
+        import pymupdf as fitz
         try:
             fnt = fitz.Font(fontbuffer=fontbuffer)
             return FontMapper._covers_codepoints_check(fnt, codepoints)

@@ -111,4 +111,14 @@ class TranslationJobStateTransitionTest extends TestCase
         $withoutOriginal->refresh();
         $this->assertFalse($withoutOriginal->recoverable);
     }
+
+    public function test_terminal_failure_persists_both_boolean_values(): void
+    {
+        foreach ([true, false] as $recoverable) {
+            $job = $this->makeJob(['status' => TranslationJob::STATUS_PROCESSING]);
+            $this->assertTrue($job->markTerminallyFailed(new \RuntimeException('reconstruction failed'), $recoverable));
+            $this->assertSame(TranslationJob::STATUS_FAILED, $job->fresh()->status);
+            $this->assertSame($recoverable, $job->fresh()->recoverable);
+        }
+    }
 }

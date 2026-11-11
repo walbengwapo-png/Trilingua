@@ -68,7 +68,11 @@ return [
     | File extensions that can be uploaded for document translation.
     |
     */
-    'supported_formats' => ['docx', 'pdf', 'txt', 'md', 'rtf', 'odt', 'csv', 'pptx', 'xlsx'],
+    // Enable images only after the Python OCR photo-category acceptance gate passes.
+    'supported_formats' => array_merge(
+        ['docx', 'pdf', 'txt', 'md', 'rtf', 'odt', 'csv', 'pptx', 'xlsx'],
+        env('TRANSLATION_IMAGE_UPLOADS', false) ? ['png', 'jpg', 'jpeg'] : []
+    ),
 
     /*
     |--------------------------------------------------------------------------
@@ -89,5 +93,8 @@ return [
         'odt' => 'docx',
         'pptx' => 'pptx',
         'xlsx' => 'xlsx',
+        'png' => 'pdf',
+        'jpg' => 'pdf',
+        'jpeg' => 'pdf',
     ],
 ];

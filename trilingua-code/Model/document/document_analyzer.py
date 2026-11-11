@@ -68,6 +68,7 @@ class DocumentProfile:
     total_words: int = 0
     analyzer_model: str = ""
     analysis_time_ms: float = 0.0
+    analysis_status: str = "analyzed"
 
     def is_reliable(self) -> bool:
         """Whether this profile is reliable enough for semantic chunking."""
@@ -487,6 +488,7 @@ class DocumentAnalyzer:
             writing_style="formal",
             language="unknown",
             confidence=0.0,
+            analysis_status="unavailable",
             total_blocks=total_blocks,
             total_words=total_words,
             analyzer_model=self._ai.model_name if hasattr(self, '_ai') else "",

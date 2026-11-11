@@ -132,12 +132,13 @@
 /* ── Card grid ───────────────────────────────────────────────────────────── */
 .history-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
     gap: 16px;
 }
 
 /* ── Individual history card ─────────────────────────────────────────────── */
 .history-card {
+    min-width: 0;
     background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -157,25 +158,26 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
 }
 
 .history-card__body {
     flex: 1;
+    min-width: 0;
 }
 
 .history-card__preview {
     font-size: 0.9rem;
     color: var(--text);
     margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-wrap: anywhere;
 }
 
 .history-card__sub {
     font-size: 0.78rem;
     color: var(--muted);
     margin: 4px 0 0;
+    overflow-wrap: anywhere;
 }
 
 .history-card__footer {
@@ -186,26 +188,13 @@
     border-top: 1px solid var(--border);
     padding-top: 10px;
     margin-top: 2px;
+    flex-wrap: wrap;
 }
 
 .history-card__date {
     font-size: 0.75rem;
     color: var(--muted);
     white-space: nowrap;
-}
-
-/* ── Match badge ─────────────────────────────────────────────────────────── */
-.match-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--primary, #3b82f6);
-    color: #fff;
-    font-size: 0.72rem;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 99px;
-    min-width: 38px;
 }
 
 /* ── Review status badge ─────────────────────────────────────────────────── */
@@ -231,14 +220,15 @@
     gap: 4px;
     flex-wrap: wrap;
     justify-content: flex-end;
+    margin-left: auto;
 }
 
 .history-card__action-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
+    width: 36px;
+    height: 36px;
     border: none;
     border-radius: 6px;
     background: transparent;
@@ -571,4 +561,28 @@
     .detail-modal__translation-item {
         flex-wrap: wrap;
     }
+}
+
+.history-card__review { display: grid; gap: 4px; }
+.translation-quality { display: grid; gap: 4px; min-width: 0; }
+.translation-quality__note { display: block; margin: 0; font-size: .8rem; line-height: 1.5; color: var(--muted); overflow-wrap: anywhere; }
+.quality-score__dot--unknown { background: var(--muted); }
+.translation-analysis { margin: 0 0 20px; padding: 16px; border: 1px solid var(--border); border-radius: 10px; overflow-wrap: anywhere; }
+.translation-analysis__facts { margin: 12px 0; display: grid; gap: 10px; }
+.translation-analysis__facts > div { min-width: 0; }
+.translation-analysis dt { color: var(--muted); font-size: .75rem; }
+.translation-analysis dd { margin: 2px 0 0; font-size: .88rem; }
+.translation-analysis__summary, .translation-analysis details { font-size: .88rem; line-height: 1.55; }
+.translation-analysis summary { cursor: pointer; color: var(--primary); padding: 8px 0; }
+.translation-analysis h5 { margin: 12px 0 4px; font-size: .82rem; }
+.translation-analysis ul { padding-left: 20px; }
+.review-detail__header > div, .review-pane, .detail-modal__meta-item { min-width: 0; }
+.review-detail__title, .review-detail__subtitle, .detail-modal__meta-value { overflow-wrap: anywhere; }
+.history-card__action-btn:focus-visible, .translation-analysis summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+@media (max-width: 380px) {
+    .history-card__footer { flex-direction: column; align-items: flex-start; }
+    .history-card__actions { justify-content: flex-start; margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .history-card, .history-card:hover { transition: none; transform: none; }
 }

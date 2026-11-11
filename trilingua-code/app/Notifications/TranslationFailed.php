@@ -18,6 +18,9 @@ class TranslationFailed extends Notification
     public function __construct(
         public string $filename,
         public string $message,
+        public ?int $jobId = null,
+        public ?string $sourceLanguage = null,
+        public ?string $targetLanguage = null,
     ) {
     }
 
@@ -39,6 +42,9 @@ class TranslationFailed extends Notification
             'type' => 'document',
             'title' => $this->filename,
             'error' => $this->message,
+            'job_id' => $this->jobId,
+            'source_language' => $this->sourceLanguage,
+            'target_language' => $this->targetLanguage,
         ];
     }
 }

@@ -12,6 +12,7 @@ use App\Services\StorageService;
 use App\Services\Translation\TranslationManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Mockery;
 use Tests\TestCase;
 
@@ -113,6 +114,7 @@ class TranslateDocumentJobRecoveryTest extends TestCase
         $this->assertSame('supabase', $jobRow->storage_backend);
 
         $this->assertSame('completed', Cache::get('translation_job_' . $job->uuid())['status'] ?? null);
+        $this->assertSame(1, Cache::get('translation_job_' . $job->uuid())['attempt'] ?? null);
     }
 
     public function test_missing_scratch_is_reconstructed_from_a_local_backend_original(): void
@@ -169,5 +171,60 @@ class TranslateDocumentJobRecoveryTest extends TestCase
         $this->assertStringContainsString('cannot be replayed', (string) $jobRow->error);
 
         $this->assertSame('failed', Cache::get('translation_job_' . $job->uuid())['status'] ?? null);
+        $this->assertSame(1, Cache::get('translation_job_' . $job->uuid())['attempt'] ?? null);
+    }
+
+    public function test_terminal_state_write_failure_still_publishes_the_failure_cache(): void
+    {
+        Cache::flush();
+        $jobRow = $this->makeQueuedRow();
+        $missingTemp = sys_get_temp_dir() . '/trilingua-missing-' . uniqid('', true) . '.pdf';
+
+        $translationManager = Mockery::mock(TranslationManager::class);
+        $translationManager->shouldNotReceive('translateDocument');
+        $storage = Mockery::mock(StorageService::class);
+        $storage->shouldNotReceive('read');
+        $historyService = Mockery::mock(HistoryService::class);
+        $historyService->shouldNotReceive('insertRecord');
+        $blockService = Mockery::mock(BlockService::class);
+        $metricsService = Mockery::mock(MetricsService::class);
+
+        $throw = false;
+        DB::connection()->beforeExecuting(function (string $query) use (&$throw): void {
+            if ($throw
+                && str_contains($query, 'update "translation_jobs"')
+                && str_contains($query, '"recoverable"')) {
+                throw new \RuntimeException('simulated boolean bind failure');
+            }
+        });
+
+        $job = new TranslateDocumentJob(
+            'input.pdf', '.pdf', 16, 'English', 'Cebuano', 'auto',
+            $missingTemp, 42, null, 'balanced', null, 'supabase', (int) $jobRow->id, $jobRow->uuid
+        );
+        $queueJob = Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
+        $queueJob->shouldReceive('fail')->once()->with(Mockery::on(
+            fn (\Throwable $error) => str_contains($error->getMessage(), 'cannot be replayed')
+        ));
+        $job->setJob($queueJob);
+        $throw = true;
+        try {
+            $job->handle($translationManager, $storage, $historyService, $blockService, $metricsService);
+        } finally {
+            $throw = false;
+        }
+
+        $jobRow->refresh();
+        $this->assertSame(TranslationJob::STATUS_PROCESSING, $jobRow->status);
+        $cached = Cache::get('translation_job_' . $job->uuid());
+        $this->assertSame('failed', $cached['status'] ?? null);
+        $this->assertSame(1, $cached['attempt'] ?? null);
+        $this->assertStringContainsString('cannot be replayed', (string) ($cached['error'] ?? ''));
+
+        $this->actingAs(\App\Models\User::findOrFail(42))
+            ->get('/translate/status/'.$jobRow->uuid)
+            ->assertOk()
+            ->assertJsonPath('status', 'failed')
+            ->assertJsonPath('error', $cached['error']);
     }
 }

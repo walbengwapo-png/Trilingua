@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class TranslationJob extends Model
@@ -245,7 +246,7 @@ class TranslationJob extends Model
                 'error'             => Str::limit($e->getMessage(), 2000),
                 'completed_at'      => $this->completed_at ?? $now,
                 'terminal_failed_at' => $now,
-                'recoverable'       => $recoverable,
+                'recoverable'       => DB::raw($recoverable ? 'true' : 'false'),
             ]);
 
         if ($updated) {
@@ -267,6 +268,7 @@ class TranslationJob extends Model
         }
 
         $now = now();
+        $recoverable = filled($this->original_storage_path) && filled($this->original_storage_backend);
 
         $updated = static::query()
             ->whereKey($this->getKey())
@@ -276,7 +278,7 @@ class TranslationJob extends Model
                 'error'             => Str::limit($reason, 2000),
                 'completed_at'      => $this->completed_at ?? $now,
                 'terminal_failed_at' => $now,
-                'recoverable'       => filled($this->original_storage_path) && filled($this->original_storage_backend),
+                'recoverable'       => DB::raw($recoverable ? 'true' : 'false'),
             ]);
 
         if ($updated) {
@@ -310,6 +312,7 @@ class TranslationJob extends Model
         string $mode = 'balanced',
         string $pdfColumnMode = 'auto',
         ?int $parentDocumentId = null,
+        string $ocrMode = 'strict',
     ): string {
         return hash('sha256', implode('|', [
             (string) $userId,
@@ -318,7 +321,7 @@ class TranslationJob extends Model
             $targetLang,
             $mode,
             $pdfColumnMode,
-            (string) ($parentDocumentId ?? ''),
+            (string) ($parentDocumentId ?? '').($ocrMode === 'preview' ? '|ocr_preview' : ''),
         ]));
     }
 }

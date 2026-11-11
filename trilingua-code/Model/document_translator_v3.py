@@ -532,7 +532,7 @@ def read_pdf(file_path, column_mode="auto"):
       
     Merging ensures no text is lost while preserving as much style info as possible.
     """
-    import fitz
+    import pymupdf as fitz
     blocks = []
     doc = fitz.open(file_path)
 
@@ -2011,7 +2011,7 @@ def _resolve_overflow(page, block_text, x0, y0, x1, y1, font_size, resolved_font
       cont_rect (Rect|None) — the continuation box rect, if created
       clipped (bool)       — whether the continuation box was clipped to page
     """
-    import fitz
+    import pymupdf as fitz
 
     MIN_FONT = 6.0
     COLLISION_GAP = 2.0
@@ -2221,7 +2221,7 @@ def write_pdf_preserved(blocks, original_pdf_path, output_file):
       - Text alignment preserved (centered, right-aligned detection)
       - Background color sampling for overflow areas
     """
-    import fitz
+    import pymupdf as fitz
 
     # Font mapper: common PDF font base names → fitz built-in font names
     FONT_MAP = {

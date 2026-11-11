@@ -433,16 +433,15 @@ window.showErrorModal = function (title, message) {
                     link.href = window.safeAppUrl(n.url || '#');
                     link.dataset.url = link.getAttribute('href');
                     link.dataset.id = String(n.id || '');
-                    link.setAttribute('aria-label', (isRead ? 'Read' : 'Unread') + ' notification');
+                    link.setAttribute('aria-label', (isRead ? 'Read: ' : 'Unread: ') + (n.display_title || d.title || 'Notification'));
                     var icon = document.createElement('span');
                     icon.className = 'notif-item__icon notif-item__icon--' +
-                        (n.type && n.type.indexOf('Failed') !== -1 ? 'error' : 'success');
+                        (['error', 'awaiting', 'priority', 'success'].includes(n.icon) ? n.icon : 'success');
                     icon.setAttribute('aria-hidden', 'true');
                     var body = document.createElement('div');
                     body.className = 'notif-item__body';
-                    var sub = d.error ? 'Translation failed' :
-                        (d.source_language && d.target_language ? d.source_language + ' → ' + d.target_language : '');
-                    [['title', d.title || 'Notification'], ['sub', sub],
+                    var sub = n.description || '';
+                    [['title', n.display_title || d.title || 'Notification'], ['sub', sub],
                         ['time', n.created_at ? new Date(n.created_at).toLocaleString() : '']].forEach(function (entry) {
                         if (!entry[1]) return;
                         var text = document.createElement('p');

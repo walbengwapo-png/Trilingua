@@ -141,6 +141,27 @@ def test_inplace_sidecar_block_order(document_pipeline, tmp_path):
     assert blocks[-1]["block_type"] == "table_cell"
 
 
+def test_inplace_sidecar_keeps_review_scores_and_issues(document_pipeline, tmp_path):
+    src = _make_docx(str(tmp_path / "reviewed.docx"))
+    original = document_pipeline.translation_pipeline.batch_translate_blocks
+
+    def reviewed(*args, **kwargs):
+        blocks = original(*args, **kwargs)
+        for idx, block in enumerate(blocks):
+            block["quality_score"] = 87.5
+            block["quality_issues"] = [{"severity": "minor", "category": "terminology"}]
+            kwargs['ctx'].record_block_quality(idx, 87.5, block['quality_issues'], block['text'])
+        return blocks
+
+    with mock.patch.object(document_pipeline.translation_pipeline, "batch_translate_blocks", side_effect=reviewed):
+        result = document_pipeline.translate(DocumentTranslationRequest(
+            file_path=src, source_lang="English", target_lang="Cebuano",
+        ))
+    assert result.blocks
+    assert all(b.get("quality_score") == 87.5 for b in result.blocks)
+    assert result.blocks[0]["quality_issues"][0]["category"] == "terminology"
+
+
 # ===========================================================================
 # Collect pass does not save
 # ===========================================================================

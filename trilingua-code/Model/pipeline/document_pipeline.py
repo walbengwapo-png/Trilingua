@@ -31,6 +31,7 @@ from config.processing_modes import MODES, VALID_MODES, get_mode
 from dto.requests import DocumentTranslationRequest, LANGUAGES
 from dto.responses import DocumentTranslationResponse
 from document.extractor import analyze_document
+from document.ocr_extractor import IMAGE_EXTENSIONS
 from pipeline.translation_pipeline import _is_echo_output
 from document.regenerator import (
     finalize_sidecar,
@@ -222,6 +223,38 @@ class DocumentPipeline:
                 if ctx.document_profile else "",
             )
 
+    def _review_final_blocks(self, sources, translated, ctx):
+        """Review cached or changed output without reusing an earlier version's score."""
+        if not (ctx.mode.ai_quality_review and self._quality_reviewer):
+            return
+        pending = []
+        for idx, (source, block) in enumerate(zip(sources, translated)):
+            if block.get('passthrough') or not source.get('text', '').strip():
+                continue
+            review = ctx.block_quality.get(idx)
+            if review and review.get('reviewed_text') == block.get('text'):
+                block['quality_score'] = review['score']
+                block['quality_issues'] = review['issues']
+            else:
+                block['quality_score'] = None
+                block['quality_issues'] = []
+                pending.append((idx, source['text'], block.get('text', '')))
+        if not pending:
+            return
+        try:
+            with llm_call_profile(ctx):
+                reviews = self._quality_reviewer.batch_review(
+                    pending, block_types={idx: sources[idx].get('type', 'paragraph') for idx, _, _ in pending},
+                )
+            for idx, _, text in pending:
+                review = reviews.get(idx)
+                if review is not None:
+                    ctx.record_block_quality(idx, review.score, review.issues, text)
+                    translated[idx]['quality_score'] = review.score
+                    translated[idx]['quality_issues'] = ctx.block_quality[idx]['issues']
+        except Exception:
+            ctx.add_warning('Final quality review unavailable; translation retained without a score for affected blocks.')
+
     def translate(self, request: DocumentTranslationRequest) -> DocumentTranslationResponse:
         """Translate a document through the full pipeline.
 
@@ -235,6 +268,10 @@ class DocumentPipeline:
         ctx = DocumentContext()
         ctx.start_timer()
         ctx.source_file = request.file_path
+        ctx.pdf_deadline = None
+        if os.path.splitext(request.file_path)[1].lower() in {'.pdf', *IMAGE_EXTENSIONS}:
+            from document.pdf_worker import job_budget
+            ctx.pdf_deadline = _time.monotonic() + job_budget()
         ctx.source_lang = request.source_lang
         ctx.target_lang = request.target_lang
         ctx.provider_name = self.translation_pipeline.provider.name
@@ -242,9 +279,13 @@ class DocumentPipeline:
         ctx.concurrency_level = self.translation_pipeline.concurrency_limit()
 
         # ── Determine processing mode ─────────────────────────────────────
-        ctx.mode = self._determine_mode(request)
+        ctx.mode = self._determine_mode(request, ctx.pdf_deadline)
 
         ext = os.path.splitext(request.file_path)[1].lower()
+        if request.ocr_mode not in {'strict','preview'}:
+            raise ValueError('Invalid OCR mode')
+        if request.ocr_mode=='preview' and ext not in {'.pdf', *IMAGE_EXTENSIONS}:
+            raise ValueError('OCR preview is available only for PDFs and images')
         ctx.source_format = ext
         print(f"\n{'='*60}")
         print(f"  Document Translation — Mode: {ctx.mode.name}")
@@ -280,8 +321,22 @@ class DocumentPipeline:
 
         # ── Extract → Analyze → Translate → Reconstruct pipeline ──
         print("[INPUT] Reading document...")
+        extraction = {"pages": [], "warnings": []}
         with phase_profile("extraction", ctx):
-            data, detected_ext = analyze_document(request.file_path, pdf_column_mode=request.pdf_column_mode)
+            if ext in {'.pdf', *IMAGE_EXTENSIONS}:
+                from document.pdf_worker import run_pdf
+                data, extraction = run_pdf('extract', request.file_path, request.source_lang,
+                                           request.pdf_column_mode, *(['preview'] if request.ocr_mode=='preview' else []),
+                                           deadline=ctx.pdf_deadline)
+                detected_ext = '.pdf'
+            else:
+                data, detected_ext = analyze_document(request.file_path, pdf_column_mode=request.pdf_column_mode)
+        for warning in extraction["warnings"]:
+            ctx.add_warning(warning)
+        if any(block.get("ocr_reflow") for block in data if isinstance(block, dict)):
+            warning = "This document uses a separate translated text layout; original scan artwork and page layout are not reproduced."
+            extraction["warnings"].append(warning)
+            ctx.add_warning(warning)
         ctx.extraction_time_ms = ctx.phase_times.get("extraction", 0)
         ctx.total_blocks = len(data) if isinstance(data, list) else 0
 
@@ -292,32 +347,9 @@ class DocumentPipeline:
         blocks = data
         print(f"  Found {len(blocks)} text block(s) after filtering.")
 
-        if not blocks and ext == ".pdf":
-            # Attempt OCR fallback for image-based/scanned PDFs
-            print("[OCR] No text blocks found via PyMuPDF extraction.")
-            print("[OCR] Attempting OCR fallback...")
-            try:
-                from document.ocr_extractor import ocr_extract_pdf
-                ocr_blocks = ocr_extract_pdf(request.file_path)
-                if ocr_blocks:
-                    blocks = ocr_blocks
-                    print(f"  [OCR] Successfully extracted {len(blocks)} block(s) via OCR")
-                else:
-                    raise ValueError(
-                        "No translatable text extracted. OCR yielded no text. "
-                        "For bilingual PDFs, try pdf_column_mode='left' or 'right'."
-                    )
-            except ImportError:
-                raise ValueError(
-                    "No translatable text extracted from PDF. "
-                    "OCR fallback is not available (pytesseract not installed). "
-                    "Install: pip install pytesseract, and install Tesseract OCR."
-                )
-            except Exception as ocr_err:
-                raise ValueError(
-                    f"No translatable text extracted. OCR fallback also failed: {ocr_err}"
-                )
-        elif not blocks:
+        if ext in {'.pdf', *IMAGE_EXTENSIONS} and not blocks:
+            return self._held_pdf(request, output_file, extraction, ctx)
+        if not blocks:
             raise ValueError(
                 "No translatable text extracted. "
                 "If this is a scanned PDF, OCR is required. "
@@ -476,6 +508,8 @@ class DocumentPipeline:
 
         # ── Phase 3: Semantic Chunking & Translation ─────────────────────
         print("[TRANSLATE] Translating...")
+        from document.pdf_worker import check_deadline
+        check_deadline(ctx.pdf_deadline)
 
         # OPTIMIZATION: Build prepass injection for context (Task 5)
         prepass_preamble = ""
@@ -525,6 +559,7 @@ class DocumentPipeline:
         translated_blocks = self._coherence_polish_blocks(
             blocks, translated_blocks, request, ctx
         )
+        self._review_final_blocks(blocks, translated_blocks, ctx)
         from validators.hallucination_detector import validate_translated_blocks
         validate_translated_blocks(blocks, translated_blocks)
 
@@ -542,9 +577,18 @@ class DocumentPipeline:
         # ── Reconstruct document ─────────────────────────────────────────
         print(f"[OUTPUT] Rebuilding document -> {output_file}")
         with phase_profile("reconstruction", ctx):
-            output_validation = reconstruct_document(translated_blocks, output_file, request.file_path, detected_ext,
-                                 source_lang=request.source_lang, target_lang=request.target_lang,
-                                 layout_plan=ctx.layout_plan)
+            if ext in {'.pdf', *IMAGE_EXTENSIONS}:
+                from document.pdf_worker import run_pdf
+                output_validation, image_actions, native = run_pdf('render', request.file_path, translated_blocks,
+                    output_file, request.source_lang, request.target_lang, deadline=ctx.pdf_deadline)
+                layouts = {b.get('region_id'): b.get('rendered_layout') for b in native}
+                for block in translated_blocks:
+                    if block.get('region_id') in layouts:
+                        block['rendered_layout'] = layouts[block['region_id']]
+                extraction['image_actions'] = image_actions
+            else:
+                output_validation = reconstruct_document(translated_blocks, output_file, request.file_path, detected_ext,
+                    source_lang=request.source_lang, target_lang=request.target_lang, layout_plan=ctx.layout_plan)
         ctx.reconstruction_time_ms = ctx.phase_times.get("reconstruction", 0)
 
         # BLEU scoring
@@ -564,10 +608,19 @@ class DocumentPipeline:
                 src_text = blocks[idx].get("text", "")
             sidecar_entries.append(rich_block_entry(idx, tb, src_text or ""))
         sidecar = finalize_sidecar(sidecar_entries, request, ctx.source_format, ctx,
-                                   extra={"output_validation": output_validation or {}})
+                                   extra={"output_validation": output_validation or {}, "extraction": extraction})
 
         # ── Finalize ─────────────────────────────────────────────────────
+        if ext in {'.pdf', *IMAGE_EXTENSIONS}:
+            output_file = self._pdf_sidecar(sidecar, extraction, output_validation, output_file)
+            for block, entry in zip(translated_blocks, sidecar_entries):
+                if entry.get('passthrough'):
+                    block.update(text=entry['text'], passthrough=True)
+            for warning in extraction['warnings']:
+                if warning not in ctx.warnings: ctx.add_warning(warning)
+
         ctx.stop_timer()
+        check_deadline(ctx.pdf_deadline)
         ctx.log_summary()
 
         # Cleanup memory
@@ -591,9 +644,62 @@ class DocumentPipeline:
             blocks=sidecar_entries,
             output_validation=output_validation or {},
             metrics=_engine_metrics(ctx, self.translation_pipeline.provider),
+            content_summary=sidecar.get('content_summary', {}),
         )
 
     # ── In-place Translation ────────────────────────────────────────────────
+
+    def _pdf_sidecar(self, sidecar, extraction, validation, output_file):
+        from document.pdf_regions import content_summary, completed_status
+        from document.regenerator import summarize_quality
+        held = {r['region_id']:r['reason'] for r in (validation or {}).get('held', [])}
+        entries = {b.get('region_id'): b for b in sidecar['blocks']}
+        for region in extraction['regions']:
+            if region['status'] == 'pending':
+                entry = entries.get(region['region_id'], {})
+                region['status'] = ('held' if region['region_id'] in held else
+                                    completed_status(entry))
+                region['reason'] = held.get(region['region_id'])
+                if region['status'] == 'held':
+                    extraction['warnings'].append(f"Page {region['page']+1}: original region retained ({region['reason']}).")
+                    entry.update(text=entry.get('source_text', ''), current_text=entry.get('source_text', ''),
+                                 passthrough=True,
+                                 quality_score=None, quality_issues=[])
+        review_enabled = sidecar.get('quality_review', {}).get('reason') != 'review_disabled'
+        sidecar['quality_review'] = summarize_quality(sidecar['blocks'], review_enabled)
+        summary = content_summary(extraction['regions'],extraction.get('ocr_mode','strict'))
+        from document.render_plan import make_plan
+        sidecar.update(version=3, content_summary=summary, render_plan=make_plan(extraction,sidecar['blocks']))
+        extraction.pop('image_actions', None)
+        if len(json.dumps(sidecar,ensure_ascii=False).encode('utf-8')) > 24_000_000:
+            raise ValueError('PDF sidecar exceeds bounded payload')
+        if summary['status'] != 'complete':
+            message = (f"{summary['status'].capitalize()}: {summary['translated']} translated, "
+                       f"{summary['held']} held, {summary['passthrough']} passthrough regions. Held content retains its original language.")
+            extraction['warnings'].append(message)
+            renamed = os.path.splitext(output_file)[0] + '_' + summary['status'] + '.pdf'
+            os.replace(output_file, renamed)
+            return renamed
+        return output_file
+
+    def _held_pdf(self, request, output_file, extraction, ctx):
+        import shutil
+        from document.pdf_worker import check_deadline
+        check_deadline(ctx.pdf_deadline)
+        if request.file_path.lower().endswith('.pdf'):
+            shutil.copyfile(request.file_path, output_file)
+        else:
+            from document.pdf_worker import run_pdf
+            run_pdf('preserve',request.file_path,output_file,deadline=ctx.pdf_deadline)
+        sidecar = finalize_sidecar([], request, ctx.source_format, ctx, extra={'extraction': extraction})
+        output_file = self._pdf_sidecar(sidecar, extraction, {}, output_file)
+        ctx.stop_timer()
+        check_deadline(ctx.pdf_deadline)
+        return DocumentTranslationResponse(output_path=output_file, translated_blocks=[],
+            provider=self.translation_pipeline.provider.name, model=self.translation_pipeline.provider.model_name,
+            total_chunks=0, sidecar=sidecar, blocks=[], warnings=extraction['warnings'],
+            content_summary=sidecar['content_summary'],
+            metrics=_engine_metrics(ctx, self.translation_pipeline.provider))
 
     def _run_inplace_analysis(self, blocks, request, ctx):
         """Populate AI document context for DOCX/PPTX/XLSX before translation.
@@ -740,6 +846,7 @@ class DocumentPipeline:
         translated_blocks = self._coherence_polish_blocks(
             blocks, translated_blocks, request, ctx
         )
+        self._review_final_blocks(blocks, translated_blocks, ctx)
 
         # Admin review support: capture per-element block data with a stable
         # block_index = walk/call order, so an edit can be replayed in-place.
@@ -750,7 +857,11 @@ class DocumentPipeline:
         for i, (bt, src) in enumerate(collected):
             translated = translated_blocks[i]["text"] if i < len(translated_blocks) else src
             lookup[i] = translated
-            _captured_blocks.append(inplace_block_entry(i, bt, src, translated))
+            entry = inplace_block_entry(i, bt, src, translated)
+            for key in ('quality_score', 'quality_issues', 'passthrough'):
+                if key in translated_blocks[i]:
+                    entry[key] = translated_blocks[i][key]
+            _captured_blocks.append(entry)
 
         # ── Phase 3: Replay pass (preserve formatting) ────────────────────
         with phase_profile("reconstruction", ctx):
@@ -813,6 +924,12 @@ class DocumentPipeline:
                     cell_blocks[_bi]["row"] = row_idx
                     cell_blocks[_bi]["col"] = col_idx
                     _bi += 1
+
+        sources = [{'text': b['source_text'], 'type': 'cell'} for b in cell_blocks]
+        translated = [{'text': b['ai_translated_text']} for b in cell_blocks]
+        self._review_final_blocks(sources, translated, ctx)
+        for block, reviewed in zip(cell_blocks, translated):
+            block.update({key: reviewed[key] for key in ('quality_score', 'quality_issues') if key in reviewed})
 
         print("\n[OUTPUT] Rebuilding CSV ->", output_file)
         write_csv(translated_rows, output_file)
@@ -957,7 +1074,7 @@ class DocumentPipeline:
 
     # ── Adaptive Mode Selection (Phase 9) ────────────────────────────────────
 
-    def _determine_mode(self, request: DocumentTranslationRequest):
+    def _determine_mode(self, request: DocumentTranslationRequest, deadline=None):
         """Automatically select processing mode based on document.
 
         If mode is 'auto', analyzes document characteristics to choose.
@@ -976,8 +1093,11 @@ class DocumentPipeline:
         ext = os.path.splitext(request.file_path)[1].lower()
         blocks = []
         try:
-            data, _ = analyze_document(request.file_path,
-                                       pdf_column_mode=request.pdf_column_mode)
+            if ext in {'.pdf', *IMAGE_EXTENSIONS}:
+                from document.pdf_worker import run_pdf
+                data, _ = run_pdf('inspect', request.file_path, request.source_lang, request.pdf_column_mode, deadline=deadline)
+            else:
+                data, _ = analyze_document(request.file_path, pdf_column_mode=request.pdf_column_mode)
             if isinstance(data, list):
                 blocks = data
         except Exception:

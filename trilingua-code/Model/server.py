@@ -83,6 +83,7 @@ from pipeline.document_pipeline import DocumentPipeline
 from config.processing_modes import VALID_MODES, get_mode
 from validators.ai_quality_reviewer import AIQualityReviewer
 from validators.translation_validator import PDFValidationError
+from document.ocr_extractor import OCRUnavailable, IMAGE_EXTENSIONS
 
 # ---------------------------------------------------------------------------
 # Provider selection
@@ -258,6 +259,8 @@ async def _runtime_lifespan(app: FastAPI):
     """
     try:
         _enforce_startup_token_policy()
+        from document.job_scratch import sweep_stale
+        sweep_stale()
     except RuntimeError as exc:
         print(f"  [FATAL] {exc}")
         raise
@@ -320,7 +323,7 @@ async def log_translation_request(request, call_next):
 # The mutation/translation endpoints require the X-Service-Token header to match
 # PYTHON_SERVICE_TOKEN (compared in constant time). Laravel sends this header
 # automatically from translation.python_service.token, which reads the same
-# variable name. The /health endpoint stays open for monitoring.
+# variable name. The /live and /health endpoints stay open for monitoring.
 # ---------------------------------------------------------------------------
 # Deployments that terminate TLS and network-isolate this service still must not
 # serve it unauthenticated, so a production process refuses to start without a
@@ -385,6 +388,7 @@ EXTENSION_MAP = {
     ".docx": ".docx", ".pdf": ".pdf", ".txt": ".txt",
     ".md": ".md",     ".csv": ".csv", ".rtf": ".docx",
     ".odt": ".docx",  ".pptx": ".pptx", ".xlsx": ".xlsx",
+    ".png": ".pdf", ".jpg": ".pdf", ".jpeg": ".pdf",
 }
 
 
@@ -404,6 +408,30 @@ def _content_type_for_ext(ext: str) -> str:
 # ---------------------------------------------------------------------------
 # Health check
 # ---------------------------------------------------------------------------
+@app.get("/ocr/readiness", dependencies=[Depends(require_service_token)])
+def ocr_readiness():
+    from document.ocr_extractor import readiness, require_ready, PACKS, OCRUnavailable
+    state = readiness()
+    categories = {}
+    for language in PACKS:
+        for category in ("scan", "photo", "screenshot"):
+            try:
+                require_ready(language, category)
+                categories[f"{language} / {category}"] = "go"
+            except OCRUnavailable as exc:
+                categories[f"{language} / {category}"] = str(exc)
+    return {"ready": state["ready"], "installed_packs": state.get("installed_packs"),
+            "version": state.get("version"), "categories": categories}
+
+
+@app.get("/live")
+def live():
+    # Cheap liveness probe for launchers: unlike /health it must not contact
+    # providers, because those cloud round-trips take seconds and would make a
+    # short-timeout readiness loop report a healthy server as dead.
+    return {"status": "ok"}
+
+
 @app.get("/health")
 def health():
     provider = _get_active_provider()
@@ -423,6 +451,7 @@ def health():
         "available_providers": list(AVAILABLE_PROVIDERS.keys()),
         "languages": list(LANGUAGES.keys()),
         "formats": sorted(SUPPORTED_EXTENSIONS),
+        "quality_gated_image_formats": sorted(IMAGE_EXTENSIONS),
         "provider_status": provider_health,
         "analysis_status": _analysis_provider.health(),
     }
@@ -606,8 +635,26 @@ def translate_document(
     target_lang: str = Form(...),
     pdf_column_mode: str = Form("auto"),
     mode: str = Form("balanced"),
+    ocr_mode: str = Form('strict'),
 ):
-    ext = validate_document_request(file.filename, source_lang, target_lang, pdf_column_mode)
+    if ocr_mode not in {'strict','preview'}:
+        raise HTTPException(400,'Invalid OCR mode')
+    if pdf_column_mode not in VALID_PDF_COLUMN_MODES:
+        raise HTTPException(
+            400,
+            f"Invalid pdf_column_mode '{pdf_column_mode}'. "
+            f"Must be one of: {sorted(VALID_PDF_COLUMN_MODES)}"
+        )
+    if source_lang not in LANGUAGES:
+        raise HTTPException(400, f"Unknown source language: {source_lang}")
+    if target_lang not in LANGUAGES:
+        raise HTTPException(400, f"Unknown target language: {target_lang}")
+    if source_lang == target_lang:
+        raise HTTPException(400, "Source and target languages must differ.")
+
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in EXTENSION_MAP:
+        raise HTTPException(400, f"Unsupported file type: {ext}. Supported: {sorted(SUPPORTED_EXTENSIONS)}")
 
     out_ext = EXTENSION_MAP[ext]
     tmp_dir = tempfile.mkdtemp()
@@ -623,8 +670,14 @@ def translate_document(
             f.write(contents)
 
         from dto.requests import DocumentTranslationRequest as DTR
-        request = DTR(file_path=input_path, source_lang=source_lang,
-                      target_lang=target_lang, pdf_column_mode=pdf_column_mode, mode=mode)
+        request = DTR(
+            file_path=input_path,
+            source_lang=source_lang,
+            target_lang=target_lang,
+            pdf_column_mode=pdf_column_mode,
+            mode=mode,
+            ocr_mode=ocr_mode,
+        )
         result = _run_pipeline_guarded(lambda: _document_pipeline.translate(request))
 
         if not result.success:
@@ -632,19 +685,41 @@ def translate_document(
         actual_output = result.output_path
         if not os.path.exists(actual_output):
             raise HTTPException(500, "Translation produced no output file.")
+
+        original_stem = os.path.splitext(file.filename)[0]
+        if ocr_mode=='preview':original_stem += '_ocr_preview'
+        content_summary = (result.sidecar or {}).get('content_summary', {})
+        suffix = content_summary.get('status', 'translated')
+        if suffix == 'complete': suffix = 'translated'
+        download_name = f"{original_stem}_{suffix}{out_ext}"
+
+        print(f"[SERVER] Translation complete. Output file ready at: {actual_output}")
+        print(f"[SERVER] Provider: {result.provider}, Model: {result.model}")
+        print(f"[SERVER] Execution time: {result.total_execution_time_ms:.0f}ms")
+
+        # Read the file into memory and clean up immediately
         with open(actual_output, "rb") as f:
             file_contents = f.read()
         return {
             "file_base64": base64.b64encode(file_contents).decode("ascii"),
             "blocks": getattr(result, "blocks", None) or [],
             "sidecar": getattr(result, "sidecar", None),
-            "download_filename": f"{os.path.splitext(file.filename)[0]}_translated{out_ext}",
+            "download_filename": download_name,
+            "content_summary": content_summary,
             "mime_type": _content_type_for_ext(out_ext),
             "metrics": result.metrics or {},
             "validation": getattr(result, "output_validation", {}) or {},
         }
+    except OCRUnavailable as e:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise HTTPException(422, str(e))
     except PDFValidationError as e:
+        print(chr(91)+chr(83)+chr(69)+chr(82)+chr(86)+chr(69)+chr(82)+chr(93)+chr(32)+chr(80)+chr(68)+chr(70)+chr(86)+chr(65)+chr(76)+chr(73)+chr(68)+chr(65)+chr(84)+chr(73)+chr(79)+chr(78)+chr(32)+chr(69)+chr(82)+chr(82)+chr(79)+chr(82)+chr(58), str(e))
+        shutil.rmtree(tmp_dir, ignore_errors=True)
         raise HTTPException(422, {"message": str(e), "validation": e.report})
+    except (ValueError, TimeoutError) as e:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise HTTPException(422, str(e))
     except HTTPException:
         raise
     except Exception as e:
@@ -686,9 +761,12 @@ def submit_document_job(
     job_id: UUID = Form(...), file: UploadFile = File(...),
     source_lang: str = Form(...), target_lang: str = Form(...),
     pdf_column_mode: str = Form("auto"), mode: str = Form("balanced"),
+    ocr_mode: str = Form("strict"),
 ):
     from document_jobs import MAX_INPUT_BYTES, public_status
     validate_document_request(file.filename, source_lang, target_lang, pdf_column_mode)
+    if ocr_mode not in {"strict", "preview"}:
+        raise HTTPException(400, "Invalid OCR mode")
     if mode not in VALID_MODES:
         raise HTTPException(400, "Invalid processing mode")
     contents = file.file.read(MAX_INPUT_BYTES + 1)
@@ -697,7 +775,7 @@ def submit_document_job(
     worker = document_job_worker()
     row = worker.store.submit(job_id, os.path.basename(file.filename), contents,
                               {"source_lang": source_lang, "target_lang": target_lang,
-                               "pdf_column_mode": pdf_column_mode, "mode": mode})
+                               "pdf_column_mode": pdf_column_mode, "mode": mode, "ocr_mode": ocr_mode})
     worker.wake.set()
     return public_status(row)
 
@@ -757,6 +835,8 @@ def translate_document_regenerate(
         with open(input_path, "wb") as f:
             f.write(contents)
 
+        if len(sidecar.encode('utf-8')) > 24_000_000:
+            raise HTTPException(413, 'Sidecar payload limit exceeded')
         try:
             decoded = _json.loads(sidecar)
         except Exception:
@@ -778,16 +858,16 @@ def translate_document_regenerate(
         out_ext = fmt if fmt in EXTENSION_MAP.values() else ".pdf"
         output_path = os.path.join(tmp_dir, f"regenerated{out_ext}")
 
-        from document.regenerator import reconstruct_from_sidecar
-        _run_pipeline_guarded(lambda: reconstruct_from_sidecar(
-            decoded,
-            overrides=overrides_dict,
-            original_file=input_path,
-            output_file=output_path,
-            source_lang=source_lang or decoded.get("source_lang", ""),
-            target_lang=target_lang or decoded.get("target_lang", ""),
-            pdf_column_mode=pdf_column_mode or decoded.get("pdf_column_mode", "auto"),
-        ))
+        if fmt == '.pdf' or decoded.get('version') == 3:
+            from document.pdf_worker import run_pdf
+            regenerated = _run_pipeline_guarded(lambda: run_pdf('regenerate', decoded, overrides_dict, input_path,
+                output_path, source_lang or decoded.get('source_lang', ''),
+                target_lang or decoded.get('target_lang', ''), pdf_column_mode or decoded.get('pdf_column_mode', 'auto')))
+            decoded = regenerated['sidecar']
+        else:
+            from document.regenerator import reconstruct_from_sidecar
+            _run_pipeline_guarded(lambda: reconstruct_from_sidecar(decoded, overrides_dict,
+                input_path, output_path, source_lang, target_lang, pdf_column_mode))
 
         if not os.path.exists(output_path):
             raise HTTPException(500, "Regeneration produced no output file.")
@@ -796,17 +876,29 @@ def translate_document_regenerate(
             file_contents = f.read()
 
         original_stem = os.path.splitext(file.filename)[0]
-        download_name = f"{original_stem}_regenerated{out_ext}"
+        status = decoded.get('content_summary', {}).get('status', 'complete')
+        if decoded.get('content_summary',{}).get('ocr_mode')=='preview':original_stem += '_ocr_preview'
+        suffix = '_regenerated_' + status if status in {'partial','untranslated'} else '_regenerated'
+        download_name = f"{original_stem}{suffix}{out_ext}"
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+        if decoded.get('version') == 3:
+            import base64
+            return {'file_base64':base64.b64encode(file_contents).decode('ascii'),
+                    'sidecar':decoded, 'download_filename':download_name,
+                    'mime_type':_content_type_for_ext(out_ext)}
 
         return StreamingResponse(
             io.BytesIO(file_contents),
-            media_type="application/octet-stream",
+            media_type=_content_type_for_ext(out_ext),
             headers={"Content-Disposition": f"attachment; filename={download_name}"}
         )
     except PDFValidationError as e:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         raise HTTPException(422, {"message": str(e), "validation": e.report})
+    except (ValueError, TimeoutError) as e:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise HTTPException(422, str(e))
     except HTTPException:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         raise

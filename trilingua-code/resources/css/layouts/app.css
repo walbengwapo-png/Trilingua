@@ -396,6 +396,8 @@ body.app-body :is(a, button, input, select, textarea, [tabindex]):focus-visible 
 
 .notif-item__icon--success { background: #10b981; }
 .notif-item__icon--error { background: #ef4444; }
+.notif-item__icon--awaiting { background: #3b82f6; }
+.notif-item__icon--priority { background: #f59e0b; }
 
 .notif-item__body { min-width: 0; flex: 1; }
 
@@ -404,12 +406,11 @@ body.app-body :is(a, button, input, select, textarea, [tabindex]):focus-visible 
     font-weight: 600;
     color: var(--text);
     margin: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
 }
 
 .notif-item__sub {
+    overflow-wrap: anywhere;
     font-size: 0.75rem;
     color: var(--muted);
     margin: 2px 0 0;

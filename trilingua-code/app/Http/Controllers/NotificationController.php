@@ -7,6 +7,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Auth;
+use App\Models\TranslationHistory;
+use Illuminate\Support\Collection;
 
 /**
  * In-app notification feed for the header bell.
@@ -32,11 +34,7 @@ class NotificationController extends Controller
         }
 
         $notifications = $query->paginate(50)->withQueryString();
-        $notifications->getCollection()->transform(function (DatabaseNotification $notification) {
-            $notification->target_url = $this->targetUrl($notification);
-
-            return $notification;
-        });
+        $this->present($notifications->getCollection());
 
         return view('notifications', [
             'notifications' => $notifications,
@@ -63,7 +61,7 @@ class NotificationController extends Controller
         if ($request->boolean('unread_only')) {
             $query->whereNull('read_at');
         }
-        $items = $query->limit($limit)->get()->map(function (DatabaseNotification $notification) {
+        $items = $this->present($query->limit($limit)->get())->map(function (DatabaseNotification $notification) {
             return [
                 'id' => $notification->id,
                 'type' => $notification->type,
@@ -71,6 +69,9 @@ class NotificationController extends Controller
                 'read_at' => $notification->read_at,
                 'created_at' => $notification->created_at,
                 'url' => $this->targetUrl($notification),
+                'display_title' => $notification->display_title,
+                'description' => $notification->description,
+                'icon' => $notification->icon,
             ];
         });
 
@@ -78,6 +79,46 @@ class NotificationController extends Controller
             'unread_count' => $unreadCount,
             'notifications' => $items,
         ]);
+    }
+
+    private function present(Collection $notifications): Collection
+    {
+        $ids = $notifications->map(fn ($item) => $item->data['translation_id'] ?? null)->filter()->unique();
+        $records = TranslationHistory::whereIn('id', $ids)
+            ->when(!Auth::user()?->is_admin, fn ($query) => $query->where('user_id', Auth::id()))
+            ->get(['id', 'original_filename', 'translated_filename', 'source_text'])->keyBy('id');
+
+        return $notifications->transform(function (DatabaseNotification $notification) use ($records) {
+            $data = $notification->data ?? [];
+            $kind = class_basename($notification->type);
+            $id = $data['translation_id'] ?? null;
+            $name = $records->get($id)?->displayName() ?: ($data['title'] ?? 'Translation');
+            $event = match ($kind) {
+                'TranslationCompleted' => 'Translation completed',
+                'TranslationFailed' => 'Translation failed',
+                'TranslationAwaitingReview' => 'Awaiting review',
+                'PriorityRequestRaised' => 'Priority review requested',
+                default => 'Translation update',
+            };
+            $context = array_filter([
+                !empty($data['source_language']) && !empty($data['target_language'])
+                    ? $data['source_language'].' → '.$data['target_language'] : null,
+                $id ? 'Translation #'.$id : null,
+                !$id && !empty($data['job_id']) ? 'Job #'.$data['job_id'] : null,
+                $data['submitter'] ?? null,
+            ]);
+            $notification->display_title = $event.' — '.$name;
+            $notification->description = implode(' · ', $context);
+            $notification->icon = match ($kind) {
+                'TranslationFailed' => 'error',
+                'TranslationAwaitingReview' => 'awaiting',
+                'PriorityRequestRaised' => 'priority',
+                default => 'success',
+            };
+            $notification->target_url = $this->targetUrl($notification);
+
+            return $notification;
+        });
     }
 
     /**

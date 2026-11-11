@@ -12,9 +12,6 @@
     $isOriginal  = empty($record['parent_document_id']);
     $reviewStatus = $record['review_status'] ?? 'pending';
     $status      = $record['status'] ?? 'completed';
-    $score       = $record['quality_score'] ?? null;
-    $scoreLevel  = $score === null ? '' : ($score < 60 ? 'low' : ($score < 80 ? 'medium' : 'high'));
-    $dateStr     = \Carbon\Carbon::parse($record['created_at'])->utc()->format('Y-m-d H:i') . ' UTC';
     $fileSize    = $record['file_size'] ?? null;
     $translatedExt = strtolower((string) pathinfo((string) ($record['translated_filename'] ?? ''), PATHINFO_EXTENSION));
     $originalExt   = strtolower((string) pathinfo((string) ($record['original_filename'] ?? ''), PATHINFO_EXTENSION));
@@ -23,6 +20,7 @@
 @endphp
 
 <div class="stack">
+    <x-document-completeness :record="$record" :details="true" />
 
     <a href="{{ route('history') }}" class="review-back">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
@@ -59,16 +57,16 @@
                             </span>
                         </div>
                         <div class="detail-modal__meta-item">
-                            <span class="detail-modal__meta-label">Source Language</span>
+                            <span class="detail-modal__meta-label">Original language</span>
                             <span class="detail-modal__meta-value">{{ $record['source_language'] ?? '—' }}</span>
                         </div>
                         <div class="detail-modal__meta-item">
-                            <span class="detail-modal__meta-label">Target Language</span>
+                            <span class="detail-modal__meta-label">Translated into</span>
                             <span class="detail-modal__meta-value">{{ $record['target_language'] ?? '—' }}</span>
                         </div>
                         <div class="detail-modal__meta-item">
                             <span class="detail-modal__meta-label">Date & Time</span>
-                            <span class="detail-modal__meta-value">{{ $dateStr }}</span>
+                            <span class="detail-modal__meta-value"><x-local-time :value="$record['created_at']" /></span>
                         </div>
                         <div class="detail-modal__meta-item">
                             <span class="detail-modal__meta-label">Translation Status</span>
@@ -92,13 +90,8 @@
                         </div>
                         @endif
                         <div class="detail-modal__meta-item">
-                            <span class="detail-modal__meta-label">AI Review Signal</span>
-                            <span class="detail-modal__meta-value" title="Automated AI review signal — not human-verified accuracy.">
-                                <span class="quality-score">
-                                    <span class="quality-score__dot quality-score__dot--{{ $scoreLevel }}" aria-hidden="true"></span>
-                                    {{ $score === null ? 'Unavailable' : $score }}
-                                </span>
-                            </span>
+                            <span class="detail-modal__meta-label">Automated review</span>
+                            <x-translation-quality :record="$record" :details="true" />
                         </div>
                         <div class="detail-modal__meta-item">
                             <span class="detail-modal__meta-label">Priority</span>
@@ -109,6 +102,10 @@
                             <span class="detail-modal__meta-value">{{ !empty($record['is_bookmarked']) ? 'Yes' : 'No' }}</span>
                         </div>
                     </div>
+
+                    @if ($isDoc)
+                        <x-translation-analysis :record="$record" />
+                    @endif
 
                     {{-- Action buttons --}}
                     <div class="detail-modal__actions" style="margin-top:0">
@@ -170,6 +167,7 @@
                             @elseif ($translatedUrl)
                                 <div class="converter-host"
                                      data-ext="{{ $translatedExt }}"
+                                     data-reader-view
                                      data-file-url="{{ $translatedUrl }}"
                                      data-blocks-mode="published"
                                      data-blocks-url="{{ route('history.blocks', $record['id']) }}">
@@ -187,6 +185,7 @@
                             @elseif ($originalUrl)
                                 <div class="converter-host"
                                      data-ext="{{ $originalExt }}"
+                                     data-reader-view
                                      data-file-url="{{ $originalUrl }}"
                                      data-blocks-url="{{ route('history.blocks', $record['id']) }}"
                                      data-blocks-field="source_text">

@@ -34,6 +34,20 @@ class TextTranslationPersistenceIntegrityTest extends TestCase
         });
     }
 
+    public function test_review_score_survives_saving_text_history(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create();
+        $this->mock(TranslationManager::class, function ($mock) {
+            $mock->shouldReceive('translateText')->once()->andReturn(
+                new TranslationResponse(translatedText: 'Kumusta, kalibutan.', qualityScore: 88.5)
+            );
+        });
+
+        $this->translate($user)->assertOk()->assertJsonPath('saved', true);
+        $this->assertSame(89, TranslationHistory::where('user_id', $user->id)->firstOrFail()->quality_score);
+    }
+
     public function test_history_failure_returns_usable_unsaved_text(): void
     {
         $user = User::factory()->create();

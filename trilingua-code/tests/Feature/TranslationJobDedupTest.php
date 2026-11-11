@@ -197,6 +197,45 @@ class TranslationJobDedupTest extends TestCase
         $this->assertSame(0, DB::table('jobs')->count(), 'no new job queued for reused work');
     }
 
+    public function test_untranslated_completed_output_can_be_retried_without_losing_the_new_upload(): void
+    {
+        config(['queue.default' => 'database']);
+        $user = User::factory()->create();
+        $file = UploadedFile::fake()->createWithContent('scan.pdf', "%PDF-1.4\n".str_repeat('A', 512));
+        $payloadHash = TranslationJob::payloadHash((int) $user->id, hash_file('sha256', $file->getRealPath()),
+            'English', 'Cebuano', 'balanced', 'auto', null, 'preview');
+        $history = TranslationHistory::create([
+            'user_id' => $user->id, 'translation_type' => 'document', 'original_filename' => 'scan.pdf',
+            'translated_filename' => 'scan_untranslated.pdf', 'source_language' => 'English', 'target_language' => 'Cebuano',
+            'storage_path' => 'user/translations/untranslated.pdf', 'storage_backend' => 'supabase', 'status' => 'completed',
+            'sidecar' => ['content_summary' => ['status' => 'untranslated', 'translated' => 0, 'held' => 2]],
+        ]);
+        TranslationJob::create([
+            'user_id' => $user->id, 'payload_hash' => $payloadHash, 'original_name' => 'scan.pdf',
+            'original_ext' => '.pdf', 'source_lang' => 'English', 'target_lang' => 'Cebuano',
+            'pdf_column_mode' => 'auto', 'mode' => 'balanced', 'status' => TranslationJob::STATUS_COMPLETED,
+            'storage_path' => 'user/translations/untranslated.pdf', 'storage_backend' => 'supabase',
+            'translation_history_id' => $history->id, 'progress' => 100,
+        ]);
+        $storage = Mockery::mock(StorageService::class);
+        $storage->shouldReceive('generateSignedUrl')->once()->andReturn([
+            'signed_url' => 'https://example.test/unchanged', 'signed_url_expires_at' => now()->toIso8601String(),
+        ]);
+        $storage->shouldReceive('uploadWithFallback')->once()->andReturnUsing(function ($path) {
+            $this->assertFileExists($path, 'The retry must keep its new upload until it has been stored.');
+            return ['backend' => 'supabase', 'storage_path' => 'user/originals/retry.pdf',
+                'signed_url' => null, 'signed_url_expires_at' => null];
+        });
+        $this->app->instance(StorageService::class, $storage);
+        $this->actingAs($user)->post('/translate', [
+            'source_lang' => 'English', 'target_lang' => 'Cebuano', 'mode' => 'balanced',
+            'ocr_mode' => 'preview', 'document' => $file,
+        ], ['Accept' => 'application/json'])->assertOk()->assertJsonPath('status', 'processing');
+        $this->assertSame(2, DB::table('translation_jobs')->count());
+        $this->assertSame(1, DB::table('jobs')->count());
+        $this->assertSame(1, TranslationHistory::count());
+    }
+
     private function hydrateQueuedJob(): TranslateDocumentJob
     {
         $row = DB::table('jobs')

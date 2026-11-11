@@ -1,5 +1,11 @@
 /* Base CSS - Common styles, variables, resets, and utilities shared across all views */
 
+.document-completeness { font-size: .875rem; line-height: 1.55; overflow-wrap: anywhere; }
+.document-completeness p { margin: 0 0 8px; }
+.document-completeness summary { cursor: pointer; padding: 8px 0; }
+.document-completeness ul { padding-left: 20px; }
+.document-completeness li + li { margin-top: 8px; }
+
 /* CSS Custom Properties - Merged from app.css and guest.css */
 :root {
     /* Background colors */

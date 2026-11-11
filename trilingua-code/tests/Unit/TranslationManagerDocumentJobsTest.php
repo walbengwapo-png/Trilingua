@@ -34,7 +34,7 @@ class TranslationManagerDocumentJobsTest extends TestCase
         ]);
         $beats = 0;
         $result = app(TranslationManager::class)->translateDocument(UploadedFile::fake()->createWithContent('original.txt', 'source'),
-            'English', 'Filipino', engineJobId: $id, heartbeat: function () use (&$beats) { $beats++; });
+            'English', 'Filipino', ocrMode: 'preview', engineJobId: $id, heartbeat: function () use (&$beats) { $beats++; });
         $this->assertSame('translated bytes', $result['body']);
         $this->assertSame([['block_index' => 0]], $result['blocks']);
         $this->assertSame(['format' => '.txt'], $result['sidecar']);
@@ -43,6 +43,8 @@ class TranslationManagerDocumentJobsTest extends TestCase
         Http::assertSent(fn ($request) => $request->method() === 'POST' && $request->url() === $url
             && collect($request->data())->contains(fn ($field) => ($field['name'] ?? null) === 'job_id' && $field['contents'] === $id));
         Http::assertSent(fn ($request) => $request->hasHeader('X-Service-Token', 'test-service-token'));
+        Http::assertSent(fn ($request) => $request->method() === 'POST'
+            && collect($request->data())->contains(fn ($field) => ($field['name'] ?? null) === 'ocr_mode' && $field['contents'] === 'preview'));
     }
 
     public function test_provider_stop_is_terminal_without_a_second_submission_or_fallback(): void

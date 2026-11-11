@@ -25,6 +25,7 @@ class TranslationResponse
         public readonly bool $success = true,
         public readonly string $errorMessage = '',
         public readonly array $measurementMetadata = [],
+        public readonly array $qualityReview = [],
     ) {}
 
     /**
@@ -55,14 +56,14 @@ class TranslationResponse
             tokenUsage: $usage,
             executionTimeMs: $data['execution_time_ms'] ?? 0.0,
             mode: $data['mode'] ?? 'balanced',
-            qualityScore: isset($data['quality_score'])
-                ? (float) $data['quality_score']
-                : null,
+            qualityScore: \App\Support\TranslationQuality::score($data['quality_score'] ?? null) !== null
+                ? (float) $data['quality_score'] : null,
             qualityIssues: $data['quality_issues'] ?? [],
             warnings: $data['warnings'] ?? [],
             success: $data['success'] ?? true,
             errorMessage: $data['error_message'] ?? $data['error'] ?? '',
             measurementMetadata: $metadata,
+            qualityReview: is_array($data['quality_review'] ?? null) ? $data['quality_review'] : [],
         );
     }
 
@@ -79,6 +80,7 @@ class TranslationResponse
             'execution_time_ms' => $this->executionTimeMs,
             'mode' => $this->mode,
             'quality_score' => $this->qualityScore,
+            'quality_review' => $this->qualityReview,
             'quality_issues' => $this->qualityIssues,
             'warnings' => $this->warnings,
             'success' => $this->success,

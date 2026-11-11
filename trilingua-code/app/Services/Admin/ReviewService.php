@@ -57,6 +57,9 @@ class ReviewService
     {
         return DB::transaction(function () use ($historyId, $adminId, $note) {
             $history = $this->findHistory($historyId);
+            if ($history->translation_type === 'document') {
+                return $this->verifyDocument($historyId, $adminId, $note);
+            }
 
             $history->review_status = ReviewStatus::VERIFIED;
             $history->reviewed_by = $adminId;
@@ -161,6 +164,13 @@ class ReviewService
     {
         return DB::transaction(function () use ($historyId, $adminId, $note) {
             $history = TranslationHistory::whereKey($historyId)->lockForUpdate()->firstOrFail();
+
+            if (in_array($history->sidecar['content_summary']['status'] ?? null, ['partial', 'untranslated'], true)) {
+                throw new TranslationException('Held regions remain in the original language. This incomplete document cannot be verified.');
+            }
+            if (($history->sidecar['content_summary']['ocr_mode'] ?? null) === 'preview') {
+                throw new TranslationException('This is an unverified OCR preview for testing and cannot be verified as production output.');
+            }
 
             // The published file is what a verification vouches for. Approved
             // contract: a document carrying edits the downloadable file does not
@@ -277,6 +287,11 @@ class ReviewService
                 $newText = (string) $newText;
                 if ($block->current_text === $newText) {
                     continue;
+                }
+                $entry = collect($history->sidecar['blocks'] ?? [])->firstWhere('block_index', $block->block_index);
+                $region = collect($history->sidecar['render_plan']['regions'] ?? [])->firstWhere('region_id', $entry['region_id'] ?? null);
+                if (($region['status'] ?? null) === 'held') {
+                    throw new TranslationException('This region is held and retains its original content. Its text cannot be published.');
                 }
 
                 $this->log($history->id, $block->id, $adminId, 'edit', $block->current_text, $newText, $note);
@@ -562,6 +577,9 @@ class ReviewService
                 $history->storage_path = $newPath;
                 $history->storage_backend = $newBackend;
                 $history->translated_filename = $result['download_filename'];
+                if (isset($result['sidecar'])) {
+                    $history->sidecar = $result['sidecar'];
+                }
                 $history->signed_url_expires_at = $storageResult['signed_url_expires_at'];
                 $history->reviewed_by = $adminId;
                 $history->reviewed_at = now();

@@ -69,6 +69,13 @@ class TranslationHistory extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function displayName(): string
+    {
+        return $this->translated_filename ?: $this->original_filename
+            ?: \Illuminate\Support\Str::limit(\Illuminate\Support\Str::squish($this->source_text ?? ''), 80)
+            ?: 'Translation #'.$this->id;
+    }
+
     /**
      * The original document that this translation was generated from.
      */

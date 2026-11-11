@@ -193,6 +193,18 @@ test('unsupported format falls back to escaped saved blocks', async () => {
     } finally { await page.close(); }
 });
 
+test('owner fallback hides internal block identifiers and explains missing saved text', async () => {
+    const page = await mount('odt', Buffer.from('fixture'), {
+        'data-blocks-url': '/blocks', 'data-blocks-mode': 'published', 'data-reader-view': '',
+    });
+    try {
+        const text = await page.locator('#preview').innerText();
+        assert.doesNotMatch(text, /Block #|Published text preview unavailable|Saved <script>/);
+        assert.match(text, /This saved text cannot be previewed. Download the file to view it./);
+        assert.equal(await page.locator('#preview .draft-block__head').count(), 0);
+    } finally { await page.close(); }
+});
+
 
 test('PPTX viewer treats embedded markup and unsafe hyperlink as inert', async () => {
     const page = await mount('pptx', readFileSync(resolve(root, 'tests/fixtures/preview-attack.pptx')));

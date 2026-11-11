@@ -39,9 +39,7 @@ class PriorityRequestRaised extends Notification
         return [
             'translation_id' => $this->history->id,
             'type' => $this->history->translation_type ?? 'document',
-            'title' => $this->history->translated_filename
-                ?? $this->history->original_filename
-                ?? 'Translation',
+            'title' => $this->history->displayName(),
             'source_language' => $this->history->source_language,
             'target_language' => $this->history->target_language,
             'submitter' => $this->submitterName ?? 'a user',

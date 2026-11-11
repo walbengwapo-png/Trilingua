@@ -35,6 +35,26 @@ def response(status=200, content='{"summary":"A health program"}', headers=None)
     return result
 
 
+def test_server_ollama_primary_routes_failure_to_gemini(monkeypatch):
+    monkeypatch.setenv('GEMINI_API_KEY', 'test-key')
+    monkeypatch.setenv('OLLAMA_ANALYSIS_MODEL', 'gemma4:31b-cloud')
+    source = (Path(__file__).resolve().parents[1] / 'server.py').read_text(encoding='utf-8')
+    route = source.split('_ollama_analysis_provider = OllamaAnalysisProvider()', 1)[1].split('# Future providers', 1)[0]
+    primary = OllamaAnalysisProvider()
+    fallback = Mock(name='gemini')
+    namespace = dict(os=os, ANALYSIS_PROVIDER='ollama', ANALYSIS_FALLBACK_PROVIDER='gemini',
+                     _ollama_analysis_provider=primary,
+                     GeminiAnalysisProvider=Mock(return_value=fallback),
+                     FallbackAnalysisProvider=FallbackAnalysisProvider)
+    exec(route, namespace)
+    provider = namespace['_analysis_provider']
+    assert provider._primary.model_name == 'gemma4:31b-cloud'
+    with patch.object(primary, 'analyze', side_effect=RuntimeError('unavailable')):
+        fallback.analyze.return_value = {'summary': 'Fallback worked'}
+        assert provider.analyze('JSON', 'test') == {'summary': 'Fallback worked'}
+    fallback.analyze.assert_called_once_with('JSON', 'test')
+
+
 @pytest.fixture
 def http(monkeypatch):
     post = Mock()
@@ -42,6 +62,12 @@ def http(monkeypatch):
     monkeypatch.setattr("ai.gemini_provider.requests.post", post)
     monkeypatch.setattr("ai.gemini_provider._time.sleep", sleep)
     return post, sleep
+
+
+@pytest.fixture(autouse=True)
+def fixture_analysis_model(monkeypatch):
+    # These response() fixtures use GenerateContent, regardless of live app settings.
+    monkeypatch.setenv('GEMINI_ANALYSIS_MODEL','gemini-2.5-flash')
 
 
 def test_rate_limit_retries_honor_header_and_keep_error(http):

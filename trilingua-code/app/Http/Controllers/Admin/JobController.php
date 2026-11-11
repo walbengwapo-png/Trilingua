@@ -9,6 +9,7 @@ use App\Services\DispatchOutcomeClassifier;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -52,7 +53,7 @@ class JobController extends Controller
         if ($recoverableByUuid !== []) {
             $recoverableMap = TranslationJob::whereIn('uuid', $recoverableByUuid)
                 ->where('status', TranslationJob::STATUS_FAILED)
-                ->where('recoverable', true)
+                ->whereRaw('recoverable = TRUE')
                 ->pluck('recoverable', 'uuid')
                 ->map(fn () => true)
                 ->all();
@@ -147,11 +148,16 @@ class JobController extends Controller
             // Same acceptance boundary as intake: the failed -> queued write and
             // the queue insert share ONE commit, so a rollback leaves the job
             // recoverable and no receivable queue row behind.
-            DB::transaction(function () use ($state, $job, $failedJobRowId) {
+            DB::transaction(function () use ($state, $job, $failedJobRowId, $uuid) {
                 $queued = $state->markQueued(recovered: true);
                 if (!$queued) {
                     throw new \RuntimeException('Job could not be moved back to queued; it may already be active again.');
                 }
+
+                // The previous attempt's terminal cache entry is obsolete. The
+                // queue payload is dispatched only after this clear, so polling
+                // cannot report the old failure while the replay is accepted.
+                Cache::forget('translation_job_'.$uuid);
 
                 dispatch($job);
 

@@ -1,0 +1,14 @@
+{
+  "source": "test_corpus_v6/originals/ET01/eng.pdf, page 2",
+  "source_sha256": "321ec3faaab96720c795a281267efac7d987eb3c5970af639cdf4f8edbddf507",
+  "instructions": [
+    {
+      "lines": [[142.72, 577, "-- Treated clothing remains protective after multiple"], [153.72, 591, "washings. See product information to find out how"], [153.72, 605, "long the protection will last."]],
+      "complete_text": "-- Treated clothing remains protective after multiple washings. See product information to find out how long the protection will last."
+    },
+    {
+      "lines": [[142.72, 623.5, "-- If treating items yourself, follow the product"], [153.72, 637.5, "instructions carefully."]],
+      "complete_text": "-- If treating items yourself, follow the product instructions carefully."
+    }
+  ]
+}

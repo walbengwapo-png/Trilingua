@@ -263,6 +263,46 @@ def test_gptoss_ambiguous_429_stops_without_retry(monkeypatch):
     assert waits == []
 
 
+def test_gptoss_rejects_nonempty_token_limited_response(monkeypatch):
+    monkeypatch.setenv("GPTOSS_MAX_ATTEMPTS", "1")
+    provider = GPTOSSProvider(api_url="http://test/api/chat", model="test")
+    response = SimpleNamespace(status_code=200, headers={}, raise_for_status=lambda: None,
+        json=lambda: {"message": {"content": "Partial translation"}, "done_reason": "length"})
+    monkeypatch.setattr(provider._session, "post", lambda *a, **k: response)
+
+    result = provider.translate("Translate this instruction completely.", "English", "Cebuano")
+
+    assert not result.success and not result.translated_text
+    assert "incomplete" in result.error_message.lower()
+
+
+def test_gptoss_rejects_nonempty_token_limited_unit_batch(monkeypatch):
+    from providers.gptoss import GPTOSSProviderError
+    monkeypatch.setenv("GPTOSS_MAX_ATTEMPTS", "1")
+    provider = GPTOSSProvider(api_url="http://test/api/chat", model="test")
+    response = SimpleNamespace(status_code=200, headers={}, raise_for_status=lambda: None,
+        json=lambda: {"message": {"content": '{"U0":"Partial translation"}'}, "done_reason": "length"})
+    monkeypatch.setattr(provider._session, "post", lambda *a, **k: response)
+    with pytest.raises(GPTOSSProviderError, match="incomplete"):
+        provider._request_batch_chat([{"role": "user", "content": "Translate U0"}])
+
+
+@pytest.mark.parametrize("reason", ["MAX_TOKENS", "CONTINUATION"])
+def test_gemini_rejects_nonempty_token_limited_response(reason):
+    from providers.gemini import _response_text
+    with pytest.raises(RuntimeError, match="incomplete"):
+        _response_text({"candidates": [{"finishReason": reason,
+            "content": {"parts": [{"text": "Partial translation"}]}}]})
+
+
+@pytest.mark.parametrize("status", ["incomplete", "requires_continuation", "failed", "in_progress"])
+def test_gemini_interactions_rejects_unfinished_text(status):
+    from providers.gemini import _interaction_text
+    with pytest.raises(RuntimeError, match="incomplete"):
+        _interaction_text({"status": status,
+            "outputs": [{"type": "text", "text": "Partial translation"}]})
+
+
 def test_direct_ollama_cloud_uses_a_key_without_sending_it_to_local_ollama(monkeypatch):
     monkeypatch.setenv("OLLAMA_API_KEY", "test-cloud-key")
     cloud = GPTOSSProvider(api_url="https://ollama.com/api/chat", model="test")

@@ -4,7 +4,7 @@ import io
 import json
 from types import SimpleNamespace
 
-import fitz
+import pymupdf as fitz
 import pytest
 
 from document.extractor import read_pdf
@@ -113,6 +113,181 @@ def test_short_block_rejects_conversational_response():
     assert not response.translated_text
 
 
+def test_strict_title_uses_free_space_without_splitting_words(tmp_path):
+    source, output = tmp_path / "source.pdf", tmp_path / "output.pdf"
+    with fitz.open() as doc:
+        page = doc.new_page(width=300, height=220)
+        page.insert_text((30, 130), "Source", fontsize=29)
+        page.insert_text((30, 162), "Neighbor stays", fontsize=12)
+        doc.save(source)
+    blocks = read_pdf(str(source), "single")
+    blocks[0].update(text="Translated title", _original_text=blocks[0]["text"])
+    blocks[1]["passthrough"] = True
+
+    report = write_pdf_preserved(blocks, str(source), str(output), strict=True)
+
+    assert report["held"] == []
+    assert report["status"] == "passed" and report["output_pages"] == 1
+    with fitz.open(output) as doc:
+        text = " ".join(doc[0].get_text().split())
+        assert "Translated title" in text and "Neighbor stays" in text
+        assert "Source" not in text
+
+
+def test_strict_banner_uses_panel_width_without_crossing_border(tmp_path):
+    source, output = tmp_path / "source.pdf", tmp_path / "output.pdf"
+    panel = fitz.Rect(30, 55, 270, 100)
+    with fitz.open() as doc:
+        page = doc.new_page(width=300, height=180)
+        page.draw_rect(panel, fill=(0, .3, .7))
+        page.insert_text((34, 70), "First source", fontsize=12, color=(1, 1, 1))
+        page.insert_text((34, 94), "Second source", fontsize=12, color=(1, 1, 1))
+        doc.save(source)
+    blocks = read_pdf(str(source), "single")
+    assert len(blocks) == 2
+    blocks[0].update(text="A complete translated banner sentence", _original_text=blocks[0]["text"])
+    blocks[1]["passthrough"] = True
+
+    report = write_pdf_preserved(blocks, str(source), str(output), strict=True)
+
+    assert report["held"] == []
+    assert report["status"] == "passed" and report["output_pages"] == 1
+    for fragment in report["blocks"]:
+        assert panel.contains(fitz.Rect(fragment["rect"]))
+
+
+def test_strict_preflight_reserves_shared_whitespace_between_blocks(tmp_path):
+    source, output = tmp_path / "source.pdf", tmp_path / "output.pdf"
+    with fitz.open() as doc:
+        page = doc.new_page(width=200, height=180)
+        page.draw_line((70, 20), (70, 170))
+        for y, text in [(70, "One"), (110, "Two"), (138, "End")]:
+            page.insert_text((30, y), text, fontsize=12)
+        doc.save(source)
+    blocks = read_pdf(str(source), "single")
+    assert len(blocks) == 3
+    for block, text in zip(blocks, ["alpha beta gamma", "delta theta sigma"]):
+        block.update(text=text, _original_text=block["text"])
+    blocks[2]["passthrough"] = True
+
+    report = write_pdf_preserved(blocks, str(source), str(output), strict=True)
+
+    assert report["status"] == "passed"
+    assert [entry["block_index"] for entry in report["held"]] == [1]
+
+
+def test_strict_native_underline_is_not_a_table_boundary(tmp_path):
+    source, output = tmp_path / "source.pdf", tmp_path / "output.pdf"
+    with fitz.open() as doc:
+        page = doc.new_page(width=300, height=180)
+        page.draw_line((25, 56), (275, 56))
+        page.insert_text((30, 70), "Source heading", fontsize=12)
+        width = fitz.get_text_length("Source heading", fontsize=12)
+        page.draw_rect(fitz.Rect(30, 70, 30 + width, 71), fill=(0, 0, 0), color=None)
+        doc.save(source)
+    blocks = read_pdf(str(source), "single")
+    blocks[0].update(text="Translated heading", _original_text=blocks[0]["text"])
+
+    report = write_pdf_preserved(blocks, str(source), str(output), strict=True)
+
+    assert report["held"] == [] and report["status"] == "passed"
+    with fitz.open(output) as doc:
+        assert doc[0].get_drawings(), "Keep the original underline artwork"
+
+
+def test_strict_blue_background_seam_does_not_hold_native_prose(tmp_path):
+    source, output = tmp_path / "source.pdf", tmp_path / "output.pdf"
+    panel = fitz.Rect(30, 50, 270, 84)
+    with fitz.open() as doc:
+        page = doc.new_page(width=300, height=180)
+        for y in [50, 67]:
+            page.draw_rect(fitz.Rect(30, y, 270, y + 17), fill=(0, .3, .7), color=None)
+        page.insert_text((34, 63), "First source", fontsize=12, color=(1, 1, 1))
+        page.insert_text((34, 80), "Second source", fontsize=12, color=(1, 1, 1))
+        doc.save(source)
+    blocks = read_pdf(str(source), "single")
+    for block in blocks:
+        block.update(text="Complete translated sentence", _original_text=block["text"])
+
+    report = write_pdf_preserved(blocks, str(source), str(output), strict=True)
+
+    assert report["held"] == [] and report["status"] == "passed"
+    assert all(panel.contains(fitz.Rect(fragment["rect"])) for fragment in report["blocks"])
+
+
+def test_thin_filled_vertical_divider_bounds_expanded_text(tmp_path):
+    source, output = tmp_path / "source.pdf", tmp_path / "output.pdf"
+    with fitz.open() as doc:
+        page = doc.new_page(width=400, height=220)
+        page.draw_rect(fitz.Rect(200, 40, 201, 180), fill=(0, 0, 0), color=None)
+        for x, y, text in [(30, 80, "Source"), (30, 104, "Below stays"), (230, 80, "Right stays")]:
+            page.insert_text((x, y), text, fontsize=12)
+        doc.save(source)
+    blocks = read_pdf(str(source), "single")
+    for block in blocks:
+        if block["text"] == "Source":
+            block.update(text="ABCDEFGHIJKLMNOPQRSTUVW is a reference code.", _original_text="Source")
+        else:
+            block["passthrough"] = True
+
+    report = write_pdf_preserved(blocks, str(source), str(output), strict=True)
+
+    assert report["status"] == "passed" and not report["held"]
+    assert all(fitz.Rect(fragment["rect"]).x1 <= 200 for fragment in report["blocks"]
+               if fragment["action"] == "fit")
+
+
+@pytest.mark.parametrize("target", [
+    "Ibutang kini ilawom sa mainit nga tubig o i.",
+    "Ibutang kini ilawom sa mainit nga tubig o i-",
+    "Ibutang kini ilawom sa mainit nga tubig o i... ang ibabaw, dayon pahiri kini.",
+    "Ibutang kini ilawom sa mainit nga tubig o i… ang ibabaw, dayon pahiri kini.",
+])
+def test_content_guard_rejects_dangling_verb_prefix(target):
+    from validators.hallucination_detector import translation_content_issue
+    assert translation_content_issue("Rinse or steam it, then wipe with a soft cloth.", target)
+
+
+@pytest.mark.parametrize("source,target", [
+    ("Choose option I.", "Pilia ang kapilian I."),
+    ("Steam it, then wipe it.", "I-singaw kini, dayon pahiri."),
+    ("Letters a, e, or i.", "Mga letra a, e, o i."),
+    ("Letters a, e, or i...", "Mga letra a, e, o i..."),
+])
+def test_content_guard_preserves_complete_text_and_literal_letters(source, target):
+    from validators.hallucination_detector import translation_content_issue
+    assert not translation_content_issue(source, target)
+
+
+def test_incomplete_instruction_is_retried_before_acceptance():
+    from unittest.mock import Mock
+    complete = "Hugasi o i-singaw kini, dayon pahiri gamit ang humok nga panapton."
+    provider = SimpleNamespace(name="mock", model_name="local", translate=Mock(side_effect=[
+        TranslationResponse("Hugasi kini o i."), TranslationResponse(complete),
+    ]))
+    response = TranslationPipeline(provider)._translate_with_echo_guard(
+        text="Rinse or steam it, then wipe with a soft cloth.",
+        source_lang="English", target_lang="Cebuano", block_type="paragraph",
+        context_hint="", document_type="",
+    )
+    assert response.success and response.translated_text == complete
+    assert provider.translate.call_count == 2
+    assert "finish every instruction" in provider.translate.call_args.kwargs["context_hint"]
+
+
+def test_repeated_incomplete_instruction_is_not_returned_as_success():
+    from unittest.mock import Mock
+    provider = SimpleNamespace(name="mock", model_name="local", translate=Mock(
+        side_effect=lambda **kwargs: TranslationResponse("Hugasi kini o i.")))
+    response = TranslationPipeline(provider)._translate_with_echo_guard(
+        text="Rinse or steam it, then wipe with a soft cloth.",
+        source_lang="English", target_lang="Cebuano", block_type="paragraph",
+        context_hint="", document_type="",
+    )
+    assert not response.success and not response.translated_text
+    assert provider.translate.call_count == 2
+
+
 def test_saved_output_gate_rejects_missing_or_unplaced_content(tmp_path):
     from validators.translation_validator import validate_pdf_output
     output = tmp_path / "missing.pdf"
@@ -150,6 +325,146 @@ def test_redaction_padding_preserves_passthrough_neighbor(tmp_path):
     assert report["status"] == "passed"
     with fitz.open(output) as doc:
         assert "250" in "".join(page.get_text() for page in doc)
+
+
+def test_redaction_padding_preserves_an_unowned_neighboring_span(tmp_path):
+    source, output = tmp_path / "source.pdf", tmp_path / "output.pdf"
+    with fitz.open() as doc:
+        page = doc.new_page(width=300, height=200)
+        page.insert_text((30, 70), "Source line", fontsize=12)
+        page.insert_text((30, 84), "Neighbor stays", fontsize=12)
+        doc.save(source)
+
+    with fitz.open(source) as doc:
+        spans = [span for block in doc[0].get_text("dict")["blocks"]
+                 for line in block.get("lines", []) for span in line["spans"]]
+    assert len(spans) == 2
+    first = spans[0]
+    block = {
+        "page": 0, "pdf_coordinates": "display", "type": "paragraph",
+        "position": list(first["bbox"]), "text": "Hubad",
+        "style": {"font": "helv", "font_size": 12},
+        "lines": [{"bbox": list(first["bbox"]), "text": first["text"], "size": 12}],
+    }
+
+    report = write_pdf_preserved([block], str(source), str(output))
+
+    assert report["status"] == "passed"
+    with fitz.open(output) as doc:
+        text = " ".join(" ".join(page.get_text().split()) for page in doc)
+    assert "Hubad" in text
+    assert "Neighbor stays" in text
+    assert "Source line" not in text
+
+
+def test_redaction_removes_an_overlapping_hidden_duplicate(tmp_path):
+    source, output = tmp_path / "duplicate.pdf", tmp_path / "output.pdf"
+    with fitz.open() as doc:
+        page = doc.new_page(width=300, height=200)
+        page.insert_text((30, 70), "Source line", fontsize=12)
+        page.insert_text((30, 70), "Source line", fontsize=12, render_mode=3)
+        doc.save(source)
+
+    blocks = read_pdf(str(source), "single")
+    block = blocks[0]
+    block.update(text="Hubad", _original_text=block["text"])
+    report = write_pdf_preserved([block], str(source), str(output))
+
+    assert report["status"] == "passed"
+    with fitz.open(output) as doc:
+        text = doc[0].get_text()
+    assert "Hubad" in text
+    assert "Source line" not in text
+
+
+def test_pdf_extractor_merges_text_missing_from_dict_mode(tmp_path, monkeypatch):
+    source = tmp_path / "blocks-only.pdf"
+    with fitz.open() as doc:
+        page = doc.new_page()
+        page.insert_text((30, 70), "Styled source")
+        page.insert_text((30, 170), "Blocks only")
+        doc.save(source)
+
+    get_text = fitz.Page.get_text
+
+    def omit_second_dict_block(page, option="text", *args, **kwargs):
+        result = get_text(page, option, *args, **kwargs)
+        if option == "dict":
+            result["blocks"] = result["blocks"][:1]
+        return result
+
+    monkeypatch.setattr(fitz.Page, "get_text", omit_second_dict_block)
+    blocks = read_pdf(str(source), "single")
+    assert [block["text"] for block in blocks] == ["Styled source", "Blocks only"]
+
+
+def test_legacy_contact_icon_stays_in_source_while_its_label_is_translated(tmp_path, monkeypatch):
+    from document.pdf_regions import inventory_pdf
+    source, output = tmp_path / "contact.pdf", tmp_path / "output.pdf"
+    with fitz.open() as doc:
+        page = doc.new_page()
+        page.insert_text((30, 70), "(", fontname="tiro", fontsize=12)
+        page.insert_text((40, 70), "Source contact", fontsize=12)
+        doc.save(source)
+    get_text = fitz.Page.get_text
+
+    def legacy_icon(page, option="text", *args, **kwargs):
+        result = get_text(page, option, *args, **kwargs)
+        if option == "dict" and page.parent.name == str(source):
+            for block in result["blocks"]:
+                for line in block.get("lines", []):
+                    for span in line["spans"]:
+                        if span["text"] == "(":
+                            span.update(text="\uf028", font="Wingdings-Regular")
+        return result
+
+    monkeypatch.setattr(fitz.Page, "get_text", legacy_icon)
+    blocks, inventory = inventory_pdf(source, read_pdf(str(source)), "English")
+    assert blocks and all("\uf028" not in block["text"] for block in blocks)
+    assert any(region["status"] == "held" for region in inventory["regions"])
+    for block in blocks:
+        block.update(_original_text=block["text"], text="Translated contact")
+    report = write_pdf_preserved(blocks, str(source), str(output), strict=True)
+    assert report["status"] == "passed"
+    with fitz.open(output) as doc:
+        text = " ".join(doc[0].get_text().split())
+    assert "(" in text and "Translated contact" in text
+    assert "Source contact" not in text
+
+
+def test_adjacent_contact_rows_keep_their_own_icons_and_translated_labels(tmp_path, monkeypatch):
+    from document.pdf_regions import inventory_pdf
+    source, output = tmp_path / "contact-rows.pdf", tmp_path / "output.pdf"
+    with fitz.open() as doc:
+        page = doc.new_page(width=300, height=180)
+        for y, icon, label in [(70, "(", "Source phone"), (86, ")", "Source email")]:
+            page.insert_text((30, y), icon, fontname="tiro", fontsize=12)
+            page.insert_text((40, y), label, fontsize=12)
+        doc.save(source)
+    get_text = fitz.Page.get_text
+
+    def legacy_icons(page, option="text", *args, **kwargs):
+        result = get_text(page, option, *args, **kwargs)
+        if option == "dict" and page.parent.name == str(source):
+            for block in result["blocks"]:
+                for line in block.get("lines", []):
+                    for span in line["spans"]:
+                        if span["text"] in {"(", ")"}:
+                            span.update(text="\uf028" if span["text"] == "(" else "\uf02a",
+                                        font="Wingdings-Regular")
+        return result
+
+    monkeypatch.setattr(fitz.Page, "get_text", legacy_icons)
+    blocks, _ = inventory_pdf(source, read_pdf(str(source)), "English")
+    assert [block["text"] for block in blocks] == ["Source phone", "Source email"]
+    for block in blocks:
+        block.update(_original_text=block["text"], text=block["text"].replace("Source", "Translated"))
+    report = write_pdf_preserved(blocks, str(source), str(output), strict=True)
+    assert report["status"] == "passed" and not report["held"]
+    with fitz.open(output) as doc:
+        text = " ".join(doc[0].get_text().split())
+        assert "Translated phone" in text and "Translated email" in text
+        assert "(" in text and ")" in text
 
 
 def test_reflow_avoids_vector_illustration(tmp_path):
@@ -297,6 +612,6 @@ def test_document_endpoint_returns_structured_validation_failure(monkeypatch, re
             server.translate_document_regenerate(
                 upload, json.dumps({"format": ".pdf"}), "", "{}", "English", "Cebuano", "auto")
         else:
-            server.translate_document(upload, "English", "Cebuano", "auto", "balanced")
+            server.translate_document(upload, "English", "Cebuano", "auto", "balanced", 'strict')
     assert caught.value.status_code == 422
     assert caught.value.detail["validation"] == report

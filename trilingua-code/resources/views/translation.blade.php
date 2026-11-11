@@ -36,14 +36,6 @@
             </select>
         </div>
 
-        <div class="lang-bar__mode-wrap">
-            <label class="lang-bar__label" for="translation-mode">Mode</label>
-            <select id="translation-mode" aria-label="Translation processing mode">
-                @foreach ($capabilities['modes'] as $mode)
-                    <option value="{{ $mode }}" @selected($mode === 'balanced')>{{ ucfirst($mode) }}</option>
-                @endforeach
-            </select>
-        </div>
     </div>
 
     {{-- Two panels --}}
@@ -63,6 +55,10 @@
                 </div>
             </div>
 
+            <div id="ocr-preview-option" class="translation-job-hint" hidden>
+                <label for="ocr-preview"><input type="checkbox" id="ocr-preview" aria-describedby="ocr-preview-hint"> Translate text in images and scanned PDFs (experimental)</label>
+                <p id="ocr-preview-hint">Attempts to read text that cannot be selected or copied. Results have not been verified; check the wording and layout.</p>
+            </div>
             <div class="translation-panel__footer">
                 {{-- Speak --}}
                 <button id="speak-source-btn" type="button" class="speak-btn" aria-label="Read source text aloud" title="Read aloud">
@@ -174,12 +170,35 @@
     'use strict';
 
     var CAPABILITIES = @json($capabilities);
+    var CONTENT_MESSAGES = @json(\App\Support\DocumentPresentation::STATUS_MESSAGES);
+    var PREVIEW_MESSAGE = @json(\App\Support\DocumentPresentation::PREVIEW_MESSAGE);
+    var REASON_MESSAGES = @json(\App\Support\DocumentPresentation::REASON_MESSAGES);
+    var UNKNOWN_REASON_MESSAGE = @json(\App\Support\DocumentPresentation::UNKNOWN_REASON_MESSAGE);
+
+    function documentMessage(summary) {
+        var message = summary
+            ? CONTENT_MESSAGES[summary.status] || 'Check the downloaded file to see which content was translated.'
+            : 'Your document has been translated. Download the translated file below to view the result.';
+        if (summary && summary.ocr_mode === 'preview') message = PREVIEW_MESSAGE + ' ' + message;
+        return message;
+    }
+
+    function readableWarnings(warnings) {
+        return Array.from(new Set((Array.isArray(warnings) ? warnings : []).map(function (warning) {
+            var text = String(warning);
+            var area = text.match(/^Page (\d+): original region retained \((.+)\)\.$/);
+            if (area) return 'Page ' + area[1] + ': ' + (REASON_MESSAGES[area[2]] || UNKNOWN_REASON_MESSAGE);
+            if (/^Original region retained:/.test(text)) return UNKNOWN_REASON_MESSAGE;
+            if (/^(Partial|Untranslated): \d+ translated,/.test(text)) return CONTENT_MESSAGES[text.startsWith('Partial') ? 'partial' : 'untranslated'];
+            if (text.startsWith('Unverified OCR preview:')) return PREVIEW_MESSAGE;
+            return text;
+        })));
+    }
 
     var sourceText    = document.getElementById('source-text');
     var charCounter   = document.getElementById('char-counter');
     var sourceLang    = document.getElementById('source-lang');
     var targetLang    = document.getElementById('target-lang');
-    var translationMode = document.getElementById('translation-mode');
     var swapBtn       = document.getElementById('swap-btn');
     var outputText    = document.getElementById('output-text');
     var documentJobHint = document.getElementById('document-job-hint');
@@ -191,6 +210,8 @@
     var removeFile    = document.getElementById('remove-file');
     var fileInfo      = document.getElementById('file-info');
     var pdfColumnMode = document.getElementById('pdf-column-mode');
+    var ocrPreviewOption = document.getElementById('ocr-preview-option');
+    var ocrPreview = document.getElementById('ocr-preview');
     var sourceError   = document.getElementById('source-error');
     var outputError   = document.getElementById('output-error');
     var translateBtn  = document.getElementById('translate-btn');
@@ -273,6 +294,8 @@
         charCounter.style.display = 'none';
         fileInfo.style.display = '';
         pdfColumnMode.style.display = ext === '.pdf' ? '' : 'none';
+        ocrPreviewOption.hidden = !['.pdf', '.png', '.jpg', '.jpeg'].includes(ext);
+        if (ocrPreviewOption.hidden) ocrPreview.checked = false;
         if (ext !== '.pdf') pdfColumnMode.value = 'auto';
     });
 
@@ -284,6 +307,8 @@
         clearError(sourceError);
         pdfColumnMode.style.display = 'none';
         pdfColumnMode.value = 'auto';
+        ocrPreview.checked = false;
+        ocrPreviewOption.hidden = true;
     });
 
     // ── Translate ─────────────────────────────────────────────────────────────
@@ -352,13 +377,13 @@
         formData.append('target_lang', targetLang.value);
         // Balanced uses context and targeted quality repair; document work can
         // opt into Fast or Thorough without changing the API contract.
-        formData.append('mode', translationMode.value);
         formData.append('_token', csrfToken);
 
         if (file) {
             formData.append('document', file);
             var ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
             if (ext === '.pdf') formData.append('pdf_column_mode', pdfColumnMode.value);
+            formData.append('ocr_mode', !ocrPreviewOption.hidden && ocrPreview.checked ? 'preview' : 'strict');
         } else {
             var text = sourceText.value.trim();
             if (!text) { showError(sourceError, 'Please enter text to translate.'); setLoading(false); hideProgress(); return; }
@@ -378,7 +403,7 @@
                 var data = null;
                 try { data = JSON.parse(raw); } catch (e) {}
 
-                workbookWarning.textContent = (data && Array.isArray(data.warnings) ? data.warnings : []).join(' ');
+                workbookWarning.textContent = readableWarnings(data && data.warnings).join(' ');
                 workbookWarning.hidden = !workbookWarning.textContent;
                 if (data && data.job_id && ((res.ok && data.status === 'processing') || data.dispatch === 'unknown')) {
                     // Document translation queued - poll for status
@@ -395,14 +420,17 @@
                     outputSaveWarning.hidden = true;
                     hideProgress();
                     documentJobHint.hidden = true;
-                    outputText.textContent = 'Your document has been translated. Download the translated file below to view the result.';
+                    const summary = data.content_summary;
+                    const incomplete = summary && summary.status !== 'complete';
+                    const unverified = summary && summary.ocr_mode === 'preview';
+                    outputText.textContent = documentMessage(summary);
                     outputDownload.removeAttribute('hidden');
                     downloadLink.href = data.download_data || data.download_url;
                     downloadLink.download = data.download_filename || 'translated_document';
                     downloadLabel.textContent = 'Download: ' + (data.download_filename || 'translated_document');
                     copyBtn.setAttribute('aria-disabled', 'true');
                     saveBtn.setAttribute('aria-disabled', 'true');
-                    if (window.showToast) showToast('success', 'Document translated!', 'Your file is ready to download.');
+                    if (window.showToast) showToast(incomplete || unverified ? 'warning' : 'success', unverified ? 'Experimental image-text translation' : incomplete ? 'Incomplete translation' : 'Document translated!', outputText.textContent);
                 } else if (res.ok && data && data.translated) {
                     sessionStorage.removeItem(JOB_STORAGE_KEY);
                     hideProgress();
@@ -501,26 +529,35 @@
                 var data = null;
                 try { data = JSON.parse(raw); } catch (e) {}
 
+                if (data && data.status === 'completed' && Array.isArray(data.warnings) && data.warnings.length) {
+                    workbookWarning.textContent = readableWarnings(data.warnings).join(' ');
+                    workbookWarning.hidden = false;
+                }
                 if (data && data.status === 'completed' && (data.download_url || data.download_data)) {
                     stopPolling(true);
                     outputSaveWarning.hidden = true;
                     hideProgress();
                     documentJobHint.hidden = true;
-                    outputText.textContent = 'Your document has been translated. Download the translated file below to view the result.';
+                    const summary = data.content_summary;
+                    const incomplete = summary && summary.status !== 'complete';
+                    const unverified = summary && summary.ocr_mode === 'preview';
+                    outputText.textContent = documentMessage(summary);
                     outputDownload.removeAttribute('hidden');
                     downloadLink.href = data.download_data || data.download_url;
                     downloadLink.download = data.download_filename || 'translated_document';
                     downloadLabel.textContent = 'Download: ' + (data.download_filename || 'translated_document');
                     copyBtn.setAttribute('aria-disabled', 'true');
                     saveBtn.setAttribute('aria-disabled', 'true');
-                    if (window.showToast) showToast('success', 'Document translated!', 'Your file is ready to download.');
+                    if (window.showToast) showToast(incomplete || unverified ? 'warning' : 'success', unverified ? 'Experimental image-text translation' : incomplete ? 'Incomplete translation' : 'Document translated!', outputText.textContent);
                     return;
                 }
 
                 if (data && data.status === 'completed' && data.download_available === false) {
                     outputDownload.setAttribute('hidden', '');
-                    outputText.textContent = data.message || 'Translation complete. Download temporarily unavailable; checking again shortly.';
-                    setProgressStage('Translation complete — checking download availability…');
+                    const summary = data.content_summary;
+                    const incomplete = summary && summary.status !== 'complete';
+                    outputText.textContent = documentMessage(summary) + ' ' + (data.message || 'Download temporarily unavailable; checking again shortly.');
+                    setProgressStage(incomplete ? 'Some areas unchanged — checking download availability…' : 'Translation complete — checking download availability…');
                     return;
                 }
 
@@ -605,6 +642,8 @@
     // ── Clear ─────────────────────────────────────────────────────────────────
     clearBtn.addEventListener('click', function () {
         sourceText.value = '';
+        workbookWarning.textContent = '';
+        workbookWarning.hidden = true;
         updateCounter();
         outputText.textContent = '';
         outputSaveWarning.hidden = true;

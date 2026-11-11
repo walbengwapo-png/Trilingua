@@ -19,6 +19,14 @@ def translation_content_issue(source, translation):
     """
     if not translation or not translation.strip():
         return "Empty translation"
+    # shortcut: catches dangling prefixes, semantic omissions still need bilingual review.
+    dangling = (
+        r"\b(?:o|ug|og|at|or)\s+i(?:[-\u2010\u2011])?[.!?]?\s*$",
+        r"\b(?:o|ug|og|at|or)\s+i(?:[-\u2010\u2011])?(?:\.{2,}|\u2026)",
+    )
+    if any(re.search(pattern, translation) and not re.search(pattern, source, re.I)
+           for pattern in dangling):
+        return "Incomplete translation: dangling verb prefix"
     patterns = (
         r"^(?:could|can|would)\s+you\b.*\b(?:provide|send|give)\b.*\b(?:text|paragraph|passage)\b",
         r"^(?:please\s+)?(?:provide|send)\b.*\b(?:text|paragraph|passage)\b.*\btranslat",

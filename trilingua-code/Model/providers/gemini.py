@@ -12,6 +12,7 @@ import requests
 
 from dto.responses import TranslationResponse
 from .base import TranslationProvider
+from .request_budget import transport_timeout, retry_sleep
 
 
 GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
@@ -54,6 +55,8 @@ def _response_text(data: dict) -> str:
     if not candidates:
         prompt_feedback = data.get("promptFeedback", {})
         raise RuntimeError(f"Gemini returned no candidates: {prompt_feedback}")
+    if candidates[0].get("finishReason") in {"MAX_TOKENS", "CONTINUATION"}:
+        raise RuntimeError("Gemini returned incomplete content (output token limit)")
     parts = candidates[0].get("content", {}).get("parts", [])
     text = "".join(part.get("text", "") for part in parts if isinstance(part, dict))
     if not text.strip():
@@ -64,6 +67,8 @@ def _response_text(data: dict) -> str:
 
 def _interaction_text(data: dict) -> str:
     """Extract model text from the current (or legacy) Interactions response."""
+    if data.get("status") and data['status'] != 'completed':
+        raise RuntimeError(f"Gemini returned incomplete content (status: {data['status']})")
     parts = []
     for step in data.get("steps") or []:
         if step.get("type") == "model_output":
@@ -206,7 +211,7 @@ class GeminiProvider(TranslationProvider):
             try:
                 response = provider_post(self._session.post,
                     url, provider=self.name, model=self._model, purpose="translation", headers=headers, json=payload,
-                    timeout=(10, int(os.environ.get("GEMINI_REQUEST_TIMEOUT_SECONDS", "30"))),
+                    timeout=transport_timeout(10, int(os.environ.get("GEMINI_REQUEST_TIMEOUT_SECONDS", "30"))),
                 )
                 if response.status_code == 429:
                     wait = _retry_after_seconds(response, 0)
@@ -214,7 +219,7 @@ class GeminiProvider(TranslationProvider):
                         wait = max(wait, 1.0)
                         print(f"  [Gemini] Rate limited; retrying in "
                               f"{wait:.1f}s ({attempt + 1}/{max_attempts})")
-                        time.sleep(wait)
+                        retry_sleep(wait)
                         continue
                     return TranslationResponse(
                         translated_text="", provider=self.name, model=self._model,
@@ -254,12 +259,12 @@ class GeminiProvider(TranslationProvider):
                         result = sanitize_translation(result, text)
                     except RuntimeError as error:
                         if "Hallucinated repetition" in str(error) and attempt < 2:
-                            time.sleep(1)
+                            retry_sleep(1)
                             continue
                     hallucinated, reason = detect_hallucination(result, text)
                     if hallucinated and attempt < 2:
                         print(f"  Warning: Hallucination detected ({reason}), retrying ({attempt + 1}/3)...")
-                        time.sleep(1)
+                        retry_sleep(1)
                         continue
 
                 if not result:
@@ -286,7 +291,7 @@ class GeminiProvider(TranslationProvider):
 
             if attempt < max_attempts - 1:
                 print(f"  Warning: {error_message}; retrying ({attempt + 1}/{max_attempts})...")
-                time.sleep(1)
+                retry_sleep(1)
             else:
                 return TranslationResponse(
                     translated_text=last_result, provider=self.name, model=self._model,

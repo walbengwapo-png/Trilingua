@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Database\PostgresConnection;
 use GuzzleHttp\Client;
+use Illuminate\Database\Connection;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -12,8 +14,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Register Guzzle HTTP client as a singleton so StorageService
-        // can have it injected via the container.
+        // Make PostgreSQL bind PHP booleans as native boolean literals.
+        Connection::resolverFor('pgsql', function ($connection, $database, $prefix, $config) {
+            return new PostgresConnection($connection, $database, $prefix, $config);
+        });
         $this->app->singleton(Client::class, function () {
             return new Client([
                 'timeout'         => 120,

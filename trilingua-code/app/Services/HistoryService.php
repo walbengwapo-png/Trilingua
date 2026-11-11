@@ -41,6 +41,8 @@ class HistoryService
             'file_size'             => $data['file_size'] ?? null,
             'status'                => $data['status'] ?? 'completed',
             'review_status'         => $data['review_status'] ?? null,
+            'quality_score'         => \App\Support\TranslationQuality::score($data['quality_score'] ?? null),
+            'sidecar'               => $data['sidecar'] ?? null,
             'signed_url_expires_at' => $data['signed_url_expires_at'] ?? null,
             'source_text'           => $data['source_text'] ?? null,
             'translated_text'       => $data['translated_text'] ?? null,
@@ -83,18 +85,39 @@ class HistoryService
     }
 
     /**
-     * Fetch a page of history records for a user, newest first.
+     * Filter and sort the user's history before selecting a page.
      *
      * @param  int  $userId  The authenticated user's ID.
      * @param  int  $perPage  Records per page.
      * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator<int, array<string, mixed>>
      */
-    public function getHistoryPaginated(int $userId, int $perPage = 50)
+    public function getHistoryPaginated(int $userId, int $perPage = 50, array $filters = [])
     {
-        return TranslationHistory::where('user_id', $userId)
-            ->orderBy('created_at', 'desc')
-            ->orderBy('id', 'desc')
-            ->paginate($perPage);
+        $query = TranslationHistory::where('user_id', $userId);
+
+        if (!empty($filters['type'])) {
+            $query->where('translation_type', $filters['type']);
+        }
+        if (!empty($filters['review'])) {
+            $query->where('review_status', $filters['review']);
+        }
+        $search = trim($filters['q'] ?? '');
+        if ($search !== '') {
+            $pattern = '%'.mb_strtolower(str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $search)).'%';
+            $query->where(function ($q) use ($pattern) {
+                foreach (['original_filename', 'translated_filename', 'source_text', 'translated_text',
+                    'source_language', 'target_language', 'review_status'] as $column) {
+                    $q->orWhereRaw("LOWER({$column}) LIKE ? ESCAPE '!'", [$pattern]);
+                }
+            });
+        }
+
+        if (($filters['group'] ?? 'none') === 'language' || ($filters['sort'] ?? '') === 'lang-az') {
+            $query->orderBy('source_language')->orderBy('target_language');
+        }
+        $direction = ($filters['sort'] ?? 'newest') === 'oldest' ? 'asc' : 'desc';
+
+        return $query->orderBy('created_at', $direction)->orderBy('id', $direction)->paginate($perPage);
     }
 
     /**
@@ -162,7 +185,7 @@ class HistoryService
      */
     public function getRecordWithTranslations(int $id): ?array
     {
-        $record = TranslationHistory::with('translations')->find($id);
+        $record = TranslationHistory::with('translations')->withCount('blocks')->find($id);
 
         if (!$record) {
             return null;

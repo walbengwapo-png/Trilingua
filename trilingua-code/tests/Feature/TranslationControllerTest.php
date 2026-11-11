@@ -108,6 +108,48 @@ class TranslationControllerTest extends TestCase
         $this->assertSame(0, DB::table('jobs')->count());
     }
 
+    public function test_image_capabilities_remain_disabled_until_explicitly_enabled(): void
+    {
+        $user = User::factory()->create();
+        $formats = $this->actingAs($user)->getJson('/translate/capabilities')->assertOk()->json('formats');
+        foreach (['png', 'jpg', 'jpeg'] as $extension) {
+            $this->assertNotContains($extension, $formats);
+        }
+        $this->assertSame('pdf', config('translation.extension_map.png'));
+        $this->assertSame('worksheet_translated.pdf', app(\App\Services\TranslationService::class)->getOriginalOutputName('worksheet.png', '.png'));
+    }
+
+    public function test_enabled_png_upload_uses_the_existing_durable_job_workflow(): void
+    {
+        config(['queue.default' => 'database', 'translation.supported_formats' => ['png', 'jpg', 'jpeg']]);
+        $user = User::factory()->create();
+        $storage = Mockery::mock(StorageService::class);
+        $storage->shouldReceive('uploadWithFallback')->once()->andReturn([
+            'backend' => 'local', 'storage_path' => 'originals/worksheet.png',
+            'signed_url' => null, 'signed_url_expires_at' => null,
+        ]);
+        $this->app->instance(StorageService::class, $storage);
+        $file = UploadedFile::fake()->createWithContent('worksheet.png', file_get_contents(__DIR__.'/../fixtures/ocr-worksheet.png'));
+        $this->actingAs($user)->postJson('/translate', [
+            'source_lang' => 'English', 'target_lang' => 'Cebuano', 'document' => $file,
+        ])->assertOk()->assertJsonPath('status', 'processing');
+        $this->assertSame(1, TranslationJob::count());
+        $this->assertSame(1, DB::table('jobs')->count());
+    }
+
+    public function test_image_extension_spoof_is_rejected_before_queueing(): void
+    {
+        config(['translation.supported_formats' => ['png', 'jpg', 'jpeg']]);
+        $user = User::factory()->create();
+        foreach (['png', 'jpg', 'jpeg'] as $ext) {
+            $file = UploadedFile::fake()->createWithContent('bad.'.$ext, 'MZ'.str_repeat("\x00", 100));
+            $this->actingAs($user)->postJson('/translate', [
+                'source_lang' => 'English', 'target_lang' => 'Cebuano', 'document' => $file,
+            ])->assertStatus(422);
+        }
+        $this->assertSame(0, TranslationJob::count());
+    }
+
     public function test_upload_quota_blocks_excessive_daily_documents(): void
     {
         config(['translation.upload.max_daily_files' => 1]);

@@ -685,7 +685,7 @@ class TestStyleMapper:
 import sys
 import os
 from unittest.mock import MagicMock, call, patch
-import fitz
+import pymupdf as fitz
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 

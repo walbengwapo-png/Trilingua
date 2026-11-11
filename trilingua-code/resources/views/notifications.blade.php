@@ -43,37 +43,10 @@
     <div class="notif-list" id="notif-list-page">
         @foreach ($notifications as $notification)
             @php
-                $data     = $notification->data ?? [];
-                $kind     = class_basename($notification->type);
-                $isRead   = $notification->read_at !== null;
-                $title    = $data['title'] ?? 'Notification';
-
-                switch ($kind) {
-                    case 'TranslationFailed':
-                        $icon   = 'error';
-                        $sub    = $data['error'] ?? 'Translation failed';
-                        break;
-                    case 'PriorityRequestRaised':
-                        $icon   = 'priority';
-                        $sub    = ($data['submitter'] ?? 'A user') . ' requested priority review'
-                                  . ($data['source_language'] && $data['target_language']
-                                      ? ' (' . $data['source_language'] . ' → ' . $data['target_language'] . ')'
-                                      : '');
-                        break;
-                    case 'TranslationAwaitingReview':
-                        $icon   = 'awaiting';
-                        $sub    = ($data['submitter'] ?? 'A user') . ' submitted a translation for review'
-                                  . ($data['source_language'] && $data['target_language']
-                                      ? ' (' . $data['source_language'] . ' → ' . $data['target_language'] . ')'
-                                      : '');
-                        break;
-                    default:
-                        $icon   = 'success';
-                        $sub    = $data['source_language'] && $data['target_language']
-                                    ? $data['source_language'] . ' → ' . $data['target_language']
-                                    : 'Translation ready';
-                        break;
-                }
+                $isRead = $notification->read_at !== null;
+                $title = $notification->display_title;
+                $sub = $notification->description;
+                $icon = $notification->icon;
 
                 $time = $notification->created_at ? \Carbon\Carbon::parse($notification->created_at)->diffForHumans() : '';
             @endphp

@@ -13,6 +13,7 @@ This module contains NO translation logic and NO provider calls.
 
 import json
 import os
+import math
 
 # Structural metadata keys the reconstructor may need.
 _STRUCT_KEYS = (
@@ -20,7 +21,7 @@ _STRUCT_KEYS = (
     "slide", "shape_id", "para_idx", "table_index",
     "row", "col", "row_span", "col_span", "sheet",
     "alignment", "passthrough",
-    "style", "pdf_coordinates", "rendered_layout",
+    "style", "pdf_coordinates", "rendered_layout", "ocr", "ocr_reflow", "region_id", "visible", "image_region",
 )
 
 
@@ -99,10 +100,56 @@ def finalize_sidecar(entries, request, ext, ctx=None, extra=None):
         "layout_preflight": _layout_preflight_to_dict(ctx)
                             if ctx and ctx.block_layout else None,
         "blocks": entries,
+        "analysis": _analysis_snapshot(entries, ctx),
+        "quality_review": summarize_quality(entries, bool(ctx and ctx.mode and ctx.mode.ai_quality_review)),
     }
     if extra:
         sidecar.update(extra)
     return sidecar
+
+
+def summarize_quality(entries, enabled):
+    eligible = [b for b in entries if not b.get('passthrough') and b.get('source_text', '').strip()]
+    scored = sum(isinstance(b.get('quality_score'), (int, float)) and not isinstance(b.get('quality_score'), bool)
+                 and math.isfinite(b['quality_score']) and 0 <= b['quality_score'] <= 100 for b in eligible)
+    if not eligible:
+        status, reason = 'not_reviewed', 'no_eligible_blocks'
+    elif scored:
+        status, reason = ('scored' if scored == len(eligible) else 'partial'), None
+    else:
+        status, reason = ('unavailable', 'review_failed') if enabled else ('not_reviewed', 'review_disabled')
+    return {
+        'status': status, 'reason': reason,
+        'eligible_blocks': len(eligible), 'scored_blocks': scored,
+    }
+
+
+def _analysis_snapshot(entries, ctx):
+    profile = ctx.document_profile if ctx else None
+    status = profile.analysis_status if profile else ('unavailable' if ctx and ctx.mode and ctx.mode.document_analyzer else 'not_run')
+    analyzed = profile is not None and status == 'analyzed'
+    snapshot = {
+        'status': status,
+        'extracted_blocks': profile.total_blocks if profile else len(entries),
+        'extracted_words': profile.total_words if profile else sum(len(b.get('source_text', '').split()) for b in entries),
+        'summary': str(ctx.prepass_summary or '')[:1000] if ctx else '',
+        'domain': str(ctx.prepass_domain or '')[:80] if ctx else '',
+    }
+    if analyzed:
+        snapshot.update(
+            document_type=profile.document_type[:120], writing_style=profile.writing_style[:120],
+            language=profile.language[:80], confidence=profile.confidence,
+            analyzer_model=profile.analyzer_model[:120], analysis_time_ms=round(profile.analysis_time_ms, 1),
+            sections=[{'title': s.title[:300], 'level': s.level, 'start_block': s.start_block} for s in profile.sections[:50]],
+            structure=[{'element_type': s.element_type[:80], 'block_index': s.block_index} for s in profile.structure[:50]],
+            terminology=[t[:300] for t in profile.terminology[:50]],
+            abbreviations=[{'abbreviation': a.abbreviation[:80], 'full_form': a.full_form[:300]} for a in profile.abbreviations[:50]],
+            entities=[e[:300] for e in profile.entities[:50]],
+            repeated_phrases=[p[:300] for p in profile.repeated_phrases[:50]],
+        )
+    if ctx:
+        snapshot['translation_terms'] = [{'source': str(s)[:300], 'target': str(t)[:300]} for s, t in ctx.prepass_terms[:10]]
+    return snapshot
 
 
 # ---------------------------------------------------------------------------
@@ -225,8 +272,13 @@ def reconstruct_from_sidecar(sidecar, overrides, original_file, output_file,
 
     No extraction, analysis, prepass, or translation runs here.
     """
+    if sidecar.get('version', 2) not in (1, 2, 3):
+        raise ValueError('Unsupported sidecar version')
     fmt = (sidecar.get("format") or "").lower()
     blocks = sidecar.get("blocks", [])
+    if sidecar.get('version') == 3:
+        from document.render_plan import validate_plan
+        validate_plan(sidecar.get('render_plan') or {}, original_file, blocks)
     layout_plan = layout_from_dict(sidecar.get("layout_plan"))
 
     # In-place formats reproduce the template from the ORIGINAL file by replaying
@@ -242,6 +294,58 @@ def reconstruct_from_sidecar(sidecar, overrides, original_file, output_file,
 
     # Blocks-based reconstruction (PDF, TXT, MD, RTF->DOCX, ODT->DOCX, CSV).
     edited_blocks = apply_overrides(blocks, overrides)
+
+    if sidecar.get('version') == 3:
+        from document.reconstructor import write_pdf_preserved
+        from document.image_reconstructor import fit_text
+        from document.render_plan import check_bounds, sign_plan
+        import tempfile
+        import copy
+        plan = sidecar.get('render_plan') or {}
+        held = {r.get('region_id') for r in plan['regions'] if r['status'] == 'held'}
+        if any(b.get('region_id') in held and b.get('text') != b.get('source_text') for b in edited_blocks):
+            raise ValueError('Held regions cannot be published as translated')
+        by_id = {b.get('region_id'):b for b in edited_blocks}
+        actions = copy.deepcopy(plan.get('image_actions', []))
+        for action in actions:
+            if action['region_id'] in held or action['region_id'] not in by_id:
+                raise ValueError('Pixel action has no eligible translated block')
+            fit = action['fit']
+            action['fit'] = fit_text(by_id[action['region_id']]['text'], fit['bbox'], fit['font_id'],
+                                     fit['initial_size'], fit['alignment'])
+        # Held source text must still reserve space and remain protected from redaction.
+        native = [dict(b, passthrough=True) if b.get('region_id') in held else b
+                  for b in edited_blocks if not b.get('image_region')]
+        handle, temporary = tempfile.mkstemp(suffix='.pdf', dir=os.path.dirname(os.path.abspath(output_file)))
+        os.close(handle)
+        try:
+            from document.pdf_source import original_pdf
+            with original_pdf(original_file) as template:
+                if native or actions:
+                    validation = write_pdf_preserved(native, template, temporary, strict=True, image_actions=actions)
+                    if validation.get('held'):
+                        raise ValueError('Edited text does not fit; published file retained')
+                else:
+                    import shutil
+                    shutil.copyfile(template, temporary)
+            next_plan = dict(plan, image_actions=actions, regions=copy.deepcopy(plan['regions']))
+            from document.pdf_regions import completed_status
+            for region in next_plan['regions']:
+                if region['status'] in {'translated', 'passthrough'} and region['region_id'] in by_id:
+                    region['status'] = completed_status(by_id[region['region_id']])
+            next_plan['native_fit_decisions'] = {b['region_id']:b.get('rendered_layout', {}) for b in native if b.get('region_id')}
+            next_plan = sign_plan(next_plan, edited_blocks)
+            from document.pdf_regions import content_summary
+            updated = dict(sidecar, blocks=edited_blocks, render_plan=next_plan,
+                           content_summary=content_summary(next_plan['regions'],next_plan.get('ocr_mode','strict')))
+            check_bounds(next_plan)
+            if len(json.dumps(updated,ensure_ascii=False).encode('utf-8')) > 24_000_000:
+                raise ValueError('Regenerated sidecar exceeds bounded payload')
+            os.replace(temporary, output_file)
+            sidecar.update(updated)
+        finally:
+            if os.path.exists(temporary): os.unlink(temporary)
+        return output_file
 
     if fmt == ".csv":
         _reconstruct_csv(edited_blocks, sidecar, output_file)

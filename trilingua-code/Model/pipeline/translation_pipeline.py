@@ -555,10 +555,11 @@ class TranslationPipeline:
 
         response = checked_call(self.provider.translate, context_hint)
         if not response.success and response.error_message.startswith(
-                ("Conversational response", "Missing protected content", "Empty translation")):
+                ("Conversational response", "Missing protected content", "Empty translation", "Incomplete translation")):
             hint = (f"{context_hint}\nPrevious output was invalid: {response.error_message}. "
                     "Return only the translated document text; preserve every URL, number, "
-                    "and placeholder exactly. Do not ask for input or add commentary.")
+                    "and placeholder exactly. Translate every clause and finish every instruction. "
+                    "Do not ask for input or add commentary.")
             with llm_call_profile(ctx) if ctx else _nullcontext():
                 response = checked_call(self.provider.translate, hint)
             if not response.success:
@@ -959,7 +960,7 @@ class TranslationPipeline:
         for i, block in enumerate(blocks):
             text = block.get("text", "")
             should_skip, reason = _is_passthrough_block(text)
-            if should_skip:
+            if should_skip or block.get('passthrough'):
                 passthrough_indices.add(i)
                 if ctx:
                     ctx.blocks_passthrough += 1
@@ -1227,7 +1228,7 @@ class TranslationPipeline:
                 for idx, source_text, rev_text in review_entries:
                     review = batch_reviews.get(idx)
                     if ctx and review is not None:
-                        ctx.record_block_quality(idx, review.score, review.issues)
+                        ctx.record_block_quality(idx, review.score, review.issues, rev_text)
                     if review and quality_reviewer.needs_retranslation(review):
                         context = ""
                         retry_block_type = blocks[idx].get("type", "paragraph")
@@ -1371,7 +1372,7 @@ class TranslationPipeline:
         passthrough_ids: set[int] = set()
         for unit in units:
             should_skip, _ = _is_passthrough_block(unit.source_text)
-            if should_skip or not unit.source_text.strip():
+            if should_skip or blocks[unit.source_block_id].get('passthrough') or not unit.source_text.strip():
                 passthrough_ids.add(unit.source_block_id)
                 if ctx:
                     ctx.blocks_passthrough += 1
@@ -1581,7 +1582,7 @@ class TranslationPipeline:
                         block_type=unit.role,
                     )
                 if ctx:
-                    ctx.record_block_quality(unit.source_block_id, review.score, review.issues)
+                    ctx.record_block_quality(unit.source_block_id, review.score, review.issues, text)
                 if review.retry_required:
                     retry_hint = "\n".join(filter(None, [
                         unit.context_hint or unit.previous_context or "",
@@ -1987,7 +1988,7 @@ class TranslationPipeline:
                     "the valid initial translation was retained."
                 )
             if ctx and review is not None:
-                ctx.record_block_quality(block_index, review.score, review.issues)
+                ctx.record_block_quality(block_index, review.score, review.issues, translated)
             if quality_reviewer.needs_retranslation(review):
                 with llm_call_profile(ctx) if ctx else _nullcontext():
                     retry_response = self._translate_with_echo_guard(

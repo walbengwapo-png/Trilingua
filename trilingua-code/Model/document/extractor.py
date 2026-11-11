@@ -272,11 +272,20 @@ def _is_garbage_block(text, bbox, page_width, page_height):
     return False
 
 
-def _detect_block_alignment(bbox, page_width, page_height):
-    """Detect text alignment from bounding box position.
-
-    Returns 'left', 'center', 'right', or 'justify'.
-    """
+def _detect_block_alignment(bbox, page_width, page_height, lines=()):
+    """Prefer line-edge evidence over the position of a paragraph's union box."""
+    if len(lines) > 1:
+        left = [line['x0'] for line in lines]
+        right = [line['text_x1'] for line in lines]
+        centers = [(a+b)/2 for a,b in zip(left,right)]
+        tolerance = 2
+        aligned = lambda edges: max(edges)-min(edges) <= tolerance
+        if aligned(left):
+            if (len(lines) > 2 and aligned(right[:-1]) and right[-1] < min(right[:-1])-tolerance):
+                return 'justify'
+            return 'left'
+        if aligned(right):return 'right'
+        if aligned(centers):return 'center'
     x0, y0, x1, y1 = bbox
     block_width = x1 - x0
     left_margin = x0
@@ -388,7 +397,7 @@ def read_pdf(file_path, column_mode="auto"):
     Read text blocks from a PDF with column detection.
     Uses TWO extraction methods and merges them for completeness.
     """
-    import fitz
+    import pymupdf as fitz
     blocks = []
     doc = fitz.open(file_path)
 
@@ -413,6 +422,20 @@ def read_pdf(file_path, column_mode="auto"):
         body_size = median(font_sizes) if font_sizes else 11
 
         page_links = _collect_page_links(page)
+        table_cells = []
+        for table_index, table in enumerate(page.find_tables().tables):
+            cell_texts = table.extract()
+            for row, table_row in enumerate(table.rows):
+                for col, cell in enumerate(table_row.cells):
+                    if cell is not None:
+                        table_cells.append((fitz.Rect(cell), table_index, row, col,
+                                            table.header.names[col] if col < len(table.header.names) else '',
+                                            cell_texts[row][col]))
+
+        def table_cell_for(bbox):
+            rect = fitz.Rect(bbox)
+            center = (rect.tl + rect.br) / 2
+            return next((cell for cell in table_cells if cell[0].contains(center)), None)
 
         raw_blocks_dict = []
         for rb in page_dict.get("blocks", []):
@@ -425,19 +448,46 @@ def read_pdf(file_path, column_mode="auto"):
             # Some PDF lines contain adjacent headings with different sizes.
             # Split those spans before assigning one role/style to the text.
             expanded_lines = []
+            pending_icon = False
             for line in lines:
                 segments = []
-                for span in line.get("spans", []):
+                icon_prefix = False
+                for span_index, span in enumerate(line.get("spans", [])):
+                    text = span.get("text", "").strip()
+                    font = span.get("font", "")
+                    if not text and not segments:
+                        continue
+                    # Keep native icons and list markers in the source, outside translated prose.
+                    if ((text and all(0xe000 <= ord(ch) <= 0xf8ff for ch in text)
+                         and any(name in font.lower() for name in ("wingdings", "webdings")))
+                            or (text and set(text) <= {'•', '▪', '●', '\ufffd'}
+                                and not any(ch.isalnum() for earlier in line.get('spans', [])[:span_index]
+                                            for ch in earlier.get('text', '')))):
+                        icon_prefix = True
+                        raw_blocks_dict.append({
+                            "type": "icon", "text": text, "position": list(span["bbox"]),
+                            "page": page_num, "pdf_coordinates": "display", "passthrough": True,
+                            "style": {"font_original": font, "font_size": span.get("size", 11)},
+                            "lines": [{"text": text, "bbox": list(span["bbox"]),
+                                       "font_original": font, "size": span.get("size", 11)}],
+                        })
+                        continue
                     previous = segments[-1][-1] if segments else None
-                    if not segments or (previous and abs(span.get("size", 11) - previous.get("size", 11))
-                                        > max(1, previous.get("size", 11) * .2)):
+                    if (not segments or (previous and table_cell_for(span['bbox']) != table_cell_for(previous['bbox']))
+                            or (previous and abs(span.get("size", 11) - previous.get("size", 11))
+                                > max(1, previous.get("size", 11) * .2))):
                         segments.append([])
                     segments[-1].append(span)
+                if not segments:
+                    pending_icon = pending_icon or icon_prefix
+                    continue
+                icon_prefix = icon_prefix or pending_icon
+                pending_icon = False
                 for segment in segments:
                     rect = fitz.Rect(segment[0]["bbox"])
                     for span in segment[1:]:
                         rect |= fitz.Rect(span["bbox"])
-                    expanded_lines.append(dict(line, spans=segment, bbox=list(rect)))
+                    expanded_lines.append(dict(line, spans=segment, bbox=list(rect), icon_prefix=icon_prefix))
             lines = expanded_lines
             parts = []
             line_records = []
@@ -502,7 +552,7 @@ def read_pdf(file_path, column_mode="auto"):
                         "italic": sp_italic,
                     })
                 if lt.strip():
-                    lt = lt.translate({0xf07d: "•", 0xe601: "•"})
+                    lt = lt.translate({0xf07d: "•", 0xe601: "•", 0x07: None})
                     parts.append(lt.strip())
                     line_bbox = [float(v) for v in line.get("bbox", [0, 0, 0, 0])]
                     if baseline is None:
@@ -520,6 +570,8 @@ def read_pdf(file_path, column_mode="auto"):
                             "italic": line_italic,
                         }]
                     line_records.append({
+                        "_icon_prefix": line.get("icon_prefix", False),
+                        "_table_cell": table_cell_for(line_bbox),
                         "text": lt.strip(),
                         "direction": list(line.get("dir", (1, 0))),
                         "bbox": line_bbox,
@@ -549,19 +601,25 @@ def read_pdf(file_path, column_mode="auto"):
             # Keep headings and bullet starts separate from adjacent body text.
             groups = []
             for record in line_records:
+                icon_start = record.pop("_icon_prefix", False)
                 previous = groups[-1][-1] if groups else None
                 bullet_start = bool(re.match(r"^\s*(?:[•▪●–]|\d+[.)])\s+", record["text"]))
                 style_break = previous and (
-                    record["bold"] != previous["bold"] or
+                    all(run.get('bold') for run in record['runs']) !=
+                    all(run.get('bold') for run in previous['runs']) or
                     abs(record["size"] - previous["size"]) > max(1, previous["size"] * .2))
-                if not groups or bullet_start or style_break:
+                cell_break = previous and record['_table_cell'] != previous['_table_cell']
+                if not groups or bullet_start or style_break or icon_start or cell_break:
                     groups.append([])
                 groups[-1].append(record)
             for group in groups:
                 first = group[0]
+                cell = first.get('_table_cell')
                 group_bbox = fitz.Rect(group[0]["bbox"])
                 for record in group[1:]:
                     group_bbox |= fitz.Rect(record["bbox"])
+                for record in group:
+                    record.pop('_table_cell', None)
                 group_text = " ".join(record["text"] for record in group)
                 role = "paragraph"
                 if re.match(r"^\s*(?:[•▪●–]|\d+[.)])\s+", group_text):
@@ -578,7 +636,7 @@ def read_pdf(file_path, column_mode="auto"):
                 "position": list(group_bbox),
                 "page":     page_num,
                 "pdf_coordinates": "display",
-                "alignment": _detect_block_alignment(group_bbox, pw, ph),
+                "alignment": _detect_block_alignment(group_bbox, pw, ph, group),
                 "style":    {"font_size": first["size"], "font": first["font"],
                              "font_original": first["font_original"],
                              "color": first["color"], "bold": first["bold"],
@@ -586,6 +644,41 @@ def read_pdf(file_path, column_mode="auto"):
                 "lines":    group,
                 "links":    [l for l in page_links if _links_hit(l, group_bbox)],
             })
+                if cell and ' '.join(group_text.split()) == ' '.join((cell[5] or '').split()):
+                    block = raw_blocks_dict[-1]
+                    # Fit inside the ruled cell, including whitespace above the source glyphs.
+                    block.update(type='table_cell', table_index=cell[1], row=cell[2], col=cell[3],
+                                 position=[group_bbox.x0, min(group_bbox.y0, cell[0].y0 + 1.5),
+                                           cell[0].x1 - 1.5, cell[0].y1 - 1.5])
+                    # shortcut: explicit English brand-name columns only; add reviewed header aliases when needed.
+                    if cell[2] > 0 and re.search(r'\bbrand\s+names?\b', cell[4] or '', re.I) and not re.search(r'[()]', group_text):
+                        block['passthrough'] = True
+
+        # Hanging list indents can split one instruction across native PDF blocks.
+        for block in list(raw_blocks_dict):
+            if block not in raw_blocks_dict or block.get('passthrough') or block['type'] == 'table_cell':
+                continue
+            if not re.match(r'^\s*(?:--|[•▪●–])\s+', block['text']):
+                continue
+            while not re.search(r'[.!?:]\s*$', block['text']):
+                size = block['style']['font_size']
+                last = block['lines'][-1]
+                candidates = [b for b in raw_blocks_dict if b is not block
+                              and not b.get('passthrough') and b['type'] == 'paragraph'
+                              and not re.match(r'^\s*(?:--|[•▪●–]|\d+[.)])\s+', b['text'])
+                              and -size * .3 <= b['position'][1] - last['bbox'][3] <= size * .5
+                              and size * .7 <= b['lines'][0]['baseline'] - last['baseline'] <= size * 1.6
+                              and abs(b['position'][0] - (block['position'][0] + size)) <= 2
+                              and abs(b['style']['font_size'] - size) < .5
+                              and b['style'].get('color') == block['style'].get('color')]
+                if len(candidates) != 1:
+                    break
+                continuation = candidates[0]
+                block['text'] += ' ' + continuation['text']
+                block['position'] = list(fitz.Rect(block['position']) | fitz.Rect(continuation['position']))
+                block['lines'].extend(continuation['lines'])
+                block['links'].extend(continuation.get('links', []))
+                raw_blocks_dict.remove(continuation)
 
         # ── Method 2: blocks mode (catches text dict mode misses) ────────────
         raw_blocks_blocks = []
@@ -626,6 +719,8 @@ def read_pdf(file_path, column_mode="auto"):
             return smaller > 0.0 and inter > 0.30 * smaller
 
         dict_rects = [_rect(b["position"]) for b in raw_blocks_dict]
+        dict_text_keys = {(b["text"][:40].strip().lower(), round(b["position"][1], 0))
+                          for b in raw_blocks_dict}
 
         merged = list(raw_blocks_dict)
         for b in raw_blocks_blocks:

@@ -34,7 +34,8 @@ class TranslateDocumentJobPythonIdTest extends TestCase
             'original/source.txt', translationJobId: $state->id, presetUuid: $state->uuid);
         $ids = [];
         $manager = Mockery::mock(TranslationManager::class);
-        $manager->shouldReceive('translateDocument')->twice()->andReturnUsing(function ($file, $source, $target, $columns, $mode, $id) use (&$ids) {
+        $manager->shouldReceive('translateDocument')->twice()->andReturnUsing(function ($file, $source, $target, $columns, $mode, $ocrMode, $id) use (&$ids) {
+            $this->assertSame('strict', $ocrMode);
             $ids[] = $id;
             throw new TranslationException(count($ids) === 1 ? 'Could not connect' : 'Provider stopped', count($ids) === 1 ? 503 : 429);
         });

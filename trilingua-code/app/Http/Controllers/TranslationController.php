@@ -92,6 +92,7 @@ class TranslationController extends Controller
             'document' => ['nullable', 'file', 'extensions:'.implode(',', config('translation.supported_formats', [])), 'max:'.(int) config('translation.max_upload_kb', 51200)],
             'pdf_column_mode' => ['nullable', Rule::in(config('translation.pdf_column_modes', []))],
             'mode' => ['nullable', Rule::in(config('translation.modes', []))],
+            'ocr_mode' => ['nullable', Rule::in(['strict', 'preview'])],
         ], [
             'target_lang.not_in' => 'The source language and target language must be different.',
         ]);
@@ -143,6 +144,8 @@ class TranslationController extends Controller
                     'created_at' => now()->toIso8601String(),
                     'status' => 'completed',
                     'review_status' => ReviewStatus::PENDING,
+                    'quality_score' => $result->qualityScore,
+                    'sidecar' => ['quality_review' => $result->qualityReview],
                 ]);
 
             } catch (\Throwable $e) {
@@ -260,6 +263,10 @@ class TranslationController extends Controller
         $originalExt = '.'.strtolower((string) pathinfo($originalName, PATHINFO_EXTENSION));
         $fileSize = (int) $uploadedFile->getSize();
         $mode = $validated['mode'] ?? 'balanced';
+        $ocrMode = $validated['ocr_mode'] ?? 'strict';
+        if ($ocrMode === 'preview' && ! in_array($originalExt, ['.pdf', '.png', '.jpg', '.jpeg'], true)) {
+            return response()->json(['error' => 'OCR preview is available only for PDFs and images.'], 422);
+        }
 
         // 1. Persist the uploaded file so the queue worker can read it later
         //    (PHP deletes the temp file when this request ends). The on-disk
@@ -304,9 +311,10 @@ class TranslationController extends Controller
             $mode,
             $pdfColumnMode,
             null,
+            $ocrMode,
         );
 
-        // 3a. Reuse an identical COMPLETED translation instead of doing the work again.
+        // 3a. An explicitly untranslated result must remain retryable.
         $completed = TranslationJob::where('user_id', $userId)
             ->where('payload_hash', $payloadHash)
             ->where('status', TranslationJob::STATUS_COMPLETED)
@@ -314,10 +322,10 @@ class TranslationController extends Controller
             ->first();
 
         if ($completed !== null) {
-            FileCleanup::dir($persistDir);
             $payload = $this->buildCompletedPayload($completed);
 
-            if ($payload !== null) {
+            if ($payload !== null && ($payload['content_summary']['status'] ?? null) !== 'untranslated') {
+                FileCleanup::dir($persistDir);
                 $payload['reused'] = true;
 
                 return response()->json($payload);
@@ -429,6 +437,7 @@ class TranslationController extends Controller
                 null,
                 $originalStorageBackend,
                 (int) $jobRow->id,
+                ocrMode: $ocrMode,
             );
             $jobId = $job->uuid();
 
@@ -668,6 +677,20 @@ class TranslationController extends Controller
                 ]);
             }
 
+            // The durable row is still active, but a terminal failure cache entry
+            // from THIS attempt means the terminal write was lost. Do not keep
+            // polling forever; an entry from an older attempt is ignored.
+            $cachedFailure = $this->terminalFailureForAttempt($jobId, $job, $userId);
+            if ($cachedFailure !== null) {
+                return response()->json([
+                    'status' => 'failed',
+                    'error' => ($cachedFailure['error'] ?? '') ?: ($job->error
+                        ?: 'Translation failed. Please try again.'),
+                    'recoverable' => $job->recoverable
+                        ?? (filled($job->original_storage_path) && filled($job->original_storage_backend)),
+                ]);
+            }
+
             // created / queued / processing
             return response()->json([
                 'status' => 'processing',
@@ -712,6 +735,32 @@ class TranslationController extends Controller
         return response()->json([
             'error' => 'Translation job not found or you do not have access to it.',
         ], 404);
+    }
+
+    /**
+     * Return a terminal failure cache entry only when it belongs to the same
+     * owner and the same durable attempt. This lets a lost terminal DB write
+     * stop polling without letting an older attempt poison a newer retry.
+     */
+    private function terminalFailureForAttempt(string $jobId, TranslationJob $job, int $userId): ?array
+    {
+        // Queued recoveries retain the previous attempt number until they start.
+        if ($job->status !== TranslationJob::STATUS_PROCESSING) {
+            return null;
+        }
+
+        $result = Cache::get('translation_job_'.$jobId);
+
+        if (!is_array($result)
+            || ($result['status'] ?? null) !== 'failed'
+            || !isset($result['user_id'])
+            || (int) $result['user_id'] !== $userId
+            || !isset($result['attempt'])
+            || (int) $result['attempt'] !== (int) $job->attempts) {
+            return null;
+        }
+
+        return $result;
     }
 
     private function findActiveJob(int $userId, string $payloadHash): ?TranslationJob
@@ -781,6 +830,15 @@ class TranslationController extends Controller
 
         if ($ext === 'pdf') {
             return str_starts_with($head, '%PDF-');
+        }
+
+        if (in_array($ext, ['png', 'jpg', 'jpeg'], true)) {
+            $image = @getimagesize($path);
+            $type = $ext === 'png' ? IMAGETYPE_PNG : IMAGETYPE_JPEG;
+
+            return $image !== false && $image[2] === $type
+                && min($image[0], $image[1]) >= 200
+                && $image[0] * $image[1] <= 40000000;
         }
 
         // text-like formats must not contain NUL bytes (executable/binary check)

@@ -204,12 +204,13 @@ def test_production_dependency_fails_closed_even_if_config_is_lost(server_module
 def test_every_mutating_endpoint_is_actually_protected(server_module, clean_token_env):
     """Guards against a future route being added without the dependency.
 
-    /health is intentionally excluded: it stays open for monitoring.
+    /live and /health are intentionally excluded: they stay open for monitoring.
     """
     clean_token_env  # noqa: B018
 
     guard = server_module.require_service_token
     expected = {
+        ("GET", "/ocr/readiness"),
         ("POST", "/translate/text"),
         ("POST", "/translate/document"),
         ("POST", "/translate/document/regenerate"),
@@ -232,3 +233,74 @@ def test_every_mutating_endpoint_is_actually_protected(server_module, clean_toke
                 protected.add((method, path))
 
     assert protected == expected
+
+
+def test_ocr_readiness_does_not_call_translation_providers(server_module, monkeypatch):
+    import document.ocr_extractor as ocr
+    monkeypatch.setattr(ocr, 'readiness', lambda: {'ready': True, 'installed_packs': ['eng', 'fil', 'ceb'], 'version': 'fixture'})
+    def hold(*args):
+        raise ocr.OCRUnavailable('Acceptance is on hold')
+    monkeypatch.setattr(ocr, 'require_ready', hold)
+    result = server_module.ocr_readiness()
+    assert result['ready'] and len(result['categories']) == 9
+    assert set(result['categories'].values()) == {'Acceptance is on hold'}
+
+
+def test_liveness_probe_never_calls_providers(server_module, monkeypatch):
+    """Launchers poll /live, so it must answer without cloud round-trips.
+
+    /health deliberately probes Ollama and Gemini, which costs seconds; a
+    readiness loop with a short timeout would never see that succeed.
+    """
+    def forbidden():
+        raise AssertionError('Liveness must not probe providers')
+    monkeypatch.setattr(server_module._pipeline_provider, 'health', forbidden)
+    monkeypatch.setattr(server_module._analysis_provider, 'health', forbidden)
+    assert server_module.live() == {'status': 'ok'}
+
+
+def test_unvalidated_image_api_failure_is_422_and_cleans_upload(server_module, tmp_path, monkeypatch):
+    import io
+    from fastapi import UploadFile
+    from document.ocr_extractor import OCRUnavailable
+    folder = tmp_path / 'private-upload'
+    folder.mkdir()
+    monkeypatch.setattr(server_module.tempfile, 'mkdtemp', lambda: str(folder))
+    def reject(request):
+        raise OCRUnavailable('English / photo is on hold')
+    monkeypatch.setattr(server_module._document_pipeline, 'translate', reject)
+    with pytest.raises(HTTPException) as failure:
+        server_module.translate_document(UploadFile(filename='worksheet.png', file=io.BytesIO(b'fixture')),
+                                         'English', 'Cebuano', 'auto', 'fast', 'strict')
+    assert failure.value.status_code == 422
+    assert not folder.exists()
+
+
+def test_image_regeneration_returns_pdf_without_recognition_or_translation(server_module, monkeypatch):
+    import io
+    import json
+    from fastapi import UploadFile
+    import document.ocr_extractor as ocr
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Regeneration must not recognize or translate')
+    monkeypatch.setattr(ocr, 'recognize_image', forbidden)
+    monkeypatch.setattr(server_module._document_pipeline, 'translate', forbidden)
+    sidecar = {'format': '.png', 'blocks': [{'block_index': 0, 'page': 0,
+               'text': 'Stored translated words.', 'ocr_reflow': True}]}
+    response = server_module.translate_document_regenerate(
+        UploadFile(filename='worksheet.png', file=io.BytesIO(b'original')),
+        json.dumps(sidecar), '', '{"0":"Edited stored words."}', 'English', 'Cebuano', 'auto')
+    assert response.media_type == 'application/pdf'
+    assert 'worksheet_regenerated.pdf' in response.headers['Content-Disposition']
+
+
+def test_regeneration_rejects_oversized_sidecar_before_json_or_pdf_work(server_module,tmp_path,monkeypatch):
+    import io
+    from fastapi import UploadFile
+    folder=tmp_path/'private-upload';folder.mkdir()
+    monkeypatch.setattr(server_module.tempfile,'mkdtemp',lambda:str(folder))
+    with pytest.raises(HTTPException) as failure:
+        server_module.translate_document_regenerate(
+            UploadFile(filename='original.pdf',file=io.BytesIO(b'diagnostic framing only')),
+            ' ' * 24_000_001, '', '{}', 'English', 'Cebuano', 'auto')
+    assert failure.value.status_code==413 and not folder.exists()

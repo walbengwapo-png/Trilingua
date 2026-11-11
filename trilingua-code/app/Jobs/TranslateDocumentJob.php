@@ -54,6 +54,13 @@ class TranslateDocumentJob implements ShouldQueue
     private ?string $jobUuid = null;
 
     /**
+     * The durable job attempt this worker is executing. Cache entries are
+     * stamped with it so a late failure from an older attempt cannot override
+     * a newer retry while the row is still active.
+     */
+    private ?int $attemptGeneration = null;
+
+    /**
      * Create a new job instance.
      *
      * @param  int|null  $translationJobId  Primary key of the translation_jobs
@@ -75,6 +82,7 @@ class TranslateDocumentJob implements ShouldQueue
         public ?string $originalStorageBackend = 'supabase',
         public ?int $translationJobId = null,
         public ?string $presetUuid = null,
+        public string $ocrMode = 'strict',
     ) {
         $this->timeout = (int) config('timeouts.job', 1300);
     }
@@ -111,6 +119,7 @@ class TranslateDocumentJob implements ShouldQueue
         if ($job !== null && ! $job->markProcessing()) {
             return;
         }
+        $this->attemptGeneration = $job !== null ? (int) $job->attempts : null;
         $outputPath = null;
 
         $this->storeProgress(10, 'Document queued for translation. Processing will begin shortly.');
@@ -142,7 +151,7 @@ class TranslateDocumentJob implements ShouldQueue
             $this->storeProgress(15, 'Translating document...');
 
             // 1. Translate the document via TranslationManager
-            $arguments = [$uploadedFile, $this->sourceLang, $this->targetLang, $this->pdfColumnMode, $this->mode];
+            $arguments = [$uploadedFile, $this->sourceLang, $this->targetLang, $this->pdfColumnMode, $this->mode, $this->ocrMode ?? 'strict'];
             if (config('translation.python_service.document_jobs')) {
                 if ($job !== null && empty($job->engine_job_uuid)) {
                     TranslationJob::whereKey($job->getKey())->whereNull('engine_job_uuid')
@@ -362,8 +371,17 @@ class TranslateDocumentJob implements ShouldQueue
             }
 
             // Terminal failure. Only now is the row driven terminal, because no
-            // further attempt will be made.
-            $job?->markTerminallyFailed($e, $this->isRecoverable());
+            // further attempt will be made. A persistence failure must not hide
+            // the terminal result from the polling endpoint or failed_jobs.
+            try {
+                $job?->markTerminallyFailed($e, $this->isRecoverable());
+            } catch (\Throwable $persistenceError) {
+                Log::error('Job: terminal failure state could not be persisted', [
+                    'job_id' => $this->uuid(),
+                    'translation_job_id' => $this->translationJobId,
+                    'exception' => $persistenceError->getMessage(),
+                ]);
+            }
 
             // Terminal failure: surface it to the frontend AND to failed_jobs
             // so operators can inspect and replay. This is the fix for the
@@ -536,6 +554,9 @@ class TranslateDocumentJob implements ShouldQueue
     protected function storeResult(array $result): void
     {
         $result['user_id'] = $this->userId;
+        if ($this->attemptGeneration !== null) {
+            $result['attempt'] = $this->attemptGeneration;
+        }
         cache()->put(
             'translation_job_' . $this->uuid(),
             $result,
@@ -751,7 +772,9 @@ class TranslateDocumentJob implements ShouldQueue
     private function notifyFailed(string $filename, string $message): void
     {
         try {
-            User::find($this->userId)?->notify(new TranslationFailed($filename, $message));
+            User::find($this->userId)?->notify(new TranslationFailed(
+                $filename, $message, $this->translationJobId, $this->sourceLang, $this->targetLang,
+            ));
         } catch (\Throwable $e) {
             Log::warning('Job: Failed to send failure notification (non-fatal)', [
                 'exception' => $e->getMessage(),

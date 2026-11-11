@@ -6,6 +6,7 @@ use App\Jobs\TranslateDocumentJob;
 use App\Models\TranslationJob;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
@@ -69,6 +70,12 @@ class AdminJobRetryTest extends TestCase
         Queue::fake();
         $uuid = (string) Str::uuid();
         $failedJobId = $this->makeFailures($uuid, true);
+        Cache::put('translation_job_'.$uuid, [
+            'status' => 'failed',
+            'error' => 'old attempt',
+            'attempt' => 1,
+            'user_id' => 3,
+        ], 60);
 
         $response = $this->actingAs($this->makeAdmin())
             ->post(route('admin.jobs.retry', $failedJobId));
@@ -89,6 +96,7 @@ class AdminJobRetryTest extends TestCase
         $state = TranslationJob::where('uuid', $uuid)->first();
         $this->assertSame(TranslationJob::STATUS_QUEUED, $state->status);
         $this->assertNull($state->terminal_failed_at);
+        $this->assertNull(Cache::get('translation_job_'.$uuid), 'A replayed job must not inherit the old failure cache entry.');
     }
 
     public function test_unrecoverable_failed_job_is_not_replayed(): void

@@ -14,8 +14,8 @@ def load_engine_environment(env_path):
         if not separator or not (
             key.startswith((
                 "GEMINI_", "OLLAMA_", "GPTOSS_", "TRANSLATION_",
-                "ANALYSIS_", "QUALITY_",
-            )) or key in ("PYTHON_SERVICE_TOKEN", "APP_ENV")
+                "ANALYSIS_", "QUALITY_", "OCR_",
+            )) or key in ("PYTHON_SERVICE_TOKEN", "APP_ENV", "TESSDATA_PREFIX")
         ):
             continue
         value = value.strip()

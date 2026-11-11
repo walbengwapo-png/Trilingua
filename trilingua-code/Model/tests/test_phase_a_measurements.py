@@ -116,7 +116,7 @@ def test_document_format_paths_keep_phase_a_metadata(extension,tmp_path,document
     elif extension=='csv':
         source.write_text(text+'\n',encoding='utf8')
     else:
-        import fitz
+        import pymupdf as fitz
         with fitz.open() as document:
             document.new_page().insert_text((50,70),text)
             document.save(source)

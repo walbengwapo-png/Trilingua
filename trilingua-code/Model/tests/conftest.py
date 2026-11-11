@@ -19,6 +19,15 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 import io
 
 
+@pytest.fixture(autouse=True)
+def ephemeral_plan_key(tmp_path, monkeypatch):
+    """Isolated operational plan key; never an acceptance key or live configuration."""
+    from document.artifact_auth import generate_key
+    path = tmp_path/'plan-key.json'
+    generate_key(path, 'render-plan')
+    monkeypatch.setenv('OCR_PLAN_KEY_FILE', str(path))
+
+
 FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 
 
@@ -34,7 +43,7 @@ def _generate_pdf_fixture(filepath: str, text_blocks: list[str],
     If *accented* is ``True``, the blocks will include Latin-1 accented chars
     (ñ, á, é, í, ó, ú, ü) that subsetted embedded fonts typically lack.
     """
-    import fitz
+    import pymupdf as fitz
     if fonts is None:
         fonts = [("helv", "Helvetica")]
 

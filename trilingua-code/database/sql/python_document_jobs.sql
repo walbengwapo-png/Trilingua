@@ -2,7 +2,7 @@ ALTER TABLE public.python_document_jobs ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.python_document_jobs FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.python_document_jobs TO service_role;
 
-CREATE FUNCTION public.claim_python_document_job()
+CREATE OR REPLACE FUNCTION public.claim_python_document_job()
 RETURNS SETOF public.python_document_jobs
 LANGUAGE plpgsql SECURITY INVOKER SET search_path = '' AS $$
 BEGIN
@@ -32,7 +32,7 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION public.renew_python_document_job(job_id uuid, lease_id uuid)
+CREATE OR REPLACE FUNCTION public.renew_python_document_job(job_id uuid, lease_id uuid)
 RETURNS boolean LANGUAGE sql SECURITY INVOKER SET search_path = '' AS $$
     WITH renewed AS (
         UPDATE public.python_document_jobs j
@@ -43,7 +43,7 @@ RETURNS boolean LANGUAGE sql SECURITY INVOKER SET search_path = '' AS $$
     ) SELECT EXISTS(SELECT 1 FROM renewed);
 $$;
 
-CREATE FUNCTION public.finish_python_document_job(job_id uuid, lease_id uuid,
+CREATE OR REPLACE FUNCTION public.finish_python_document_job(job_id uuid, lease_id uuid,
     result_path text DEFAULT NULL, error text DEFAULT NULL, error_status integer DEFAULT NULL)
 RETURNS boolean LANGUAGE sql SECURITY INVOKER SET search_path = '' AS $$
     WITH finished AS (

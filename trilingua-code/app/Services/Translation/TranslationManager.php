@@ -66,6 +66,17 @@ class TranslationManager
             : $http;
     }
 
+    private function pythonErrorMessage(\Illuminate\Http\Client\Response $response): string
+    {
+        $fallback = "Python service returned status {$response->status()}";
+        $detail = $response->json('detail') ?? $response->json('error') ?? $fallback;
+        if (is_array($detail) && is_string($detail['message'] ?? null)) {
+            return $detail['message'];
+        }
+
+        return is_string($detail) ? $detail : (json_encode($detail, JSON_UNESCAPED_UNICODE) ?: $fallback);
+    }
+
     /**
      * Translate a text string via the Python AI Engine.
      *
@@ -80,9 +91,7 @@ class TranslationManager
                 ->post("{$this->pythonUrl}/translate/text", $request->toArray());
 
             if ($response->failed()) {
-                $errorMessage = $response->json('detail') 
-                    ?? $response->json('error') 
-                    ?? "Python service returned status {$response->status()}";
+                $errorMessage = $this->pythonErrorMessage($response);
                 
                 Log::error('TranslationManager: Python text translation failed', [
                     'status' => $response->status(),
@@ -140,6 +149,7 @@ class TranslationManager
         string $targetLang,
         string $pdfColumnMode = 'auto',
         string $mode = 'balanced',
+        string $ocrMode = 'strict',
         ?string $engineJobId = null,
         ?callable $heartbeat = null,
     ): array {
@@ -162,17 +172,17 @@ class TranslationManager
                     'target_lang' => $targetLang,
                     'pdf_column_mode' => $pdfColumnMode,
                     'mode' => $mode,
+                    'ocr_mode' => $ocrMode,
                     ...($async ? ['job_id' => $engineJobId] : []),
                 ]);
 
             if ($response->failed()) {
-                $errorMessage = $response->json('detail') 
-                    ?? $response->json('error') 
-                    ?? "Python service returned status {$response->status()}";
+                $errorMessage = $this->pythonErrorMessage($response);
 
                 Log::error('TranslationManager: Python document translation failed', [
                     'status' => $response->status(),
                     'error' => $errorMessage,
+                    'detail' => $response->json('detail'),
                     'source_lang' => $sourceLang,
                     'target_lang' => $targetLang,
                 ]);
@@ -216,6 +226,7 @@ class TranslationManager
                 'body' => $body,
                 'blocks' => $data['blocks'] ?? [],
                 'sidecar' => $data['sidecar'] ?? null,
+                'content_summary' => $data['content_summary'] ?? $data['sidecar']['content_summary'] ?? null,
                 'metrics' => $data['metrics'] ?? [],
                 'download_filename' => $downloadFilename,
                 'mime_type' => $data['mime_type'] ?? 'application/octet-stream',
@@ -331,13 +342,12 @@ class TranslationManager
             ]);
 
             if ($response->failed()) {
-                $errorMessage = $response->json('detail') 
-                    ?? $response->json('error') 
-                    ?? "Python service returned status {$response->status()}";
+                $errorMessage = $this->pythonErrorMessage($response);
 
                 Log::error('TranslationManager: Python document regeneration failed', [
                     'status' => $response->status(),
                     'error' => $errorMessage,
+                    'detail' => $response->json('detail'),
                     'source_lang' => $sourceLang,
                     'target_lang' => $targetLang,
                 ]);
@@ -347,6 +357,17 @@ class TranslationManager
 
             $body = $response->body();
             $elapsedMs = (microtime(true) - $startTime) * 1000;
+            $updatedSidecar = $sidecar;
+            $outputMime = $response->header('Content-Type', 'application/octet-stream');
+            if (($sidecar['version'] ?? null) === 3) {
+                $envelope = $response->json();
+                $body = base64_decode($envelope['file_base64'] ?? '', true);
+                if (!is_array($envelope['sidecar'] ?? null)) {
+                    throw new TranslationException('Regeneration did not return a persisted render plan.');
+                }
+                $updatedSidecar = $envelope['sidecar'];
+                $outputMime = $envelope['mime_type'] ?? 'application/pdf';
+            }
 
             if ($body === '' || $body === false) {
                 throw new TranslationException(
@@ -361,16 +382,19 @@ class TranslationManager
                 'execution_time_ms' => $elapsedMs,
             ]);
 
-            // The regenerate endpoint streams the binary file back.
+            // Hybrid replies include the updated render plan; legacy replies remain binary.
             $ext = strtolower('.' . pathinfo($originalName, PATHINFO_EXTENSION));
             $outExt = config('translation.extension_map.' . ltrim($ext, '.'), $ext);
             $stem = pathinfo($originalName, PATHINFO_FILENAME);
-            $downloadFilename = $stem . '_regenerated.' . $outExt;
+            $contentStatus = $sidecar['content_summary']['status'] ?? 'complete';
+            $suffix = in_array($contentStatus, ['partial', 'untranslated'], true) ? '_regenerated_' . $contentStatus : '_regenerated';
+            $downloadFilename = $stem . $suffix . '.' . $outExt;
 
             return [
                 'body' => $body,
                 'download_filename' => $downloadFilename,
-                'mime_type' => $response->header('Content-Type', 'application/octet-stream'),
+                'mime_type' => $outputMime,
+                'sidecar' => $updatedSidecar,
             ];
 
         } catch (\Illuminate\Http\Client\ConnectionException $e) {

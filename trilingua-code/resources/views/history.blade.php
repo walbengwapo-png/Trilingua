@@ -66,69 +66,73 @@
     {{-- Page header --}}
     <div class="history-page-header">
         <div class="history-page-header__title">
-            <h2>Saved Translations <span class="count-badge">{{ count($records) }}</span></h2>
+            <h2>Saved Translations <span class="count-badge">{{ $records->total() }}</span></h2>
         </div>
-        <div class="history-page-header__controls">
+        <form id="history-filters" class="history-page-header__controls" action="{{ route('history') }}" method="get">
             <a href="{{ route('bookmarks') }}" class="history-select history-bookmarks-btn" title="View bookmarked translations">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
                 Bookmarks
             </a>
-            <input type="search" id="history-search" class="history-search" placeholder="Search translations…" aria-label="Search translations">
-            <select id="history-group" class="history-select" aria-label="Group by">
-                <option value="language">Group by Language Pair</option>
-                <option value="none">No Grouping</option>
+            <input type="search" id="history-search" name="q" value="{{ $filters['q'] }}" maxlength="200" class="history-search" placeholder="Search translations…" aria-label="Search translations">
+            <select id="history-type" name="type" class="history-select" aria-label="Filter by translation type">
+                <option value="">All translations</option>
+                <option value="document" @selected($filters['type'] === 'document')>Documents only</option>
+                <option value="text" @selected($filters['type'] === 'text')>Text only</option>
             </select>
-            <select id="history-status" class="history-select" aria-label="Filter by status">
-                <option value="">All Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="verified">Verified</option>
-                <option value="edited">Edited</option>
-                <option value="flagged">Flagged</option>
+            <select id="history-group" name="group" class="history-select" aria-label="Group by">
+                <option value="none" @selected($filters['group'] === 'none')>No Grouping</option>
+                <option value="language" @selected($filters['group'] === 'language')>Group by Language Pair</option>
             </select>
-            <select id="history-sort" class="history-select" aria-label="Sort order">
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="lang-az">Language A–Z</option>
+            <select id="history-status" name="review" class="history-select" aria-label="Filter by review status">
+                <option value="">All review statuses</option>
+                <option value="pending" @selected($filters['review'] === 'pending')>Pending</option>
+                <option value="verified" @selected($filters['review'] === 'verified')>Verified</option>
+                <option value="edited" @selected($filters['review'] === 'edited')>Edited</option>
+                <option value="flagged" @selected($filters['review'] === 'flagged')>Flagged</option>
             </select>
-        </div>
+            <select id="history-sort" name="sort" class="history-select" aria-label="Sort order">
+                <option value="newest" @selected($filters['sort'] === 'newest')>Newest First</option>
+                <option value="oldest" @selected($filters['sort'] === 'oldest')>Oldest First</option>
+                <option value="lang-az" @selected($filters['sort'] === 'lang-az')>Language A–Z</option>
+            </select>
+            <button type="submit" class="history-select">Apply filters</button>
+            <a href="{{ route('history') }}" class="history-select">Clear filters</a>
+        </form>
     </div>
 
-    @if (empty($records))
-        <p class="empty-state">You have no translation history yet.</p>
+    @if ($records->isEmpty())
+        <p class="empty-state">No translations found. Try changing or clearing your filters.</p>
     @else
 
     @php
-        // Group records by language pair
         $grouped = [];
         foreach ($records as $r) {
-            $key = ($r['source_language'] ?? '?') . ' → ' . ($r['target_language'] ?? '?');
+            $key = $filters['group'] === 'language'
+                ? ($r['source_language'] ?? '?') . ' → ' . ($r['target_language'] ?? '?') : '';
             $grouped[$key][] = $r;
         }
     @endphp
 
+    @if ($filters['group'] === 'language')
+        <p class="translation-quality__note">Grouped by language. Dates are sorted within each language group.</p>
+    @endif
     {{-- Grouped card sections --}}
     <div id="history-content">
         @foreach ($grouped as $langPair => $groupRecords)
         <section class="history-group" data-lang-pair="{{ $langPair }}">
+            @if ($filters['group'] === 'language')
             <h3 class="history-group__title">
                 {{ $langPair }}
                 <span class="count-badge">{{ count($groupRecords) }}</span>
             </h3>
+            @endif
             <div class="history-cards">
                 @foreach ($groupRecords as $record)
                 @php
                     $isDoc    = ($record['translation_type'] ?? 'document') === 'document';
-                    $matchPct = $isDoc
-                        ? 100
-                        : min(100, (int)(
-                            mb_strlen($record['translated_text'] ?? '')
-                            / max(1, mb_strlen($record['source_text'] ?? ''))
-                            * 100
-                          ));
                     $preview  = $isDoc
                         ? ($record['original_filename'] ?? 'Document')
                         : \Illuminate\Support\Str::limit($record['source_text'] ?? '', 80);
-                    $dateStr  = \Carbon\Carbon::parse($record['created_at'])->utc()->format('Y-m-d H:i') . ' UTC';
                 @endphp
                 @php
                     $reviewStatus = $record['review_status'] ?? 'pending';
@@ -141,30 +145,26 @@
                      data-id="{{ $record['id'] }}">
 
                     <div class="history-card__header">
-                        <span class="match-badge">{{ $matchPct }}%</span>
                         <span class="type-badge type-badge--{{ $isDoc ? 'doc' : 'text' }}">
                             {{ $isDoc ? 'Document' : 'Text' }}
                         </span>
                         <span class="status-badge status-badge--{{ $reviewStatus }}">{{ ucfirst($reviewStatus) }}</span>
-                        @php
-                            $score = $record['quality_score'] ?? null;
-                            $scoreClass = $score === null ? '' : ($score >= 80 ? 'high' : ($score >= 50 ? 'medium' : 'low'));
-                        @endphp
-                            <span class="quality-score" title="Automated AI review signal (not human-verified)">
-                                <span class="quality-score__dot quality-score__dot--{{ $scoreClass }}" aria-hidden="true"></span>
-                                {{ $score === null ? 'Unavailable' : $score }}
-                            </span>
                     </div>
 
                     <div class="history-card__body">
                         <p class="history-card__preview" title="{{ $preview }}">{{ $preview }}</p>
                         @if ($isDoc)
                             <p class="history-card__sub">→ {{ $record['translated_filename'] ?? '' }}</p>
+                            <x-document-completeness :record="$record" />
                         @endif
                     </div>
 
+                    <div class="history-card__review">
+                        <span class="detail-modal__meta-label">Automated review</span>
+                        <x-translation-quality :record="$record" />
+                    </div>
                     <div class="history-card__footer">
-                        <span class="history-card__date">{{ $dateStr }}</span>
+                        <span class="history-card__date"><x-local-time :value="$record['created_at']" /></span>
                         <div class="history-card__actions">
                             {{-- View Details button (opens modal) --}}
                             <button class="history-card__action-btn view-details-btn"
@@ -456,98 +456,6 @@
             });
         });
     }
-
-    // ── Client-side search, group-by, status filter, and sort ──────────────
-    var searchInput  = document.getElementById('history-search');
-    var groupSelect  = document.getElementById('history-group');
-    var statusSelect = document.getElementById('history-status');
-    var sortSelect   = document.getElementById('history-sort');
-    var contentEl    = document.getElementById('history-content');
-
-    if (!contentEl) return; // no records — nothing to filter
-
-    // Collect all cards and groups for manipulation
-    function getAllCards() {
-        return Array.from(contentEl.querySelectorAll('.history-card'));
-    }
-
-    function getAllGroups() {
-        return Array.from(contentEl.querySelectorAll('.history-group'));
-    }
-
-    // Apply search filter: hide cards whose data-search doesn't match query
-    function applySearch(query) {
-        var q = query.trim().toLowerCase();
-        var s = (statusSelect ? statusSelect.value : '').toLowerCase();
-        getAllCards().forEach(function (card) {
-            var haystack = (card.getAttribute('data-search') || '').toLowerCase();
-            var status = (card.getAttribute('data-review-status') || 'pending').toLowerCase();
-            var visible = true;
-            if (q && haystack.indexOf(q) === -1) visible = false;
-            if (s && status !== s) visible = false;
-            card.style.display = visible ? '' : 'none';
-        });
-        // Hide groups that have no visible cards
-        getAllGroups().forEach(function (group) {
-            var visibleCards = group.querySelectorAll('.history-card:not([style*="display: none"])');
-            group.style.display = visibleCards.length > 0 ? '' : 'none';
-        });
-    }
-
-    // Apply group-by toggle: when "none", flatten all cards into a single pseudo-group
-    function applyGroupBy(mode) {
-        var groups = getAllGroups();
-        if (mode === 'none') {
-            // Show all group headings hidden, merge visually by hiding h3
-            groups.forEach(function (g) {
-                var heading = g.querySelector('.history-group__title');
-                if (heading) heading.style.display = 'none';
-            });
-        } else {
-            groups.forEach(function (g) {
-                var heading = g.querySelector('.history-group__title');
-                if (heading) heading.style.display = '';
-            });
-        }
-    }
-
-    // Apply sort: reorder cards within each group (or across all if no grouping)
-    function applySort(order) {
-        getAllGroups().forEach(function (group) {
-            var grid  = group.querySelector('.history-cards');
-            if (!grid) return;
-            var cards = Array.from(grid.querySelectorAll('.history-card'));
-
-            cards.sort(function (a, b) {
-                if (order === 'newest' || order === 'oldest') {
-                    var da = new Date(a.getAttribute('data-date') || 0);
-                    var db = new Date(b.getAttribute('data-date') || 0);
-                    return order === 'newest' ? db - da : da - db;
-                } else if (order === 'lang-az') {
-                    var la = (a.getAttribute('data-lang') || '').toLowerCase();
-                    var lb = (b.getAttribute('data-lang') || '').toLowerCase();
-                    return la < lb ? -1 : la > lb ? 1 : 0;
-                }
-                return 0;
-            });
-
-            cards.forEach(function (card) { grid.appendChild(card); });
-        });
-    }
-
-    function applyAll() {
-        applySearch(searchInput ? searchInput.value : '');
-        applyGroupBy(groupSelect ? groupSelect.value : 'language');
-        applySort(sortSelect ? sortSelect.value : 'newest');
-    }
-
-    if (searchInput) searchInput.addEventListener('input', applyAll);
-    if (groupSelect) groupSelect.addEventListener('change', applyAll);
-    if (statusSelect) statusSelect.addEventListener('change', applyAll);
-    if (sortSelect)  sortSelect.addEventListener('change', applyAll);
-
-    // Initial sort (newest first by default)
-    applyAll();
 
     // ── Auto-open detail page from ?open={id} (notification deep link) ──
     var openId = @json($openId ?? null);

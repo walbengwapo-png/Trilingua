@@ -83,8 +83,10 @@ def ollama_post(post, url, **kwargs):
                              model=kwargs.get('json', {}).get('model', ''),
                              purpose=kwargs.pop('purpose', 'translation'), **kwargs)
     reason = None
-    if response.status_code in (401, 403, 429):
+    if response.status_code in (401, 402, 403, 429):
         reason = f'Ollama request stopped: HTTP {response.status_code}; no retry or fallback permitted'
+    if response.status_code == 402:
+        reason = 'Ollama Cloud returned HTTP 402 Payment Required. Resolve the provider billing or usage allowance before retrying.'
     try:
         data = response.json()
         error = data.get('error', '') if isinstance(data, dict) else ''

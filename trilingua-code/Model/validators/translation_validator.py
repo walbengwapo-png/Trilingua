@@ -24,11 +24,12 @@ def validate_pdf_output(path, placements, source_pages, blocks=None):
 
     This is content coverage and geometry validation, not a linguistic score.
     """
-    import fitz
+    import pymupdf as fitz
 
     def normalized(text):
         text = unicodedata.normalize("NFKC", text)
         text = re.sub(r"[\u00ad\u2010\u2011]", "-", text)
+        text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]", "", text)
         return re.sub(r"[\s\u200b]+", "", text)
 
     issues, content_issues, layout_issues = [], [], []
@@ -50,8 +51,16 @@ def validate_pdf_output(path, placements, source_pages, blocks=None):
                 continue
             page = doc[page_number]
             rect = fitz.Rect(placement["rect"])
-            clip = rect + (-.5, -.5, .5, .5)
+            clip = rect + (-2, -2, 2, 2)
             text = page.get_text("text", clip=clip, sort=True)
+            if normalized(placement["text"]) not in normalized(text):
+                # Mixed-size lettering can be interleaved by geometric sorting.
+                text = page.get_text("text", clip=clip, sort=False)
+            if (placement['action'] == 'passthrough' and '\ufffd' in placement['text']
+                    and normalized(placement['text']) not in normalized(text)):
+                # Unmapped native glyphs must use the same decoding flags as extraction.
+                text = page.get_text('text', clip=clip, sort=False,
+                                     flags=fitz.TEXT_PRESERVE_WHITESPACE | fitz.TEXT_PRESERVE_LIGATURES)
             if normalized(placement["text"]) not in normalized(text):
                 content_issues.append(f"{prefix}: missing rendered text on page {page_number + 1}")
                 content_findings.append({"block_index": placement["block_index"],

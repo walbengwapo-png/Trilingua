@@ -27,19 +27,30 @@ class HistoryController extends Controller
     /**
      * GET /history — render the translation history page.
      *
-     * Fetches all history records for the current user and renders the
-     * history view. On database error, logs the exception and renders the
+     * Filters and sorts the current user's history before pagination.
+     * On database error, logs the exception and renders the
      * error view with an empty records array.
      */
     public function index(Request $request): View
     {
+        $filters = array_replace([
+            'q' => '', 'type' => '', 'review' => '', 'group' => 'none', 'sort' => 'newest',
+        ], $request->validate([
+            'q' => 'nullable|string|max:200',
+            'type' => 'nullable|in:document,text',
+            'review' => 'nullable|in:pending,verified,edited,flagged',
+            'group' => 'sometimes|in:none,language',
+            'sort' => 'sometimes|in:newest,oldest,lang-az',
+        ]));
+
         try {
-            $records = $this->history->getHistoryPaginated(Auth::id(), 50);
-            $records->withPath(route('history'));
+            $records = $this->history->getHistoryPaginated(Auth::id(), 50, $filters);
+            $records->withPath(route('history'))->appends($filters);
 
             return view('history', [
                 'records'    => $records,
                 'error'      => false,
+                'filters'    => $filters,
                 'openId'     => $request->integer('open') ?: null,
             ]);
         } catch (\Throwable $e) {

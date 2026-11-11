@@ -146,12 +146,14 @@ import { renderWorkbook } from './workbook-preview.js';
             if (unavailable) cls += ' draft-block--unavailable';
 
             html += '<div class="' + cls + '">' +
-                '<div class="draft-block__head">' +
+                (opts && opts.readerView ? '' : '<div class="draft-block__head">' +
                 '<span class="block-card__index">Block #' + escapeHtml(index) + '</span>' +
                 '<span class="block-card__type">' + escapeHtml(type || 'block') + '</span>' +
-                '</div>' +
+                '</div>') +
                 '<div class="draft-block__text">' + (unavailable
-                    ? '<span class="preview-unavailable">Published text preview unavailable.</span>'
+                    ? '<span class="preview-unavailable">' + (opts && opts.readerView
+                        ? 'This saved text cannot be previewed. Download the file to view it.'
+                        : 'Published text preview unavailable.') + '</span>'
                     : escapeHtml(text || '')) +
                 '</div>' +
                 '</div>';
@@ -285,7 +287,9 @@ import { renderWorkbook } from './workbook-preview.js';
                     '<a class="review-pane__download" href="' + escapeHtml(host.getAttribute('data-file-url') || '') +
                     '" target="_blank" rel="noopener noreferrer">Download file</a></div>';
 
-                host.innerHTML = sanitizePreviewHtml(note + renderBlocksHtml(blocks, { mode: mode }));
+                host.innerHTML = sanitizePreviewHtml(note + renderBlocksHtml(blocks, {
+                    mode: mode, readerView: host.hasAttribute('data-reader-view'),
+                }));
             })
             .catch(function () {
                 showConversionError(host, ext, err);

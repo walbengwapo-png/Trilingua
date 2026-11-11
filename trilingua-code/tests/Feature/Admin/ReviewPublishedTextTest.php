@@ -156,6 +156,24 @@ class ReviewPublishedTextTest extends TestCase
         $this->assertSame('Kumusta', $block->published_text);
     }
 
+    public function test_fit_held_candidate_is_preserved_without_claiming_it_was_published(): void
+    {
+        $record = $this->makeDocRecord($this->makeUser());
+        $record->blocks()->delete();
+
+        app(BlockService::class)->persistBlocks($record, [
+            ['block_index' => 0, 'source_text' => 'Original source',
+                'ai_translated_text' => 'Candidate translation', 'current_text' => 'Original source',
+                'passthrough' => true],
+        ]);
+
+        $block = $record->fresh()->blocks->first();
+        $this->assertSame('Candidate translation', $block->ai_translated_text);
+        $this->assertSame('Original source', $block->current_text);
+        $this->assertSame('Original source', $block->published_text);
+        $this->assertNull($block->quality_score);
+    }
+
     public function test_legacy_backfill_populates_only_unambiguous_rows(): void
     {
         // Ambiguous: has an edit audit row + moved revisions.

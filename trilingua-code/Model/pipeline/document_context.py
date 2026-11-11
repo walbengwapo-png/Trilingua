@@ -189,7 +189,7 @@ class DocumentContext:
         return {f: getattr(i, f, "") for f in fields}
 
     def record_block_quality(self, block_index: int, score: float | None,
-                             issues: list) -> None:
+                             issues: list, reviewed_text: str | None = None) -> None:
         """Record the AI quality review for a single block.
 
         Thread-safe — uses the same internal lock as record_llm_call.
@@ -206,6 +206,8 @@ class DocumentContext:
                 "score": round(float(score), 1) if score is not None else None,
                 "issues": [self._issue_to_dict(i) for i in (issues or [])],
             }
+            if reviewed_text is not None:
+                self.block_quality[block_index]['reviewed_text'] = reviewed_text
 
     @staticmethod
     def _safe_font_size(value) -> float | None:

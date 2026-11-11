@@ -115,7 +115,7 @@ class StorageCleanupService
                 $q->whereIn('status', TranslationJob::ACTIVE_STATUSES)
                     ->orWhere(function ($f) {
                         $f->where('status', TranslationJob::STATUS_FAILED)
-                            ->where('recoverable', true);
+                            ->whereRaw('recoverable = TRUE');
                     });
             })
             ->where(function ($q) use ($backend, $path) {

@@ -13,6 +13,7 @@ from typing import Any
 import requests
 
 from .base import AIAnalysisProvider
+from providers.request_budget import transport_timeout, retry_sleep
 
 
 GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
@@ -182,7 +183,7 @@ class GeminiAnalysisProvider(AIAnalysisProvider):
             try:
                 response = provider_post(requests.post,
                     url, provider=self.name, model=self._model, purpose="analysis", headers=headers, json=payload,
-                    timeout=(10, int(os.environ.get("GEMINI_ANALYSIS_TIMEOUT_SECONDS", "30"))),
+                    timeout=transport_timeout(10, int(os.environ.get("GEMINI_ANALYSIS_TIMEOUT_SECONDS", "30"))),
                 )
                 if response.status_code >= 400:
                     message = self._http_error(response)
@@ -194,7 +195,7 @@ class GeminiAnalysisProvider(AIAnalysisProvider):
                         raise GeminiAnalysisError(message, retry_after=delay if transient else 0)
                     print(f"  [GeminiAnalysis] {message}; retrying in {delay:g}s "
                           f"(attempt {attempt + 2}/{self._max_attempts})")
-                    _time.sleep(delay)
+                    retry_sleep(delay)
                     continue
 
                 content = (_interaction_text(response.json())
@@ -243,7 +244,7 @@ class GeminiAnalysisProvider(AIAnalysisProvider):
                     ) from error
                 print(f"  [GeminiAnalysis] {message}; retrying in {delay:g}s "
                       f"(attempt {attempt + 2}/{self._max_attempts})")
-                _time.sleep(delay)
+                retry_sleep(delay)
 
         raise GeminiAnalysisError("Gemini analysis failed without a response")
 

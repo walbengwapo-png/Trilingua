@@ -407,7 +407,7 @@ def test_pdf_accented_glyphs_preserved(pdf_fixture_accented_path):
         write_pdf_preserved(blocks, pdf_fixture_accented_path, out_path)
 
         # Read back and verify glyphs
-        import fitz
+        import pymupdf as fitz
         doc = fitz.open(out_path)
         text = doc[0].get_text("text")
         doc.close()
@@ -443,7 +443,7 @@ def test_pdf_font_fallback_for_accented_text():
     # Scenario 2: embedded font that genuinely has no accented chars
     # Create a mock ASCII-only font by passing a minimal buffer that
     # won't have the needed glyphs (deliberately small/corrupt marker)
-    import fitz
+    import pymupdf as fitz
     fake_font = fitz.Font("cour")  # Courier is a Base-14 font
     buf = fake_font.buffer
     embedded = {"MyFont": buf}
@@ -467,7 +467,7 @@ def test_pdf_no_accent_uses_original_font():
 
     mapper = FontMapper()
 
-    import fitz
+    import pymupdf as fitz
     f = fitz.Font("helv")
     buf = f.buffer
     embedded = {"MySubsetFont": buf}
@@ -490,7 +490,7 @@ def test_pdf_no_accent_uses_original_font():
 
 def _make_blank_pdf(path):
     """Write a blank single-page letter PDF to *path*."""
-    import fitz
+    import pymupdf as fitz
     doc = fitz.open()
     doc.new_page(width=612, height=792)
     doc.save(path)
@@ -522,7 +522,7 @@ def _overflow_block(text, line_box):
 
 def _page_text_lines(path):
     """Return ([(origin_y, text)], normalized word list) for page 0."""
-    import fitz
+    import pymupdf as fitz
     doc = fitz.open(path)
     d = doc[0].get_text("dict")
     lines = []
@@ -606,7 +606,7 @@ def test_overflow_continuation_rescues_free_row():
 def test_overflow_continuation_stops_at_occupied_row():
     """Blocked overflow moves to a new page without overwriting its neighbor."""
     from document.reconstructor import write_pdf_preserved
-    import fitz
+    import pymupdf as fitz
     import io
     import contextlib
 
@@ -662,7 +662,7 @@ def _mixed_format_pdf(path):
     """Write a letter PDF whose first line mixes a bold span, an italic span,
     and a regular span in one line — the exact case the old line-level
     OR-aggregation/last-span-wins collapsed to a single style."""
-    import fitz
+    import pymupdf as fitz
     doc = fitz.open()
     page = doc.new_page(width=612, height=792)
     html = ('<p style="font-size:16pt; font-family:helvetica">'
@@ -674,7 +674,7 @@ def _mixed_format_pdf(path):
 
 def _span_styles(path):
     """Return [(x0, text, bold, italic)] for every non-empty span on page 0."""
-    import fitz
+    import pymupdf as fitz
     doc = fitz.open(path)
     spans = []
     d = doc[0].get_text("dict")
@@ -777,7 +777,7 @@ def _midword_splits(path):
 
     Returns (page_number, joined_word, left_font, right_font) rows.
     """
-    import fitz
+    import pymupdf as fitz
     doc = fitz.open(path)
     page_words = {pn: _page_words(doc[pn].get_text()) for pn in range(len(doc))}
     rows = []
@@ -842,7 +842,7 @@ def test_run_level_emission_no_midword_splits(pdf_fixture_exam_path):
 
         # Sanity: the run-level path actually fired on this content, so the
         # assertion above is not vacuously passing.
-        import fitz
+        import pymupdf as fitz
         doc = fitz.open(out_path)
         mixed = sum(
             1 for pn in range(len(doc))

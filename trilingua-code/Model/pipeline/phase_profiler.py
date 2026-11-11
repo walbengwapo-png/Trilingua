@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from typing import Generator
 
 from .document_context import DocumentContext
+from providers.request_budget import request_deadline
 
 
 @contextmanager
@@ -19,7 +20,8 @@ def phase_profile(name: str, ctx: DocumentContext) -> Generator[None, None, None
     ctx.enter_phase(name)
     start = _time_module.perf_counter()
     try:
-        yield
+        with request_deadline(getattr(ctx, 'pdf_deadline', None)):
+            yield
     finally:
         elapsed_ms = (_time_module.perf_counter() - start) * 1000
         ctx.phase_times[name] = ctx.phase_times.get(name, 0) + elapsed_ms
@@ -37,7 +39,8 @@ def llm_call_profile(ctx: DocumentContext) -> Generator[None, None, None]:
     """
     start = _time_module.perf_counter()
     try:
-        yield
+        with request_deadline(getattr(ctx, 'pdf_deadline', None)):
+            yield
     finally:
         elapsed_ms = (_time_module.perf_counter() - start) * 1000
         ctx.record_llm_call(elapsed_ms)
