@@ -9,6 +9,7 @@
     --input-bg: transparent;
     --hover: #eff6ff;
     --placeholder: #9ca3af;
+    --placeholder-strong: #64748b;
     --error-bg: #fef2f2;
     --success-bg: #f0fdf4;
     --info-bg: #f0f7ff;
@@ -33,8 +34,8 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
-    height: calc(100vh - 140px);
-    min-height: 560px;
+    height: auto;
+    min-height: 0;
 }
 
 /* ── Language bar ───────────────────────────────────────────────────────── */
@@ -134,7 +135,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     flex: 1;
-    min-height: 0;
+    min-height: 440px;
     border: 1px solid var(--border);
     border-radius: 16px;
     overflow: hidden;
@@ -144,6 +145,7 @@
 
 /* ── Individual panel ───────────────────────────────────────────────────── */
 .translation-panel {
+    min-width: 0;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -442,6 +444,7 @@ button[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
     align-items: center;
     gap: 8px;
     padding: 14px 44px;
+    min-width: 210px;
     background: var(--primary);
     color: #fff;
     border: none;
@@ -469,7 +472,7 @@ button[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
 
 #translate-btn:disabled {
     opacity: 0.6;
-    cursor: not-allowed;
+    cursor: default;
     transform: none;
     box-shadow: none;
 }
@@ -485,53 +488,33 @@ button[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
     flex-shrink: 0;
 }
 
-/* Translating state: collapse the button into a circular spinner */
-#translate-btn.is-loading {
-    width: 54px;
-    height: 54px;
-    padding: 0;
-    border-radius: 50%;
-    gap: 0;
-    justify-content: center;
-    box-shadow: 0 4px 18px rgba(59,130,246,0.45);
-    animation: translate-pulse 1.2s ease-in-out infinite;
-}
+/* Keep the submit label visible while sending. */
+#translate-btn.is-loading { cursor: wait; }
+#translate-btn.is-loading > svg { display: none; }
+#translate-btn [hidden] { display: none; }
 
 #translate-btn.is-loading .btn-spinner {
-    width: 26px;
-    height: 26px;
-    border-width: 3px;
-}
-
-@keyframes translate-pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.08); }
+    width: 18px;
+    height: 18px;
+    border-width: 2px;
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── Non-modal translation progress overlay ─────────────────────────── */
 .translate-progress {
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 60;
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 10px 18px;
-    background: var(--card-bg);
+    gap: 14px;
+    padding: 18px 20px;
+    background: var(--info-bg);
     border: 1px solid var(--border);
-    border-radius: 999px;
-    box-shadow: 0 8px 30px rgba(15, 23, 42, 0.18);
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none; /* non-modal: never blocks the page */
-    transition: opacity 0.2s ease, visibility 0.2s ease;
-    font-size: 14px;
+    border-radius: 14px;
     color: var(--text);
+    font-size: 0.875rem;
 }
+.translate-progress[hidden] { display: none; }
+.translate-progress[data-state="paused"] .translate-progress__spinner { visibility: hidden; }
 
 .translate-progress.is-visible {
     opacity: 1;
@@ -551,8 +534,10 @@ button[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
 .translate-progress__body {
     display: flex;
     flex-direction: column;
-    gap: 1px;
-    line-height: 1.2;
+    flex: 1;
+    gap: 6px;
+    line-height: 1.5;
+    min-width: 180px;
 }
 
 .translate-progress__stage {
@@ -575,7 +560,7 @@ button[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-    .translate-progress { top: 68px; max-width: calc(100vw - 24px); border-radius: 14px; }
+    .translate-progress { align-items: flex-start; flex-wrap: wrap; }
     .translation-page {
         height: auto;
         gap: 16px;
@@ -609,6 +594,25 @@ button[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
     .lang-bar__select-wrap { flex-direction: column; align-items: stretch; text-align: center; gap: 6px; padding: 10px; }
     .lang-bar select { text-align: center; padding-right: 26px; }
     .translation-panel__footer { flex-wrap: wrap; gap: 6px; }
-    .char-counter { margin-left: 0; width: 100%; text-align: right; }
+    #char-counter { margin-left: 0; width: 100%; text-align: right; }
     .translation-panel__label { padding-left: 16px; padding-right: 16px; }
+}
+
+.translation-intro { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.translation-intro h2 { margin: 0 0 6px; color: var(--text); font-size: 1.3rem; font-weight: 700; }
+.translation-intro p { margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.5; }
+.translation-shortcuts { display: flex; gap: 10px; flex-wrap: wrap; }
+.translation-shortcuts a { padding: 9px 12px; border: 1px solid var(--border); border-radius: 9px; color: var(--text); background: var(--card-bg); font-size: .82rem; text-decoration: none; }
+.translation-shortcuts a:hover { border-color: var(--primary); color: var(--primary); }
+.translation-file-hint { margin: 0; padding: 0 20px 14px; font-size: .75rem; color: var(--muted); line-height: 1.6; overflow-wrap: anywhere; }
+.translation-file-details { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.translation-file-details small { color: var(--muted); font-size: .75rem; }
+#translate-progress-description { color: var(--muted); }
+.translation-status-link { flex-shrink: 0; color: var(--primary); font-size: .82rem; font-weight: 600; text-underline-offset: 3px; }
+#job-filename { font-weight: 600; overflow-wrap: anywhere; }
+.translation-result-link { margin: 0 20px 16px; color: var(--primary); font-weight: 600; font-size: .875rem; text-underline-offset: 3px; }
+.translation-result-link[hidden], .translation-status-link[hidden] { display: none; }
+#translate-btn.is-loading:disabled { cursor: wait; }
+@media (prefers-reduced-motion: reduce) {
+    .translation-page *, .translation-page *::before, .translation-page *::after { animation: none !important; transition: none !important; }
 }
