@@ -16,6 +16,14 @@ use Illuminate\Support\Facades\DB;
  */
 class DispatchOutcomeClassifier
 {
+    public function assertTransactionalQueue(): void
+    {
+        $connection = config('queue.connections.database.connection') ?: config('database.default');
+        if (config('queue.default') !== 'database' || $connection !== config('database.default')
+            || config('queue.connections.database.after_commit', false)) {
+            throw new \RuntimeException('Document admission requires the database queue on the state connection, without after_commit.');
+        }
+    }
     /**
      * Classify the outcome of an intake dispatch.
      *
@@ -56,6 +64,7 @@ class DispatchOutcomeClassifier
         ?string $statusBeforeDispatch = null,
         ?int $excludeFailedJobId = null,
         bool $dispatchAttempted = true,
+        ?int $expectedAttempt = null,
     ): DispatchOutcome {
         if (! $dispatchAttempted) {
             // The enqueue call was never reached, so nothing can be in the
@@ -88,8 +97,13 @@ class DispatchOutcomeClassifier
         }
 
         try {
-            $queueRow = $this->queueRow($uuid);
-            $failedJob = $this->hasFailedJobEvidence($uuid, $excludeFailedJobId);
+            if ($expectedAttempt !== null && $row !== null) {
+                $queueRow = $this->attemptQueueRow('jobs', $row, $expectedAttempt);
+                $failedJob = $this->attemptQueueRow('failed_jobs', $row, $expectedAttempt) !== null;
+            } else {
+                $queueRow = $this->queueRow($uuid);
+                $failedJob = $this->hasFailedJobEvidence($uuid, $excludeFailedJobId);
+            }
         } catch (\Throwable $e) {
             // Read-back itself failed. We cannot distinguish committed from
             // absent, so we must not compensate.
@@ -181,6 +195,18 @@ class DispatchOutcomeClassifier
         return DB::table('jobs')
             ->where('payload', 'like', '%'.$uuid.'%')
             ->first(['id', 'reserved_at', 'available_at', 'attempts']);
+    }
+
+    private function attemptQueueRow(string $table, TranslationJob $job, int $expectedAttempt): ?object
+    {
+        foreach (DB::table($table)->where('payload', 'like', '%'.$job->uuid.'%')->get() as $row) {
+            $metadata = \App\Support\TranslationQueueMetadata::extract($row->payload);
+            if ($metadata && \App\Support\TranslationQueueMetadata::matches($metadata, $job->getAttributes())
+                && ($metadata['expected_attempt'] ?? null) === $expectedAttempt) {
+                return $row;
+            }
+        }
+        return null;
     }
 
     public function hasFailedJobEvidence(string $uuid, ?int $excludeFailedJobId = null): bool
