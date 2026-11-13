@@ -35,6 +35,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Laravel 12.69.1 Queue.php:162 invokes this before serialization at :183.
+        \Illuminate\Support\Facades\Queue::createPayloadUsing(function ($connection, $queue, array $payload): array {
+            $job = $payload['data']['command'] ?? null;
+            return $job instanceof \App\Jobs\TranslateDocumentJob
+                ? \App\Support\TranslationQueueMetadata::forJob($job) : [];
+        });
     }
 }
