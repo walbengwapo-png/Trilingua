@@ -34,8 +34,9 @@ import json
 import os
 import re
 import time
+import threading
 from contextlib import contextmanager
-from provider_usage import submit_with_usage
+from provider_usage import submit_with_usage, ProviderFailure
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable
 
@@ -482,6 +483,7 @@ class TranslationPipeline:
 
         # OPTIMIZATION: Shared SQLite cache instance (Task 2)
         self._shared_cache: SQLiteTranslationCache | None = None
+        self._cache_init_lock = threading.Lock()
 
     def concurrency_limit(self) -> int:
         """Return the actual per-document provider worker limit."""
@@ -497,16 +499,14 @@ class TranslationPipeline:
     def _get_cache(self) -> SQLiteTranslationCache | None:
         """Get or create the shared SQLite cache."""
         if self._shared_cache is None and _TRANSLATION_CACHE_ENABLED:
-            namespace = "|".join((
-                _TRANSLATION_PROMPT_VERSION,
-                self.provider.name,
-                self.provider.model_name,
-            ))
-            self._shared_cache = SQLiteTranslationCache(
-                ttl_days=_TRANSLATION_CACHE_TTL_DAYS,
-                enabled=_TRANSLATION_CACHE_ENABLED,
-                namespace=namespace,
-            )
+            with self._cache_init_lock:
+                if self._shared_cache is None:
+                    namespace = "|".join((_TRANSLATION_PROMPT_VERSION, self.provider.name, self.provider.model_name))
+                    self._shared_cache = SQLiteTranslationCache(
+                        ttl_days=_TRANSLATION_CACHE_TTL_DAYS,
+                        enabled=_TRANSLATION_CACHE_ENABLED,
+                        namespace=namespace,
+                    )
         return self._shared_cache
 
     def store_translation(self, source_text: str, source_lang: str,
@@ -1116,6 +1116,10 @@ class TranslationPipeline:
                             ctx.scheduler_wait_ms = getattr(ctx, "scheduler_wait_ms", 0.0) + getattr(
                                 future, "scheduler_wait_ms", 0.0
                             )
+                    except ProviderFailure:
+                        for pending in future_to_batch:
+                            pending.cancel()
+                        raise
                     except Exception as e:
                         batch_idx = future_to_batch[future]
                         batch = batches[batch_idx]
@@ -1147,6 +1151,8 @@ class TranslationPipeline:
                                 results[idx] = translated
                                 if ctx:
                                     ctx.blocks_translated += 1
+                            except ProviderFailure:
+                                raise
                             except Exception as e2:
                                 print(f"  Warning: Fallback translation failed for block {idx}: {e2}")
                                 failed_blocks[idx] = str(e2)
@@ -1482,6 +1488,10 @@ class TranslationPipeline:
                     batch = future_to_batch[future]
                     try:
                         unit_results = future.result()
+                    except ProviderFailure:
+                        for pending in future_to_batch:
+                            pending.cancel()
+                        raise
                     except Exception as e:
                         systemic_error = _systemic_failure_message(e)
                         if systemic_error:

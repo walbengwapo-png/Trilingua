@@ -25,6 +25,7 @@ OPTIMIZATIONS:
 
 import json
 import os
+import threading
 import time as _time
 
 from config.processing_modes import MODES, VALID_MODES, get_mode
@@ -65,7 +66,7 @@ from prompts.prepass import (
     build_prepass_injection,
 )
 
-from provider_usage import submit_with_usage
+from provider_usage import submit_with_usage, ProviderFailure
 from concurrent.futures import ThreadPoolExecutor
 
 # OPTIMIZATION: Env var for prepass (Task 5)
@@ -186,16 +187,19 @@ class DocumentPipeline:
 
         # OPTIMIZATION: Shared SQLite cache (Task 2)
         self._shared_cache: SQLiteTranslationCache | None = None
+        self._cache_init_lock = threading.Lock()
 
         self._default_mode = mode
 
     def _get_cache(self) -> SQLiteTranslationCache | None:
         """Get or create the shared SQLite cache."""
         if self._shared_cache is None and _TRANSLATION_CACHE_ENABLED:
-            self._shared_cache = SQLiteTranslationCache(
-                ttl_days=_TRANSLATION_CACHE_TTL_DAYS,
-                enabled=_TRANSLATION_CACHE_ENABLED,
-            )
+            with self._cache_init_lock:
+                if self._shared_cache is None:
+                    self._shared_cache = SQLiteTranslationCache(
+                        ttl_days=_TRANSLATION_CACHE_TTL_DAYS,
+                        enabled=_TRANSLATION_CACHE_ENABLED,
+                    )
         return self._shared_cache
 
     def _coherence_polish_blocks(self, source_blocks, translated_blocks,
@@ -252,6 +256,8 @@ class DocumentPipeline:
                     ctx.record_block_quality(idx, review.score, review.issues, text)
                     translated[idx]['quality_score'] = review.score
                     translated[idx]['quality_issues'] = ctx.block_quality[idx]['issues']
+        except ProviderFailure:
+            raise
         except Exception:
             ctx.add_warning('Final quality review unavailable; translation retained without a score for affected blocks.')
 
@@ -411,6 +417,8 @@ class DocumentPipeline:
                     profile = analyzer_future.result()
                     ctx.analysis_time_ms = ctx.phase_times.get("document_analyzer", 0)
                     ctx.document_profile = profile
+                except ProviderFailure:
+                    raise
                 except Exception as e:
                     print(f"  [Analyzer] Concurrent analysis failed: {e}")
                     ctx.document_profile = None
@@ -419,6 +427,8 @@ class DocumentPipeline:
                 if prepass_future:
                     try:
                         prepass_future.result()
+                    except ProviderFailure:
+                        raise
                     except Exception as e:
                         print(f"  [Prepass] Concurrent prepass failed: {e}")
         
@@ -486,6 +496,8 @@ class DocumentPipeline:
                             print(f"  [Prepass] Domain: {domain}")
                             print(f"  [Prepass] Terms: {len(terms)}")
         
+                    except ProviderFailure:
+                        raise
                     except Exception as e:
                         print(f"  [Prepass] Warning: Prepass failed: {e}")
                         print(f"  [Prepass] Continuing without prepass context")
@@ -757,6 +769,8 @@ class DocumentPipeline:
             if _TRANSLATION_PREPASS_ENABLED and ctx.mode.prepass and self._ai_provider:
                 self._execute_prepass_concurrent(blocks, request, ctx)
                 ctx.analysis_time_ms += ctx.phase_times.get("prepass", 0)
+        except ProviderFailure:
+            raise
         except Exception as error:
             # A bad response or temporary provider outage should degrade the
             # enhancement, never stop document translation.
@@ -1003,6 +1017,8 @@ class DocumentPipeline:
                     print(f"  [Prepass] Domain: {domain}")
                     print(f"  [Prepass] Terms: {len(terms)}")
     
+            except ProviderFailure:
+                raise
             except Exception as e:
                 print(f"  [Prepass] Concurrent prepass warning: {e}")
     
@@ -1100,6 +1116,8 @@ class DocumentPipeline:
                 data, _ = analyze_document(request.file_path, pdf_column_mode=request.pdf_column_mode)
             if isinstance(data, list):
                 blocks = data
+        except ProviderFailure:
+            raise
         except Exception:
             # If we can't analyze, default to balanced
             print("  [Mode] Cannot analyze document, using balanced")
