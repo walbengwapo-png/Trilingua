@@ -24,12 +24,12 @@ class AdminJobRetryTest extends TestCase
 
     private function makeAdmin(): User
     {
-        return User::factory()->create(['is_admin' => true]);
+        return User::factory()->create(['is_admin' => true, 'id' => 9001]);
     }
 
     private function makeUser(): User
     {
-        return User::factory()->create(['is_admin' => false]);
+        return User::factory()->create(['is_admin' => false, 'id' => 9002]);
     }
 
     private function makeFailures(string $uuid, bool $recoverable, bool $withState = true): int
@@ -168,7 +168,9 @@ class AdminJobRetryTest extends TestCase
         $content = $response->getContent();
 
         // The controller enriches failed_jobs rows in-memory; both badges render.
-        $this->assertStringContainsString('Recoverable', $content);
+        $this->assertStringContainsString('Original retained', $content);
+        $this->assertStringContainsString(route('admin.translation-jobs.retry', TranslationJob::where('uuid', $recoverableUuid)->value('id')), $content);
+        $this->assertStringNotContainsString(route('admin.translation-jobs.retry', TranslationJob::where('uuid', $unrecoverableUuid)->value('id')), $content);
         $this->assertStringContainsString('Unavailable', $content);
     }
 }
