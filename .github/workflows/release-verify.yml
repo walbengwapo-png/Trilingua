@@ -104,10 +104,16 @@ jobs:
       - name: Rehearse migrations and rollback/index safety
         working-directory: trilingua-code
         run: php tests/Integration/rehearse-migrations.php
+      - name: Fetch production baseline for regression comparison
+        uses: actions/checkout@v4
+        with:
+          ref: b6d28fee01739d6e3fd7dc93a4ec9c11e1325d0f
+          path: baseline-verification
+          persist-credentials: false
       - name: Run the full offline Python suite including ASGI startup
         if: ${{ !cancelled() }}
         working-directory: trilingua-code
-        run: python -m pytest Model/tests -q --tb=short --show-capture=no --junitxml=native-python-results.xml -p no:cacheprovider --maxfail=20
+        run: python ../ci/verify-python-regressions.py
       - name: Run the full PHP suite on disposable PostgreSQL
         if: ${{ !cancelled() }}
         working-directory: trilingua-code
