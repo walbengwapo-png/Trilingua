@@ -23,6 +23,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class TranslateDocumentJob implements ShouldQueue
@@ -83,6 +84,8 @@ class TranslateDocumentJob implements ShouldQueue
         public ?int $translationJobId = null,
         public ?string $presetUuid = null,
         public string $ocrMode = 'strict',
+        public int $expectedAttempt = 1,
+        public ?int $providerRequestBudget = null,
     ) {
         $this->timeout = (int) config('timeouts.job', 1300);
     }
@@ -116,7 +119,7 @@ class TranslateDocumentJob implements ShouldQueue
         @set_time_limit(0);
 
         $job = $this->resolveJob();
-        if ($job !== null && ! $job->markProcessing()) {
+        if ($job !== null && ! $job->markProcessing($this->expectedAttempt ?? 1)) {
             return;
         }
         $this->attemptGeneration = $job !== null ? (int) $job->attempts : null;
@@ -125,6 +128,9 @@ class TranslateDocumentJob implements ShouldQueue
         $this->storeProgress(10, 'Document queued for translation. Processing will begin shortly.');
 
         try {
+            $translationResult = config('translation.python_service.document_jobs') && $job
+                ? $this->reconcileEngineAttempt($translationManager, $job) : null;
+            if ($translationResult === null) {
             // Ensure a worker-local input exists. A replayed job's original
             // scratch file was cleaned at terminal failure, so reconstruct it
             // from the durable original when present. A job with NO durable
@@ -153,15 +159,13 @@ class TranslateDocumentJob implements ShouldQueue
             // 1. Translate the document via TranslationManager
             $arguments = [$uploadedFile, $this->sourceLang, $this->targetLang, $this->pdfColumnMode, $this->mode, $this->ocrMode ?? 'strict'];
             if (config('translation.python_service.document_jobs')) {
-                if ($job !== null && empty($job->engine_job_uuid)) {
-                    TranslationJob::whereKey($job->getKey())->whereNull('engine_job_uuid')
-                        ->update(['engine_job_uuid' => (string) Str::uuid()]);
-                    $job->refresh();
-                }
                 $arguments[] = $job?->engine_job_uuid ?? $this->uuid();
-                $arguments[] = fn () => $job?->noteProgress(15);
+                $arguments[] = fn () => $job ? $this->heartbeat($job) : null;
+                $arguments[] = ['translation_uuid' => $this->uuid(), 'translation_job_id' => (string) $job?->getKey(),
+                    ...($this->providerRequestBudget !== null ? ['provider_max_requests' => $this->providerRequestBudget] : [])];
             }
             $translationResult = $translationManager->translateDocument(...$arguments);
+            }
 
             $downloadFilename = $translationResult['download_filename'];
 
@@ -201,7 +205,8 @@ class TranslateDocumentJob implements ShouldQueue
             // reuses them (idempotence) and a cleanup job could remove a
             // stranded object if the history write can never complete.
             if ($job !== null) {
-                TranslationJob::whereKey($job->getKey())->update([
+                TranslationJob::whereKey($job->getKey())->where('status', TranslationJob::STATUS_PROCESSING)
+                    ->where('attempts', $this->attemptGeneration)->update([
                     'translated_storage_path'    => $upload['storage_path'],
                     'translated_storage_backend' => $upload['backend'],
                     'last_heartbeat_at'          => now(),
@@ -217,6 +222,16 @@ class TranslateDocumentJob implements ShouldQueue
             //    transaction on Postgres via BlockService) and fails terminally
             //    instead of reporting a completed state the user could never
             //    review. Metrics stay non-fatal (documented boundary).
+            [$history, $downloadUrl] = DB::transaction(function () use ($job, $historyService, $blockService, $metricsService,
+                $translationResult, $downloadFilename, $upload, $storageService): array {
+                if ($job !== null) {
+                    $owner = TranslationJob::whereKey($job->id)->lockForUpdate()->first();
+                    if (!$owner || $owner->status !== TranslationJob::STATUS_PROCESSING
+                        || (int) $owner->attempts !== $this->attemptGeneration) {
+                        throw new TranslationException('Execution generation changed; publication refused.', 409,
+                            errorDetails: ['category' => 'operation_superseded']);
+                    }
+                }
             $existingHistory = TranslationHistory::where('job_id', $this->uuid())
                 ->where('user_id', $this->userId)
                 ->orderByDesc('id')
@@ -293,20 +308,12 @@ class TranslateDocumentJob implements ShouldQueue
                 (int) $history->id
             );
 
-            if (! $completed) {
-                $this->compensateRefusedCompletion(
-                    $job,
-                    $history,
-                    $historyCreatedThisAttempt,
-                    $storageService,
-                    $upload
-                );
-
-                $this->cleanupFile($outputPath);
-                $this->cleanupFile($this->tempPath);
-
-                return;
+            if (!$completed) {
+                throw new TranslationException('Completion generation changed; publication rolled back.', 409,
+                    errorDetails: ['category' => 'operation_superseded']);
             }
+            return [$history, $downloadUrl];
+            });
 
             $this->storeResult([
                 'status' => 'completed',
@@ -330,6 +337,15 @@ class TranslateDocumentJob implements ShouldQueue
 
             return;
         } catch (\Throwable $e) {
+            if ($job !== null) {
+                // Refuse stale failure/cache/notification writes after another actor owns the row.
+                $owner = TranslationJob::find($job->id);
+                if (!$owner || $owner->status !== TranslationJob::STATUS_PROCESSING
+                    || (int) $owner->attempts !== $this->attemptGeneration) {
+                    $this->cleanupFile($outputPath);
+                    return;
+                }
+            }
             Log::error('Job: Translation failed', [
                 'exception' => $e->getMessage(),
                 'trace'     => $e->getTraceAsString(),
@@ -340,7 +356,7 @@ class TranslateDocumentJob implements ShouldQueue
 
             $job?->noteProgress(max(0, (int) ($job->progress ?? 0)));
 
-            if ($this->isRetryable($e) && $this->attempts() + 1 < $this->tries) {
+            if ($job === null && $this->isRetryable($e) && $this->attempts() + 1 < $this->tries) {
                 // Return the job to the queue with its original upload intact;
                 // deleting tempPath here would guarantee the retry fails.
                 //
@@ -406,6 +422,13 @@ class TranslateDocumentJob implements ShouldQueue
                     'job_id'    => $this->uuid(),
                 ]);
             }
+        } finally {
+            if ($job !== null && $this->attemptGeneration !== null) {
+                try { app(\App\Services\TranslationAdmission::class)->finishDocument((int) $job->id, $this->attemptGeneration); }
+                catch (\Throwable $error) {
+                    Log::warning('Document admission awaits reconciliation', ['translation_job_id' => $job->id, 'exception_type' => $error::class]);
+                }
+            }
         }
     }
 
@@ -417,6 +440,40 @@ class TranslateDocumentJob implements ShouldQueue
      * fetched from its recorded backend and reconstructed locally. When neither
      * exists the job is unrecoverable and fails honestly.
      */
+    private function reconcileEngineAttempt(TranslationManager $manager, TranslationJob $job): ?array
+    {
+        $previous = $job->engine_job_uuid;
+        if ($previous) {
+            $state = $manager->inspectDocumentJob($previous);
+            if ($state['status'] === 'completed') {
+                return $manager->resumeDocumentJob($previous, fn () => $this->heartbeat($job));
+            }
+            if ($state['status'] !== 'failed') {
+                throw new TranslationException('The previous engine job is active; retry after it finishes.', 409,
+                    errorDetails: ['category' => 'engine_active', 'engine_job_uuid' => $previous]);
+            }
+            if ((($state['error_details']['category'] ?? null) === 'lease_expired' || ($state['error_status'] ?? null) === 408)
+                && empty($state['retry_safe'])) {
+                throw new TranslationException('The previous engine lease needs operator review.', 409,
+                    errorDetails: ['category' => 'engine_outcome_unknown', 'engine_job_uuid' => $previous]);
+            }
+        }
+        $changed = TranslationJob::whereKey($job->id)->where('status', TranslationJob::STATUS_PROCESSING)
+            ->where('attempts', $this->attemptGeneration)->where('engine_job_uuid', $previous)
+            ->update(['engine_job_uuid' => (string) Str::uuid()]);
+        if (!$changed) { throw new TranslationException('Execution generation changed; submission refused.', 409); }
+        $job->refresh();
+        return null;
+    }
+
+    private function heartbeat(TranslationJob $job): void
+    {
+        if (!$job->noteProgress(15)) {
+            throw new TranslationException('Execution generation changed; processing stopped.', 409,
+                errorDetails: ['category' => 'operation_superseded']);
+        }
+    }
+
     private function resolveInputPath(StorageService $storageService, ?TranslationJob $job): void
     {
         if (file_exists($this->tempPath) && is_readable($this->tempPath)) {
@@ -486,8 +543,8 @@ class TranslateDocumentJob implements ShouldQueue
             $this->originalStorageBackend = $upload['backend'];
 
             if ($job !== null) {
-                TranslationJob::whereKey($job->getKey())
-                    ->update([
+                TranslationJob::whereKey($job->getKey())->where('status', TranslationJob::STATUS_PROCESSING)
+                    ->where('attempts', $this->attemptGeneration)->update([
                         'original_storage_path'   => $this->originalStoragePath,
                         'original_storage_backend' => $this->originalStorageBackend,
                     ]);
@@ -519,6 +576,10 @@ class TranslateDocumentJob implements ShouldQueue
     private function isRetryable(\Throwable $e): bool
     {
         if ($e instanceof TranslationException) {
+            if ($e->errorDetails !== null) {
+                // Python already exhausted the bounded transport retry budget.
+                return false;
+            }
             $code = $e->getCode();
             if (in_array($code, [503, 504], true)) {
                 return true;
@@ -529,23 +590,18 @@ class TranslateDocumentJob implements ShouldQueue
     }
 
     /**
-     * Load the durable state-machine row for this job, tolerating a missing
-     * row (jobs dispatched before the migration ran, or a dropped DB).
+     * Require a verified durable state-machine row before any AI execution.
      */
     private function resolveJob(): ?TranslationJob
     {
         if ($this->translationJobId === null) {
-            return null;
+            throw new TranslationException('Durable translation ID required; execution refused.', 409);
         }
-        try {
-            return TranslationJob::find($this->translationJobId);
-        } catch (\Throwable $e) {
-            Log::warning('Job: translation_jobs row unavailable (continuing anyway)', [
-                'job_id' => $this->translationJobId,
-                'exception' => $e->getMessage(),
-            ]);
-            return null;
+        $state = TranslationJob::find($this->translationJobId);
+        if (!$state || (int) $state->user_id !== $this->userId || $state->uuid !== $this->uuid()) {
+            throw new TranslationException('The durable translation job could not be verified; execution refused.', 409);
         }
+        return $state;
     }
 
     /**
