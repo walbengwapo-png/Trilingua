@@ -104,14 +104,14 @@ jobs:
       - name: Rehearse migrations and rollback/index safety
         working-directory: trilingua-code
         run: php tests/Integration/rehearse-migrations.php
-      - name: Run the full PHP suite on disposable PostgreSQL
-        if: ${{ !cancelled() }}
-        working-directory: trilingua-code
-        run: php vendor/bin/phpunit -c phpunit.engine.xml --debug --log-junit native-php-results.xml
       - name: Run the full offline Python suite including ASGI startup
         if: ${{ !cancelled() }}
         working-directory: trilingua-code
         run: python -m pytest Model/tests -q --tb=short --show-capture=no --junitxml=native-python-results.xml -p no:cacheprovider --maxfail=20
+      - name: Run the full PHP suite on disposable PostgreSQL
+        if: ${{ !cancelled() }}
+        working-directory: trilingua-code
+        run: php vendor/bin/phpunit -c phpunit.engine.xml --debug --log-junit native-php-results.xml
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
