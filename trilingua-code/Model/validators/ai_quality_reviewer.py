@@ -21,7 +21,8 @@ deeper analysis. This way, simple hallucinations are caught instantly,
 and the AI only reviews chunks that passed the regex check.
 """
 
-from provider_usage import call_with_purpose, ProviderStopped
+from provider_usage import call_with_purpose
+from provider_errors import ProviderFailure
 import os
 import math
 from dataclasses import dataclass, field
