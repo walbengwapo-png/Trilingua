@@ -164,7 +164,7 @@
                                 @endif
                             </div>
                             <span class="table-cell-text">
-                                <a href="{{ route('history.detail', $record['id']) }}" style="color:var(--text);text-decoration:none">
+                                <a href="{{ route('history.view', $record['id']) }}" style="color:var(--text);text-decoration:none">
                                 @if (($record['translation_type'] ?? 'document') === 'document')
                                     {{ $record['original_filename'] ?? 'Untitled Document' }}
                                 @else

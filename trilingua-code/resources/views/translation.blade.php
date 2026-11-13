@@ -9,6 +9,17 @@
 @section('content')
 <div class="translation-page">
 
+    <header class="translation-intro">
+        <div>
+            <h2>Translate text and documents</h2>
+            <p>Choose your languages, then enter text or attach a file.</p>
+        </div>
+        <nav class="translation-shortcuts" aria-label="Translation shortcuts">
+            <a href="{{ route('history') }}">Saved translations</a>
+            <a href="{{ route('documents') }}">My Documents</a>
+        </nav>
+    </header>
+
     {{-- Language selection bar --}}
     <div class="lang-bar">
         <div class="lang-bar__select-wrap">
@@ -38,23 +49,35 @@
 
     </div>
 
+    <section class="translate-progress" id="translate-progress" role="status" aria-live="polite" aria-hidden="true" hidden>
+        <span class="translate-progress__spinner" aria-hidden="true"></span>
+        <div class="translate-progress__body">
+            <span class="translate-progress__stage" id="translate-progress-stage">Checking translation.</span>
+            <span id="job-filename" hidden></span>
+            <span id="translate-progress-description">You can leave this page while your document runs.</span>
+            <span class="translate-progress__timer" id="translate-progress-timer" aria-hidden="true">0s</span>
+        </div>
+        <a id="job-link" class="translation-status-link" hidden>Open tracking page</a>
+    </section>
+
     {{-- Two panels --}}
     <div class="translation-panels">
 
         {{-- Source panel --}}
         <div class="translation-panel translation-panel--source">
-            <div class="translation-panel__label">Source text</div>
+            <div class="translation-panel__label" id="source-heading">Source text</div>
             <div class="translation-panel__body">
                 <textarea id="source-text" maxlength="{{ $capabilities['text_max_chars'] }}" placeholder="Enter text to translate…" aria-label="Source text"></textarea>
 
                 {{-- File attached state --}}
                 <div class="translation-panel__file-info" id="file-info" style="display:none">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    <span id="file-name"></span>
+                    <span class="translation-file-details"><span id="file-name"></span><small id="file-size"></small></span>
                     <button id="remove-file" type="button">Remove</button>
                 </div>
             </div>
 
+            <p class="translation-file-hint" id="file-limits">Up to {{ number_format($capabilities['max_upload_bytes'] / 1048576, 0) }} MB per file. {{ implode(', ', array_map('strtoupper', $capabilities['formats'])) }}.</p>
             <div id="ocr-preview-option" class="translation-job-hint" hidden>
                 <label for="ocr-preview"><input type="checkbox" id="ocr-preview" aria-describedby="ocr-preview-hint"> Translate text in images and scanned PDFs (experimental)</label>
                 <p id="ocr-preview-hint">Attempts to read text that cannot be selected or copied. Results have not been verified; check the wording and layout.</p>
@@ -109,11 +132,12 @@
                 </p>
 
                 <div id="output-download" hidden>
-                    <a id="download-link" href="#" class="download-btn">
+                    <a id="download-link" class="download-btn">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         <span id="download-label">Download translated file</span>
                     </a>
                 </div>
+                <a id="result-link" class="translation-result-link" hidden>View saved translation</a>
             </div>
 
             <div class="translation-panel__footer">
@@ -150,26 +174,31 @@
                 <path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/>
                 <path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/>
             </svg>
-            Translate
+            <span id="translate-btn-spinner" class="btn-spinner" aria-hidden="true" hidden></span>
+            <span id="translate-btn-label">Translate text</span>
         </button>
     </div>
 
-{{-- Non-modal progress indicator, shown while a translation is running --}}
-    <div class="translate-progress" id="translate-progress" role="status" aria-live="polite" aria-hidden="true">
-        <span class="translate-progress__spinner" aria-hidden="true"></span>
-        <span class="translate-progress__body">
-            <span class="translate-progress__stage" id="translate-progress-stage">Translating…</span>
-        <span class="translate-progress__timer" id="translate-progress-timer" aria-hidden="true">0s</span>
-        </span>
-    </div>
+
 
 </div>
 
+@php
+    $translationRoutes = [
+        'submit' => route('translate.submit'),
+        'status' => route('translate.status', '__JOB__'),
+        'track' => route('translate', ['job' => '__JOB__']),
+        'login' => route('login'),
+    ];
+@endphp
 <script>
 (function () {
     'use strict';
 
     var CAPABILITIES = @json($capabilities);
+    var INITIAL_JOB = @json($initialJob);
+    var JOB_STORAGE_KEY = @json('trilingua.active_document_job.' . $viewerId);
+    var ROUTES = @json($translationRoutes);
     var CONTENT_MESSAGES = @json(\App\Support\DocumentPresentation::STATUS_MESSAGES);
     var PREVIEW_MESSAGE = @json(\App\Support\DocumentPresentation::PREVIEW_MESSAGE);
     var REASON_MESSAGES = @json(\App\Support\DocumentPresentation::REASON_MESSAGES);
@@ -221,6 +250,31 @@
     var outputDownload = document.getElementById('output-download');
     var downloadLink   = document.getElementById('download-link');
     var downloadLabel  = document.getElementById('download-label');
+    var resultLink = document.getElementById('result-link');
+    var jobLink = document.getElementById('job-link');
+    var requestPending = false;
+    var downloadPending = false;
+
+    function showResultLink(data) {
+        resultLink.hidden = !data.view_url;
+        if (data.view_url) resultLink.href = data.view_url;
+        else resultLink.removeAttribute('href');
+    }
+
+    function updateTrackingUrl(jobId) {
+        var url = new URL(window.location.href);
+        if (jobId) url.searchParams.set('job', jobId);
+        else url.searchParams.delete('job');
+        window.history.replaceState(null, '', url.toString());
+    }
+
+    function syncSubmitState() {
+        var tracking = !!sessionStorage.getItem(JOB_STORAGE_KEY) && !downloadPending;
+        translateBtn.disabled = requestPending || tracking;
+        translateBtn.classList.toggle('is-loading', requestPending);
+        document.getElementById('translate-btn-label').textContent = requestPending ? 'Sending request...'
+            : tracking ? 'Translation in progress' : fileInput.files[0] ? 'Translate document' : 'Translate text';
+    }
 
     function showError(el, msg) { if (el) el.textContent = msg; }
     function clearError(el)     { if (el) el.textContent = ''; }
@@ -273,6 +327,11 @@
         if (src === tgt) { showError(sourceError, 'Source and target languages must be different.'); return; }
         sourceLang.value = tgt; targetLang.value = src;
         syncLangOptions();
+        outputDownload.hidden = true;
+        downloadLink.removeAttribute('href');
+        showResultLink({});
+        copyBtn.setAttribute('aria-disabled', 'true');
+        saveBtn.setAttribute('aria-disabled', 'true');
         clearError(sourceError); outputText.textContent = ''; clearError(outputError);
     });
 
@@ -286,10 +345,13 @@
         var file = fileInput.files[0];
         if (!file) return;
         var ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-        if (ALLOWED.indexOf(ext) === -1) { showError(sourceError, 'Unsupported file type. Allowed: ' + ALLOWED.join(', ')); fileInput.value = ''; return; }
-        if (file.size > MAX_SIZE) { showError(sourceError, 'File too large. Maximum size is ' + Math.floor(MAX_SIZE / 1048576) + ' MB.'); fileInput.value = ''; return; }
+        if (ALLOWED.indexOf(ext) === -1) { removeFile.click(); showError(sourceError, 'Unsupported file type. Allowed: ' + ALLOWED.join(', ')); return; }
+        if (file.size > MAX_SIZE) { removeFile.click(); showError(sourceError, 'File too large. Maximum size is ' + Math.floor(MAX_SIZE / 1048576) + ' MB.'); return; }
         clearError(sourceError);
         fileNameSpan.textContent = file.name;
+        document.getElementById('file-size').textContent = file.size >= 1048576 ? (file.size / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.ceil(file.size / 1024)) + ' KB';
+        document.getElementById('source-heading').textContent = 'Source document';
+        syncSubmitState();
         sourceText.style.display = 'none';
         charCounter.style.display = 'none';
         fileInfo.style.display = '';
@@ -301,6 +363,8 @@
 
     removeFile.addEventListener('click', function () {
         fileInput.value = '';
+        document.getElementById('source-heading').textContent = 'Source text';
+        syncSubmitState();
         fileInfo.style.display = 'none';
         sourceText.style.display = '';
         charCounter.style.display = '';
@@ -321,6 +385,11 @@
 
     function showProgress(stage) {
         progressStage.textContent = stage;
+        progressEl.hidden = false;
+        progressEl.dataset.state = 'working';
+        document.getElementById('translate-progress-description').textContent = activePollJobId
+            ? 'Your document is saved. You can leave this page and return using the tracking link.'
+            : 'Your result will appear here when the request finishes.';
         progressStart = Date.now();
         updateProgressTimer();
         progressEl.classList.add('is-visible');
@@ -346,25 +415,27 @@
             clearInterval(progressTimerId);
             progressTimerId = null;
         }
+        progressEl.hidden = true;
         progressEl.classList.remove('is-visible');
         progressEl.setAttribute('aria-hidden', 'true');
     }
 
     function setLoading(on) {
-        translateBtn.disabled = on;
-        translateBtn.classList.toggle('is-loading', on);
-        translateBtn.innerHTML = on
-            ? '<span class="btn-spinner btn-spinner--lg"></span>'
-            : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg> Translate';
-        // Toggle skeleton loading state on output panel
-        if (on) {
-            outputText.classList.add('skeleton-loading');
-        } else {
-            outputText.classList.remove('skeleton-loading');
-        }
+        requestPending = on;
+        document.getElementById('translate-btn-spinner').hidden = !on;
+        outputText.classList.toggle('skeleton-loading', on);
+        outputText.setAttribute('aria-busy', on ? 'true' : 'false');
+        syncSubmitState();
     }
 
     translateBtn.addEventListener('click', function () {
+        if (requestPending || (sessionStorage.getItem(JOB_STORAGE_KEY) && !downloadPending)) return;
+        outputDownload.hidden = true;
+        downloadLink.removeAttribute('href');
+        showResultLink({});
+        copyBtn.setAttribute('aria-disabled', 'true');
+        saveBtn.setAttribute('aria-disabled', 'true');
+        updateTrackingUrl(null);
         clearError(sourceError); clearError(outputError);
         documentJobHint.hidden = true;
         var file = fileInput.files[0];
@@ -393,7 +464,7 @@
         var previousJobId = sessionStorage.getItem(JOB_STORAGE_KEY);
         stopPolling(false);
 
-        fetch('/translate', {
+        fetch(ROUTES.submit, {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
             body: formData
@@ -403,14 +474,15 @@
                 var data = null;
                 try { data = JSON.parse(raw); } catch (e) {}
 
+                showResultLink(data || {});
                 workbookWarning.textContent = readableWarnings(data && data.warnings).join(' ');
                 workbookWarning.hidden = !workbookWarning.textContent;
-                if (data && data.job_id && ((res.ok && data.status === 'processing') || data.dispatch === 'unknown')) {
+                if (data && data.job_id && (((res.ok || res.status === 409) && ['created', 'queued', 'processing'].includes(data.status)) || data.dispatch === 'unknown')) {
                     // Document translation queued - poll for status
                     outputSaveWarning.hidden = true;
                     beginPolling(data.job_id, data.dispatch === 'unknown'
                         ? 'Checking whether your upload was queued…'
-                        : (data.duplicate ? 'Already translating this file…' : 'Translating document…'));
+                        : (data.status === 'processing' ? 'Translating document.' : 'Queued - waiting to start.'));
                     outputText.textContent = data.message || 'Translation in progress... This may take a few minutes depending on document size.';
                     outputDownload.setAttribute('hidden', '');
                     copyBtn.setAttribute('aria-disabled', 'true');
@@ -476,7 +548,6 @@
     //     checking from the same durable row;
     //   - only ends on a server-confirmed terminal state (completed / failed)
     //     or when the row genuinely cannot be located (404).
-    var JOB_STORAGE_KEY = 'trilingua.active_document_job';
     var LONG_WAIT_MS = 600 * 1000; // ~10 minutes before the honest long-run note
 
     var pollTimerId = null;
@@ -498,11 +569,20 @@
             sessionStorage.removeItem(JOB_STORAGE_KEY);
         }
         activePollJobId = null;
+        syncSubmitState();
     }
 
     function beginPolling(jobId, stage) {
         stopPolling(false);
         activePollJobId = jobId;
+        downloadPending = false;
+        var filename = INITIAL_JOB && INITIAL_JOB.id === jobId ? INITIAL_JOB.filename : '';
+        document.getElementById('job-filename').textContent = filename || '';
+        document.getElementById('job-filename').hidden = !filename;
+        updateTrackingUrl(jobId);
+        jobLink.href = ROUTES.track.replace('__JOB__', encodeURIComponent(jobId));
+        jobLink.textContent = 'Open tracking page';
+        jobLink.hidden = false;
         sessionStorage.setItem(JOB_STORAGE_KEY, jobId);
         pollDelayMs = 2000;
         longWaitNoteShown = false;
@@ -510,6 +590,7 @@
         showProgress(stage || 'Translating document…');
         documentJobHint.hidden = false;
         if (!outputText.textContent.trim()) outputText.textContent = 'Checking your document translation…';
+        syncSubmitState();
         pollOnce(jobId, pollGeneration);
     }
 
@@ -519,7 +600,7 @@
         }
         pollInFlight = true;
 
-        fetch('/translate/status/' + jobId, {
+        fetch(ROUTES.status.replace('__JOB__', encodeURIComponent(jobId)), {
             credentials: 'include',
             headers: { 'Accept': 'application/json' }
         })
@@ -528,6 +609,23 @@
                 if (generation !== pollGeneration || activePollJobId !== jobId) return;
                 var data = null;
                 try { data = JSON.parse(raw); } catch (e) {}
+
+                if (res.status === 401) {
+                    stopPolling(false);
+                    showProgress('Sign in to check your translation.');
+                    progressEl.dataset.state = 'paused';
+                    document.getElementById('translate-progress-description').textContent = 'Your session expired. The document reference has been kept.';
+                    jobLink.href = ROUTES.login;
+                    jobLink.textContent = 'Sign in';
+                    jobLink.hidden = false;
+                    return;
+                }
+                showResultLink(data || {});
+
+                if (data && data.original_filename) {
+                    document.getElementById('job-filename').textContent = data.original_filename;
+                    document.getElementById('job-filename').hidden = false;
+                }
 
                 if (data && data.status === 'completed' && Array.isArray(data.warnings) && data.warnings.length) {
                     workbookWarning.textContent = readableWarnings(data.warnings).join(' ');
@@ -553,6 +651,8 @@
                 }
 
                 if (data && data.status === 'completed' && data.download_available === false) {
+                    downloadPending = true;
+                    syncSubmitState();
                     outputDownload.setAttribute('hidden', '');
                     const summary = data.content_summary;
                     const incomplete = summary && summary.status !== 'complete';
@@ -593,7 +693,7 @@
 
                 // Still processing (created / queued / processing).
                 if (Date.now() - pollStartedAt > LONG_WAIT_MS) {
-                    showLongWaitNote();
+                    showLongWaitNote(data.status);
                 } else {
                     setProgressStage(data.status === 'processing' ? 'Translating document…' : 'Queued — waiting to start…');
                 }
@@ -614,13 +714,11 @@
         });
     }
 
-    function showLongWaitNote() {
-        setProgressStage('Still translating… Large documents may take longer.');
-        if (longWaitNoteShown) {
-            return;
-        }
+    function showLongWaitNote(status) {
+        setProgressStage(status === 'processing' ? 'Still translating. Large documents may take longer.' : 'Still queued - waiting to start.');
+        if (longWaitNoteShown) return;
         longWaitNoteShown = true;
-        outputText.textContent = 'The document is still running. You do not need to keep this page open.';
+        outputText.textContent = 'Your document is saved. You can leave this page and return using the tracking link.';
     }
 
     // Resume after refresh / re-visit, and stop once the page hides/navigates.
@@ -634,7 +732,8 @@
         }
     });
 
-    var storedJobId = sessionStorage.getItem(JOB_STORAGE_KEY);
+    var storedJobId = INITIAL_JOB ? INITIAL_JOB.id : sessionStorage.getItem(JOB_STORAGE_KEY);
+    syncSubmitState();
     if (storedJobId) {
         beginPolling(storedJobId, 'Checking translation status…');
     }
@@ -642,6 +741,9 @@
     // ── Clear ─────────────────────────────────────────────────────────────────
     clearBtn.addEventListener('click', function () {
         sourceText.value = '';
+        outputDownload.hidden = true;
+        downloadLink.removeAttribute('href');
+        showResultLink({});
         workbookWarning.textContent = '';
         workbookWarning.hidden = true;
         updateCounter();
