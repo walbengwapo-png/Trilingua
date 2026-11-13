@@ -24,7 +24,7 @@ class DownloadAvailabilityTest extends TestCase
     {
         return array_merge([
             'id'                     => 7,
-            'user_id'                => 1,
+            'user_id'                => auth()->id(),
             'translated_filename'    => 'report-fil.pdf',
             'original_filename'      => 'report.pdf',
             'storage_path'           => 'user/1/report-fil.pdf',

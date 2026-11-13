@@ -12,6 +12,16 @@ class TranslationAdmissionNativeTest extends TestCase
 {
     use DatabaseMigrations;
 
+    // These additive migrations deliberately refuse destructive rollback. Fresh
+    // schemas are safe only inside the guarded disposable native database.
+    public function runDatabaseMigrations(): void
+    {
+        $this->refreshTestDatabase();
+        $this->beforeApplicationDestroyed(function (): void {
+            \Illuminate\Foundation\Testing\RefreshDatabaseState::$migrated = false;
+        });
+    }
+
     protected function setUp(): void
     {
         if (getenv('TRILINGUA_ENGINE_DB_TESTS') !== '1') {

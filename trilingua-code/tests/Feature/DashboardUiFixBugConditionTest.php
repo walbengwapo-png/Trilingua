@@ -425,8 +425,7 @@ class DashboardUiFixBugConditionTest extends TestCase
 
         // ── Bug 6: History ───────────────────────────────────────────────────
         $this->mock(HistoryService::class, function ($mock) use ($textRecords) {
-            $mock->shouldReceive('getHistory')
-                ->andReturn($textRecords);
+            $mock->shouldReceive('getHistoryPaginated')->andReturn(new \Illuminate\Pagination\LengthAwarePaginator($textRecords, count($textRecords), 50));
         });
 
         $historyResponse = $this->get('/history');
