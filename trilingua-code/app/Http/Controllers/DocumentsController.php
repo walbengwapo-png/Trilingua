@@ -230,7 +230,8 @@ class DocumentsController extends Controller
             $dispatchAttempted = false;
 
             try {
-                $jobRow = TranslationJob::create([
+                // A savepoint keeps a unique-conflict readback usable on PostgreSQL.
+            $jobRow = DB::transaction(fn () => TranslationJob::create([
                     'user_id'                => Auth::id(),
                     'payload_hash'           => $payloadHash,
                     'original_name'          => $originalName,
@@ -245,7 +246,7 @@ class DocumentsController extends Controller
                     'original_storage_backend' => $record->original_storage_backend ?: 'supabase',
                     'parent_document_id'     => (int) $record->id,
                     'status'                 => TranslationJob::STATUS_CREATED,
-                ]);
+                ]));
 
                 $job = new TranslateDocumentJob(
                     $originalName,

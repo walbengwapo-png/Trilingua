@@ -422,7 +422,8 @@ class TranslationController extends Controller
         try {
             // The partial unique index is the final guard against a race between
             // two identical submissions.
-            $jobRow = TranslationJob::create([
+            // A savepoint keeps a unique-conflict readback usable on PostgreSQL.
+            $jobRow = DB::transaction(fn () => TranslationJob::create([
                 'user_id' => $userId,
                 'payload_hash' => $payloadHash,
                 'original_name' => $originalName,
@@ -437,7 +438,7 @@ class TranslationController extends Controller
                 'original_storage_backend' => $originalStorageBackend,
                 'parent_document_id' => null,
                 'status' => TranslationJob::STATUS_CREATED,
-            ]);
+            ]));
 
             $job = new TranslateDocumentJob(
                 $originalName,
