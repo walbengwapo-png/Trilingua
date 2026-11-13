@@ -22,6 +22,14 @@
         <p class="notice notice--error" role="alert">This failed job cannot be retried: no durable original exists to reconstruct the input.</p>
     @elseif (session('status') === 'queue-job-retry-failed')
         <p class="notice notice--error" role="alert">Retry could not be queued. Check the application logs.</p>
+    @elseif (session('status') === 'queue-job-already-active')
+        <p class="notice" role="status">This translation is already queued or processing.</p>
+    @elseif (session('status') === 'queue-user-already-active')
+        <p class="notice" role="status">This user already has a translation queued, processing, or awaiting recovery. Retry after that operation is resolved.</p>
+    @elseif (session('status') === 'queue-job-options-unavailable')
+        <p class="notice notice--error" role="alert">The original OCR options could not be verified. Operator review is required.</p>
+    @elseif (session('status') === 'queue-job-retry-unconfirmed')
+        <p class="notice notice--error" role="alert">Retry acceptance is unconfirmed. Check the durable job status before trying again.</p>
     @elseif (!empty($error))
         <p class="empty-state">Unable to load jobs. Please try again later.</p>
     @endif
@@ -72,7 +80,7 @@
                     <th>Progress</th>
                     <th>Backend</th>
                     <th>Updated</th>
-                    <th>Error</th>
+                    <th>Error</th><th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -89,9 +97,14 @@
                     <td>{{ $job->storage_backend ?? '—' }}</td>
                     <td>{{ optional($job->updated_at)->utc()->format('Y-m-d H:i') }} UTC</td>
                     <td>{{ \Illuminate\Support\Str::limit($job->error, 60) }}</td>
+                    <td>@if($job->isTerminalFailedRecoverable())
+                        <form method="POST" action="{{ route('admin.translation-jobs.retry', $job->id) }}">@csrf
+                            <button type="submit" class="review-btn">Retry translation</button>
+                        </form>
+                    @endif</td>
                 </tr>
                 @empty
-                <tr><td colspan="9" class="empty-state">No translation jobs match.</td></tr>
+                <tr><td colspan="10" class="empty-state">No translation jobs match.</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -127,19 +140,19 @@
                 @endphp
                 <tr>
                     <td>{{ $row->id }}</td>
-                    <td>{{ class_basename($name) }}</td>
+                    <td>{{ class_basename($name) }} @if($row->translation_job_id)<br>Translation #{{ $row->translation_job_id }}: {{ $row->translation_status }}@endif</td>
                     <td>{{ \Carbon\Carbon::parse($row->failed_at)->utc()->format('Y-m-d H:i') }} UTC</td>
                     <td title="{{ $row->exception }}">{{ \Illuminate\Support\Str::limit($row->exception, 80) }}</td>
                     <td>
-                        @if (!empty($row->recoverable))
-                            <span class="type-badge">Recoverable</span>
+                        @if (!empty($row->input_available))
+                            <span class="type-badge">Original retained</span>
                         @else
                             <span class="type-badge">Unavailable</span>
                         @endif
                     </td>
                     <td>
                         @if (!empty($row->recoverable))
-                            <form method="POST" action="{{ route('admin.jobs.retry', $row->id) }}">
+                            <form method="POST" action="{{ route('admin.translation-jobs.retry', $row->translation_job_id) }}">
                                 @csrf
                                 <button type="submit" class="review-btn">Retry</button>
                             </form>
