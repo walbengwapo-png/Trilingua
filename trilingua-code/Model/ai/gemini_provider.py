@@ -2,7 +2,7 @@
 """Google Gemini provider for structured document-analysis tasks."""
 
 import json
-from provider_usage import provider_post
+from provider_usage import provider_post, ProviderFailure
 import os
 import re
 import time as _time
@@ -228,6 +228,8 @@ class GeminiAnalysisProvider(AIAnalysisProvider):
                     if isinstance(result, dict):
                         return result
                 raise RuntimeError("Gemini analysis did not return a JSON object")
+            except ProviderFailure:
+                raise
             except GeminiAnalysisError:
                 raise
             except (requests.exceptions.RequestException, RuntimeError, ValueError,

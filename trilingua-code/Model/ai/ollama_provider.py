@@ -15,7 +15,7 @@ This is NOT a translation provider. Translation is handled by
 Model/providers/gptoss.py and Model/providers/gemini.py.
 """
 
-from provider_usage import ProviderStopped, ollama_post, ollama_headers
+from provider_usage import transport_operation, ProviderFailure, ProviderStopped, ollama_post, ollama_headers
 import os
 import json
 import time as _time
@@ -54,6 +54,7 @@ class OllamaAnalysisProvider(AIAnalysisProvider):
     def model_name(self) -> str:
         return self._model
 
+    @transport_operation("OLLAMA_ANALYSIS_MAX_ATTEMPTS")
     def analyze(self, system_prompt: str, user_prompt: str) -> dict[str, Any]:
         """Send a prompt and return structured JSON.
 
@@ -89,7 +90,8 @@ class OllamaAnalysisProvider(AIAnalysisProvider):
 
         last_error = ""
 
-        for attempt in range(max(1, int(os.environ.get("OLLAMA_ANALYSIS_MAX_ATTEMPTS", "3")))):
+        max_attempts = min(3, max(1, int(os.environ.get("OLLAMA_ANALYSIS_MAX_ATTEMPTS", "3"))))
+        for attempt in range(max_attempts):
             try:
                 resp = ollama_post(requests.post,
                     self._api_url, provider=self.name, purpose="analysis",
@@ -143,41 +145,43 @@ class OllamaAnalysisProvider(AIAnalysisProvider):
 
                 raise RuntimeError(
                     f"Ollama analysis did not return valid JSON. "
-                    f"Response preview: {content[:200]}"
+                    f"Invalid structured response"
                 )
 
+            except ProviderFailure:
+                raise
             except requests.exceptions.ConnectionError:
                 last_error = (
                     f"Cannot connect to Ollama at {self._api_url}. "
                     f"Ensure Ollama is running."
                 )
-                if attempt < 2:
-                    print(f"  [OllamaAnalysis] Connection error, retrying ({attempt + 1}/3)...")
+                if attempt < max_attempts - 1:
+                    print(f"  [OllamaAnalysis] Connection error, retrying ({attempt + 1}/{max_attempts})...")
                     retry_sleep(2)
                     continue
                 raise ConnectionError(last_error)
 
             except requests.exceptions.Timeout:
                 last_error = "Ollama analysis request timed out"
-                if attempt < 2:
-                    print(f"  [OllamaAnalysis] Timeout, retrying ({attempt + 1}/3)...")
+                if attempt < max_attempts - 1:
+                    print(f"  [OllamaAnalysis] Timeout, retrying ({attempt + 1}/{max_attempts})...")
                     retry_sleep(2)
                     continue
                 raise RuntimeError(last_error)
 
             except (requests.exceptions.RequestException, RuntimeError) as e:
                 last_error = str(e)
-                if attempt < 2:
-                    print(f"  [OllamaAnalysis] Error: {e}, retrying ({attempt + 1}/3)...")
+                if attempt < max_attempts - 1:
+                    print(f"  [OllamaAnalysis] Error: {e}, retrying ({attempt + 1}/{max_attempts})...")
                     retry_sleep(1)
                     continue
                 raise RuntimeError(
-                    f"Ollama analysis failed after 3 attempts: {last_error}"
+                    f"Ollama analysis failed after {max_attempts} attempts: {last_error}"
                 )
 
         # Should not reach here, but just in case
         raise RuntimeError(
-            f"Ollama analysis failed after 3 attempts: {last_error}"
+            f"Ollama analysis failed after {max_attempts} attempts: {last_error}"
         )
 
     def health(self) -> dict[str, Any]:
@@ -207,7 +211,7 @@ class OllamaAnalysisProvider(AIAnalysisProvider):
                 "error": f"Ollama returned status {resp.status_code}",
             }
 
-        except ProviderStopped:
+        except ProviderFailure:
             raise
         except Exception as e:
             return {

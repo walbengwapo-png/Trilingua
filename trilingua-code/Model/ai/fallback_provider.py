@@ -1,6 +1,6 @@
 """Keep analysis available during a primary provider outage or rate limit."""
 
-from provider_usage import ProviderStopped
+from provider_usage import ProviderFailure, ProviderStopped
 import os
 import threading
 import time
@@ -56,7 +56,7 @@ class FallbackAnalysisProvider(AIAnalysisProvider):
                     self._local.model = self._primary.model_name
                     self._failure = (0.0, "")
                     return result
-                except ProviderStopped:
+                except ProviderFailure:
                     raise
                 except (RuntimeError, ConnectionError) as exc:
                     retry_at = time.monotonic() + max(
@@ -78,7 +78,7 @@ class FallbackAnalysisProvider(AIAnalysisProvider):
 
         try:
             result = self._fallback.analyze(system_prompt, user_prompt)
-        except ProviderStopped:
+        except ProviderFailure:
             raise
         except (RuntimeError, ConnectionError) as exc:
             raise RuntimeError(
