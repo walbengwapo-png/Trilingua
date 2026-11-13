@@ -77,10 +77,10 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
 
     Route::get('/translate', [TranslationController::class, 'show'])->name('translate');
     Route::get('/translate/capabilities', [TranslationController::class, 'capabilities'])->name('translate.capabilities');
-    Route::post('/translate', [TranslationController::class, 'translate'])->name('translate.submit');
+    Route::post('/translate', [TranslationController::class, 'translate'])->middleware('translation.admission')->name('translate.submit');
 
     Route::get('/documents', [DocumentsController::class, 'index'])->name('documents');
-    Route::post('/documents/{id}/re-translate', [DocumentsController::class, 'retranslate'])->name('documents.retranslate');
+    Route::post('/documents/{id}/re-translate', [DocumentsController::class, 'retranslate'])->middleware('translation.admission')->name('documents.retranslate');
     Route::get('/bookmarks', [BookmarksController::class, 'index'])->name('bookmarks');
 
     Route::get('/notifications', [NotificationController::class, 'page'])->name('notifications.page');
@@ -119,7 +119,8 @@ Route::middleware(['auth', 'throttle:60,1'])->group(function () {
 
         // Translation/queue ops
         Route::get('/jobs', [JobController::class, 'index'])->name('jobs.index');
-        Route::post('/jobs/retry/{failedJobId}', [JobController::class, 'retry'])->name('jobs.retry');
+        Route::post('/jobs/retry/{failedJobId}', [JobController::class, 'retry'])->middleware('translation.admission')->name('jobs.retry');
+        Route::post('/translation-jobs/{translationJob}/retry', [JobController::class, 'retryTranslation'])->middleware('translation.admission')->name('translation-jobs.retry');
 
         // Read-only user directory
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
