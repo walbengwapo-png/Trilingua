@@ -28,9 +28,11 @@ class TranslationJob extends Model
     ];
 
     protected $guarded = [];
+    protected $hidden = ['error_details'];
 
     protected $casts = [
         'file_size'          => 'integer',
+        'error_details'      => 'array',
         'progress'           => 'integer',
         'attempts'           => 'integer',
         'recoverable'        => 'boolean',
@@ -69,6 +71,18 @@ class TranslationJob extends Model
         return in_array($this->status, self::TERMINAL_STATUSES, true);
     }
 
+    /** Queue ownership by PHP is distinct from active execution in Python. */
+    public function publicStatus(): string
+    {
+        if ($this->status === self::STATUS_PROCESSING && $this->engine_job_uuid
+            && config('translation.python_service.document_jobs')) {
+            $engineStatus = DB::table('python_document_jobs')->where('id', $this->engine_job_uuid)->value('status');
+            if ($engineStatus === 'queued') { return self::STATUS_QUEUED; }
+        }
+
+        return $this->status;
+    }
+
     /**
      * A job is safe to replay from the admin Retry flow only when it failed
      * terminally AND a durable original is recorded for reconstruction.
@@ -91,26 +105,17 @@ class TranslationJob extends Model
 
     public function markQueued(bool $recovered = false): bool
     {
-        if (!$recovered && !$this->isActive()) {
-            return false;
-        }
-
         $updated = static::query()
             ->whereKey($this->getKey())
-            ->where(function ($q) use ($recovered) {
-                $q->whereIn('status', self::ACTIVE_STATUSES);
-                if ($recovered) {
-                    // An explicit operator recovery may revive a failed job only.
-                    $q->orWhere('status', self::STATUS_FAILED);
-                }
-            })
+            ->where('attempts', (int) $this->attempts)
+            ->whereIn('status', $recovered ? [self::STATUS_FAILED] : [self::STATUS_CREATED, self::STATUS_PROCESSING])
             ->update([
                 'status'            => self::STATUS_QUEUED,
                 'error'             => null,
                 'completed_at'      => null,
                 'terminal_failed_at' => null,
                 'last_heartbeat_at' => now(),
-                ...($recovered ? ['engine_job_uuid' => null] : []),
+                // Keep the previous engine UUID until its outcome has been reconciled.
             ]);
 
         if ($updated) {
@@ -120,18 +125,16 @@ class TranslationJob extends Model
         return (bool) $updated;
     }
 
-    public function markProcessing(): bool
+    public function markProcessing(?int $expectedAttempt = null): bool
     {
-        if (!$this->isActive()) {
-            return false;
-        }
-
+        $expectedAttempt ??= (int) $this->attempts + 1;
         $updated = static::query()
             ->whereKey($this->getKey())
-            ->whereIn('status', self::ACTIVE_STATUSES)
+            ->where('status', self::STATUS_QUEUED)
+            ->where('attempts', $expectedAttempt - 1)
             ->update([
                 'status'            => self::STATUS_PROCESSING,
-                'attempts'          => ($this->attempts ?? 0) + 1,
+                'attempts'          => DB::raw('attempts + 1'),
                 'started_at'        => $this->started_at ?? now(),
                 'last_heartbeat_at' => now(),
                 'error'             => null,
@@ -156,6 +159,7 @@ class TranslationJob extends Model
         $updated = static::query()
             ->whereKey($this->getKey())
             ->whereIn('status', self::ACTIVE_STATUSES)
+            ->where('attempts', (int) $this->attempts)
             ->update([
                 'progress'          => $progress,
                 'last_heartbeat_at' => now(),
@@ -164,6 +168,10 @@ class TranslationJob extends Model
         if ($updated) {
             $this->progress = $progress;
             $this->last_heartbeat_at = now();
+            if (config('translation.admission_enabled', false)) {
+                DB::table('translation_admissions')->where('translation_job_id', $this->id)
+                    ->where('expected_attempt', (int) $this->attempts)->update(['heartbeat_at' => now()]);
+            }
         }
 
         return (bool) $updated;
@@ -177,7 +185,8 @@ class TranslationJob extends Model
 
         $updated = static::query()
             ->whereKey($this->getKey())
-            ->whereIn('status', self::ACTIVE_STATUSES)
+            ->where('status', self::STATUS_PROCESSING)
+            ->where('attempts', (int) $this->attempts)
             ->update([
                 'status'                => self::STATUS_COMPLETED,
                 'progress'              => 100,
@@ -212,9 +221,11 @@ class TranslationJob extends Model
         $updated = static::query()
             ->whereKey($this->getKey())
             ->whereIn('status', self::ACTIVE_STATUSES)
+            ->where('attempts', (int) $this->attempts)
             ->update([
                 'status'       => self::STATUS_FAILED,
                 'error'        => Str::limit($e->getMessage(), 2000),
+                'error_details' => $e instanceof \App\Exceptions\TranslationException ? $e->errorDetails : null,
                 'completed_at' => $this->completed_at ?? now(),
             ]);
 
@@ -241,9 +252,11 @@ class TranslationJob extends Model
         $updated = static::query()
             ->whereKey($this->getKey())
             ->whereIn('status', self::ACTIVE_STATUSES)
+            ->where('attempts', (int) $this->attempts)
             ->update([
                 'status'            => self::STATUS_FAILED,
                 'error'             => Str::limit($e->getMessage(), 2000),
+                'error_details'     => $e instanceof \App\Exceptions\TranslationException ? $e->errorDetails : null,
                 'completed_at'      => $this->completed_at ?? $now,
                 'terminal_failed_at' => $now,
                 'recoverable'       => DB::raw($recoverable ? 'true' : 'false'),
@@ -273,6 +286,7 @@ class TranslationJob extends Model
         $updated = static::query()
             ->whereKey($this->getKey())
             ->whereIn('status', self::ACTIVE_STATUSES)
+            ->where('attempts', (int) $this->attempts)
             ->update([
                 'status'            => self::STATUS_FAILED,
                 'error'             => Str::limit($reason, 2000),
