@@ -443,3 +443,26 @@ def isolate_provider_run_stop_between_tests():
     module = sys.modules.get('provider_usage')
     if module is not None:
         module._run_stop_reason = None
+
+
+@pytest.fixture(autouse=True)
+def offline_provider_circuit(monkeypatch):
+    """All normal tests use a mocked authority, never live storage/provider calls."""
+    import provider_circuit
+    from types import SimpleNamespace
+    from uuid import uuid4
+    ticket = {'allowed': True, 'scope': 'ollama', 'incident_id': str(uuid4()), 'version': 1, 'probe_lease': None}
+    def request(method, path, **kwargs):
+        result = ticket.copy() if path.endswith('acquire_provider_circuit_v1') else True
+        return SimpleNamespace(json=lambda: result)
+    monkeypatch.setattr(provider_circuit, '_store_factory', lambda: SimpleNamespace(request=request))
+
+
+@pytest.fixture(autouse=True)
+def reject_unmocked_http(monkeypatch):
+    import requests
+    def refused(*args, **kwargs):
+        raise AssertionError('Unmocked HTTP is prohibited in this offline test suite')
+    monkeypatch.setattr(requests.sessions.Session, 'request', refused)
+    monkeypatch.setenv('HF_HUB_OFFLINE', '1')
+    monkeypatch.setenv('TRANSFORMERS_OFFLINE', '1')

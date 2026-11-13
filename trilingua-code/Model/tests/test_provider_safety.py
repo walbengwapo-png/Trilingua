@@ -41,7 +41,7 @@ def test_ollama_terminal_status_never_retries_or_falls_back(monkeypatch, status)
     monkeypatch.setenv('GPTOSS_MAX_ATTEMPTS', '3')
     primary = GPTOSSProvider()
     response = Mock(status_code=status)
-    response.json.return_value = {'error': 'payment required' if status == 402 else 'allowance exhausted'}
+    response.json.return_value = {'error': 'payment required' if status == 402 else 'quota exhausted'}
     primary._session.post = Mock(return_value=response)
     fallback = Mock()
     route = FallbackTranslationProvider(primary, fallback)

@@ -4,6 +4,7 @@ from unittest.mock import Mock
 import time
 import pytest
 from providers.request_budget import request_deadline,transport_timeout,retry_sleep
+from provider_errors import OperationFailure
 
 
 @pytest.mark.parametrize('provider',['gemini','gptoss','gemini_analysis','ollama_analysis'])
@@ -28,20 +29,21 @@ def test_every_transport_uses_remaining_pdf_budget(monkeypatch,provider):
             instance=OllamaAnalysisProvider();response={'message':{'content':'{}'}}
         post=Mock();monkeypatch.setattr(requests,'post',post)
         call=lambda:instance.analyze('System','Source')
-    post.return_value=SimpleNamespace(status_code=200,json=lambda:response,raise_for_status=lambda:None)
+    post.return_value=SimpleNamespace(status_code=200,headers={},json=lambda:response,raise_for_status=lambda:None)
     with request_deadline(time.monotonic()+.5):call()
     timeout=post.call_args.kwargs['timeout']
     assert 0<timeout.total<=.500001 and timeout.connect_timeout<=.500001
     post.reset_mock()
     with request_deadline(time.monotonic()-1):
-        with pytest.raises(TimeoutError):call()
+        with pytest.raises(OperationFailure) as expired:call()
+        assert expired.value.category == 'deadline_expired' and expired.value.status_code == 408
     post.assert_not_called()
 
 
 def test_budget_is_nested_request_local_and_retry_cannot_sleep_past_deadline():
     assert transport_timeout(10,30)==(10,30)
     with request_deadline(time.monotonic()+.1):
-        with pytest.raises(TimeoutError):retry_sleep(1)
+        with pytest.raises(OperationFailure):retry_sleep(1)
         with request_deadline(None):assert transport_timeout(10,30)==(10,30)
         assert transport_timeout(10,30).total<=.100001
     assert transport_timeout(10,30)==(10,30)

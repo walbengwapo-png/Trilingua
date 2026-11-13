@@ -246,21 +246,23 @@ def test_batch_prompt_uses_the_actual_block_ids():
     assert "Use every exact BLOCK number" in prompt
 
 
-def test_gptoss_ambiguous_429_stops_without_retry(monkeypatch):
-    from provider_usage import ProviderStopped
+def test_gptoss_ambiguous_429_is_bounded_without_a_permanent_stop(monkeypatch):
+    from provider_usage import ProviderFailure, ProviderStopped
     from unittest.mock import Mock
     import pytest
     monkeypatch.setenv("GPTOSS_MAX_ATTEMPTS", "3")
     waits = []
     monkeypatch.setattr("providers.gptoss._time.sleep", waits.append)
     provider = GPTOSSProvider(api_url="http://test/api/chat", model="test")
-    limited = SimpleNamespace(status_code=429, headers={"Retry-After": "2"})
+    limited = SimpleNamespace(status_code=429, headers={"Retry-After": "2"}, json=lambda: {})
     post = Mock(return_value=limited)
     monkeypatch.setattr(provider._session, "post", post)
-    with pytest.raises(ProviderStopped):
+    with pytest.raises(ProviderFailure) as error:
         provider.translate("Hello", "English", "Cebuano")
-    assert post.call_count == 1
-    assert waits == []
+    assert not isinstance(error.value, ProviderStopped)
+    assert error.value.status_code == 429
+    assert post.call_count == 3
+    assert len(waits) == 2
 
 
 def test_gptoss_rejects_nonempty_token_limited_response(monkeypatch):

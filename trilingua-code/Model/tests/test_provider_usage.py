@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from unittest.mock import Mock
 from concurrent.futures import ThreadPoolExecutor
 import pytest
-from provider_usage import provider_post, usage_scope, submit_with_usage, call_with_purpose, ProviderStopped
+from provider_usage import provider_post, usage_scope, submit_with_usage, call_with_purpose, ProviderStopped, OperationFailure
 
 
 def response(data, status=200):
@@ -73,7 +73,7 @@ def test_cache_only_operation_reports_zero_outbound_usage():
 
 def test_disallowed_provider_is_blocked_before_outbound_call():
     post = Mock()
-    with pytest.raises(ProviderStopped):
+    with pytest.raises(OperationFailure):
         with usage_scope(allowed_providers={'gptoss'}):
             provider_post(post, 'http://test', provider='gemini', model='test', purpose='translation')
     post.assert_not_called()
@@ -174,17 +174,12 @@ def test_server_lifespan_sends_no_startup_requests_and_initializes_no_cache(monk
     cache.assert_not_called()
 
 
-def test_strict_run_stop_latch_blocks_the_next_case_before_http(monkeypatch):
-    import provider_usage
-    from providers.gptoss import GPTOSSProvider
-    monkeypatch.setattr(provider_usage, '_run_stop_reason', None)
-    monkeypatch.delenv('PROVIDER_STRICT_RUN', raising=False)
-    provider = GPTOSSProvider()
-    provider._session.post = Mock(return_value=response({'error': 'allowance exhausted'}, 429))
-    with pytest.raises(ProviderStopped):
-        with usage_scope():
-            provider.translate('Water', 'English', 'Cebuano')
-    with pytest.raises(ProviderStopped):
-        with usage_scope():
-            provider.translate('Next case', 'English', 'Filipino')
-    assert provider._session.post.call_count == 1
+def test_persisted_stop_blocks_a_new_usage_scope_before_http(monkeypatch):
+    from provider_usage import ollama_post
+    monkeypatch.setattr('provider_circuit.rpc', lambda *args: {'allowed': False, 'incident_id': 'persisted'})
+    post = Mock()
+    for _ in range(2):
+        with pytest.raises(ProviderStopped):
+            with usage_scope():
+                ollama_post(post, 'http://mock', json={})
+    post.assert_not_called()

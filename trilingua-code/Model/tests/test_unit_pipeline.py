@@ -1116,7 +1116,7 @@ class TestGPTOSSTranslateMany:
         assert ctx.provider_failures.get("invalid_response") == 3
 
     def test_systemic_rate_limit_raises_and_records(self, monkeypatch):
-        from provider_usage import ProviderStopped
+        from provider_usage import ProviderFailure, ProviderStopped
         from pipeline.document_context import DocumentContext
         from config.processing_modes import get_mode
         provider = _gptoss_provider(monkeypatch)
@@ -1127,12 +1127,13 @@ class TestGPTOSSTranslateMany:
             return FakeChatResponse(status=429, text="rate limited")
 
         monkeypatch.setattr(provider._session, "post", fake_post)
-        with pytest.raises(ProviderStopped, match="HTTP 429") as stopped:
+        with pytest.raises(ProviderFailure) as stopped:
             provider.translate_many(
                 _units(["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"]),
                 "English", "Cebuano", ctx=ctx,
             )
         assert stopped.value.status_code == 429
+        assert not isinstance(stopped.value, ProviderStopped)
         assert ctx.provider_failures.get("rate_limit") == 1
         assert ctx.provider_retries == 0
 
@@ -1266,7 +1267,7 @@ class TestGPTOSSchedulerDispatch:
         assert [o["text"] for o in outputs] == ["[[0]]", "[[1]]", "[[2]]",
                                                 "[[3]]", "[[4]]", "[[5]]"]
         assert ctx.scheduler_batches == 3
-        assert ctx.scheduler_slots == 8
+        assert ctx.scheduler_slots == document_batch_scheduler.slots
         assert ctx.scheduler_wait_ms == pytest.approx(7.5 * 3)
         assert ctx.blocks_batched == 6
 
