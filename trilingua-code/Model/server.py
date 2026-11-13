@@ -102,7 +102,7 @@ _gemini_provider = GeminiProvider()
 _gptoss_provider = GPTOSSProvider()
 _nllb_provider = NLLBProvider()
 
-# Analysis and quality review use a separate Gemini -> Ollama chain.
+# Analysis and quality review follow the explicitly configured provider order.
 _ollama_analysis_provider = OllamaAnalysisProvider()
 if ANALYSIS_PROVIDER == "gemini" and os.environ.get("GEMINI_API_KEY"):
     _gemini_analysis_provider = GeminiAnalysisProvider(
@@ -112,6 +112,14 @@ if ANALYSIS_PROVIDER == "gemini" and os.environ.get("GEMINI_API_KEY"):
         _gemini_analysis_provider,
         _ollama_analysis_provider
         if ANALYSIS_FALLBACK_PROVIDER == "ollama" else None,
+    )
+elif (ANALYSIS_PROVIDER == "ollama" and ANALYSIS_FALLBACK_PROVIDER == "gemini"
+      and os.environ.get("GEMINI_API_KEY")):
+    _analysis_provider = FallbackAnalysisProvider(
+        _ollama_analysis_provider,
+        GeminiAnalysisProvider(
+            max_attempts=max(1, int(os.environ.get("GEMINI_ANALYSIS_MAX_ATTEMPTS", "3")))
+        ),
     )
 else:
     if ANALYSIS_PROVIDER == "gemini":
