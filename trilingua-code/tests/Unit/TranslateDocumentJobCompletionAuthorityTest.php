@@ -18,15 +18,14 @@ use Mockery;
 use Tests\TestCase;
 
 /**
- * F1 / X1 — completion authority.
+ * F1 / X1 â€” completion authority.
  *
  * A worker may only announce success when markCompleted() actually performed the
  * transition. When another actor has already made the row terminal, this
- * attempt's own side effects must be compensated without creating a duplicate
- * history row, deleting a pre-existing valid row, or removing an object another
- * worker still needs.
+ * attempt must refuse publication without creating a duplicate history row,
+ * deleting a pre-existing valid row, or removing an object another worker needs.
  *
- * X1 — a retryable attempt that will be released back onto the queue must not
+ * X1 â€” a retryable attempt that will be released back onto the queue must not
  * first be driven into a terminal `failed` state, which would leave the row
  * disagreeing with the queue for the whole backoff window.
  */
@@ -36,8 +35,7 @@ class TranslateDocumentJobCompletionAuthorityTest extends TestCase
 
     protected function tearDown(): void
     {
-        Mockery::close();
-        parent::tearDown();
+        try { Mockery::close(); } finally { parent::tearDown(); }
     }
 
     private function makeRow(string $status = TranslationJob::STATUS_QUEUED): TranslationJob
@@ -81,8 +79,8 @@ class TranslateDocumentJobCompletionAuthorityTest extends TestCase
     }
 
     /**
-     * Upload succeeds, then — mid-flight, after the worker already captured its
-     * in-memory model — another actor rewrites the authoritative row. The
+     * Upload succeeds, then â€” mid-flight, after the worker already captured its
+     * in-memory model â€” another actor rewrites the authoritative row. The
      * worker's own markCompleted() will then be refused at the database layer.
      */
     private function mockUploadWithInterference(StorageService $storage, TranslationJob $row, array $interference, string $path = '42/translations/mine.pdf'): void
@@ -136,15 +134,13 @@ class TranslateDocumentJobCompletionAuthorityTest extends TestCase
         ]);
 
         $historyService = Mockery::mock(HistoryService::class);
-        $historyService->shouldReceive('insertRecord')
-            ->once()
-            ->andReturnUsing(fn (array $data) => TranslationHistory::create($data));
+        $historyService->shouldNotReceive('insertRecord');
 
         $blockService = Mockery::mock(BlockService::class);
-        $blockService->shouldReceive('persistBlocks')->once()->andReturn(true);
+        $blockService->shouldNotReceive('persistBlocks');
 
         $metricsService = Mockery::mock(MetricsService::class);
-        $metricsService->shouldReceive('persistDocumentMetrics')->once()->andReturn(true);
+        $metricsService->shouldNotReceive('persistDocumentMetrics');
 
         $job = $this->runJob($row, $temp, $row->uuid);
         $job->handle($tm, $storage, $historyService, $blockService, $metricsService);
@@ -166,7 +162,7 @@ class TranslateDocumentJobCompletionAuthorityTest extends TestCase
 
     /**
      * F1: another worker already completed the row. This attempt lost the race
-     * and must behave idempotently — no second completion notification, no
+     * and must behave idempotently â€” no second completion notification, no
      * duplicate history row, and no deletion of the pre-existing valid row.
      */
     public function test_already_completed_row_is_idempotent_not_a_second_completion(): void
@@ -212,7 +208,7 @@ class TranslateDocumentJobCompletionAuthorityTest extends TestCase
         $blockService->shouldNotReceive('persistBlocks');
 
         $metricsService = Mockery::mock(MetricsService::class);
-        $metricsService->shouldReceive('persistDocumentMetrics')->once()->andReturn(true);
+        $metricsService->shouldNotReceive('persistDocumentMetrics');
 
         $job = $this->runJob($row, $temp, $row->uuid);
         $job->handle($tm, $storage, $historyService, $blockService, $metricsService);
@@ -233,11 +229,10 @@ class TranslateDocumentJobCompletionAuthorityTest extends TestCase
     }
 
     /**
-     * F1: a refused completion against a non-completed terminal row must remove
-     * the history row THIS attempt created, so the owner's history list and the
-     * admin review queue never show work the authoritative job disclaims.
+     * F1: refuse history publication after another actor makes the job terminal.
+     * The owner and review queue must never see work the authoritative row disclaims.
      */
-    public function test_refused_completion_removes_only_the_history_row_this_attempt_created(): void
+    public function test_refused_completion_never_creates_history_for_a_lost_attempt(): void
     {
         Cache::flush();
         Notification::fake();
@@ -256,15 +251,13 @@ class TranslateDocumentJobCompletionAuthorityTest extends TestCase
         ]);
 
         $historyService = Mockery::mock(HistoryService::class);
-        $historyService->shouldReceive('insertRecord')
-            ->once()
-            ->andReturnUsing(fn (array $data) => TranslationHistory::create($data));
+        $historyService->shouldNotReceive('insertRecord');
 
         $blockService = Mockery::mock(BlockService::class);
-        $blockService->shouldReceive('persistBlocks')->once()->andReturn(true);
+        $blockService->shouldNotReceive('persistBlocks');
 
         $metricsService = Mockery::mock(MetricsService::class);
-        $metricsService->shouldReceive('persistDocumentMetrics')->once()->andReturn(true);
+        $metricsService->shouldNotReceive('persistDocumentMetrics');
 
         $job = $this->runJob($row, $temp, $row->uuid);
         $job->handle($tm, $storage, $historyService, $blockService, $metricsService);
@@ -272,18 +265,17 @@ class TranslateDocumentJobCompletionAuthorityTest extends TestCase
         $this->assertSame(
             0,
             TranslationHistory::where('job_id', $row->uuid)->count(),
-            'A history row claiming completion under a refused transition must be compensated away.'
+            'A superseded attempt must not publish a history row.'
         );
 
         @unlink($temp);
     }
 
     /**
-     * X1: a retryable failure releases the job back onto the queue. The state
-     * row must remain active so the API never reports "failed" for work that is
-     * still legitimately scheduled to run.
+     * A timeout does not prove generation stopped. Keep the durable original,
+     * publish an honest failure, and require reviewed recovery before replay.
      */
-    public function test_retryable_failure_keeps_the_row_active_for_the_released_retry(): void
+    public function test_engine_timeout_requires_recovery_instead_of_automatic_replay(): void
     {
         Cache::flush();
 
@@ -311,15 +303,11 @@ class TranslateDocumentJobCompletionAuthorityTest extends TestCase
         $job->handle($tm, $storage, $historyService, $blockService, $metricsService);
 
         $row->refresh();
-        $this->assertContains(
-            $row->status,
-            TranslationJob::ACTIVE_STATUSES,
-            'An attempt that will be released for retry must leave the row active, not terminal-failed.'
-        );
-        $this->assertNull(
-            $row->terminal_failed_at,
-            'A retryable attempt must not stamp a terminal failure.'
-        );
+        $this->assertSame(TranslationJob::STATUS_FAILED, $row->status);
+        $this->assertTrue($row->recoverable, 'The durable original remains available for reviewed recovery.');
+        $this->assertNotNull($row->terminal_failed_at);
+        $this->assertSame(1, $row->attempts);
+        $this->assertSame('failed', Cache::get('translation_job_' . $row->uuid)['status']);
 
         @unlink($temp);
     }

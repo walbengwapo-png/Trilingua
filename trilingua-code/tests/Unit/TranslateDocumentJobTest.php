@@ -22,8 +22,7 @@ class TranslateDocumentJobTest extends TestCase
 
     protected function tearDown(): void
     {
-        Mockery::close();
-        parent::tearDown();
+        try { Mockery::close(); } finally { parent::tearDown(); }
     }
 
     public function test_it_marks_job_failed_when_the_translated_output_is_empty(): void
