@@ -28,7 +28,7 @@ WHERE scope='ollama' AND EXISTS (
     SELECT 1 FROM public.python_document_jobs WHERE error_status=429 AND NOT provider_stop_released
 );
 
-CREATE FUNCTION public.acquire_provider_circuit_v1(circuit_scope text)
+CREATE OR REPLACE FUNCTION public.acquire_provider_circuit_v1(circuit_scope text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
 DECLARE c public.provider_circuits; allowed boolean := false;
 BEGIN
@@ -54,7 +54,7 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION public.finish_provider_circuit_v1(circuit_scope text, incident uuid, expected_version bigint,
+CREATE OR REPLACE FUNCTION public.finish_provider_circuit_v1(circuit_scope text, incident uuid, expected_version bigint,
     lease uuid, failure jsonb DEFAULT NULL, actor text DEFAULT NULL)
 RETURNS boolean LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
 DECLARE c public.provider_circuits; hard boolean;
@@ -88,7 +88,7 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION public.lease_provider_recovery_v1(circuit_scope text, incident uuid, expected_version bigint, actor text)
+CREATE OR REPLACE FUNCTION public.lease_provider_recovery_v1(circuit_scope text, incident uuid, expected_version bigint, actor text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
 DECLARE c public.provider_circuits;
 BEGIN
@@ -107,7 +107,7 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION public.record_provider_probe_v1(circuit_scope text, incident uuid, expected_version bigint,
+CREATE OR REPLACE FUNCTION public.record_provider_probe_v1(circuit_scope text, incident uuid, expected_version bigint,
     lease uuid, models jsonb)
 RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
 DECLARE c public.provider_circuits;
@@ -130,7 +130,7 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION public.cancel_provider_probe_v1(circuit_scope text, incident uuid, expected_version bigint, lease uuid)
+CREATE OR REPLACE FUNCTION public.cancel_provider_probe_v1(circuit_scope text, incident uuid, expected_version bigint, lease uuid)
 RETURNS boolean LANGUAGE sql SECURITY INVOKER SET search_path='' AS $$
     WITH cancelled AS (
         UPDATE public.provider_circuits SET state=CASE WHEN manual_probe THEN 'manual' ELSE 'open' END,
@@ -142,7 +142,7 @@ RETURNS boolean LANGUAGE sql SECURITY INVOKER SET search_path='' AS $$
 $$;
 
 -- Versioned queue claim uses explicit circuit state, never historical job errors.
-CREATE FUNCTION public.claim_python_document_job_v2()
+CREATE OR REPLACE FUNCTION public.claim_python_document_job_v2()
 RETURNS SETOF public.python_document_jobs LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
 DECLARE c public.provider_circuits;
 BEGIN
@@ -170,7 +170,7 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION public.release_legacy_provider_markers_v1(incident uuid, expected_version bigint, reviewed_ids uuid[])
+CREATE OR REPLACE FUNCTION public.release_legacy_provider_markers_v1(incident uuid, expected_version bigint, reviewed_ids uuid[])
 RETURNS integer LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
 DECLARE c public.provider_circuits; changed integer;
 BEGIN
@@ -190,7 +190,7 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION public.release_provider_incident_v2(incident uuid, expected_version bigint, evidence uuid,
+CREATE OR REPLACE FUNCTION public.release_provider_incident_v2(incident uuid, expected_version bigint, evidence uuid,
     actor text, reviewed_rows jsonb)
 RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path='' AS $$
 DECLARE c public.provider_circuits; matched integer; ids uuid[]; changed integer;
