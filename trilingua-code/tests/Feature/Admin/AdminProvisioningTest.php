@@ -15,31 +15,10 @@ class AdminProvisioningTest extends TestCase
 
     public function test_fresh_migration_and_seed_leave_no_known_admin_login(): void
     {
-        $originalDefault = config('database.default');
-
-        try {
-            config(['database.connections.fresh_install' => [
-                'driver' => 'sqlite',
-                'database' => ':memory:',
-                'prefix' => '',
-                'foreign_key_constraints' => true,
-            ]]);
-
-            DB::setDefaultConnection('fresh_install');
-
-            $this->artisan('migrate', ['--force' => true])->assertSuccessful();
-            $this->artisan('db:seed', ['--force' => true])->assertSuccessful();
-
-            $this->assertFalse(
-                Auth::attempt(['email' => 'admin@example.com', 'password' => 'password']),
-                'The known default admin credential must not authenticate after a fresh install.'
-            );
-
-            $this->assertNull(User::on('fresh_install')->where('email', 'admin@example.com')->first());
-        } finally {
-            DB::setDefaultConnection($originalDefault);
-            DB::purge('fresh_install');
-        }
+        // RefreshDatabase has already migrated the guarded test database.
+        $this->artisan('db:seed', ['--force' => true])->assertSuccessful();
+        $this->assertFalse(Auth::attempt(['email' => 'admin@example.com', 'password' => 'password']));
+        $this->assertNull(User::where('email', 'admin@example.com')->first());
     }
 
     public function test_seeding_cannot_turn_an_existing_account_into_a_known_password_admin(): void

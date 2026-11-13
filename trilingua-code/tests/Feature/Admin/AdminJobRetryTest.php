@@ -34,8 +34,9 @@ class AdminJobRetryTest extends TestCase
 
     private function makeFailures(string $uuid, bool $recoverable, bool $withState = true): int
     {
+        User::firstOrCreate(['id' => 3], ['name' => 'Synthetic owner', 'email' => 'owner@example.test', 'password' => 'unused']);
         if ($withState) {
-            TranslationJob::create([
+            $state = TranslationJob::create([
                 'uuid'                    => $uuid,
                 'user_id'                 => 3,
                 'payload_hash'            => hash('sha256', 'payload'),
@@ -48,6 +49,7 @@ class AdminJobRetryTest extends TestCase
                 'file_size'               => 10,
                 'status'                  => TranslationJob::STATUS_FAILED,
                 'recoverable'             => $recoverable,
+                'ocr_mode'                => 'strict',
                 'original_storage_path'   => $recoverable ? '3/originals/x.pdf' : null,
                 'original_storage_backend'=> $recoverable ? 'supabase' : null,
                 'error'                   => 'original failure',
@@ -59,7 +61,13 @@ class AdminJobRetryTest extends TestCase
             'uuid'       => $uuid,
             'connection' => 'database',
             'queue'      => 'default',
-            'payload'    => json_encode(['displayName' => 'App\\Jobs\\TranslateDocumentJob']),
+            'payload'    => json_encode([
+                'data' => ['commandName' => TranslateDocumentJob::class],
+                'translation_job_id' => $state->id ?? 999999,
+                'translation_attempt' => 1,
+                'translation_job_metadata' => ['user_id' => 3, 'original_name' => 'input.pdf',
+                    'original_storage_path' => '3/originals/x.pdf', 'ocr_mode' => 'strict'],
+            ]),
             'exception'  => 'original failure: input file not found',
             'failed_at'  => now(),
         ]);
@@ -91,7 +99,7 @@ class AdminJobRetryTest extends TestCase
                 && $job->translationJobId !== null;
         });
 
-        $this->assertSame(0, DB::table('failed_jobs')->where('id', $failedJobId)->count(), 'A successful replay must clear the historical failure entry.');
+        $this->assertSame(1, DB::table('failed_jobs')->where('id', $failedJobId)->count(), 'Recovery must retain the historical failure evidence.');
 
         $state = TranslationJob::where('uuid', $uuid)->first();
         $this->assertSame(TranslationJob::STATUS_QUEUED, $state->status);

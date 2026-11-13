@@ -83,6 +83,12 @@ class ReviewBlocksPersistenceTest extends TestCase
         ]);
         $metricsService = \Mockery::mock(\App\Services\MetricsService::class);
 
+        $state = \App\Models\TranslationJob::create([
+            'user_id' => $user->id, 'payload_hash' => hash('sha256', 'hello world'),
+            'original_name' => 'sample.txt', 'original_ext' => '.txt',
+            'source_lang' => 'English', 'target_lang' => 'Cebuano', 'status' => 'queued',
+        ]);
+        $metricsService->shouldReceive('persistDocumentMetrics')->once()->andReturn(true);
         $job = new TranslateDocumentJob(
             'sample.txt',
             '.txt',
@@ -93,6 +99,7 @@ class ReviewBlocksPersistenceTest extends TestCase
             $tempPath,
             $user->id,
             '5/originals/sample.txt',
+            translationJobId: $state->id, presetUuid: $state->uuid,
         );
 
         $job->handle(
