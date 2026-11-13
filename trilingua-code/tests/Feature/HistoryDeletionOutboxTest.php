@@ -23,8 +23,7 @@ class HistoryDeletionOutboxTest extends TestCase
 
     protected function tearDown(): void
     {
-        \Mockery::close();
-        parent::tearDown();
+        try { \Mockery::close(); } finally { parent::tearDown(); }
     }
 
     private function user(): User
