@@ -38,7 +38,8 @@ class TranslationManagerDocumentJobsTest extends TestCase
         $this->assertSame('translated bytes', $result['body']);
         $this->assertSame([['block_index' => 0]], $result['blocks']);
         $this->assertSame(['format' => '.txt'], $result['sidecar']);
-        $this->assertSame(3, $beats);
+        // Renew before submission as well as before each of the three polls.
+        $this->assertSame(4, $beats);
         Http::assertSentCount(5);
         Http::assertSent(fn ($request) => $request->method() === 'POST' && $request->url() === $url
             && collect($request->data())->contains(fn ($field) => ($field['name'] ?? null) === 'job_id' && $field['contents'] === $id));
