@@ -34,7 +34,7 @@ class AdminJobRetryTest extends TestCase
 
     private function makeFailures(string $uuid, bool $recoverable, bool $withState = true): int
     {
-        User::firstOrCreate(['id' => 3], ['name' => 'Synthetic owner', 'email' => 'owner@example.test', 'password' => 'unused']);
+        if (!User::find(3)) { User::factory()->create(['id' => 3, 'email' => 'owner@example.test']); }
         if ($withState) {
             $state = TranslationJob::create([
                 'uuid'                    => $uuid,
