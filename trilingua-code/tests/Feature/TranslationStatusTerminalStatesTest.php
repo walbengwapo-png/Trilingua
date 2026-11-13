@@ -248,7 +248,7 @@ class TranslationStatusTerminalStatesTest extends TestCase
         ], 60);
 
         $this->actingAs($user)->get('/translate/status/'.$job->uuid)
-            ->assertOk()->assertJsonPath('status', 'processing');
+            ->assertOk()->assertJsonPath('status', 'queued');
         $this->assertTrue($job->markProcessing());
         $this->get('/translate/status/'.$job->uuid)
             ->assertOk()->assertJsonPath('status', 'processing');

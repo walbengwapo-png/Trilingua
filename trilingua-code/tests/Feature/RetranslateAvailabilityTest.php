@@ -109,7 +109,7 @@ class RetranslateAvailabilityTest extends TestCase
         $storage->shouldReceive('read')->andReturn('PK-original-bytes');
         $this->app->instance(StorageService::class, $storage);
 
-        $this->retrans($user, $record)->assertOk()->assertJsonPath('status', 'processing');
+        $this->retrans($user, $record)->assertOk()->assertJsonPath('status', 'queued');
     }
 
     public function test_ownership_is_checked_before_storage_is_probed(): void

@@ -68,7 +68,7 @@ class TranslationControllerTest extends TestCase
         ], ['Accept' => 'application/json']);
 
         $response->assertOk();
-        $response->assertJsonPath('status', 'processing');
+        $response->assertJsonPath('status', 'queued');
         $response->assertJsonStructure(['job_id', 'original_filename']);
 
         // Durable row created with canonical content hash + opaque storage key.
@@ -132,7 +132,7 @@ class TranslationControllerTest extends TestCase
         $file = UploadedFile::fake()->createWithContent('worksheet.png', file_get_contents(__DIR__.'/../fixtures/ocr-worksheet.png'));
         $this->actingAs($user)->postJson('/translate', [
             'source_lang' => 'English', 'target_lang' => 'Cebuano', 'document' => $file,
-        ])->assertOk()->assertJsonPath('status', 'processing');
+        ])->assertOk()->assertJsonPath('status', 'queued');
         $this->assertSame(1, TranslationJob::count());
         $this->assertSame(1, DB::table('jobs')->count());
     }

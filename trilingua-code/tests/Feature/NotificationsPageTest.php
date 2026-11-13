@@ -251,7 +251,7 @@ class NotificationsPageTest extends TestCase
         $response->assertSee('href="' . route('admin.review.show', $doc->id) . '"', false);
     }
 
-    public function test_user_completed_notification_links_to_saved_translations_with_open(): void
+    public function test_user_completed_notification_links_to_saved_translation_details(): void
     {
         $user = $this->makeUser();
         $doc  = $this->makeDoc($user);
@@ -261,7 +261,7 @@ class NotificationsPageTest extends TestCase
         $response = $this->actingAs($user)->get('/notifications');
 
         $response->assertOk();
-        $response->assertSee('href="' . route('history', ['open' => $doc->id]) . '"', false);
+        $response->assertSee('href="' . route('history.view', $doc->id) . '"', false);
         $response->assertDontSee('href="' . route('history.detail', $doc->id) . '"', false);
     }
 
@@ -292,7 +292,7 @@ class NotificationsPageTest extends TestCase
 
         $this->actingAs($user)->getJson('/notifications/data')
             ->assertOk()
-            ->assertJsonFragment(['url' => route('history', ['open' => $doc->id])]);
+            ->assertJsonFragment(['url' => route('history.view', $doc->id)]);
     }
 
     public function test_history_page_passes_open_query_param(): void

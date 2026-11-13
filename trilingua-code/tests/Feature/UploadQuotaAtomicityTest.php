@@ -382,7 +382,7 @@ class UploadQuotaAtomicityTest extends TestCase
             'target_lang' => 'Filipino',
         ], ['Accept' => 'application/json']);
 
-        $response->assertOk()->assertJsonPath('status', 'processing');
+        $response->assertOk()->assertJsonPath('status', 'queued');
 
         $row = TranslationQuota::where('user_id', $user->id)->firstOrFail();
         $this->assertSame(1, (int) $row->files, 'a re-translation charges one accepted file');

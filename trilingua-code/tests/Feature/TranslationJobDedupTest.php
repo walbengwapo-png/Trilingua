@@ -62,7 +62,7 @@ class TranslationJobDedupTest extends TestCase
             'target_lang' => 'Cebuano',
             'document' => $this->docUpload(),
         ], ['Accept' => 'application/json']);
-        $first->assertOk()->assertJsonPath('status', 'processing');
+        $first->assertOk()->assertJsonPath('status', 'queued');
 
         // One durable state-machine row + one queued database job.
         $this->assertSame(1, DB::table('translation_jobs')->count());
@@ -230,7 +230,7 @@ class TranslationJobDedupTest extends TestCase
         $this->actingAs($user)->post('/translate', [
             'source_lang' => 'English', 'target_lang' => 'Cebuano', 'mode' => 'balanced',
             'ocr_mode' => 'preview', 'document' => $file,
-        ], ['Accept' => 'application/json'])->assertOk()->assertJsonPath('status', 'processing');
+        ], ['Accept' => 'application/json'])->assertOk()->assertJsonPath('status', 'queued');
         $this->assertSame(2, DB::table('translation_jobs')->count());
         $this->assertSame(1, DB::table('jobs')->count());
         $this->assertSame(1, TranslationHistory::count());

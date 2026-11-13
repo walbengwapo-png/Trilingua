@@ -37,7 +37,7 @@ class OcrPreviewUploadTest extends TestCase
         $this->actingAs($user)->postJson('/translate', [
             'source_lang' => 'English', 'target_lang' => 'Cebuano', 'ocr_mode' => 'preview',
             'document' => UploadedFile::fake()->createWithContent('fixture.pdf', "%PDF-1.4\nTEST FIXTURE"),
-        ])->assertOk()->assertJsonPath('status', 'processing');
+        ])->assertOk()->assertJsonPath('status', 'queued');
         $payload = json_decode(DB::table('jobs')->first()->payload, true);
         $job = unserialize($payload['data']['command']);
         $this->assertInstanceOf(TranslateDocumentJob::class, $job);

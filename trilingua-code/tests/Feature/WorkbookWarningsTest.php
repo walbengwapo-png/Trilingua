@@ -59,7 +59,7 @@ class WorkbookWarningsTest extends TestCase
                 'source_lang' => 'English', 'target_lang' => 'Cebuano',
                 'document' => new UploadedFile($path, 'worksheet.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true),
             ]);
-            $response->assertOk()->assertJsonPath('status', 'processing')->assertJsonCount(2, 'warnings');
+            $response->assertOk()->assertJsonPath('status', 'queued')->assertJsonCount(2, 'warnings');
             $this->assertDatabaseCount('jobs', 1);
             $this->actingAs($user)->get('/translate')->assertOk()->assertSee('id="workbook-warning"', false);
         } finally { if (file_exists($path)) unlink($path); }
