@@ -52,6 +52,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Register middleware aliases
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,
+            'translation.admission' => \App\Http\Middleware\TranslationAdmission::class,
         ]);
 
         // Configure rate limiting
