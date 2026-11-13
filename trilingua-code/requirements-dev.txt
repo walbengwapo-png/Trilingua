@@ -4,3 +4,7 @@
 pytest==9.0.3
 hypothesis==6.152.4
 sacrebleu==2.6.0
+
+# Offline OCR geometry and pixel replacement tests.
+numpy==2.4.6
+opencv-python-headless==4.13.0.92
