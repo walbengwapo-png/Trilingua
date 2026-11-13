@@ -1,6 +1,7 @@
 """Exercise an existing publisher DOCX through the real pipeline with a fake provider."""
 from pathlib import Path
 import shutil
+import pytest
 
 from docx import Document
 
@@ -9,6 +10,8 @@ from dto.requests import DocumentTranslationRequest
 
 def test_existing_survey_docx_keeps_paragraph_and_table_structure(tmp_path, document_pipeline):
     original = Path(__file__).resolve().parents[3] / 'test_corpus_v7/originals/EDU01/eng.docx'
+    if not original.is_file():
+        pytest.skip('Optional publisher corpus is not distributed in the public repository.')
     source = tmp_path / 'survey-offline-fixture.docx'
     shutil.copy2(original, source)
     before = Document(source)

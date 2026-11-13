@@ -32,6 +32,8 @@ def test_complete_hanging_instruction_is_one_block(tmp_path, instruction):
 
 def test_complete_source_et01_instructions_are_not_fragmented():
     source = Path(__file__).resolve().parents[3] / 'test_corpus_v6/originals/ET01/eng.pdf'
+    if not source.is_file():
+        pytest.skip('Optional publisher corpus is not distributed in the public repository.')
     blocks = read_pdf(str(source), 'single')
     for instruction in FIXTURE['instructions']:
         assert instruction['complete_text'] in [b['text'] for b in blocks]

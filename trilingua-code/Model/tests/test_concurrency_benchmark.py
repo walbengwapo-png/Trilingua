@@ -272,10 +272,10 @@ def test_gemini_provider_actual_max_concurrency():
 
 
 def test_fair_scheduler_actual_slot_count():
-    """Each scheduler spawns exactly one persistent thread per slot.
+    """Each scheduler has its slot workers plus one bounded backoff standby.
 
     NOTE: every FairDocumentBatchScheduler constructor spawns daemon threads
-    that live for the process lifetime, so a fresh instance ADDS ``slots``
+    that live for the process lifetime, so a fresh instance ADDS ``slots + 1``
     threads rather than replacing the global one.
     """
     baseline = len([t for t in threading.enumerate()
@@ -283,7 +283,7 @@ def test_fair_scheduler_actual_slot_count():
     new_scheduler = FairDocumentBatchScheduler(slots=3)
     now = len([t for t in threading.enumerate()
                if t.name.startswith("gptoss-document-slot")])
-    assert now == baseline + new_scheduler.slots
+    assert now == baseline + new_scheduler.slots + 1
 
 
 def test_fallback_route_exposes_primary_concurrency():
