@@ -180,13 +180,15 @@ print(f"  [OK] Available providers: {list(AVAILABLE_PROVIDERS.keys())}")
 # this guard stops the pile-up from happening in the first place.
 #
 #   TRANSLATION_THREADPOOL_SIZE  default 8  (matches provider HTTP pool sizes)
-#   TRANSLATION_MAX_CONCURRENT   default 1 for Gemini, 3 otherwise
+#   TRANSLATION_MAX_CONCURRENT   default 1; approved rollout ceiling 3
 # ---------------------------------------------------------------------------
 _THREADPOOL_SIZE = max(1, int(os.environ.get("TRANSLATION_THREADPOOL_SIZE", "8")))
-_DEFAULT_MAX_CONCURRENT = str(_pipeline_provider.max_concurrency or 3)
-_REQUESTED_MAX_CONCURRENT = max(
-    1, int(os.environ.get("TRANSLATION_MAX_CONCURRENT", _DEFAULT_MAX_CONCURRENT))
-)
+_DEFAULT_MAX_CONCURRENT = '1'
+_REQUESTED_MAX_CONCURRENT = int(os.environ.get("TRANSLATION_MAX_CONCURRENT", _DEFAULT_MAX_CONCURRENT))
+if not 1 <= _REQUESTED_MAX_CONCURRENT <= 3:
+    raise ValueError('TRANSLATION_MAX_CONCURRENT must be between 1 and 3')
+if int(os.environ.get('WEB_CONCURRENCY', '1')) != 1:
+    raise ValueError('Translation capacity requires WEB_CONCURRENCY=1; multiple processes need a shared provider gate')
 _MAX_CONCURRENT = min(
     _REQUESTED_MAX_CONCURRENT,
     _pipeline_provider.max_concurrency or _REQUESTED_MAX_CONCURRENT,
@@ -195,30 +197,30 @@ _BUSY_WAIT_SECONDS = max(
     0, int(os.environ.get("TRANSLATION_BUSY_WAIT_SECONDS", "30"))
 )
 
-_translation_semaphore = threading.BoundedSemaphore(_MAX_CONCURRENT)
+from execution_capacity import ExecutionCapacity
+from provider_request_gate import provider_request_gate
+_execution_capacity = ExecutionCapacity(_MAX_CONCURRENT)
+_translation_semaphore = _execution_capacity.semaphore
 
 
 class UsageHTTPException(HTTPException):
-    def __init__(self, status_code, detail, provider_usage):
+    def __init__(self, status_code, detail, provider_usage, error_details=None):
         super().__init__(status_code, detail)
         self.provider_usage = provider_usage
+        self.error_details = error_details
 
 
 def _run_pipeline_guarded(pipeline_call):
     """Run a pipeline call under the concurrency guard.
 
     Wait briefly for a slot instead of rejecting ordinary text requests while
-    a document is between provider calls. Outbound GPT-OSS calls have their
-    own global serialization and pacing guard.
+    a document is between provider calls. All Ollama purposes share a separate
+    fair request gate, with at most one request per job.
     """
-    if not _translation_semaphore.acquire(timeout=_BUSY_WAIT_SECONDS):
-        raise HTTPException(
-            503,
-            f"Server busy: translation queue is still full after waiting "
-            f"{_BUSY_WAIT_SECONDS} seconds (max {_MAX_CONCURRENT} active).",
-        )
-    try:
-        from provider_usage import usage_scope, ProviderStopped
+    with _execution_capacity.slot(_BUSY_WAIT_SECONDS) as acquired:
+        if not acquired:
+            raise HTTPException(503, f"Server busy: translation queue is still full after waiting {_BUSY_WAIT_SECONDS} seconds (max {_MAX_CONCURRENT} active).")
+        from provider_usage import usage_scope, ProviderFailure
         usage = None
         try:
             with usage_scope() as usage:
@@ -231,16 +233,15 @@ def _run_pipeline_guarded(pipeline_call):
                 if hasattr(response, 'metrics'):
                     response.metrics['provider_usage'] = summary
                 return result
-        except ProviderStopped as error:
-            raise UsageHTTPException(429, str(error), usage.summary() if usage else None) from error
+        except ProviderFailure as error:
+            raise UsageHTTPException(error.status_code, str(error), usage.summary() if usage else None, error.details) from error
         except Exception as error:
             error.provider_usage = usage.summary() if usage else None
             raise
-    finally:
-        _translation_semaphore.release()
 
 
 print(f"  [OK] Concurrent translations limited to {_MAX_CONCURRENT}")
+print(f"  [OK] Combined Ollama requests limited to {provider_request_gate.limit}; one per job")
 
 # ---------------------------------------------------------------------------
 # Dependencies and SQLite cache remain lazy; startup makes no provider requests.
@@ -276,15 +277,23 @@ async def _runtime_lifespan(app: FastAPI):
         from anyio import to_thread
         store = DocumentJobStore()
         await to_thread.run_sync(store.verify)
-        worker = DocumentJobWorker(store, translate_document)
+        requested_workers = int(os.environ.get('DOCUMENT_JOB_WORKERS', '1'))
+        if not 1 <= requested_workers <= 3:
+            raise ValueError('DOCUMENT_JOB_WORKERS must be between 1 and 3')
+        worker = DocumentJobWorker(store, translate_document,
+                                   workers=min(_MAX_CONCURRENT, requested_workers),
+                                   admission=_execution_capacity.slot)
+        print(f'  [OK] Document workers limited to {len(worker.threads)}')
         app.state.document_jobs = worker
-        worker.thread.start()
+        worker.start()
     try:
         yield
     finally:
         if worker:
             worker.stop.set()
             worker.wake.set()
+            # An active generation drains normally; never kill-and-replay it.
+            await to_thread.run_sync(worker.join)
 
 
 app = FastAPI(title="TriLingua Translation Service v5", lifespan=_runtime_lifespan)
@@ -294,7 +303,9 @@ app = FastAPI(title="TriLingua Translation Service v5", lifespan=_runtime_lifesp
 async def usage_error_response(request, error):
     from fastapi.responses import JSONResponse
     return JSONResponse(status_code=error.status_code,
-                        content={'detail': error.detail, 'provider_usage': error.provider_usage})
+                        content={'detail': error.detail, 'provider_usage': error.provider_usage,
+                                 'reference_id': (error.error_details or {}).get('reference_id'),
+                                 'error_details': error.error_details})
 
 
 @app.middleware("http")
@@ -314,6 +325,8 @@ async def log_translation_request(request, call_next):
         "Translation response: %s %s status=%s elapsed=%.1fs",
         request.method, request.url.path, response.status_code, _time.monotonic() - started,
     )
+    # An edge/proxy timeout cannot forge proof that this handler has finished.
+    response.headers['X-Translation-Terminal'] = '1'
     return response
 
 
@@ -762,6 +775,8 @@ def submit_document_job(
     source_lang: str = Form(...), target_lang: str = Form(...),
     pdf_column_mode: str = Form("auto"), mode: str = Form("balanced"),
     ocr_mode: str = Form("strict"),
+    translation_uuid: str = Form(""), translation_job_id: str = Form(""),
+    provider_max_requests: int | None = Form(None),
 ):
     from document_jobs import MAX_INPUT_BYTES, public_status
     validate_document_request(file.filename, source_lang, target_lang, pdf_column_mode)
@@ -772,10 +787,16 @@ def submit_document_job(
     contents = file.file.read(MAX_INPUT_BYTES + 1)
     if not contents or len(contents) > MAX_INPUT_BYTES:
         raise HTTPException(413, "Document must contain between 1 byte and 50 MiB")
+    budget = provider_max_requests if isinstance(provider_max_requests, int) else None
+    if budget is not None and not 1 <= budget <= 8:
+        raise HTTPException(422, 'Invalid provider request budget')
     worker = document_job_worker()
     row = worker.store.submit(job_id, os.path.basename(file.filename), contents,
                               {"source_lang": source_lang, "target_lang": target_lang,
-                               "pdf_column_mode": pdf_column_mode, "mode": mode, "ocr_mode": ocr_mode})
+                               "pdf_column_mode": pdf_column_mode, "mode": mode, "ocr_mode": ocr_mode},
+                              request_context={"translation_uuid": translation_uuid if isinstance(translation_uuid, str) else "",
+                                               "translation_job_id": translation_job_id if isinstance(translation_job_id, str) else "",
+                                               **({"max_requests": budget} if budget is not None else {})})
     worker.wake.set()
     return public_status(row)
 
@@ -958,3 +979,51 @@ if __name__ == "__main__":
         reload=_reload,
         reload_dirs=[os.path.dirname(os.path.abspath(__file__))],
     )
+
+
+@app.post('/internal/provider/probe', dependencies=[Depends(require_service_token)])
+def recover_provider(payload: dict):
+    """Validate two synthetic outputs; preserve the stop until a separate reviewed release."""
+    import requests
+    import json
+    from provider_circuit import recovery_lease
+    from provider_usage import ollama_post, ollama_headers, request_identity
+    from provider_errors import ProviderFailure, OperationFailure
+    try:
+        incident = str(UUID(str(payload.get('incident', ''))))
+        version = int(payload['version'])
+        actor = str(payload.get('actor', '')).strip()[:200]
+        if version < 1 or not actor:
+            raise ValueError()
+    except (ValueError, KeyError, TypeError):
+        raise HTTPException(422, 'Valid incident, version and actor required')
+    url = os.environ.get('OLLAMA_CLOUD_URL', 'http://localhost:11434/api/chat')
+    models = [os.environ.get('OLLAMA_CLOUD_MODEL', 'gpt-oss:20b-cloud'),
+              os.environ.get('OLLAMA_ANALYSIS_MODEL', os.environ.get('OLLAMA_CLOUD_MODEL', 'gpt-oss:20b-cloud'))]
+    if models != ['gpt-oss:20b', 'gemma4:31b']:
+        raise HTTPException(409, 'Configured models differ from the approved recovery models; no probes sent')
+    try:
+        from providers.request_budget import request_deadline
+        with request_deadline(_time.monotonic() + 50), request_identity(purpose='manual_recovery'), recovery_lease(incident, version, actor) as ticket:
+            for model, purpose in zip(models, ('translation', 'analysis')):
+                prompt = 'Translate into Filipino. Output only the translation: Good morning.' if purpose == 'translation' else 'Return a JSON object with ok set to true.'
+                body = {'model': model, 'messages': [{'role': 'user', 'content': prompt}],
+                        'stream': False, 'think': False, 'options': {'num_predict': 128}}
+                if purpose == 'analysis':
+                    body['format'] = 'json'
+                result = ollama_post(requests.post, url, headers=ollama_headers(url), purpose='manual_recovery_' + purpose, json=body)
+                content = result.json().get('message', {}).get('content', '').strip()
+                valid = 'umaga' in content.casefold() if purpose == 'translation' else False
+                if purpose == 'analysis':
+                    try:
+                        parsed = json.loads(content)
+                        valid = isinstance(parsed, dict) and parsed.get('ok') is True
+                    except (ValueError, TypeError):
+                        pass
+                if not valid:
+                    raise OperationFailure('probe_output_invalid', 502, details={'original_status': result.status_code,
+                        'requested_model': model, 'purpose': purpose, 'body_excerpt': '[content withheld]'})
+                ticket['models'].append({'model': model, 'purpose': purpose, 'valid': True})
+        return {'status': 'validated_awaiting_approval', **ticket['validation']}
+    except ProviderFailure as error:
+        raise UsageHTTPException(error.status_code, str(error), None, error.details) from error

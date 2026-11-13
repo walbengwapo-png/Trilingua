@@ -6,6 +6,7 @@ import logging
 import os
 import threading
 import time
+from contextlib import nullcontext
 from uuid import UUID
 
 import requests
@@ -60,7 +61,7 @@ class DocumentJobStore:
     def read_object(self, path):
         return self.request("GET", f"/storage/v1/object/authenticated/{self.bucket}/{path}").content
 
-    def submit(self, job_id, filename, contents, options):
+    def submit(self, job_id, filename, contents, options, request_context=None):
         job_id = str(UUID(str(job_id)))
         ext = os.path.splitext(filename)[1].lower()
         fingerprint = hashlib.sha256(contents + json.dumps({"extension": ext, "options": options}, sort_keys=True).encode()).hexdigest()
@@ -75,14 +76,14 @@ class DocumentJobStore:
                             params={"on_conflict": "id"},
                             headers={"Prefer": "resolution=ignore-duplicates,return=representation"},
                             json={"id": job_id, "filename": filename, "fingerprint": fingerprint,
-                                  "input_path": input_path, "options": options}).json()
+                                  "input_path": input_path, "options": options, "request_context": request_context}).json()
         row = rows[0] if rows else self.get(job_id)
         if not row or row["fingerprint"] != fingerprint:
             raise HTTPException(409, "Job ID already belongs to a different document request")
         return row
 
     def claim(self):
-        rows = self.request("POST", "/rest/v1/rpc/claim_python_document_job", json={}).json()
+        rows = self.request("POST", "/rest/v1/rpc/claim_python_document_job_v2", json={}).json()
         return rows[0] if rows else None
 
     def renew(self, row):
@@ -90,10 +91,11 @@ class DocumentJobStore:
                             json={"job_id": row["id"], "lease_id": row["lease_id"]}).json() is True
 
     def finish(self, row, **changes):
-        return self.request("POST", "/rest/v1/rpc/finish_python_document_job",
+        return self.request("POST", "/rest/v1/rpc/finish_python_document_job_v2",
                             json={"job_id": row["id"], "lease_id": row["lease_id"],
                                   "result_path": changes.get("result_path"), "error": changes.get("error"),
-                                  "error_status": changes.get("error_status")}).json() is True
+                                  "error_status": changes.get("error_status"),
+                                  "error_details": changes.get("error_details")}).json() is True
 
     def acknowledge(self, row):
         # ponytail: failed/unacknowledged files need operator cleanup; add TTL cleanup before storage quota becomes tight.
@@ -107,22 +109,45 @@ class DocumentJobStore:
 
 
 def public_status(row):
-    return {key: row.get(key) for key in ("id", "status", "error", "error_status", "acknowledged")}
+    from datetime import datetime, timezone, timedelta
+    status = {key: row.get(key) for key in ('id', 'status', 'error', 'error_status', 'acknowledged', 'error_details')}
+    status['retry_safe'] = row.get('status') == 'failed' and row.get('error_status') != 408
+    if row.get('status') == 'failed' and row.get('error_status') == 408:
+        try:
+            expired = datetime.fromisoformat(row['lease_until'].replace('Z', '+00:00'))
+            status['retry_safe'] = expired + timedelta(seconds=60) < datetime.now(timezone.utc)
+        except (ValueError, KeyError, TypeError):
+            pass
+    return status
 
 
 class DocumentJobWorker:
-    def __init__(self, store, translate):
+    def __init__(self, store, translate, workers=1, admission=None):
+        if not 1 <= workers <= 3:
+            raise ValueError('DOCUMENT_JOB_WORKERS must be between 1 and 3')
         self.store, self.translate = store, translate
+        self.admission = admission or (lambda: nullcontext(True))
         self.stop = threading.Event()
         self.wake = threading.Event()
-        self.thread = threading.Thread(target=self.run, name="document-jobs", daemon=True)
+        self.threads = [threading.Thread(target=self.run, name=f'document-jobs-{number + 1}', daemon=True)
+                        for number in range(workers)]
+        self.thread = self.threads[0]  # Existing operator/test callers at capacity one.
+
+    def start(self):
+        for thread in self.threads:
+            thread.start()
+
+    def join(self):
+        for thread in self.threads:
+            thread.join()
 
     def run_one(self, row):
-        from provider_usage import usage_scope
+        from provider_usage import usage_scope, request_identity, OperationFailure
         done = threading.Event()
         monitor = None
+        usage = None
         try:
-            with usage_scope() as usage:
+            with request_identity(engine_job_uuid=row["id"], **(row.get("request_context") or {})), usage_scope(max_requests=(row.get("request_context") or {}).get("max_requests")) as usage:
                 def heartbeat():
                     while not done.wait(20):
                         try:
@@ -130,7 +155,7 @@ class DocumentJobWorker:
                         except Exception:
                             alive = False
                         if not alive:
-                            usage.stop_reason = "Document worker lost its durable lease or exceeded its deadline; no further AI calls permitted"
+                            usage.stop_reason = OperationFailure('lease_lost', 409)
                             return
                 monitor = threading.Thread(target=heartbeat, name="document-heartbeat", daemon=True)
                 monitor.start()
@@ -146,12 +171,14 @@ class DocumentJobWorker:
                     log.warning("Document result refused after lease loss: %s", row["id"])
 
         except Exception as error:
-            from provider_usage import ProviderStopped
-            status = 429 if isinstance(error, ProviderStopped) else error.status_code if isinstance(error, HTTPException) else 500
-            detail = str(error) if isinstance(error, ProviderStopped) else error.detail if isinstance(error, HTTPException) else "Document background processing failed"
+            from provider_usage import ProviderFailure
+            status = error.status_code if isinstance(error, ProviderFailure) else error.status_code if isinstance(error, HTTPException) else 500
+            detail = str(error) if isinstance(error, ProviderFailure) else error.detail if isinstance(error, HTTPException) else "Document background processing failed"
             if not isinstance(detail, str):
                 detail = json.dumps(detail)
-            self.store.finish(row, status="failed", error=detail[:2000], error_status=status)
+            self.store.finish(row, status="failed", error=detail[:2000], error_status=status,
+                              error_details={**(error.details if isinstance(error, ProviderFailure) else (getattr(error, "error_details", None) or {})),
+                                             "provider_usage": usage.summary() if usage else None})
         finally:
             done.set()
             if monitor:
@@ -160,10 +187,14 @@ class DocumentJobWorker:
     def run(self):
         while not self.stop.is_set():
             try:
-                row = self.store.claim()
-                if row:
-                    self.run_one(row)
-                    continue
+                # Reserve capacity BEFORE claim: excess rows stay queued, not
+                # processing while a long text/document holds the last slot.
+                with self.admission() as admitted:
+                    if admitted:
+                        row = self.store.claim()
+                        if row:
+                            self.run_one(row)
+                            continue
             except Exception:
                 log.exception("Document background worker could not access its durable queue")
             self.wake.wait(5)

@@ -6,11 +6,72 @@ import os
 import time
 from urllib.parse import urlsplit
 
-class ProviderStopped(RuntimeError):
-    """Authentication, quota or ambiguous rate limit requires operator action."""
-    def __init__(self, message, status_code=None):
-        super().__init__(message)
-        self.status_code = status_code
+from provider_errors import ProviderFailure, ProviderStopped, OperationFailure, classify, safe_excerpt
+from functools import wraps
+from email.utils import parsedate_to_datetime
+from datetime import datetime, timezone
+from uuid import uuid4
+import logging
+import random
+import requests
+from providers.request_budget import remaining
+from urllib3.util import Timeout
+
+_operation = ContextVar('provider_transport_operation', default=None)
+_identity = ContextVar('provider_identity', default={})
+_backoff_waiter = ContextVar('provider_backoff_waiter', default=None)
+
+
+@contextmanager
+def backoff_scope(waiter):
+    token = _backoff_waiter.set(waiter)
+    try:
+        yield
+    finally:
+        _backoff_waiter.reset(token)
+
+
+def wait_backoff(seconds):
+    waiter = _backoff_waiter.get()
+    (waiter or time.sleep)(seconds)
+
+@contextmanager
+def request_identity(**identity):
+    token = _identity.set(identity)
+    try:
+        yield
+    finally:
+        _identity.reset(token)
+
+
+def transport_operation(attempts_env=None):
+    """Bound all transport/content retries in one provider operation to three calls."""
+    def decorate(callback):
+        @wraps(callback)
+        def run(*args, **kwargs):
+            if _operation.get() is not None:
+                return callback(*args, **kwargs)
+            limit = min(3, max(1, int(os.environ.get(attempts_env, '3')))) if attempts_env else 3
+            token = _operation.set({'attempt': 0, 'limit': limit, 'last': None,
+                                    'deadline': time.monotonic() + 59, 'correlation_id': str(uuid4()), 'billing_uncertain': False})
+            try:
+                return callback(*args, **kwargs)
+            finally:
+                _operation.reset(token)
+        return run
+    return decorate
+
+
+def retry_after(value):
+    if not value:
+        return 0.0
+    try:
+        return max(0.0, float(value))
+    except (ValueError, TypeError):
+        try:
+            return max(0.0, (parsedate_to_datetime(value) - datetime.now(timezone.utc)).total_seconds())
+        except (ValueError, TypeError, OverflowError):
+            return 0.0
 
 class ProviderUsage:
     def __init__(self, allowed_providers=None, max_requests=None):
@@ -22,9 +83,7 @@ class ProviderUsage:
 
     def check(self):
         if self.stop_reason:
-            raise ProviderStopped(self.stop_reason)
-        if _run_stop_reason:
-            raise ProviderStopped(_run_stop_reason)
+            raise self.stop_reason if isinstance(self.stop_reason, ProviderFailure) else OperationFailure('operation_cancelled', 409)
 
     def summary(self):
         with self.lock:
@@ -45,8 +104,9 @@ class ProviderUsage:
         }
 
 _current = ContextVar('provider_usage', default=None)
-_run_stop_reason = None
 _purpose = ContextVar('provider_purpose', default=None)
+_active_lock = RLock()
+_active_requests = 0
 
 @contextmanager
 def usage_scope(allowed_providers=None, max_requests=None):
@@ -72,35 +132,92 @@ def ollama_headers(url):
         headers['Authorization'] = f'Bearer {key}'
     return headers
 
+@transport_operation()
 def ollama_post(post, url, **kwargs):
-    global _run_stop_reason
+    """One retry boundary. No provider permit or recovery lease spans a sleep."""
     usage = _current.get()
-    if usage:
-        usage.check()
-    elif _run_stop_reason:
-        raise ProviderStopped(_run_stop_reason)
-    response = provider_post(post, url, provider=kwargs.pop('provider', 'gptoss'),
-                             model=kwargs.get('json', {}).get('model', ''),
-                             purpose=kwargs.pop('purpose', 'translation'), **kwargs)
-    reason = None
-    if response.status_code in (401, 402, 403, 429):
-        reason = f'Ollama request stopped: HTTP {response.status_code}; no retry or fallback permitted'
-    if response.status_code == 402:
-        reason = 'Ollama Cloud returned HTTP 402 Payment Required. Resolve the provider billing or usage allowance before retrying.'
-    try:
-        data = response.json()
-        error = data.get('error', '') if isinstance(data, dict) else ''
-        if error and any(marker in str(error).lower() for marker in ('quota', 'allowance', 'limit', 'unauthorized', 'authentication')):
-            reason = 'Ollama request stopped: provider reported authentication/quota/allowance failure'
-    except (ValueError, TypeError, AttributeError):
-        pass
-    if reason:
+    operation = _operation.get()
+    provider = kwargs.pop('provider', 'gptoss')
+    purpose = kwargs.pop('purpose', 'translation')
+    purpose = _purpose.get() or purpose
+    model = kwargs.get('json', {}).get('model', '')
+    while operation['attempt'] < operation['limit']:
         if usage:
-            usage.stop_reason = reason
-        # Remain stopped across requests/cases until the process is deliberately restarted.
-        _run_stop_reason = reason
-        raise ProviderStopped(reason, response.status_code)
-    return response
+            usage.check()
+        budget = min(59, operation['deadline'] - time.monotonic(), remaining() or 59)
+        if budget <= 0:
+            raise operation['last'] or OperationFailure('deadline_expired', 408)
+        from provider_circuit import acquire, finish
+        ticket = None
+        started = time.perf_counter()
+        details = {**_identity.get(), 'requested_model': model, 'returned_model': None,
+                   'purpose': purpose, 'attempt': operation['attempt'] + 1, 'retry_count': operation['attempt'],
+                   'retry_after': None, 'correlation_id': operation['correlation_id'],
+                   'billing_uncertain': operation['billing_uncertain'], 'original_status': None, 'provider_error_code': None}
+        try:
+            from provider_request_gate import provider_request_gate
+            identity = _identity.get()
+            job = identity.get('engine_job_uuid') or identity.get('translation_uuid') or (id(usage) if usage else operation['correlation_id'])
+            waiting = time.monotonic()
+            with provider_request_gate.permit(job, time.monotonic() + budget, usage.check if usage else lambda: None):
+                ticket = acquire()
+                budget = min(59, operation['deadline'] - time.monotonic(), remaining() or 59)
+                if budget <= 0:
+                    raise OperationFailure('deadline_expired', 408)
+                operation['attempt'] += 1
+                details['provider_wait_ms'] = round((time.monotonic() - waiting) * 1000, 3)
+                kwargs['timeout'] = Timeout(total=budget, connect=min(10, budget), read=budget)
+                started = time.perf_counter()
+                response = provider_post(post, url, provider=provider, model=model, purpose=purpose, diagnostic=details, **kwargs)
+            details['original_status'] = response.status_code
+            details['retry_after'] = response.headers.get('Retry-After')
+            try:
+                data = response.json()
+            except (ValueError, TypeError):
+                data = None
+            details.update(safe_excerpt(data, kwargs.get('json')))
+            details['returned_model'] = data.get('model') if isinstance(data, dict) else None
+            failure = classify(response.status_code, data)
+            if failure is None and not isinstance(data, dict):
+                failure = OperationFailure('malformed_response', 502)
+            if failure is None:
+                finish(ticket)
+                return response
+            details.update({key: value for key, value in failure.details.items()
+                            if key in ('provider_error_code',)})
+            failure.details.update(details)
+        except OperationFailure as error:
+            if ticket is not None:
+                finish(ticket, error)
+            raise
+        except (requests.Timeout, requests.ConnectionError) as error:
+            operation['billing_uncertain'] |= isinstance(error, requests.Timeout)
+            details.update(billing_uncertain=operation['billing_uncertain'],
+                           body_excerpt='[no response]', body_redacted=False, body_truncated=False)
+            failure = ProviderFailure('timeout' if isinstance(error, requests.Timeout) else 'connection_failed',
+                                      504 if isinstance(error, requests.Timeout) else 503, details=details)
+        failure.details['latency_ms'] = round((time.perf_counter() - started) * 1000, 3)
+        operation['last'] = failure
+        logging.getLogger('provider.errors').warning('provider_failure %s', failure.details)
+        if isinstance(failure, (ProviderStopped, OperationFailure)):
+            finish(ticket, failure)
+            if usage and isinstance(failure, ProviderStopped):
+                usage.stop_reason = failure
+            raise failure
+        if ticket.get('probe_lease') or operation['attempt'] >= operation['limit']:
+            finish(ticket, failure)
+            if usage:
+                usage.stop_reason = failure
+            raise failure
+        delay = max(retry_after(details.get('retry_after')), 2 ** (operation['attempt'] - 1) + random.uniform(0, .25))
+        budget = min(operation['deadline'] - time.monotonic(), remaining() or 59)
+        if delay >= budget:
+            finish(ticket, failure)
+            if usage:
+                usage.stop_reason = failure
+            raise failure
+        wait_backoff(delay)
+    raise operation['last'] or OperationFailure('request_budget_exhausted', 409)
 
 
 def reported_tokens(data):
@@ -124,25 +241,32 @@ def reported_tokens(data):
     }
 
 
-def provider_post(post, url, *, provider, model, purpose, **kwargs):
+def provider_post(post, url, *, provider, model, purpose, diagnostic=None, **kwargs):
     """Record an actual HTTP attempt even if parsing or content validation fails."""
-    if _run_stop_reason:
-        raise ProviderStopped(_run_stop_reason)
     usage = _current.get()
     row = {'provider': provider, 'model': model, 'requested_model': model, 'purpose': _purpose.get() or purpose,
            'request_id': None, 'status': None, 'outcome': 'pending', 'latency_ms': 0,
            'tokens': reported_tokens({})}
+    if diagnostic is not None:
+        row['provider_wait_ms'] = diagnostic.get('provider_wait_ms', 0)
+        row['correlation_id'] = diagnostic.get('correlation_id')
     if usage:
         with usage.lock:
             usage.check()
             if usage.allowed_providers is not None and provider not in usage.allowed_providers:
-                usage.stop_reason = 'Provider outside approved run allowlist'
+                usage.stop_reason = OperationFailure('disallowed_provider', 403)
                 usage.check()
             if usage.max_requests is not None and len(usage.attempts) >= usage.max_requests:
-                usage.stop_reason = 'Approved outbound request budget exhausted'
+                usage.stop_reason = OperationFailure('request_budget_exhausted', 409)
                 usage.check()
             row['sequence'] = len(usage.attempts) + 1
             usage.attempts.append(row)
+    global _active_requests
+    with _active_lock:
+        _active_requests += 1
+        row['active_provider_requests'] = _active_requests
+        if diagnostic is not None:
+            diagnostic['active_provider_requests'] = _active_requests
     started = time.perf_counter()
     try:
         kwargs.setdefault("allow_redirects", False)
@@ -170,6 +294,8 @@ def provider_post(post, url, *, provider, model, purpose, **kwargs):
         raise
     finally:
         row['latency_ms'] = round((time.perf_counter() - started) * 1000, 3)
+        with _active_lock:
+            _active_requests -= 1
 
 
 def submit_with_usage(executor, callback, *args, **kwargs):
