@@ -90,6 +90,10 @@ class TranslationManager
             $response = $this->withToken(Http::timeout($this->timeout))
                 ->post("{$this->pythonUrl}/translate/text", $request->toArray());
 
+            if (app()->bound('request') && $response->header('X-Translation-Terminal') === '1') {
+                request()->attributes->set('translation_text_terminal', true);
+            }
+
             if ($response->failed()) {
                 $errorMessage = $this->pythonErrorMessage($response);
                 
@@ -100,7 +104,7 @@ class TranslationManager
                     'target_lang' => $request->targetLang,
                 ]);
 
-                throw new TranslationException($errorMessage, $response->status());
+                throw new TranslationException($errorMessage, $response->status(), errorDetails: $response->json('error_details'));
             }
 
             $data = $response->json();
@@ -152,6 +156,7 @@ class TranslationManager
         string $ocrMode = 'strict',
         ?string $engineJobId = null,
         ?callable $heartbeat = null,
+        array $requestContext = [],
     ): array {
         $ext = strtolower('.' . $file->getClientOriginalExtension());
         $outExt = config('translation.extension_map.' . ltrim($ext, '.'), $ext);
@@ -161,6 +166,7 @@ class TranslationManager
         $engineJobId ??= (string) Str::uuid();
 
         try {
+            if ($heartbeat !== null) { $heartbeat(); }
             $response = $this->withToken(Http::timeout($async ? 45 : $this->timeout)->connectTimeout(10))
                 ->attach(
                     'file',
@@ -173,7 +179,7 @@ class TranslationManager
                     'pdf_column_mode' => $pdfColumnMode,
                     'mode' => $mode,
                     'ocr_mode' => $ocrMode,
-                    ...($async ? ['job_id' => $engineJobId] : []),
+                    ...($async ? ['job_id' => $engineJobId] + $requestContext : []),
                 ]);
 
             if ($response->failed()) {
@@ -187,7 +193,7 @@ class TranslationManager
                     'target_lang' => $targetLang,
                 ]);
 
-                throw new TranslationException($errorMessage, $response->status());
+                throw new TranslationException($errorMessage, $response->status(), errorDetails: $response->json('error_details'));
             }
 
             if ($async) {
@@ -245,6 +251,38 @@ class TranslationManager
         }
     }
 
+    public function inspectDocumentJob(string $id): array
+    {
+        try {
+            $response = $this->withToken(Http::timeout(15)->connectTimeout(5))
+                ->get("{$this->pythonUrl}/translate/document/jobs/{$id}");
+            $data = $response->json();
+            if ($response->successful() && is_array($data)
+                && in_array($data['status'] ?? null, ['queued', 'processing', 'completed', 'failed'], true)) {
+                return $data;
+            }
+        } catch (\Illuminate\Http\Client\ConnectionException) {
+            // A missing/unreachable engine record is not evidence that execution never happened.
+        }
+        throw new TranslationException('The previous engine outcome is unknown. Operator review is required.', 503,
+            errorDetails: ['category' => 'engine_outcome_unknown', 'engine_job_uuid' => $id]);
+    }
+
+    public function resumeDocumentJob(string $id, ?callable $heartbeat = null): array
+    {
+        $response = $this->waitForDocumentJob($id, $heartbeat, microtime(true) + $this->timeout);
+        $data = $response->json();
+        $body = base64_decode($data['file_base64'] ?? '', true);
+        if ($body === false || $body === '') {
+            throw new TranslationException('Retained engine result is unavailable; operator review is required.', 409,
+                errorDetails: ['category' => 'engine_result_unavailable', 'engine_job_uuid' => $id]);
+        }
+        return ['body' => $body, 'blocks' => $data['blocks'] ?? [], 'sidecar' => $data['sidecar'] ?? null,
+            'content_summary' => $data['content_summary'] ?? $data['sidecar']['content_summary'] ?? null,
+            'metrics' => $data['metrics'] ?? [], 'download_filename' => $data['download_filename'] ?? 'translated.bin',
+            'mime_type' => $data['mime_type'] ?? 'application/octet-stream'];
+    }
+
     private function waitForDocumentJob(string $id, ?callable $heartbeat, float $deadline)
     {
         while (microtime(true) < $deadline) {
@@ -259,7 +297,7 @@ class TranslationManager
             $status = $response->json('status');
             if ($status === 'failed') {
                 throw new TranslationException((string) ($response->json('error') ?? 'Document background job failed.'),
-                    (int) ($response->json('error_status') ?? 500));
+                    (int) ($response->json('error_status') ?? 500), errorDetails: $response->json('error_details'));
             }
             if ($status === 'completed') {
                 $result = $http->get("{$this->pythonUrl}/translate/document/jobs/{$id}/result");
@@ -352,7 +390,7 @@ class TranslationManager
                     'target_lang' => $targetLang,
                 ]);
 
-                throw new TranslationException($errorMessage, $response->status());
+                throw new TranslationException($errorMessage, $response->status(), errorDetails: $response->json('error_details'));
             }
 
             $body = $response->body();

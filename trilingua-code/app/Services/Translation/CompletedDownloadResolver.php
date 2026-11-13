@@ -32,7 +32,7 @@ class CompletedDownloadResolver
     public function __construct(private StorageService $storage) {}
 
     /**
-     * @return array{status: string, download_url?: string, download_filename?: string,
+     * @return array{status: string, view_url: string, download_url?: string, download_filename?: string,
      *               signed_url_expires_at?: string, download_available?: bool,
      *               message?: string, error?: string, recoverable?: bool}
      */
@@ -50,6 +50,7 @@ class CompletedDownloadResolver
 
             return [
                 'status'                => 'completed',
+                'view_url' => route('history.view', $history->id),
                 'content_summary' => $history->sidecar['content_summary'] ?? null,
                 'download_url'          => $signedResult['signed_url'],
                 'download_filename'     => $history->translated_filename,
@@ -92,6 +93,7 @@ class CompletedDownloadResolver
 
             return [
                 'status'      => 'failed',
+                'view_url' => route('history.view', $history->id),
                 'error'       => 'The translated file is no longer available in storage. Please retry the translation.',
                 'recoverable' => false,
             ];
@@ -108,6 +110,7 @@ class CompletedDownloadResolver
 
         return [
             'status'             => 'completed',
+            'view_url' => route('history.view', $history->id),
             'content_summary' => $history->sidecar['content_summary'] ?? null,
             'download_available' => false,
             'warnings'           => $history->sidecar['extraction']['warnings'] ?? [],
@@ -125,6 +128,7 @@ class CompletedDownloadResolver
     {
         return [
             'status'            => 'completed',
+            'view_url' => route('history.view', $history->id),
             'content_summary' => $history->sidecar['content_summary'] ?? null,
             'download_url'      => route('history.file', ['id' => $history->id]),
             'warnings'          => $history->sidecar['extraction']['warnings'] ?? [],
