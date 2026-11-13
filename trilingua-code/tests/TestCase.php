@@ -7,6 +7,22 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
+    public function createApplication(): Application
+    {
+        $engineTests = getenv('TRILINGUA_ENGINE_DB_TESTS') === '1';
+        if ($engineTests) {
+            \Tests\Support\EngineTestEnvironment::check(getenv(), dirname(__DIR__));
+        }
+        $app = parent::createApplication();
+        if ($engineTests) {
+            $connection = $app['config']->get('database.default');
+            \Tests\Support\EngineTestEnvironment::checkResolved([
+                'environment' => $app->environment(),
+                ...$app['config']->get('database.connections.'.$connection, []),
+            ]);
+        }
+        return $app;
+    }
     /**
      * Defense-in-depth safety check on top of tests/assert-safe-test-env.php.
      *
@@ -25,6 +41,11 @@ abstract class TestCase extends BaseTestCase
 
         if (!$app instanceof Application) {
             throw new \RuntimeException('Application did not boot before tests; refusing to continue.');
+        }
+
+        if (getenv('TRILINGUA_ENGINE_DB_TESTS') === '1') {
+            // createApplication checked the resolved connection before database test traits run.
+            return;
         }
 
         $problems = [];
