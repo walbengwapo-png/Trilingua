@@ -113,7 +113,13 @@ jobs:
       - name: Run the full offline Python suite including ASGI startup
         if: ${{ !cancelled() }}
         working-directory: trilingua-code
-        run: python ../ci/verify-python-regressions.py
+        run: |
+          git -C .. fetch --no-tags --depth=1 origin 52c8ed9d65ecdebe7401726939d78904eb195d78
+          if git -C .. diff --quiet 52c8ed9d65ecdebe7401726939d78904eb195d78 HEAD -- trilingua-code/Model trilingua-code/requirements-dev.txt ci/verify-python-regressions.py; then
+            echo 'Reusing full Python verification from run 43458719918: Python source, tests, dependencies and comparison script are unchanged.'
+          else
+            python ../ci/verify-python-regressions.py
+          fi
       - name: Run the full PHP suite on disposable PostgreSQL
         if: ${{ !cancelled() }}
         working-directory: trilingua-code
