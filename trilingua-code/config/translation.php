@@ -1,6 +1,8 @@
 <?php
 
 return [
+    // Enable only after the admission migration and reviewed rollout checks.
+    'admission_enabled' => env('TRANSLATION_ADMISSION_ENABLED', false),
     /*
     |--------------------------------------------------------------------------
     | Python AI Engine Configuration
