@@ -203,7 +203,7 @@ class DocumentsController extends Controller
 
                 return response()->json([
                     'job_id' => $existingActive->uuid,
-                    'status' => 'processing',
+                    'status' => $existingActive->publicStatus(),
                     'duplicate' => true,
                     'message' => 'This re-translation is already in progress.',
                 ]);
@@ -239,6 +239,7 @@ class DocumentsController extends Controller
                     'target_lang'            => (string) $validated['target_lang'],
                     'pdf_column_mode'        => $record->sidecar['pdf_column_mode'] ?? 'auto',
                     'mode'                   => 'balanced',
+                    'ocr_mode'               => 'strict',
                     'file_size'              => $fileSize,
                     'original_storage_path'  => $record->original_storage_path,
                     'original_storage_backend' => $record->original_storage_backend ?: 'supabase',
@@ -260,6 +261,7 @@ class DocumentsController extends Controller
                     (int) $record->id,
                     $record->original_storage_backend ?: 'supabase',
                     (int) $jobRow->id,
+                    expectedAttempt: (int) $jobRow->attempts + 1,
                 );
                 $jobId = $job->uuid();
 
@@ -271,8 +273,10 @@ class DocumentsController extends Controller
                 // Acceptance boundary: queued-state write + queue insert commit
                 // together. The create() above stays outside so a concurrent
                 // dedup winner is not rolled back by this request.
+                $this->dispatchOutcome->assertTransactionalQueue();
                 DB::transaction(function () use ($jobRow, $job, &$dispatchAttempted) {
-                    $jobRow->status = TranslationJob::STATUS_QUEUED;
+                    if (!$jobRow->markQueued()) { throw new \RuntimeException('Job admission state changed.'); }
+                    app(\App\Services\TranslationAdmission::class)->bindDocument($jobRow);
                     $jobRow->progress = 5;
                     $jobRow->last_heartbeat_at = now();
                     $jobRow->save();
@@ -319,7 +323,7 @@ class DocumentsController extends Controller
                 if ($winner !== null) {
                     return response()->json([
                         'job_id' => $winner->uuid,
-                        'status' => 'processing',
+                        'status' => $winner->publicStatus(),
                         'duplicate' => true,
                         'message' => 'This re-translation is already in progress.',
                     ], 200);
@@ -332,7 +336,7 @@ class DocumentsController extends Controller
 
             return response()->json([
                 'job_id' => $jobId,
-                'status' => 'processing',
+                'status' => 'queued',
                 'message' => 'Re-translation queued. Processing will begin shortly.',
                 'original_filename' => $originalName,
             ]);

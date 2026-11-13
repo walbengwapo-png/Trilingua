@@ -164,6 +164,6 @@ class NotificationController extends Controller
             return $id ? route('admin.review.show', $id) : route('admin.review.index');
         }
 
-        return $id ? route('history', ['open' => $id]) : route('history');
+        return $id ? route('history.view', $id) : route('history');
     }
 }

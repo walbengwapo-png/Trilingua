@@ -46,9 +46,22 @@ class TranslationController extends Controller
     /**
      * GET /translate — render the translation page.
      */
-    public function show(): View
+    public function show(Request $request): View
     {
-        return view('translation', ['capabilities' => $this->capabilityContract()]);
+        $jobs = TranslationJob::where('user_id', Auth::id());
+        $requested = $request->query('job');
+        if ($requested !== null) {
+            abort_unless(is_string($requested) && Str::isUuid($requested), 404);
+            $job = $jobs->where('uuid', $requested)->firstOrFail();
+        } else {
+            $job = $jobs->whereIn('status', TranslationJob::ACTIVE_STATUSES)->latest('id')->first();
+        }
+
+        return view('translation', [
+            'capabilities' => $this->capabilityContract(),
+            'initialJob' => $job ? ['id' => $job->uuid, 'filename' => $job->original_name] : null,
+            'viewerId' => Auth::id(),
+        ]);
     }
 
     /**
@@ -127,6 +140,7 @@ class TranslationController extends Controller
                 mode: $validated['mode'] ?? 'balanced',
             );
             $request->attributes->set('translation_stage', 'python_text');
+            app(\App\Services\TranslationAdmission::class)->beginText();
             $result = $this->translationManager->translateText($translationRequest);
             $request->attributes->set('translation_stage', 'text_persistence');
 
@@ -186,7 +200,8 @@ class TranslationController extends Controller
                 }
             }
 
-            return response()->json([...$result->toArray(), 'saved' => $record !== null]);
+            return response()->json([...$result->toArray(), 'saved' => $record !== null,
+                'view_url' => $record ? route('history.view', $record->id) : null]);
 
         } catch (TranslationException $e) {
             $message = $e->getMessage();
@@ -338,7 +353,7 @@ class TranslationController extends Controller
             FileCleanup::dir($persistDir);
 
             return response()->json([
-                'status' => 'processing',
+                'status' => $existingActive->publicStatus(),
                 'duplicate' => true,
                 'job_id' => $existingActive->uuid,
                 'message' => 'A translation for this exact file is already in progress.',
@@ -416,6 +431,7 @@ class TranslationController extends Controller
                 'target_lang' => $targetLang,
                 'pdf_column_mode' => $pdfColumnMode,
                 'mode' => $mode,
+                'ocr_mode' => $ocrMode,
                 'file_size' => $fileSize,
                 'original_storage_path' => $originalStoragePath,
                 'original_storage_backend' => $originalStorageBackend,
@@ -438,6 +454,7 @@ class TranslationController extends Controller
                 $originalStorageBackend,
                 (int) $jobRow->id,
                 ocrMode: $ocrMode,
+                expectedAttempt: (int) $jobRow->attempts + 1,
             );
             $jobId = $job->uuid();
 
@@ -447,8 +464,10 @@ class TranslationController extends Controller
             $jobRow->uuid = $jobId;
             $jobRow->save();
 
+            $this->dispatchOutcome->assertTransactionalQueue();
             DB::transaction(function () use ($jobRow, $job, &$dispatchAttempted) {
-                $jobRow->status = TranslationJob::STATUS_QUEUED;
+                if (!$jobRow->markQueued()) { throw new \RuntimeException('Job admission state changed.'); }
+                app(\App\Services\TranslationAdmission::class)->bindDocument($jobRow);
                 $jobRow->progress = 5;
                 $jobRow->last_heartbeat_at = now();
                 $jobRow->save();
@@ -473,7 +492,7 @@ class TranslationController extends Controller
                 $winner = $this->findActiveJob($userId, $payloadHash);
                 if ($winner !== null) {
                     return response()->json([
-                        'status' => 'processing',
+                        'status' => $winner->publicStatus(),
                         'duplicate' => true,
                         'job_id' => $winner->uuid,
                         'message' => 'A translation for this exact file is already in progress.',
@@ -543,7 +562,7 @@ class TranslationController extends Controller
 
         return response()->json([
             'job_id' => $jobId,
-            'status' => 'processing',
+            'status' => 'queued',
             'message' => 'Document queued for translation. Processing will begin shortly.',
             'original_filename' => $originalName,
             'warnings' => $workbookWarnings,
@@ -691,11 +710,13 @@ class TranslationController extends Controller
                 ]);
             }
 
-            // created / queued / processing
+            // Preserve durable queue state, including an engine waiting for capacity.
+            $status = $job->publicStatus();
             return response()->json([
-                'status' => 'processing',
+                'status' => $status,
+                'original_filename' => $job->original_name,
                 'progress' => $job->progress ?? 0,
-                'message' => 'Translation is still in progress...',
+                'message' => $status === 'processing' ? 'Translation is in progress...' : 'Queued - waiting to start.',
             ]);
         }
 
