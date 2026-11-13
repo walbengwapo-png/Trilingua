@@ -102,7 +102,7 @@ class TranslateDocumentJobRecoveryTest extends TestCase
 
         $job = new TranslateDocumentJob(
             'input.pdf', '.pdf', 16, 'English', 'Cebuano', 'auto',
-            $missingTemp, 42, '42/originals/input.pdf', 'balanced', null, 'supabase', (int) $jobRow->id
+            $missingTemp, 42, '42/originals/input.pdf', 'balanced', null, 'supabase', (int) $jobRow->id, $jobRow->uuid
         );
         $job->uuid();
         $job->handle($translationManager, $storage, $historyService, $blockService, $metricsService);
@@ -131,7 +131,7 @@ class TranslateDocumentJobRecoveryTest extends TestCase
 
         $job = new TranslateDocumentJob(
             'input.pdf', '.pdf', 16, 'English', 'Cebuano', 'auto',
-            $missingTemp, 42, '42/originals/local-input.pdf', 'balanced', null, 'local', (int) $jobRow->id
+            $missingTemp, 42, '42/originals/local-input.pdf', 'balanced', null, 'local', (int) $jobRow->id, $jobRow->uuid
         );
         $job->uuid();
         $job->handle($translationManager, $storage, $historyService, $blockService, $metricsService);
@@ -158,7 +158,7 @@ class TranslateDocumentJobRecoveryTest extends TestCase
 
         $job = new TranslateDocumentJob(
             'input.pdf', '.pdf', 16, 'English', 'Cebuano', 'auto',
-            $missingTemp, 42, null, 'balanced', null, 'supabase', (int) $jobRow->id
+            $missingTemp, 42, null, 'balanced', null, 'supabase', (int) $jobRow->id, $jobRow->uuid
         );
         $job->uuid();
         $job->handle($translationManager, $storage, $historyService, $blockService, $metricsService);

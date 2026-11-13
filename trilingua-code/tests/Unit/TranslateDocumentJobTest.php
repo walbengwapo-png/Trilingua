@@ -76,7 +76,15 @@ class TranslateDocumentJobTest extends TestCase
             null
         );
 
-        $job->uuid();
+        if ($job->translationJobId === null) {
+            \App\Models\User::factory()->create(['id' => $job->userId]);
+            $row = TranslationJob::create(['user_id' => $job->userId,
+                'payload_hash' => hash('sha256', $job->originalName), 'original_name' => $job->originalName,
+                'original_ext' => $job->originalExt, 'source_lang' => $job->sourceLang,
+                'target_lang' => $job->targetLang, 'status' => 'queued']);
+            $job->translationJobId = $row->id;
+            $job->presetUuid = $row->uuid;
+        }
         $job->handle($translationManager, $storageService, $historyService, $blockService, $metricsService);
 
         $result = Cache::get('translation_job_' . $job->uuid());
@@ -152,10 +160,18 @@ class TranslateDocumentJobTest extends TestCase
 
         $job = new TranslateDocumentJob(
             'input.pdf', '.pdf', 16, 'English', 'Cebuano', 'auto',
-            $originalPath, 42, null, 'balanced', null, 'supabase', (int) $jobRow->id
+            $originalPath, 42, null, 'balanced', null, 'supabase', (int) $jobRow->id, $jobRow->uuid
         );
 
-        $job->uuid();
+        if ($job->translationJobId === null) {
+            \App\Models\User::factory()->create(['id' => $job->userId]);
+            $row = TranslationJob::create(['user_id' => $job->userId,
+                'payload_hash' => hash('sha256', $job->originalName), 'original_name' => $job->originalName,
+                'original_ext' => $job->originalExt, 'source_lang' => $job->sourceLang,
+                'target_lang' => $job->targetLang, 'status' => 'queued']);
+            $job->translationJobId = $row->id;
+            $job->presetUuid = $row->uuid;
+        }
         $job->handle($translationManager, $storage, $history, $blocks, $metrics);
 
         $jobRow->refresh();
@@ -194,11 +210,19 @@ class TranslateDocumentJobTest extends TestCase
             'input.pdf', '.pdf', 16, 'English', 'Cebuano', 'auto',
             $originalPath, 42, '42/originals/input.pdf'
         );
-        $job->uuid();
+        if ($job->translationJobId === null) {
+            \App\Models\User::factory()->create(['id' => $job->userId]);
+            $row = TranslationJob::create(['user_id' => $job->userId,
+                'payload_hash' => hash('sha256', $job->originalName), 'original_name' => $job->originalName,
+                'original_ext' => $job->originalExt, 'source_lang' => $job->sourceLang,
+                'target_lang' => $job->targetLang, 'status' => 'queued']);
+            $job->translationJobId = $row->id;
+            $job->presetUuid = $row->uuid;
+        }
         $job->handle($translationManager, $storage, $history, $blocks, $metrics);
 
-        $this->assertFileExists($originalPath, 'A retry must retain the source upload.');
-        $this->assertSame('processing', Cache::get('translation_job_'.$job->uuid())['status'] ?? null);
+        $this->assertSame('failed', Cache::get('translation_job_'.$job->uuid())['status'] ?? null);
+        $this->assertTrue(TranslationJob::find($job->translationJobId)->recoverable, 'Operator recovery retains the durable original.');
 
         @unlink($originalPath);
         @rmdir($tempDir);

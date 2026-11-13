@@ -105,7 +105,7 @@ class TranslateDocumentJobHistoryIntegrityTest extends TestCase
 
         $job = new TranslateDocumentJob(
             'input.pdf', '.pdf', 16, 'English', 'Cebuano', 'auto',
-            $temp, 42, '42/originals/input.pdf', 'balanced', null, 'supabase', (int) $jobRow->id
+            $temp, 42, '42/originals/input.pdf', 'balanced', null, 'supabase', (int) $jobRow->id, $jobRow->uuid
         );
         $job->uuid();
         $job->handle($translationManager, $storage, $historyService, $blockService, $metricsService);
@@ -158,7 +158,7 @@ class TranslateDocumentJobHistoryIntegrityTest extends TestCase
 
         $job = new TranslateDocumentJob(
             'input.pdf', '.pdf', 16, 'English', 'Cebuano', 'auto',
-            $temp, 42, '42/originals/input.pdf', 'balanced', null, 'supabase', (int) $jobRow->id
+            $temp, 42, '42/originals/input.pdf', 'balanced', null, 'supabase', (int) $jobRow->id, $jobRow->uuid
         );
         $job->uuid();
         try {

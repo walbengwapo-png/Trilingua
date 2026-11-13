@@ -20,7 +20,7 @@ class TranslateDocumentJobPythonIdTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_connection_retry_keeps_python_id_and_operator_recovery_starts_a_new_attempt(): void
+    public function test_ambiguous_connection_failure_requires_reconciliation_before_operator_recovery(): void
     {
         config(['translation.python_service.document_jobs' => true]);
         Notification::fake();
@@ -34,7 +34,7 @@ class TranslateDocumentJobPythonIdTest extends TestCase
             'original/source.txt', translationJobId: $state->id, presetUuid: $state->uuid);
         $ids = [];
         $manager = Mockery::mock(TranslationManager::class);
-        $manager->shouldReceive('translateDocument')->twice()->andReturnUsing(function ($file, $source, $target, $columns, $mode, $ocrMode, $id) use (&$ids) {
+        $manager->shouldReceive('translateDocument')->once()->andReturnUsing(function ($file, $source, $target, $columns, $mode, $ocrMode, $id) use (&$ids) {
             $this->assertSame('strict', $ocrMode);
             $ids[] = $id;
             throw new TranslationException(count($ids) === 1 ? 'Could not connect' : 'Provider stopped', count($ids) === 1 ? 503 : 429);
@@ -45,15 +45,15 @@ class TranslateDocumentJobPythonIdTest extends TestCase
         $metrics = Mockery::mock(MetricsService::class);
         try {
             $job->handle($manager, $storage, $history, $blocks, $metrics);
-            $this->assertSame('queued', $state->fresh()->status);
+            $this->assertSame('failed', $state->fresh()->status);
             $job->handle($manager, $storage, $history, $blocks, $metrics);
-            $this->assertSame($ids[0], $ids[1]);
+            $this->assertCount(1, $ids, 'A redelivered ambiguous job must not call the provider again.');
             $this->assertSame($ids[0], $state->fresh()->engine_job_uuid);
             $this->assertSame('failed', $state->fresh()->status);
             $job->handle($manager, $storage, $history, $blocks, $metrics);
             $state->refresh();
             $this->assertTrue($state->markQueued(recovered: true));
-            $this->assertNull($state->fresh()->engine_job_uuid);
+            $this->assertSame($ids[0], $state->fresh()->engine_job_uuid, 'Retain the prior engine UUID for reconciliation.');
         } finally {
             if (file_exists($path)) {
                 unlink($path);
