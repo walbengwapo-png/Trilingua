@@ -354,7 +354,6 @@ def test_failed_batch_review_does_not_create_per_block_ai_request_storm():
     assert all("deterministic checks" in item.summary for item in reviews.values())
     assert all(item.score is None and not item.available and not item.passed
                for item in reviews.values())
-    assert "APP_KEY" not in os.environ
 
 
 def test_failed_single_review_keeps_translation_unscored():

@@ -1,6 +1,7 @@
 """Cell padding uses the available cell interior without crossing ruled borders."""
 from pathlib import Path
 
+import pytest
 import pymupdf as fitz
 
 from document.extractor import read_pdf
@@ -9,6 +10,8 @@ from document.reconstructor import write_pdf_preserved
 
 def test_et01_table_note_fits_at_existing_readability_floor(tmp_path):
     source = Path(__file__).resolve().parents[3] / 'test_corpus_v6/originals/ET01/eng.pdf'
+    if not source.is_file():
+        pytest.skip('Optional publisher corpus is not distributed in the public repository.')
     blocks = read_pdf(str(source), 'single')
     note = next(b for b in blocks if b['text'].startswith('* Insect repellent brand names'))
     note.update(_original_text=note['text'], text=(
