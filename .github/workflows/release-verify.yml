@@ -32,6 +32,7 @@ jobs:
       DB_DATABASE: trilingua_engine_test
       DB_USERNAME: trilingua_test
       DB_PASSWORD: ci-only-password
+      PGOPTIONS: '-c statement_timeout=20000 -c lock_timeout=5000'
       DB_URL: ''
       CACHE_STORE: array
       SESSION_DRIVER: array
@@ -106,7 +107,7 @@ jobs:
       - name: Run the full PHP suite on disposable PostgreSQL
         if: ${{ !cancelled() }}
         working-directory: trilingua-code
-        run: php vendor/bin/phpunit -c phpunit.engine.xml --log-junit native-php-results.xml
+        run: php vendor/bin/phpunit -c phpunit.engine.xml --debug --log-junit native-php-results.xml
       - name: Run the full offline Python suite including ASGI startup
         if: ${{ !cancelled() }}
         working-directory: trilingua-code
