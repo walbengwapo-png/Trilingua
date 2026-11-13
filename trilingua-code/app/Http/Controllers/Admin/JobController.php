@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Jobs\TranslateDocumentJob;
 use App\Models\TranslationJob;
 use App\Services\DispatchOutcomeClassifier;
+use App\Support\TranslationJobFilters;
+use App\Support\TranslationQueueMetadata;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,15 +26,8 @@ class JobController extends Controller
      */
     public function index(Request $request): View
     {
-        $jobs = TranslationJob::with('user')
-            ->orderByDesc('id')
-            ->when($request->string('status'), fn ($q, $status) => $q->where('status', $status))
-            ->when($request->string('q'), function ($q, $search) {
-                $q->where(function ($inner) use ($search) {
-                    $inner->where('original_name', 'like', "%{$search}%")
-                        ->orWhere('uuid', 'like', "%{$search}%");
-                });
-            })
+        $filters = TranslationJobFilters::validated($request);
+        $jobs = TranslationJobFilters::apply(TranslationJob::with('user')->orderByDesc('id'), $filters)
             ->paginate(50)
             ->withQueryString();
 
@@ -41,26 +36,12 @@ class JobController extends Controller
             ->limit(100)
             ->get();
 
-        // Enrich each failed queue job with the recoverability of the matching
-        // durable translation_jobs row (keyed by the shared uuid). This is a
-        // pure identifier join — failed_jobs.payload is never unserialized.
-        $recoverableByUuid = $failed->pluck('uuid')
-            ->filter()
-            ->map(fn (string $uuid): string => (string) $uuid)
-            ->all();
-
-        $recoverableMap = [];
-        if ($recoverableByUuid !== []) {
-            $recoverableMap = TranslationJob::whereIn('uuid', $recoverableByUuid)
-                ->where('status', TranslationJob::STATUS_FAILED)
-                ->whereRaw('recoverable = TRUE')
-                ->pluck('recoverable', 'uuid')
-                ->map(fn () => true)
-                ->all();
-        }
-
-        $failed = $failed->map(function ($row) use ($recoverableMap) {
-            $row->recoverable = isset($recoverableMap[$row->uuid]);
+        $failed = $failed->map(function ($row) {
+            $state = TranslationQueueMetadata::resolve($row->payload);
+            $row->translation_job_id = $state?->id;
+            $row->translation_status = $state?->status;
+            $row->input_available = $state && filled($state->original_storage_path) && filled($state->original_storage_backend);
+            $row->recoverable = $state?->isTerminalFailedRecoverable() ?? false;
             return $row;
         });
 
@@ -72,141 +53,87 @@ class JobController extends Controller
             'jobs'   => $jobs,
             'failed' => $failed,
             'counts' => $counts,
-            'filters' => [
-                'status' => (string) $request->string('status'),
-                'q'      => (string) $request->string('q'),
-            ],
+            'filters' => $filters,
             'error' => false,
         ]);
     }
 
-    /**
-     * POST /admin/jobs/retry/{failedJobId} — replay a failed document job.
-     *
-     * The original scratch upload is gone by the time a job fails, so retrying
-     * the serialized payload via queue:retry would only reproduce the same
-     * "input file not found" failure. Instead we reconstruct the worker-local
-     * input from the durable original at the start of the replayed job and
-     * never unserialize failed_jobs.payload: the failed row is matched to its
-     * translation_jobs state machine through the shared uuid only.
-     */
+    /** Compatibility entry: historical queue IDs resolve as inert data. */
     public function retry(Request $request, string $failedJobId): RedirectResponse
     {
-        if (!ctype_digit($failedJobId)) {
-            abort(404, 'Invalid job id.');
-        }
-
+        abort_unless(ctype_digit($failedJobId), 404);
         $failed = DB::table('failed_jobs')->where('id', (int) $failedJobId)->first();
-        if ($failed === null) {
-            abort(404, 'Failed job not found.');
+        abort_unless($failed, 404);
+        $state = TranslationQueueMetadata::resolve($failed->payload);
+        if (!$state) {
+            return redirect()->route('admin.jobs.index')->with('status', 'queue-job-not-recoverable');
         }
+        return $this->retryState($request, $state, (int) $failedJobId);
+    }
 
-        $uuid = (string) ($failed->uuid ?? '');
-        $state = $uuid !== ''
-            ? TranslationJob::where('uuid', $uuid)->first()
-            : null;
+    public function retryTranslation(Request $request, TranslationJob $translationJob): RedirectResponse
+    {
+        return $this->retryState($request, $translationJob);
+    }
 
-        if ($state === null || !$state->isTerminalFailedRecoverable()) {
-            Log::warning('Admin retry refused: failed job has no recoverable durable original', [
-                'failed_job_id' => (int) $failedJobId,
-                'uuid'          => $uuid,
-                'admin_id'      => $request->user()?->id,
-            ]);
-
-            return redirect()
-                ->route('admin.jobs.index')
-                ->with('status', 'queue-job-not-recoverable');
+    private function retryState(Request $request, TranslationJob $state, ?int $failedJobId = null): RedirectResponse
+    {
+        $request->validate(['provider_request_budget' => ['nullable', 'integer', 'min:1', 'max:8']]);
+        $providerBudget = $request->filled('provider_request_budget') ? (int) $request->input('provider_request_budget') : null;
+        if (!$state->isTerminalFailedRecoverable()) {
+            return redirect()->route('admin.jobs.index')->with('status',
+                $state->isActive() ? 'queue-job-already-active' : 'queue-job-not-recoverable');
         }
-
-        $original = $state?->original_storage_path ?? null;
-        $backend = $state?->original_storage_backend ?? null;
-        if (blank($original) || blank($backend)) {
-            abort(500, 'Failed job matched but durable original metadata is missing.');
-        }
-
-        $job = new TranslateDocumentJob(
-            $state->original_name ?? 'document',
-            $state->original_ext ?? '.bin',
-            (int) ($state->file_size ?? 0),
-            $state->source_lang ?? '',
-            $state->target_lang ?? '',
-            $state->pdf_column_mode ?? 'auto',
-            '', // worker-local scratch from the failed attempt is gone; reconstructed in-handle
-            (int) $state->user_id,
-            $original,
-            $state->mode ?? 'balanced',
-            $state->parent_document_id,
-            $backend,
-            (int) $state->id,
-            $uuid,
-        );
-
-        $priorStatus = (string) $state->status;
-        $failedJobRowId = (int) $failedJobId;
-
-        try {
-            // Same acceptance boundary as intake: the failed -> queued write and
-            // the queue insert share ONE commit, so a rollback leaves the job
-            // recoverable and no receivable queue row behind.
-            DB::transaction(function () use ($state, $job, $failedJobRowId, $uuid) {
-                $queued = $state->markQueued(recovered: true);
-                if (!$queued) {
-                    throw new \RuntimeException('Job could not be moved back to queued; it may already be active again.');
+        $ocrMode = $state->ocr_mode;
+        if (!$ocrMode) {
+            // Legacy options remain in historical payloads. Read, validate, never execute them.
+            $modes = [];
+            foreach (DB::table('failed_jobs')->where('payload', 'like', '%'.$state->uuid.'%')->get(['payload']) as $row) {
+                $metadata = TranslationQueueMetadata::extract($row->payload);
+                if ($metadata && TranslationQueueMetadata::matches($metadata, $state->getAttributes())) {
+                    $modes[] = $metadata['ocr_mode'];
                 }
-
-                // The previous attempt's terminal cache entry is obsolete. The
-                // queue payload is dispatched only after this clear, so polling
-                // cannot report the old failure while the replay is accepted.
-                Cache::forget('translation_job_'.$uuid);
-
-                dispatch($job);
-
-                // A successful replay supersedes the historical failure entry so
-                // the admin retry control disappears and statuses stay coherent.
-                // Inside the transaction: a rollback restores the failure record
-                // along with the failed status it describes.
-                DB::table('failed_jobs')->where('id', $failedJobRowId)->delete();
-            });
-
-            Log::info('Admin replayed a failed translation job from its durable original', [
-                'failed_job_id' => $failedJobRowId,
-                'uuid'          => $uuid,
-                'translation_job_id' => (int) $state->id,
-                'admin_id'      => $request->user()?->id,
-            ]);
-        } catch (\Throwable $e) {
-            // The prior failure record is the only recovery handle for this
-            // job, so it is never deleted on a failed replay — whether the new
-            // dispatch was rejected or is merely unresolved.
-            $authoritative = null;
-            try {
-                $authoritative = TranslationJob::find($state->id);
-            } catch (\Throwable $readBackFailure) {
-                $authoritative = null;
             }
-
-            $outcome = $this->dispatchOutcome->classify(
-                $authoritative,
-                $uuid,
-                $priorStatus,
-                $failedJobRowId,
-            );
-
-            Log::error('Admin failed to retry queue job', [
-                'failed_job_id' => $failedJobRowId,
-                'uuid'          => $uuid,
-                'exception'     => $e->getMessage(),
-                'outcome'       => $outcome->status,
-                'reason'        => $outcome->reason,
-            ]);
-
-            return redirect()
-                ->route('admin.jobs.index')
-                ->with('status', $outcome->isUnknown() ? 'queue-job-retry-unconfirmed' : 'queue-job-retry-failed');
+            $modes = array_unique($modes);
+            if (count($modes) !== 1) {
+                return redirect()->route('admin.jobs.index')->with('status', 'queue-job-options-unavailable');
+            }
+            $ocrMode = reset($modes);
         }
-
-        return redirect()
-            ->route('admin.jobs.index')
-            ->with('status', 'queue-job-retried');
+        $uuid = $state->uuid;
+        $expectedAttempt = (int) $state->attempts + 1;
+        $dispatchAttempted = false;
+        try {
+            $this->dispatchOutcome->assertTransactionalQueue();
+            DB::transaction(function () use ($state, $uuid, $ocrMode, $expectedAttempt, $providerBudget, &$dispatchAttempted): void {
+                if (!$state->markQueued(recovered: true)) {
+                    throw new \RuntimeException('Retry already claimed or generation changed.');
+                }
+                app(\App\Services\TranslationAdmission::class)->bindDocument($state);
+                $state->ocr_mode = $ocrMode;
+                $state->save();
+                $job = new TranslateDocumentJob(
+                    $state->original_name, $state->original_ext, (int) $state->file_size,
+                    $state->source_lang, $state->target_lang, $state->pdf_column_mode, '', (int) $state->user_id,
+                    $state->original_storage_path, $state->mode, $state->parent_document_id,
+                    $state->original_storage_backend, (int) $state->id, $uuid, $ocrMode, $expectedAttempt, $providerBudget,
+                );
+                $dispatchAttempted = true;
+                dispatch($job);
+                // Historical failed_jobs evidence is deliberately retained.
+            });
+        } catch (\Throwable $error) {
+            try { $authoritative = TranslationJob::find($state->id); }
+            catch (\Throwable) { $authoritative = null; }
+            $outcome = $this->dispatchOutcome->classify($authoritative, $uuid, TranslationJob::STATUS_FAILED,
+                $failedJobId, $dispatchAttempted, $expectedAttempt);
+            Log::warning('Translation retry dispatch outcome', ['translation_job_id' => $state->id,
+                'expected_attempt' => $expectedAttempt, 'outcome' => $outcome->status]);
+            return redirect()->route('admin.jobs.index')->with('status', $outcome->isAccepted() ? 'queue-job-retried'
+                : ($outcome->isUnknown() ? 'queue-job-retry-unconfirmed' : 'queue-job-retry-failed'));
+        }
+        try { Cache::forget('translation_job_'.$uuid); }
+        catch (\Throwable) { Log::warning('Retry cache invalidation unavailable', ['translation_job_id' => $state->id]); }
+        return redirect()->route('admin.jobs.index')->with('status', 'queue-job-retried');
     }
 }
