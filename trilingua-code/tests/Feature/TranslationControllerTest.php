@@ -129,7 +129,7 @@ class TranslationControllerTest extends TestCase
             'signed_url' => null, 'signed_url_expires_at' => null,
         ]);
         $this->app->instance(StorageService::class, $storage);
-        $file = UploadedFile::fake()->createWithContent('worksheet.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aPioAAAAASUVORK5CYII='));
+        $file = UploadedFile::fake()->createWithContent('worksheet.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAANwAAADcCAIAAACUOFjWAAABoklEQVR42u3SQREAAAjDMMC/52EAATwSCb12koJPRgJMCabElGBKTAmmxJRgSjAlpgRTYkowJaYEU2JKMCWYElOCKTElmBJTginBlJgSTIkpwZSYEkyJKcGUYEpMCabElGBKTAmmBFNiSjAlpgRTYkowJaYEU4IpMSWYElOCKTElmBJMiSnBlJgSTIkpwZSYEkwJpsSUYEpMCabElGBKMCWmBFNiSjAlpgRTYkowJZgSU4IpMSWYElOCKcGUmBJMiSnBlJgSTIkpwZRgSkwJpsSUYEpMCaYEU2JKMCWmBFNiSjAlpgRTgikxJZgSU4IpMSWYEkyJKcGUmBJMiSnBlJgSTAmmxJRgSkwJpsSUYEpMCaYEU2JKMCWmBFNiSjAlmBJTgikxJZgSU4IpMSWYEkyJKcGUmBJMiSnBlGBKTAmmxJRgSkwJpsSUYEowJaYEU2JKMCWmBFOCKTElmBJTgikxJZgSU4IpwZSYEkyJKcGUmBJMCabElGBKTAmmxJRgSkwJpgRTYkowJaYEU2JKMCWYElOCKTElmBJTgikxJZgSLgtYcgS1tIGHVQAAAABJRU5ErkJggg=='));
         $this->actingAs($user)->postJson('/translate', [
             'source_lang' => 'English', 'target_lang' => 'Cebuano', 'document' => $file,
         ])->assertOk()->assertJsonPath('status', 'queued');

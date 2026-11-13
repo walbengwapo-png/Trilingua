@@ -271,13 +271,7 @@ class UploadQuotaAtomicityTest extends TestCase
         $listener = function (): void {
             throw new \RuntimeException('simulated acceptance failure after reservation');
         };
-        $quota = Mockery::mock(\App\Services\QuotaService::class)->makePartial();
-        $quota->shouldReceive('reserve')->once()->andReturnUsing(function ($userId, $bytes, $day) use ($listener) {
-            $accepted = (new \App\Services\QuotaService)->reserve($userId, $bytes, $day);
-            $listener(); // A committed competing row after lookup, before this request's insert.
-            return $accepted;
-        });
-        $this->app->instance(\App\Services\QuotaService::class, $quota);
+        TranslationJob::creating($listener);
 
         $before = $this->subdirs(storage_path('app/uploads'));
 
@@ -290,7 +284,7 @@ class UploadQuotaAtomicityTest extends TestCase
 
             $response->assertStatus(500);
         } finally {
-            $this->app->forgetInstance(\App\Services\QuotaService::class);
+            TranslationJob::flushEventListeners();
         }
 
         $this->assertSame(0, TranslationJob::count());
