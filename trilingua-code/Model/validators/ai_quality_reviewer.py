@@ -173,7 +173,7 @@ class AIQualityReviewer:
 
         try:
             batch_result = call_with_purpose("quality_review", self._ai.analyze, system_prompt, user_prompt)
-        except ProviderStopped:
+        except ProviderFailure:
             raise
         except Exception as e:
             print(f"  [QualityReview] Batch review failed: {e}")
@@ -309,7 +309,7 @@ class AIQualityReviewer:
         # Call AI for deep review
         try:
             result = call_with_purpose("quality_review", self._ai.analyze, system_prompt, user_prompt)
-        except ProviderStopped:
+        except ProviderFailure:
             raise
         except Exception as e:
             # If AI review fails, pass the translation (don't block on review)
