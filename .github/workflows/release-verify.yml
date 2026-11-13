@@ -1,0 +1,119 @@
+name: Translation release verification
+on:
+  push:
+    branches: [codex/release-translation-2026-11-13]
+permissions:
+  contents: read
+concurrency:
+  group: translation-release-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: trilingua_test
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: trilingua_engine_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U trilingua_test -d trilingua_engine_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      TRILINGUA_ENGINE_DB_TESTS: '1'
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_DATABASE: trilingua_engine_test
+      DB_USERNAME: trilingua_test
+      DB_PASSWORD: ci-only-password
+      DB_URL: ''
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: database
+      SUPABASE_URL: https://test.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
+      SUPABASE_ANON_KEY: test-anon-key
+      SUPABASE_BUCKET: test-bucket
+      OLLAMA_API_KEY: ''
+      GEMINI_API_KEY: ''
+      OLLAMA_CLOUD_URL: http://provider.invalid/api/chat
+      TRANSLATION_PROVIDER: gptoss
+      TRANSLATION_FALLBACK_PROVIDER: none
+      ANALYSIS_PROVIDER: ollama
+      ANALYSIS_FALLBACK_PROVIDER: none
+      DOCUMENT_JOBS_ENABLED: 'false'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      PYTHONPATH: ${{ github.workspace }}/trilingua-code/Model
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify the source-only release manifest
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib
+          for name, expected in json.loads(pathlib.Path('ci/release-source-manifest.json').read_text()).items():
+              assert hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest()==expected, name
+          print('Runtime/test source hashes verified; private incident evidence excluded')
+          PY
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: mbstring, intl, pdo_pgsql, pdo_sqlite, dom, fileinfo, zip
+          coverage: none
+          tools: composer:v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Guard before any application/test mutation
+        working-directory: trilingua-code
+        run: php -r "require 'tests/Support/EngineTestEnvironment.php'; Tests\Support\EngineTestEnvironment::check(getenv(), getcwd()); echo 'Pre-boot isolation guard passed'.PHP_EOL;"
+      - name: Prepare isolated Postgres roles
+        env:
+          PGPASSWORD: ci-only-password
+        run: |
+          psql -h 127.0.0.1 -U trilingua_test -d trilingua_engine_test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE ROLE service_role NOLOGIN BYPASSRLS;
+          GRANT anon,authenticated,service_role TO trilingua_test;
+          SQL
+      - name: Install test dependencies without application scripts
+        working-directory: trilingua-code
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress --no-scripts
+          python -m pip install -r requirements-dev.txt -r Model/requirements.txt httpx
+          npm ci
+          npm run build
+      - name: Install offline document/OCR test tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr fonts-dejavu-core fonts-liberation poppler-utils
+      - name: Verify frontend workflow behavior
+        working-directory: trilingua-code
+        run: node --test tests/browser/translation-workflow.test.mjs
+      - name: Rehearse migrations and rollback/index safety
+        working-directory: trilingua-code
+        run: php tests/Integration/rehearse-migrations.php
+      - name: Run the full PHP suite on disposable PostgreSQL
+        if: ${{ !cancelled() }}
+        working-directory: trilingua-code
+        run: php vendor/bin/phpunit -c phpunit.engine.xml --log-junit native-php-results.xml
+      - name: Run the full offline Python suite including ASGI startup
+        if: ${{ !cancelled() }}
+        working-directory: trilingua-code
+        run: python -m pytest Model/tests -q --tb=short --show-capture=no --junitxml=native-python-results.xml -p no:cacheprovider --maxfail=20
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: native-verification-results
+          path: trilingua-code/native-*-results.xml
+          retention-days: 7
