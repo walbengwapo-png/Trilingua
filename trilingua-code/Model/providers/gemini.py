@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Google Gemini translation provider."""
 
-from provider_usage import provider_post, reported_tokens
+from provider_usage import provider_post, reported_tokens, ProviderFailure
 import os
 import re
 import time
@@ -281,6 +281,8 @@ class GeminiProvider(TranslationProvider):
                         "calls_complete": False,
                     },
                 )
+            except ProviderFailure:
+                raise
             except requests.exceptions.Timeout:
                 error_message = f"Gemini API timed out after {max_attempts} attempt(s)"
             except (requests.exceptions.RequestException, RuntimeError, ValueError) as error:

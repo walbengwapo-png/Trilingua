@@ -8,7 +8,7 @@ Returns only assistant.message.content.
 Never exposes reasoning or provider-specific JSON.
 """
 
-from provider_usage import ProviderStopped, ollama_post, ollama_headers, reported_tokens
+from provider_usage import transport_operation, ProviderFailure, ProviderStopped, ollama_post, ollama_headers, reported_tokens
 import os
 import json
 import re
@@ -98,6 +98,7 @@ class GPTOSSProvider(TranslationProvider):
     def batch_limits(self) -> dict:
         return {"max_batch_chars": 4000, "max_batch_items": 12}
 
+    @transport_operation("GPTOSS_MAX_ATTEMPTS")
     def translate(self, text: str, source_lang: str, target_lang: str,
                   block_type: str = "paragraph", context_hint: str = "",
                   document_type: str = "", response_format: str = "text") -> TranslationResponse:
@@ -166,7 +167,7 @@ class GPTOSSProvider(TranslationProvider):
                         body = ""
                         try:
                             body = resp.text[:200].strip()
-                        except ProviderStopped:
+                        except ProviderFailure:
                             raise
                         except Exception:
                             pass
@@ -233,7 +234,7 @@ class GPTOSSProvider(TranslationProvider):
 
                     try:
                         result = sanitize_translation(result, text)
-                    except ProviderStopped:
+                    except ProviderFailure:
                         raise
                     except RuntimeError as sanitize_err:
                         if ("Hallucinated repetition" in str(sanitize_err)
@@ -314,7 +315,7 @@ class GPTOSSProvider(TranslationProvider):
                 print(f"  Warning: Timeout, retrying ({attempt + 1}/{max_attempts})...")
                 retry_sleep(1)
 
-            except (TimeoutError, ProviderStopped):
+            except (TimeoutError, ProviderFailure):
                 raise
             except Exception as e:
                 if attempt == max_attempts - 1:
@@ -540,6 +541,7 @@ class GPTOSSProvider(TranslationProvider):
 
         return results, elapsed_ms
 
+    @transport_operation("GPTOSS_MAX_ATTEMPTS")
     def _request_batch_chat(self, messages, ctx=None, num_predict=None):
         """POST one chat completion with the same pacing as translate() but
         raising GPTOSSProviderError on final systemic failure so the pipeline
@@ -629,7 +631,7 @@ class GPTOSSProvider(TranslationProvider):
                 print(f"  Warning: Timeout (batch), retrying "
                       f"({attempt + 1}/{max_attempts})...")
                 retry_sleep(1)
-            except ProviderStopped as error:
+            except ProviderFailure as error:
                 _record_failure(ctx, "rate_limit" if error.status_code == 429 else "authentication_or_allowance")
                 raise
             except TimeoutError:
@@ -702,7 +704,7 @@ class GPTOSSProvider(TranslationProvider):
         extracted = cls._extract_json_object(content)
         try:
             raw = json.loads(extracted, object_pairs_hook=_dupe_detecting)
-        except ProviderStopped:
+        except ProviderFailure:
             raise
         except Exception:
             # Not even a parseable JSON object — every entry is unresolved.
@@ -766,7 +768,7 @@ class GPTOSSProvider(TranslationProvider):
             )
             resp.raise_for_status()
             return True
-        except ProviderStopped:
+        except ProviderFailure:
             raise
         except Exception:
             return False
@@ -793,7 +795,7 @@ class GPTOSSProvider(TranslationProvider):
                 "model": self._model,
                 "error": f"Ollama returned status {resp.status_code}",
             }
-        except ProviderStopped:
+        except ProviderFailure:
             raise
         except Exception as e:
             return {

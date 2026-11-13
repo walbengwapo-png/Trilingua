@@ -1,6 +1,6 @@
 """Translation-provider failover for temporary cloud API failures."""
 
-from provider_usage import ProviderStopped
+from provider_usage import ProviderFailure, ProviderStopped
 import os
 import threading
 import time
@@ -119,7 +119,7 @@ class FallbackTranslationProvider(TranslationProvider):
         if use_primary:
             try:
                 response = self._primary.translate(*args, **kwargs)
-            except ProviderStopped:
+            except ProviderFailure:
                 raise
             except Exception as error:  # provider boundary must fail open
                 response = None
@@ -181,7 +181,7 @@ class FallbackTranslationProvider(TranslationProvider):
                         ),
                     )
                 response = self._fallback.translate(*args, **kwargs)
-        except ProviderStopped:
+        except ProviderFailure:
             raise
         except Exception as error:
             response = TranslationResponse(

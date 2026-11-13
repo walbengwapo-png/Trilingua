@@ -22,7 +22,8 @@ def remaining():
         return None
     value = deadline-time.monotonic()
     if value <= 0:
-        raise TimeoutError('Document deadline expired before provider transport')
+        from provider_errors import OperationFailure
+        raise OperationFailure('deadline_expired', 408)
     return value
 
 
@@ -36,5 +37,7 @@ def transport_timeout(connect, read):
 def retry_sleep(seconds):
     budget = remaining()
     if budget is not None and seconds >= budget:
-        raise TimeoutError('Provider retry would exceed document deadline')
-    time.sleep(seconds)
+        from provider_errors import OperationFailure
+        raise OperationFailure('deadline_expired', 408)
+    from provider_usage import wait_backoff
+    wait_backoff(seconds)
