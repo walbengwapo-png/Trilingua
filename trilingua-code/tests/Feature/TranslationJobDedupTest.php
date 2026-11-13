@@ -117,7 +117,7 @@ class TranslationJobDedupTest extends TestCase
         $job->handle($manager, $storage, $history, $blocks, $metrics);
 
         $this->assertSame(1, TranslationHistory::count(), 'one queued job must write one history row');
-        $jobRow = TranslationJob::first();
+        $jobRow = TranslationJob::findOrFail($job->translationJobId);
         $this->assertSame('completed', $jobRow->status);
         $this->assertSame('supabase', $jobRow->storage_backend);
         $this->assertNotNull($jobRow->storage_path, 'completed job must reference stored output');

@@ -37,9 +37,9 @@ class TranslationAdmissionTest extends TestCase
     private function requestFor(User $user, string $owner): void
     {
         $request = Request::create('/translate', 'POST');
-        $request->setUserResolver(fn () => $user);
         $request->attributes->set('translation_admission_owner', $owner);
         $this->app->instance('request', $request);
+        $request->setUserResolver(fn () => $user);
     }
 
     public function test_one_user_cannot_reserve_twice_but_three_other_users_can(): void

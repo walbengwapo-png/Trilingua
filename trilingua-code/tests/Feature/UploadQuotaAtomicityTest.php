@@ -230,7 +230,13 @@ class UploadQuotaAtomicityTest extends TestCase
                 'updated_at'       => now(),
             ]);
         };
-        TranslationJob::creating($listener);
+        $quota = Mockery::mock(\App\Services\QuotaService::class)->makePartial();
+        $quota->shouldReceive('reserve')->once()->andReturnUsing(function ($userId, $bytes, $day) use ($listener) {
+            $accepted = (new \App\Services\QuotaService)->reserve($userId, $bytes, $day);
+            $listener(); // A committed competing row after lookup, before this request's insert.
+            return $accepted;
+        });
+        $this->app->instance(\App\Services\QuotaService::class, $quota);
 
         try {
             $before = $this->subdirs(storage_path('app/uploads'));
@@ -244,7 +250,7 @@ class UploadQuotaAtomicityTest extends TestCase
             $response->assertJsonPath('duplicate', true);
             $response->assertJsonPath('job_id', $winnerUuid);
         } finally {
-            TranslationJob::flushEventListeners();
+            $this->app->forgetInstance(\App\Services\QuotaService::class);
         }
 
         $this->assertSame(1, TranslationJob::count(), 'only the winner row may survive the race');
@@ -265,7 +271,13 @@ class UploadQuotaAtomicityTest extends TestCase
         $listener = function (): void {
             throw new \RuntimeException('simulated acceptance failure after reservation');
         };
-        TranslationJob::creating($listener);
+        $quota = Mockery::mock(\App\Services\QuotaService::class)->makePartial();
+        $quota->shouldReceive('reserve')->once()->andReturnUsing(function ($userId, $bytes, $day) use ($listener) {
+            $accepted = (new \App\Services\QuotaService)->reserve($userId, $bytes, $day);
+            $listener(); // A committed competing row after lookup, before this request's insert.
+            return $accepted;
+        });
+        $this->app->instance(\App\Services\QuotaService::class, $quota);
 
         $before = $this->subdirs(storage_path('app/uploads'));
 
@@ -278,7 +290,7 @@ class UploadQuotaAtomicityTest extends TestCase
 
             $response->assertStatus(500);
         } finally {
-            TranslationJob::flushEventListeners();
+            $this->app->forgetInstance(\App\Services\QuotaService::class);
         }
 
         $this->assertSame(0, TranslationJob::count());
@@ -451,7 +463,13 @@ class UploadQuotaAtomicityTest extends TestCase
                 'updated_at'       => now(),
             ]);
         };
-        TranslationJob::creating($listener);
+        $quota = Mockery::mock(\App\Services\QuotaService::class)->makePartial();
+        $quota->shouldReceive('reserve')->once()->andReturnUsing(function ($userId, $bytes, $day) use ($listener) {
+            $accepted = (new \App\Services\QuotaService)->reserve($userId, $bytes, $day);
+            $listener(); // A committed competing row after lookup, before this request's insert.
+            return $accepted;
+        });
+        $this->app->instance(\App\Services\QuotaService::class, $quota);
 
         try {
             $response = $this->actingAs($user)->post('/documents/' . $record->id . '/re-translate', [
@@ -462,7 +480,7 @@ class UploadQuotaAtomicityTest extends TestCase
             $response->assertJsonPath('duplicate', true);
             $response->assertJsonPath('job_id', $winnerUuid);
         } finally {
-            TranslationJob::flushEventListeners();
+            $this->app->forgetInstance(\App\Services\QuotaService::class);
         }
 
         $this->assertSame(1, TranslationJob::count(), 'only the winner re-translation survives');

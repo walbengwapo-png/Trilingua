@@ -129,7 +129,7 @@ class TranslationControllerTest extends TestCase
             'signed_url' => null, 'signed_url_expires_at' => null,
         ]);
         $this->app->instance(StorageService::class, $storage);
-        $file = UploadedFile::fake()->createWithContent('worksheet.png', file_get_contents(__DIR__.'/../fixtures/ocr-worksheet.png'));
+        $file = UploadedFile::fake()->createWithContent('worksheet.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aPioAAAAASUVORK5CYII='));
         $this->actingAs($user)->postJson('/translate', [
             'source_lang' => 'English', 'target_lang' => 'Cebuano', 'document' => $file,
         ])->assertOk()->assertJsonPath('status', 'queued');

@@ -204,7 +204,8 @@ class ProviderCircuitNativeTest extends TestCase
     public function test_all_rpcs_are_service_only_original_rpcs_remain_and_rls_is_enabled(): void
     {
         $checks=[];
-        foreach(array_filter(explode(';',file_get_contents(database_path('sql/check_reliability_access.sql')))) as $query) {
+        $sql = preg_replace('/--[^\n]*/', '', file_get_contents(database_path('sql/check_reliability_access.sql')));
+        foreach(array_filter(array_map('trim', explode(';', $sql))) as $query) {
             $checks=[...$checks,...DB::select($query)];
         }
         $this->assertNotEmpty($checks);
