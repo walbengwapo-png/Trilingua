@@ -33,8 +33,7 @@ jobs:
       - name: Install test dependencies
         run: |
           composer install --no-interaction --prefer-dist --no-progress --no-scripts
-          python -m pip install -r Model/requirements.txt -r requirements-dev.txt
-          python -m pip install 'PyMuPDF==1.28.2' 'opencv-python-headless==4.13.0.92' 'numpy==2.4.6'
+          python -m pip install -r Model/requirements.txt -r requirements-dev.txt 'PyMuPDF==1.28.2' 'starlette==1.3.0' 'httpx==0.28.1' 'pydantic==2.13.4' 'opencv-python-headless==4.13.0.92' 'numpy==2.4.6'
       - name: PHP polling and recovery regressions
         run: vendor/bin/phpunit tests/Unit/TranslationManagerDocumentJobsTest.php tests/Unit/ResumeDocumentResultTest.php
       - name: Offline PDF and signing regressions
