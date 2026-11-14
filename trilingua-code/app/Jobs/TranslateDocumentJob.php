@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Exceptions\TranslationException;
+use App\Exceptions\DocumentJobUncertainException;
 use App\Models\TranslationHistory;
 use App\Models\TranslationJob;
 use App\Models\User;
@@ -83,6 +84,7 @@ class TranslateDocumentJob implements ShouldQueue
         public ?int $translationJobId = null,
         public ?string $presetUuid = null,
         public string $ocrMode = 'strict',
+        public bool $resumeEngineOnly = false,
     ) {
         $this->timeout = (int) config('timeouts.job', 1300);
     }
@@ -161,7 +163,9 @@ class TranslateDocumentJob implements ShouldQueue
                 $arguments[] = $job?->engine_job_uuid ?? $this->uuid();
                 $arguments[] = fn () => $job?->noteProgress(15);
             }
-            $translationResult = $translationManager->translateDocument(...$arguments);
+            $translationResult = ($this->resumeEngineOnly ?? false)
+                ? $translationManager->resumeDocumentJob($job?->engine_job_uuid ?? $this->uuid(), fn () => $job?->noteProgress(15))
+                : $translationManager->translateDocument(...$arguments);
 
             $downloadFilename = $translationResult['download_filename'];
 
@@ -374,7 +378,7 @@ class TranslateDocumentJob implements ShouldQueue
             // further attempt will be made. A persistence failure must not hide
             // the terminal result from the polling endpoint or failed_jobs.
             try {
-                $job?->markTerminallyFailed($e, $this->isRecoverable());
+                $job?->markTerminallyFailed($e, $this->isRecoverable() && !($e instanceof DocumentJobUncertainException));
             } catch (\Throwable $persistenceError) {
                 Log::error('Job: terminal failure state could not be persisted', [
                     'job_id' => $this->uuid(),
@@ -518,6 +522,7 @@ class TranslateDocumentJob implements ShouldQueue
 
     private function isRetryable(\Throwable $e): bool
     {
+        if ($e instanceof DocumentJobUncertainException) { return false; }
         if ($e instanceof TranslationException) {
             $code = $e->getCode();
             if (in_array($code, [503, 504], true)) {

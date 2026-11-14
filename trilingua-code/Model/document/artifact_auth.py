@@ -33,9 +33,15 @@ def load_json(path):
 
 
 def key_file(path, purpose):
+    if not path or not str(path).strip():
+        raise ValueError('Signing key file is not configured')
+    if not Path(path).is_absolute():
+        raise ValueError('Signing key file must be an absolute path')
     path = Path(path).resolve()
     if path.is_relative_to(REPOSITORY):
         raise ValueError('Signing keys must be outside the repository')
+    if not path.is_file():
+        raise ValueError('Signing key file is unavailable')
     key = load_json(path)
     if key.get('version') != 1 or key.get('purpose') != purpose:
         raise ValueError('Signing key purpose/version mismatch')

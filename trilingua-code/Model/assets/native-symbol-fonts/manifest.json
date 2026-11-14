@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "build_tool": "fonttools 4.55.3",
+  "sources": {
+    "NotoSans": "noto-fonts ffebf8c1ee449e544955a7e813c54f9b73848eac",
+    "NotoSansSymbols2": "noto-fonts ffebf8c1ee449e544955a7e813c54f9b73848eac",
+    "NotoEmoji": {
+      "repository": "google/fonts",
+      "commit": "8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5"
+    }
+  },
+  "fonts": {
+    "Regular": {
+      "file": "TrilinguaUnicode-Regular.ttf",
+      "sha256": "23a5d884ef35fbaa8d292d8a736a60606b9892db64b5365aedd61b0cdade16ce"
+    },
+    "Bold": {
+      "file": "TrilinguaUnicode-Bold.ttf",
+      "sha256": "4f751b24fdee684870e6338e91072d3b708d7651658223e53a0ce39d75817564"
+    },
+    "Italic": {
+      "file": "TrilinguaUnicode-Italic.ttf",
+      "sha256": "8ab439089a216dce5e82306a1987fd3c28a50d9a7b27b25a01d0e18c9e080320"
+    },
+    "BoldItalic": {
+      "file": "TrilinguaUnicode-BoldItalic.ttf",
+      "sha256": "419e48ad2bd4a7ec85905e19350f0f58faa6ca7b4b2c27257dc7773c2d9fcfc7"
+    }
+  }
+}

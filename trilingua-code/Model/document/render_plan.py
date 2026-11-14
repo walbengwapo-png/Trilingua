@@ -52,8 +52,9 @@ def block_digest(entries):
 
 def sign_plan(plan, entries):
     from document.artifact_auth import sign
+    from document.plan_key import require_plan_key
     plan = dict(plan, blocks_sha256=block_digest(entries))
-    plan = sign(plan, os.environ.get('OCR_PLAN_KEY_FILE', ''), 'render-plan')
+    plan = sign(plan, require_plan_key(), 'render-plan')
     check_bounds(plan)
     return plan
 
@@ -61,8 +62,9 @@ def sign_plan(plan, entries):
 def validate_plan(plan, original, entries=None):
     from document.pdf_regions import sha256
     from document.artifact_auth import verify
+    from document.plan_key import require_plan_key
     check_bounds(plan)
-    verify(plan, os.environ.get('OCR_PLAN_KEY_FILE', ''), 'render-plan')
+    verify(plan, require_plan_key(), 'render-plan')
     if plan.get('version') != PLAN_VERSION or plan.get('algorithm_version') != ALGORITHM_VERSION:
         raise ValueError('Unsupported render plan/algorithm version')
     if sha256(original) != plan.get('original_sha256'):

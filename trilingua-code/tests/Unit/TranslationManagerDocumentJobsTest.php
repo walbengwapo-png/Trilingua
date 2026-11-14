@@ -38,7 +38,7 @@ class TranslationManagerDocumentJobsTest extends TestCase
         $this->assertSame('translated bytes', $result['body']);
         $this->assertSame([['block_index' => 0]], $result['blocks']);
         $this->assertSame(['format' => '.txt'], $result['sidecar']);
-        $this->assertSame(3, $beats);
+        $this->assertSame(4, $beats);
         Http::assertSentCount(5);
         Http::assertSent(fn ($request) => $request->method() === 'POST' && $request->url() === $url
             && collect($request->data())->contains(fn ($field) => ($field['name'] ?? null) === 'job_id' && $field['contents'] === $id));
@@ -81,5 +81,88 @@ class TranslationManagerDocumentJobsTest extends TestCase
             $this->assertStringNotContainsString('could not connect', strtolower($error->getMessage()));
         }
         Http::assertSentCount(2);
+    }
+
+    public function test_gateway_errors_retry_status_and_result_without_resubmitting(): void
+    {
+        $id = 'eaef25cc-fd3f-463b-9e73-db49dab738cd';
+        $url = 'https://engine.example.test/translate/document/jobs';
+        Http::fake([
+            $url => Http::response(['id' => $id, 'status' => 'queued'], 202),
+            "$url/$id" => Http::sequence()->push([], 502)->push(['status' => 'processing'])
+                ->push(['status' => 'completed']),
+            "$url/$id/result" => Http::sequence()->push([], 504)->push([
+                'file_base64' => base64_encode('retained completed result'), 'download_filename' => 'translated.txt']),
+        ]);
+        $result = app(TranslationManager::class)->translateDocument(
+            UploadedFile::fake()->createWithContent('source.txt', 'source'), 'English', 'Filipino', engineJobId: $id);
+        $this->assertSame('retained completed result', $result['body']);
+        $this->assertCount(1, Http::recorded(fn ($request) => $request->method() === 'POST'));
+        Http::assertSentCount(6);
+    }
+
+    public function test_persistent_gateway_errors_require_reconciliation_instead_of_replay(): void
+    {
+        $id = 'eaef25cc-fd3f-463b-9e73-db49dab738cd';
+        Http::fake(['*/jobs' => Http::response(['id' => $id, 'status' => 'queued'], 202),
+            '*/jobs/*' => Http::response([], 502)]);
+        try {
+            app(TranslationManager::class)->translateDocument(UploadedFile::fake()->createWithContent('source.txt', 'source'),
+                'English', 'Filipino', engineJobId: $id);
+            $this->fail('Expected reconciliation, not a second submission');
+        } catch (\App\Exceptions\DocumentJobUncertainException $error) {
+            $this->assertSame($id, $error->engineJobId);
+            $this->assertStringContainsString('do not submit it again', $error->getMessage());
+        }
+        Http::assertSentCount(9);
+        $this->assertCount(1, Http::recorded(fn ($request) => $request->method() === 'POST'));
+    }
+
+    public function test_retained_result_recovery_never_submits_a_document(): void
+    {
+        Http::fake(['*/result' => Http::response(['file_base64' => base64_encode('saved result')]),
+            '*/jobs/*' => Http::response(['status' => 'completed'])]);
+        $result = app(TranslationManager::class)->resumeDocumentJob('eaef25cc-fd3f-463b-9e73-db49dab738cd');
+        $this->assertSame('saved result', $result['body']);
+        Http::assertSentCount(2);
+        Http::assertNotSent(fn ($request) => $request->method() === 'POST');
+    }
+
+    public function test_invalid_status_requires_reconciliation(): void
+    {
+        Http::fake(['*/jobs' => Http::response(['status' => 'queued'], 202),
+            '*/jobs/*' => Http::response(['status' => 'unexpected'])]);
+        $this->expectException(\App\Exceptions\DocumentJobUncertainException::class);
+        app(TranslationManager::class)->translateDocument(UploadedFile::fake()->createWithContent('source.txt', 'source'), 'English', 'Filipino');
+    }
+
+    public function test_connection_loss_retries_only_the_status_read(): void
+    {
+        $id = 'eaef25cc-fd3f-463b-9e73-db49dab738cd';
+        $url = 'https://engine.example.test/translate/document/jobs';
+        Http::fake([
+            $url => Http::response(['id' => $id, 'status' => 'queued'], 202),
+            "$url/$id" => Http::sequence()->pushFailedConnection()->push(['status' => 'completed']),
+            "$url/$id/result" => Http::response(['file_base64' => base64_encode('recovered')]),
+        ]);
+        $result = app(TranslationManager::class)->translateDocument(UploadedFile::fake()->createWithContent('source.txt', 'source'),
+            'English', 'Filipino', engineJobId: $id);
+        $this->assertSame('recovered', $result['body']);
+        $this->assertCount(1, Http::recorded(fn ($request) => $request->method() === 'POST'));
+    }
+
+    public function test_expired_deadline_keeps_the_engine_reference(): void
+    {
+        config(['translation.python_service.timeout' => 0]);
+        $id = 'eaef25cc-fd3f-463b-9e73-db49dab738cd';
+        Http::fake(['*/jobs' => Http::response(['id' => $id, 'status' => 'queued'], 202)]);
+        try {
+            app(TranslationManager::class)->translateDocument(UploadedFile::fake()->createWithContent('source.txt', 'source'),
+                'English', 'Filipino', engineJobId: $id);
+            $this->fail('Expected observer deadline exhaustion');
+        } catch (\App\Exceptions\DocumentJobUncertainException $error) {
+            $this->assertSame($id, $error->engineJobId);
+        }
+        Http::assertSentCount(1);
     }
 }

@@ -1153,10 +1153,15 @@ def _write_pdf_preserved(blocks, original_pdf_path, output_file,
                 return fontcode, fnt
         except Exception:
             pass
-        try:
-            return variant, fitz.Font(variant)
-        except Exception:
-            return "helv", fitz.Font("helv")
+        # Base-14 insertion replaces unsupported symbols with dots even when
+        # has_glyph reports coverage. Never use it as an unchecked last resort.
+        from document.unicode_font import fallback_font
+        name, fnt = fallback_font(bold, italic)
+        if _font_has_all(fnt, req_cps):
+            _insert_font(page_obj, name, fnt.buffer)
+            return name, fnt
+        missing = sorted(cp for cp in req_cps if not fnt.has_glyph(cp))
+        raise ValueError('PDF font does not support characters: ' + ', '.join(f'U+{cp:04X}' for cp in missing))
 
     def _text_width(text, font_obj, fontsize):
         try:

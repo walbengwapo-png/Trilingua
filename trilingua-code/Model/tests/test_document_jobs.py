@@ -100,3 +100,15 @@ def test_durable_submission_retains_preview_mode_and_rejects_invalid_mode(monkey
         server.submit_document_job(file=UploadFile(filename="source.txt", file=io.BytesIO(b"source")), ocr_mode="invalid", **options)
     assert error.value.status_code == 400
     assert store.submit.call_count == 1
+
+
+def test_structured_failure_keeps_operator_report_out_of_user_error(store, caplog):
+    store.read_object = Mock(return_value=b'source')
+    store.finish = Mock(return_value=True)
+    report = {'message': 'PDF could not be saved. Reference: test-reference',
+              'validation': {'content_findings': [{'expected': 'operator-only-content'}]}}
+    translate = Mock(side_effect=HTTPException(422, report))
+    DocumentJobWorker(store, translate).run_one({'id': str(uuid4()), 'lease_id': str(uuid4()),
+        'input_path': 'input', 'filename': 'source.txt', 'options': {}})
+    assert store.finish.call_args.kwargs['error'] == report['message']
+    assert 'operator-only-content' in caplog.text

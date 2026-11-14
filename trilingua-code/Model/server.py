@@ -20,6 +20,7 @@ import sys
 import os
 import hmac
 import logging
+import json
 import time as _time
 from uuid import UUID
 
@@ -716,7 +717,11 @@ def translate_document(
     except PDFValidationError as e:
         print(chr(91)+chr(83)+chr(69)+chr(82)+chr(86)+chr(69)+chr(82)+chr(93)+chr(32)+chr(80)+chr(68)+chr(70)+chr(86)+chr(65)+chr(76)+chr(73)+chr(68)+chr(65)+chr(84)+chr(73)+chr(79)+chr(78)+chr(32)+chr(69)+chr(82)+chr(82)+chr(79)+chr(82)+chr(58), str(e))
         shutil.rmtree(tmp_dir, ignore_errors=True)
-        raise HTTPException(422, {"message": str(e), "validation": e.report})
+        from uuid import uuid4
+        reference = str(uuid4())
+        logging.getLogger('uvicorn.error').error('PDF validation reference=%s report=%s', reference, json.dumps(e.report))
+        raise HTTPException(422, {"message": 'The translated PDF could not be saved correctly. Your original file is unchanged. Reference: ' + reference,
+                                  "request_id": reference, "validation": e.report})
     except (ValueError, TimeoutError) as e:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         raise HTTPException(422, str(e))
@@ -895,7 +900,11 @@ def translate_document_regenerate(
         )
     except PDFValidationError as e:
         shutil.rmtree(tmp_dir, ignore_errors=True)
-        raise HTTPException(422, {"message": str(e), "validation": e.report})
+        from uuid import uuid4
+        reference = str(uuid4())
+        logging.getLogger('uvicorn.error').error('PDF validation reference=%s report=%s', reference, json.dumps(e.report))
+        raise HTTPException(422, {"message": 'The edited PDF could not be saved correctly. Your published file is unchanged. Reference: ' + reference,
+                                  "request_id": reference, "validation": e.report})
     except (ValueError, TimeoutError) as e:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         raise HTTPException(422, str(e))

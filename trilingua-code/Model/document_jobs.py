@@ -149,6 +149,9 @@ class DocumentJobWorker:
             from provider_usage import ProviderStopped
             status = 429 if isinstance(error, ProviderStopped) else error.status_code if isinstance(error, HTTPException) else 500
             detail = str(error) if isinstance(error, ProviderStopped) else error.detail if isinstance(error, HTTPException) else "Document background processing failed"
+            if isinstance(detail, dict):
+                log.error('Document job %s failed: %s', row['id'], json.dumps(detail))
+                detail = detail.get('message') or 'Document background processing failed'
             if not isinstance(detail, str):
                 detail = json.dumps(detail)
             self.store.finish(row, status="failed", error=detail[:2000], error_status=status)

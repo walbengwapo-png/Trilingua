@@ -3,6 +3,7 @@
 namespace App\Services\Translation;
 
 use App\Exceptions\TranslationException;
+use App\Exceptions\DocumentJobUncertainException;
 use App\Services\Translation\DTO\TranslationRequest;
 use App\Services\Translation\DTO\TranslationResponse;
 use Illuminate\Http\UploadedFile;
@@ -248,13 +249,10 @@ class TranslationManager
     private function waitForDocumentJob(string $id, ?callable $heartbeat, float $deadline)
     {
         while (microtime(true) < $deadline) {
-            if ($heartbeat !== null) {
-                $heartbeat();
-            }
             $http = $this->withToken(Http::timeout(min(45, max(1, $deadline - microtime(true))))->connectTimeout(10));
-            $response = $http->get("{$this->pythonUrl}/translate/document/jobs/{$id}");
+            $response = $this->readDocumentJob($http, "{$this->pythonUrl}/translate/document/jobs/{$id}", $id, $heartbeat, $deadline);
             if ($response->failed()) {
-                throw new TranslationException("Document job polling failed (HTTP {$response->status()}).", $response->status());
+                throw new DocumentJobUncertainException($id, $response->status());
             }
             $status = $response->json('status');
             if ($status === 'failed') {
@@ -262,18 +260,63 @@ class TranslationManager
                     (int) ($response->json('error_status') ?? 500));
             }
             if ($status === 'completed') {
-                $result = $http->get("{$this->pythonUrl}/translate/document/jobs/{$id}/result");
+                $result = $this->readDocumentJob($http, "{$this->pythonUrl}/translate/document/jobs/{$id}/result", $id, $heartbeat, $deadline);
                 if ($result->failed()) {
-                    throw new TranslationException('Document job result could not be retrieved.', $result->status());
+                    throw new DocumentJobUncertainException($id, $result->status());
                 }
                 return $result;
             }
             if (! in_array($status, ['queued', 'processing'], true)) {
-                throw new TranslationException('Document service returned an invalid job status.');
+                throw new DocumentJobUncertainException($id);
             }
             Sleep::for(min(5, max(0, $deadline - microtime(true))))->seconds();
         }
-        throw new TranslationException('Document translation exceeded the allowed processing time.', 408);
+        throw new DocumentJobUncertainException($id);
+    }
+
+    private function readDocumentJob($http, string $url, string $id, ?callable $heartbeat, float $deadline)
+    {
+        for ($attempt = 0; $attempt < 8 && microtime(true) < $deadline; $attempt++) {
+            if ($heartbeat !== null) { $heartbeat(); }
+            try {
+                $response = $http->timeout(min(45, max(1, $deadline - microtime(true))))->get($url);
+                if (!in_array($response->status(), [502, 503, 504], true)) { return $response; }
+            } catch (\Illuminate\Http\Client\ConnectionException) {
+                // Retry only this read, never the accepted document submission.
+            }
+            if ($attempt < 7 && microtime(true) < $deadline) {
+                Sleep::for(min(min(10, 2 ** $attempt) + random_int(0, 250) / 1000,
+                    max(0, $deadline - microtime(true))))->seconds();
+            }
+        }
+        throw new DocumentJobUncertainException($id);
+    }
+
+    public function inspectDocumentJob(string $id): array
+    {
+        $response = $this->readDocumentJob($this->withToken(Http::connectTimeout(10)),
+            "{$this->pythonUrl}/translate/document/jobs/{$id}", $id, null, microtime(true) + 60);
+        $data = $response->json();
+        if (!$response->successful() || !is_array($data)
+            || !in_array($data['status'] ?? null, ['queued', 'processing', 'completed', 'failed'], true)) {
+            throw new DocumentJobUncertainException($id);
+        }
+        return $data;
+    }
+
+    /** Recovery consumes a retained result; this method never uploads or translates. */
+    public function resumeDocumentJob(string $id, ?callable $heartbeat = null): array
+    {
+        $response = $this->waitForDocumentJob($id, $heartbeat, microtime(true) + $this->timeout);
+        $data = $response->json();
+        $body = base64_decode($data['file_base64'] ?? '', true);
+        if ($body === false || $body === '') {
+            throw new DocumentJobUncertainException($id);
+        }
+        return ['body' => $body, 'blocks' => $data['blocks'] ?? [], 'sidecar' => $data['sidecar'] ?? null,
+            'content_summary' => $data['content_summary'] ?? $data['sidecar']['content_summary'] ?? null,
+            'metrics' => $data['metrics'] ?? [], 'download_filename' => $data['download_filename'] ?? 'translated_document',
+            'mime_type' => $data['mime_type'] ?? 'application/octet-stream'];
     }
 
     public function acknowledgeDocumentJob(string $id): void

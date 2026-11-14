@@ -282,6 +282,9 @@ class DocumentPipeline:
         ctx.mode = self._determine_mode(request, ctx.pdf_deadline)
 
         ext = os.path.splitext(request.file_path)[1].lower()
+        if ext in {'.pdf', *IMAGE_EXTENSIONS}:
+            from document.plan_key import require_plan_key
+            require_plan_key()
         if request.ocr_mode not in {'strict','preview'}:
             raise ValueError('Invalid OCR mode')
         if request.ocr_mode=='preview' and ext not in {'.pdf', *IMAGE_EXTENSIONS}:

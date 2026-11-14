@@ -1,0 +1,52 @@
+name: Document translation hotfix
+
+on:
+  push:
+    branches: ['codex/document-hotfix-2026-11-14']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: trilingua-code
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      ALLOW_PROVIDER_WARMUP: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: mbstring, sqlite3, pdo_sqlite, dom
+          coverage: none
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress --no-scripts
+          python -m pip install -r Model/requirements.txt -r requirements-dev.txt
+          python -m pip install 'PyMuPDF==1.28.2' 'opencv-python-headless==4.13.0.92' 'numpy==2.4.6'
+      - name: PHP polling and recovery regressions
+        run: vendor/bin/phpunit tests/Unit/TranslationManagerDocumentJobsTest.php tests/Unit/ResumeDocumentResultTest.php
+      - name: Offline PDF and signing regressions
+        working-directory: trilingua-code/Model
+        run: >-
+          python -m pytest tests/test_pdf_symbol_roundtrip.py
+          tests/test_render_plan_configuration.py tests/test_hybrid_fonts.py
+          tests/test_document_jobs.py tests/test_pdf_content_layout.py
+          tests/test_pdf_hybrid_regeneration.py tests/test_service_token_policy.py
+          -q --tb=short --junitxml=../../document-hotfix-python.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: document-hotfix-results
+          path: document-hotfix-python.xml
