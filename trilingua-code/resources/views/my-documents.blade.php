@@ -83,7 +83,7 @@
 
     {{-- ── Error state ──────────────────────────────────────────────────── --}}
     @if ($error)
-        <p class="docs-empty">Unable to load documents. Please try again later.</p>
+        <x-notice type="warning" title="Documents could not load" message="Refresh this page to try again." />
 
     {{-- ── Empty state ──────────────────────────────────────────────────── --}}
     @elseif ($documents->isEmpty())
@@ -467,16 +467,7 @@
 
     /* ── Helper: fetch JSON ──────────────────────────────────────────────── */
     function fetchJson(url, options) {
-        return fetch(url, options).then(function (response) {
-            return response.text().then(function (raw) {
-                var data = null;
-                try { data = JSON.parse(raw); } catch (e) {}
-                if (!response.ok) {
-                    throw new Error((data && data.error) || 'Request failed.');
-                }
-                return data;
-            });
-        });
+        return fetch(url, options).then(function (response) { return window.readAppJson(response); });
     }
 
     /* ── Re-download / Open button ──────────────────────────────────────── */

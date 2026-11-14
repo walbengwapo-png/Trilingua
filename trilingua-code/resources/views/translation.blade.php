@@ -191,7 +191,7 @@
             if (/^Original region retained:/.test(text)) return UNKNOWN_REASON_MESSAGE;
             if (/^(Partial|Untranslated): \d+ translated,/.test(text)) return CONTENT_MESSAGES[text.startsWith('Partial') ? 'partial' : 'untranslated'];
             if (text.startsWith('Unverified OCR preview:')) return PREVIEW_MESSAGE;
-            return text;
+            return window.readableAppMessage(text);
         })));
     }
 
@@ -222,7 +222,7 @@
     var downloadLink   = document.getElementById('download-link');
     var downloadLabel  = document.getElementById('download-label');
 
-    function showError(el, msg) { if (el) el.textContent = msg; }
+    function showError(el, msg) { if (el) el.textContent = window.readableAppMessage(msg); }
     function clearError(el)     { if (el) el.textContent = ''; }
 
     // ── Character counter ────────────────────────────────────────────────────
@@ -430,7 +430,7 @@
                     downloadLabel.textContent = 'Download: ' + (data.download_filename || 'translated_document');
                     copyBtn.setAttribute('aria-disabled', 'true');
                     saveBtn.setAttribute('aria-disabled', 'true');
-                    if (window.showToast) showToast(incomplete || unverified ? 'warning' : 'success', unverified ? 'Experimental image-text translation' : incomplete ? 'Incomplete translation' : 'Document translated!', outputText.textContent);
+                    if (window.showToast) showToast(incomplete || unverified ? 'warning' : 'success', unverified ? 'Image text needs review' : incomplete ? 'Some parts were not translated' : 'Translation ready', outputText.textContent);
                 } else if (res.ok && data && data.translated) {
                     sessionStorage.removeItem(JOB_STORAGE_KEY);
                     hideProgress();
@@ -444,19 +444,19 @@
                     showError(sourceError, data.errors[Object.keys(data.errors)[0]][0]);
                 } else if (res.status === 504) {
                     hideProgress();
-                    showError(outputError, (data && data.error) || 'Translation took too long. Please try with a smaller file.');
+                    showError(outputError, (data && data.error) || 'We could not confirm the result in time. If you submitted a document, check My Documents before uploading it again.');
                 } else if (res.status === 400 && data && data.error) {
                     hideProgress();
                     showError(sourceError, data.error);
                 } else {
                     hideProgress();
-                    var errorMsg = (data && (data.error || data.detail)) || 'Translation failed. Please try again.';
+                    var errorMsg = (data && (data.error || data.message || data.detail)) || 'We could not complete the translation. Review the message below before starting another attempt.';
                     if (data && data.request_id) errorMsg += ' Reference: ' + data.request_id;
                     showError(outputError, errorMsg);
                 }
             });
         })
-        .catch(function () { hideProgress(); showError(outputError, 'Network error. Please check your connection and try again.'); })
+        .catch(function () { hideProgress(); showError(outputError, 'Connection interrupted. If you already submitted a document, do not upload it again. Check My Documents for its status.'); })
         .finally(function () {
             setLoading(false);
             if (!activePollJobId && previousJobId && sessionStorage.getItem(JOB_STORAGE_KEY) === previousJobId && !document.hidden) {
@@ -529,6 +529,13 @@
                 var data = null;
                 try { data = JSON.parse(raw); } catch (e) {}
 
+                if (res.status === 401 || res.status === 419 || (res.redirected && new URL(res.url).pathname === '/login')) {
+                    stopPolling(false);
+                    hideProgress();
+                    showError(outputError, 'Your session has ended. Sign in again, then return here to check this translation. Do not upload it again.');
+                    return;
+                }
+
                 if (data && data.status === 'completed' && Array.isArray(data.warnings) && data.warnings.length) {
                     workbookWarning.textContent = readableWarnings(data.warnings).join(' ');
                     workbookWarning.hidden = false;
@@ -548,7 +555,7 @@
                     downloadLabel.textContent = 'Download: ' + (data.download_filename || 'translated_document');
                     copyBtn.setAttribute('aria-disabled', 'true');
                     saveBtn.setAttribute('aria-disabled', 'true');
-                    if (window.showToast) showToast(incomplete || unverified ? 'warning' : 'success', unverified ? 'Experimental image-text translation' : incomplete ? 'Incomplete translation' : 'Document translated!', outputText.textContent);
+                    if (window.showToast) showToast(incomplete || unverified ? 'warning' : 'success', unverified ? 'Image text needs review' : incomplete ? 'Some parts were not translated' : 'Translation ready', outputText.textContent);
                     return;
                 }
 
@@ -562,10 +569,11 @@
                 }
 
                 if (data && data.status === 'failed') {
-                    stopPolling(true);
+                    var uncertain = /document status is temporarily unavailable|operator reconciliation/i.test(data.error || '');
+                    stopPolling(!uncertain);
                     hideProgress();
                     documentJobHint.hidden = true;
-                    showError(outputError, (data && data.error) || 'Translation failed. Please try again.');
+                    showError(outputError, (data && data.error) || 'We could not complete the translation. Review the message below before starting another attempt.');
                     return;
                 }
 

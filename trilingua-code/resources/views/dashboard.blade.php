@@ -11,10 +11,7 @@
 
     {{-- Error banner --}}
     @if ($error ?? false)
-    <div class="alert-banner" role="alert">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        Unable to load your translation data. Please try refreshing the page.
-    </div>
+    <x-notice type="warning" title="Translation activity could not load" message="Refresh this page to try again." />
     @endif
 
     {{-- Greeting --}}
@@ -164,7 +161,7 @@
                                 @endif
                             </div>
                             <span class="table-cell-text">
-                                <a href="{{ route('history.detail', $record['id']) }}" style="color:var(--text);text-decoration:none">
+                                <a href="{{ route('history.view', $record['id']) }}" style="color:var(--text);text-decoration:none">
                                 @if (($record['translation_type'] ?? 'document') === 'document')
                                     {{ $record['original_filename'] ?? 'Untitled Document' }}
                                 @else

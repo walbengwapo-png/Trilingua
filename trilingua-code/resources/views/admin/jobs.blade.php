@@ -12,16 +12,16 @@
     <div class="review-page-header">
         <div class="review-page-header__title">
             <h2>Translation Jobs</h2>
-            <p>Durable state machine for document translations, plus failed queue jobs.</p>
+            <p>Track document progress and check translations that need attention.</p>
         </div>
     </div>
 
     @if (session('status') === 'queue-job-retried')
         <p class="notice notice--success" role="status">Job replayed — the worker will reconstruct input from the durable original.</p>
     @elseif (session('status') === 'queue-job-not-recoverable')
-        <p class="notice notice--error" role="alert">This failed job cannot be retried: no durable original exists to reconstruct the input.</p>
+        <x-notice code="job_unrecoverable" />
     @elseif (session('status') === 'queue-job-retry-failed')
-        <p class="notice notice--error" role="alert">Retry could not be queued. Check the application logs.</p>
+        <x-notice code="job_retry_failed" />
     @elseif (!empty($error))
         <p class="empty-state">Unable to load jobs. Please try again later.</p>
     @endif

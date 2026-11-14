@@ -68,7 +68,7 @@ class LoginController extends Controller
                 'last_activity' => now(),
             ]);
 
-            return redirect()->intended(route('dashboard'))->with('login_success', true);
+            return redirect()->to(\App\Support\LoginDestination::take($request))->with('login_success', true);
         }
 
         // Log failed login
@@ -84,7 +84,7 @@ class LoginController extends Controller
         $this->incrementLoginAttempts($request);
 
         return back()->withErrors([
-            'email' => 'The provided credentials do not match our records.',
+            'email' => \App\Support\UserMessages::get('invalid_credentials')['message'],
         ])->onlyInput('email');
     }
 

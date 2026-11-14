@@ -449,22 +449,16 @@
             headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
             body: body
         })
-        .then(function (r) { return r.text().then(function (raw) { return { r: r, raw: raw }; }); })
-        .then(function (res) {
+        .then(function (r) { return window.readAppJson(r); })
+        .then(function (data) {
             btn.disabled = false;
             btn.textContent = label;
-            var data = null;
-            try { data = JSON.parse(res.raw); } catch (e) {}
-            if (!res.r.ok) {
-                if (window.showErrorModal) showErrorModal('Action failed', (data && data.error) || 'Could not update.');
-                return null;
-            }
             return data;
         })
         .catch(function (err) {
             btn.disabled = false;
             btn.textContent = label;
-            if (window.showErrorModal) showErrorModal('Action failed', err.message || 'Network error.');
+            if (window.showErrorModal) showErrorModal('Action failed', err.message || 'Connection interrupted. Check whether your changes were saved before trying again.');
             return null;
         });
     }
@@ -551,18 +545,11 @@
                 headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
                 body: body
             })
-            .then(function (r) { return r.text().then(function (raw) { return { r: r, raw: raw }; }); })
-            .then(function (res) {
+            .then(function (r) { return window.readAppJson(r); })
+            .then(function (data) {
                 btn.disabled = false;
                 spinner.style.display = 'none';
-                var data = null;
-                try { data = JSON.parse(res.raw); } catch (e) {}
-                if (!res.r.ok) {
-                    suppressLeavePrompt = false;
-                    if (window.showErrorModal) showErrorModal('Regeneration failed', (data && data.error) || 'Could not regenerate. Your edits stay saved as a draft.');
-                    return;
-                }
-                if (window.showToast) showToast('success', 'Published', data.message || 'New version published and made downloadable.');
+                if (window.showToast) showToast('success', 'Download updated', window.appMessage('published').message);
                 var published = document.createElement('div');
                 published.className = 'regen-result';
                 var heading = document.createElement('strong');
@@ -588,7 +575,7 @@
                 btn.disabled = false;
                 spinner.style.display = 'none';
                 suppressLeavePrompt = false;
-                if (window.showErrorModal) showErrorModal('Regeneration failed', err.message || 'Network error.');
+                if (window.showErrorModal) showErrorModal('Regeneration failed', err.message || 'Connection interrupted. Check whether your changes were saved before trying again.');
             });
         });
     }

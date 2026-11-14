@@ -1,0 +1,198 @@
+{
+  "messages": {
+    "action_failed": {
+      "type": "error",
+      "title": "Action not completed",
+      "message": "We could not complete this action. Please try again. If the problem continues, contact the administrator."
+    },
+    "invalid_credentials": {
+      "type": "error",
+      "title": "Unable to sign in",
+      "message": "We could not sign you in. Check your email and password."
+    },
+    "session_expired": {
+      "type": "warning",
+      "title": "This page has expired",
+      "message": "Refresh this page and sign in again. If a translation was already submitted, do not upload it again."
+    },
+    "sign_in_required": {
+      "type": "warning",
+      "title": "Sign in to continue",
+      "message": "Your session has ended. Sign in again to continue."
+    },
+    "access_denied": {
+      "type": "error",
+      "title": "You do not have access",
+      "message": "This action is not available for your account. Return to your dashboard or contact the administrator."
+    },
+    "page_missing": {
+      "type": "info",
+      "title": "Page not found",
+      "message": "This link may be outdated, or the item may no longer be available. Open your dashboard to continue."
+    },
+    "rate_limited": {
+      "type": "warning",
+      "title": "Please wait a moment",
+      "message": "Too many requests were made in a short time. Wait before trying again."
+    },
+    "server_error": {
+      "type": "error",
+      "title": "Unable to complete the request",
+      "message": "We ran into a problem. Please try again later. If it continues, share the reference below with the administrator."
+    },
+    "service_unavailable": {
+      "type": "warning",
+      "title": "Service temporarily unavailable",
+      "message": "We cannot reach the service right now. Please try again later."
+    },
+    "translation_unavailable": {
+      "type": "error",
+      "title": "Translation is unavailable",
+      "message": "The translation service needs attention. Please contact the administrator before starting another translation."
+    },
+    "status_unknown": {
+      "type": "warning",
+      "title": "Result not confirmed",
+      "message": "We could not confirm the result. Your translation may still be running. Do not upload the file again. Share the reference with the administrator."
+    },
+    "connection_lost": {
+      "type": "warning",
+      "title": "Connection interrupted",
+      "message": "We could not reach the service. Check your connection. If you already submitted a document, do not upload it again."
+    },
+    "pdf_save_failed": {
+      "type": "error",
+      "title": "The PDF could not be saved",
+      "message": "We could not create a reliable PDF result. Review the file details or share the reference with the administrator."
+    },
+    "partial": {
+      "type": "warning",
+      "title": "Some parts were not translated",
+      "message": "Some parts remain in the original language. Review the result before using it."
+    },
+    "untranslated": {
+      "type": "warning",
+      "title": "No translated result was created",
+      "message": "The result still contains the original content. Review the document details before starting another translation."
+    },
+    "preview": {
+      "type": "warning",
+      "title": "Image text needs review",
+      "message": "Text was read from images using an experimental option. Check the wording and page layout before using the result."
+    },
+    "draft_saved": {
+      "type": "success",
+      "title": "Draft saved",
+      "message": "Your edits are saved. Select Save & Regenerate to update the downloadable file."
+    },
+    "published": {
+      "type": "success",
+      "title": "Download updated",
+      "message": "The updated document is now ready to download."
+    },
+    "job_retried": {
+      "type": "info",
+      "title": "Another attempt is queued",
+      "message": "The saved original will be used for this attempt. Follow its progress in Translation Jobs."
+    },
+    "job_unrecoverable": {
+      "type": "error",
+      "title": "The original file is unavailable",
+      "message": "This translation cannot be restarted from the saved files. Ask the owner to upload the original again."
+    },
+    "job_retry_failed": {
+      "type": "error",
+      "title": "Another attempt was not confirmed",
+      "message": "We could not confirm that another attempt was queued. Check the job status before trying again."
+    },
+    "notifications_failed": {
+      "type": "warning",
+      "title": "Notifications could not load",
+      "message": "We could not load your updates. Refresh the page to try again."
+    },
+    "clipboard_failed": {
+      "type": "warning",
+      "title": "Unable to copy",
+      "message": "Your browser could not copy the text. Select the text and copy it manually."
+    },
+    "file_unavailable": {
+      "type": "error",
+      "title": "File unavailable",
+      "message": "We could not open this file. Try downloading it again, or contact the administrator."
+    },
+    "download_started": {
+      "type": "success",
+      "title": "Download started",
+      "message": "Your browser is handling the download. Check its download list for the file."
+    },
+    "check_fields": {
+      "type": "warning",
+      "title": "Check your details",
+      "message": "Please check the highlighted fields and try again."
+    },
+    "login_form_expired": {
+      "type": "warning",
+      "title": "Please sign in again",
+      "message": "Your sign-in page expired. We have refreshed it. Enter your password again to continue."
+    }
+  },
+  "patterns": [
+    {
+      "pattern": "document status is temporarily unavailable|document job polling failed|document job result could not be retrieved|operator reconciliation",
+      "code": "status_unknown"
+    },
+    {
+      "pattern": "saved PDF validation failed|translated PDF could not be saved|edited PDF could not be saved|PDF font does not support|missing rendered text",
+      "code": "pdf_save_failed"
+    },
+    {
+      "pattern": "provided credentials do not match",
+      "code": "invalid_credentials"
+    },
+    {
+      "pattern": "CSRF|page expired|HTTP 419",
+      "code": "session_expired"
+    },
+    {
+      "pattern": "unauthenticated|HTTP 401",
+      "code": "sign_in_required"
+    },
+    {
+      "pattern": "too many requests|HTTP 429|rate limit",
+      "code": "rate_limited"
+    },
+    {
+      "pattern": "AI provider is stopped|PDF signing is not configured|signing key|quota before retrying|Ollama|GPT-OSS|Groq|API credentials",
+      "code": "translation_unavailable"
+    },
+    {
+      "pattern": "failed to fetch|networkerror|could not connect|connection refused|fetch failed",
+      "code": "connection_lost"
+    },
+    {
+      "pattern": "durable original|reconstruct the input",
+      "code": "job_unrecoverable"
+    },
+    {
+      "pattern": "SQLSTATE|Traceback|stack trace|Bearer |/var/www/|[A-Z]:\\\\|Exception:|HTTP 5[0-9][0-9]",
+      "code": "action_failed"
+    }
+  ],
+  "titles": {
+    "Error": "Action not completed",
+    "Something went wrong": "Action not completed",
+    "Copied!": "Copied",
+    "Updated": "Changes saved",
+    "File saved": "Download started",
+    "Document translated!": "Translation ready"
+  },
+  "copy": {
+    "Your file is downloading.": "Your browser is handling the download. Check its download list for the file.",
+    "Could not access clipboard.": "Your browser could not copy the text. Select the text and copy it manually.",
+    "Could not copy to clipboard.": "Your browser could not copy the text. Select the text and copy it manually.",
+    "Translation saved as .txt file.": "The text download has started. Check your browser download list.",
+    "Original retained": "Original content kept",
+    "Status: ok": "Your changes have been saved.",
+    "Saved as a draft. The download still shows the last published version - use Save & Regenerate to publish it.": "Your edits are saved. Select Save & Regenerate to update the downloadable file."
+  }
+}

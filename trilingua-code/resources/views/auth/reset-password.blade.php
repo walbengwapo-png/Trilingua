@@ -21,7 +21,7 @@
             <label for="email">Email address</label>
             <input id="email" name="email" type="email" value="{{ old('email', $email) }}"
                    placeholder="you@example.com" required autocomplete="email" />
-            @error('email') <p class="error-message">{{ $message }}</p> @enderror
+            @error('email') <p class="error-message" role="alert">{{ \App\Support\UserMessages::readable($message) }}</p> @enderror
         </div>
 
         <div class="form-field">
@@ -34,7 +34,7 @@
                 </div>
                 <span class="password-strength__label" id="strength-label"></span>
             </div>
-            @error('password') <p class="error-message">{{ $message }}</p> @enderror
+            @error('password') <p class="error-message" role="alert">{{ \App\Support\UserMessages::readable($message) }}</p> @enderror
         </div>
 
         <div class="form-field">

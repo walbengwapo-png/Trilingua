@@ -17,7 +17,7 @@
 <a class="skip-link" href="#main-content">Skip to main content</a>
 
 {{-- Global toast container --}}
-<div id="toast-container" aria-live="polite" aria-atomic="false" style="position:fixed;top:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none"></div>
+<div id="toast-container" class="app-toast-stack" aria-live="polite" aria-atomic="false"></div>
 
 {{-- Global error modal --}}
 <div id="error-modal" class="app-error-modal" style="display:none" role="alertdialog" aria-modal="true" aria-labelledby="error-modal-title" aria-describedby="error-modal-msg">
@@ -37,7 +37,7 @@
 @if (session('login_success'))
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        showToast('success', 'Welcome back, {{ addslashes(auth()->user()->name ?? "User") }}!', 'You have successfully signed in.');
+        showToast('success', 'Signed in', 'Welcome back. Your dashboard is ready.');
     });
 </script>
 @endif
@@ -255,6 +255,7 @@
         </header>
 
         <div>
+            @if (session('notice'))<x-notice :code="session('notice')" class="app-page-notice" />@endif
             @yield('content')
         </div>
     </main>
@@ -263,33 +264,6 @@
 
 <script>
 // ── Global toast system ───────────────────────────────────────────────────
-window.showToast = function (type, title, message, duration) {
-    var icons = {
-        success: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
-        error:   '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
-        warning: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
-        info:    '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'
-    };
-    var colors = { success: '#10b981', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6' };
-    var t = type || 'success';
-    var el = document.createElement('div');
-    el.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 16px;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(15,23,42,0.14),0 2px 8px rgba(15,23,42,0.08);border-left:4px solid ' + (colors[t]||colors.info) + ';max-width:360px;pointer-events:all;animation:toast-in 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards';
-    el.setAttribute('role', 'alert');
-    el.innerHTML =
-        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="' + (colors[t]||colors.info) + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0" aria-hidden="true">' + (icons[t]||icons.info) + '</svg>' +
-        '<div style="flex:1;min-width:0"><p style="margin:0 0 2px;font-size:0.875rem;font-weight:600;color:#111827"></p>' + (message ? '<p style="margin:0;font-size:0.8125rem;color:#6b7280"></p>' : '') + '</div>' +
-        '<button style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:2px;border-radius:4px;display:flex;flex-shrink:0" aria-label="Dismiss"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
-    el.querySelector('button').addEventListener('click', function () { el.remove(); });
-    el.querySelector('p').textContent = title || '';
-    if (message) el.querySelectorAll('p')[1].textContent = message;
-    var container = document.getElementById('toast-container');
-    if (container) container.appendChild(el);
-    setTimeout(function () {
-        el.style.animation = 'toast-out 0.25s ease forwards';
-        setTimeout(function () { el.remove(); }, 260);
-    }, duration || 4000);
-};
-
 // ── Global error modal ────────────────────────────────────────────────────
 window.showErrorModal = function (title, message) {
     var modal  = document.getElementById('error-modal');
@@ -297,6 +271,7 @@ window.showErrorModal = function (title, message) {
     var msgEl    = document.getElementById('error-modal-msg');
     if (!modal) { window.alert(message || title || 'An error occurred.'); return; }
 
+    if (window.appNotice) { var entry = window.appNotice('error', title, message); title = entry.title; message = entry.message; }
     if (titleEl)  titleEl.textContent = title || 'Something went wrong';
     if (msgEl)    msgEl.textContent   = message || '';
 
@@ -416,7 +391,7 @@ window.showErrorModal = function (title, message) {
     function load() {
         list.innerHTML = '<div class="notif-dropdown__empty">Loading…</div>';
         fetch('/notifications/data?limit=20', { headers: { 'Accept': 'application/json' } })
-            .then(function (r) { return r.json(); })
+            .then(function (r) { return window.readAppJson(r); })
             .then(function (res) {
                 setUnread(res.unread_count || 0);
                 var items = res.notifications || [];
@@ -471,7 +446,7 @@ window.showErrorModal = function (title, message) {
                 });
             })
             .catch(function () {
-                list.innerHTML = '<div class="notif-dropdown__empty">Failed to load notifications</div>';
+                list.innerHTML = '<div class="notif-dropdown__empty">Notifications could not load. Refresh the page to try again.</div>';
             });
     }
 
@@ -482,7 +457,7 @@ window.showErrorModal = function (title, message) {
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
             body: payload
         })
-            .then(function (r) { return r.json(); })
+            .then(function (r) { return window.readAppJson(r); })
             .then(function (res) {
                 setUnread(res.unread_count || 0);
                 if (el) { el.classList.remove('notif-item--unread'); }
@@ -502,7 +477,7 @@ window.showErrorModal = function (title, message) {
 
     setUnread(badge.textContent);
     fetch('/notifications/data?limit=1', { headers: { 'Accept': 'application/json' } })
-        .then(function (r) { return r.json(); })
+        .then(function (r) { return window.readAppJson(r); })
         .then(function (res) { setUnread(res.unread_count || 0); })
         .catch(function () {});
 })();

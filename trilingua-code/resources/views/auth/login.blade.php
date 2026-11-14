@@ -15,12 +15,7 @@
 
     {{-- Success message (e.g. after password reset) --}}
     @if (session('status'))
-        <div class="auth-alert auth-alert--success" role="alert">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
-            </svg>
-            {{ session('status') }}
-        </div>
+        <x-notice type="success" title="Update" :message="session('status')" />
     @endif
 
     {{-- Form --}}
@@ -30,7 +25,7 @@
         <div class="form-field">
             <label for="email">Email address</label>
             <input id="email" name="email" value="{{ old('email') }}" type="email" placeholder="you@example.com" required autofocus autocomplete="email" />
-            @error('email') <p class="error-message">{{ $message }}</p> @enderror
+            @error('email') <p class="error-message" role="alert">{{ \App\Support\UserMessages::readable($message) }}</p> @enderror
         </div>
 
         <div class="form-field">
@@ -47,7 +42,7 @@
                     </svg>
                 </button>
             </div>
-            @error('password') <p class="error-message">{{ $message }}</p> @enderror
+            @error('password') <p class="error-message" role="alert">{{ \App\Support\UserMessages::readable($message) }}</p> @enderror
         </div>
 
         <div class="auth-forgot">

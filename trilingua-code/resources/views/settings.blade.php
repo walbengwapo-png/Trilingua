@@ -48,9 +48,7 @@
                 <p class="settings-card-description">Update your name and email address.</p>
 
                 @if (session('success'))
-                    <div class="alert alert-success">
-                        {{ session('success') }}
-                    </div>
+                    <x-notice type="success" title="Changes saved" :message="session('success')" />
                 @endif
 
                 <form method="POST" action="{{ route('settings.account') }}" class="settings-form">
@@ -100,9 +98,7 @@
                 <p class="settings-card-description">Ensure your account is using a strong password.</p>
 
                 @if (session('password_success'))
-                    <div class="alert alert-success">
-                        {{ session('password_success') }}
-                    </div>
+                    <x-notice type="success" title="Changes saved" :message="session('password_success')" />
                 @endif
 
                 <form method="POST" action="{{ route('settings.password') }}" class="settings-form">
@@ -170,9 +166,7 @@
                 <p class="settings-card-description">Customize the appearance of the application.</p>
 
                 @if (session('general_success'))
-                    <div class="alert alert-success">
-                        {{ session('general_success') }}
-                    </div>
+                    <x-notice type="success" title="Changes saved" :message="session('general_success')" />
                 @endif
 
                 <form method="POST" action="{{ route('settings.general') }}" class="settings-form">

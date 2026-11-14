@@ -20,13 +20,13 @@
         <div class="form-field">
             <label for="name">Full name</label>
             <input id="name" name="name" value="{{ old('name') }}" type="text" placeholder="Your name" required autofocus autocomplete="name" />
-            @error('name') <p class="error-message">{{ $message }}</p> @enderror
+            @error('name') <p class="error-message" role="alert">{{ \App\Support\UserMessages::readable($message) }}</p> @enderror
         </div>
 
         <div class="form-field">
             <label for="email">Email address</label>
             <input id="email" name="email" value="{{ old('email') }}" type="email" placeholder="you@example.com" required autocomplete="email" />
-            @error('email') <p class="error-message">{{ $message }}</p> @enderror
+            @error('email') <p class="error-message" role="alert">{{ \App\Support\UserMessages::readable($message) }}</p> @enderror
         </div>
 
         <div class="form-field">
@@ -39,7 +39,7 @@
                 <span class="password-strength__label" id="strength-label"></span>
             </div>
             <span class="field-hint">Must include uppercase, lowercase, number and symbol.</span>
-            @error('password') <p class="error-message">{{ $message }}</p> @enderror
+            @error('password') <p class="error-message" role="alert">{{ \App\Support\UserMessages::readable($message) }}</p> @enderror
         </div>
 
         <div class="form-field">

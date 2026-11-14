@@ -96,7 +96,7 @@
             },
             body: payload,
         })
-            .then(function (r) { return r.json(); })
+            .then(function (r) { return window.readAppJson(r); })
             .then(function (res) {
                 if (el) {
                     el.classList.remove('notif-item--unread');
@@ -109,7 +109,10 @@
                     badge.textContent = res.unread_count;
                 }
             })
-            .catch(function () {});
+            .catch(function (error) {
+                showToast('warning', 'Update not confirmed', error.message);
+                throw error;
+            });
     }
 
     // Mark a single unread item as read, then follow its target route once the
@@ -119,11 +122,11 @@
             var href = el.getAttribute('href');
             if (href && href !== '#') {
                 e.preventDefault();
-                markRead(el.getAttribute('data-id'), el).finally(function () {
+                markRead(el.getAttribute('data-id'), el).catch(function () {}).finally(function () {
                     window.location.href = href;
                 });
             } else {
-                markRead(el.getAttribute('data-id'), el);
+                markRead(el.getAttribute('data-id'), el).catch(function () {});
             }
         });
     });
@@ -134,8 +137,8 @@
         markAllBtn.addEventListener('click', function () {
             markAllBtn.disabled = true;
             markRead(null, null)
-                .catch(function () {})
-                .finally(function () { window.location.reload(); });
+                .then(function () { window.location.reload(); })
+                .catch(function () { markAllBtn.disabled = false; });
         });
     }
 })();

@@ -16,6 +16,9 @@ class SecurityHeaders
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
+        if ($request->routeIs('login*', 'register*', 'password.*', 'auth.google.*')) {
+            $response->headers->set('Cache-Control', 'no-store, private');
+        }
 
         // Prevent clickjacking attacks
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');

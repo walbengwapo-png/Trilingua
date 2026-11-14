@@ -230,16 +230,7 @@
     var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
     function fetchJson(url, options) {
-        return fetch(url, options).then(function (response) {
-            return response.text().then(function (raw) {
-                var data = null;
-                try { data = JSON.parse(raw); } catch (e) {}
-                if (!response.ok) {
-                    throw new Error((data && data.error) || 'Request failed.');
-                }
-                return data;
-            });
-        });
+        return fetch(url, options).then(function (response) { return window.readAppJson(response); });
     }
 
     // ── Tab switching (Translated / Original) ──────────────────────────────

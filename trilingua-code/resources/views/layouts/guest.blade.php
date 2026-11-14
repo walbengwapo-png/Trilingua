@@ -74,6 +74,7 @@
     {{-- Right form panel --}}
     <div class="auth-card">
         <div class="auth-card-inner">
+            @if (session('notice'))<x-notice :code="session('notice')" />@endif
             @yield('content')
         </div>
     </div>

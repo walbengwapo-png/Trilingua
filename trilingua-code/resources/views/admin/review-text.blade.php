@@ -125,24 +125,18 @@
                 headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
                 body: body
             })
-            .then(function (r) { return r.text().then(function (raw) { return { r: r, raw: raw }; }); })
-            .then(function (res) {
-                var data = null;
-                try { data = JSON.parse(res.raw); } catch (e) {}
+            .then(function (r) { return window.readAppJson(r); })
+            .then(function (data) {
                 btn.disabled = false;
                 btn.textContent = label;
-                if (!res.r.ok) {
-                    if (window.showErrorModal) showErrorModal('Action failed', (data && data.error) || 'Could not update.');
-                    return;
-                }
-                if (window.showToast) showToast('success', 'Updated', 'Status: ' + (data.status || 'ok'));
+                if (window.showToast) showToast('success', 'Changes saved', 'The review status has been updated.');
                 // Refresh to reflect the new status badge.
                 window.location.reload();
             })
             .catch(function (err) {
                 btn.disabled = false;
                 btn.textContent = label;
-                if (window.showErrorModal) showErrorModal('Action failed', err.message || 'Network error.');
+                if (window.showErrorModal) showErrorModal('Action failed', err.message || 'Connection interrupted. Check whether your changes were saved before trying again.');
             });
         });
     });

@@ -1,4 +1,10 @@
 import './bootstrap';
+import { messageFor, readableMessage, noticeFor, readAppJson, showToast } from './messages';
+window.appMessage = messageFor;
+window.readableAppMessage = readableMessage;
+window.appNotice = noticeFor;
+window.readAppJson = readAppJson;
+window.showToast = showToast;
 import { sanitizePreviewHtml, sanitizeDashboardRows } from './preview-sanitizer';
 
 window.sanitizePreviewHtml = sanitizePreviewHtml;

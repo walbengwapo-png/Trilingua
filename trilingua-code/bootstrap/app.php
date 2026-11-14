@@ -58,7 +58,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->throttleApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->context(fn () => ['reference' => \App\Support\WebErrorResponse::reference(request())]);
+        $exceptions->respond(fn (\Symfony\Component\HttpFoundation\Response $response) =>
+            \App\Support\WebErrorResponse::respond(request(), $response));
     })
     ->withSchedule(function (Schedule $schedule): void {
         // Reconcile the durable job state machine. The processing timeout must

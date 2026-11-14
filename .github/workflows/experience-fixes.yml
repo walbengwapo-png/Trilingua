@@ -1,0 +1,45 @@
+name: Navigation and message regressions
+
+on:
+  push:
+    branches: ['codex/experience-fixes-2026-11-14']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: trilingua-code
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      ALLOW_PROVIDER_WARMUP: 'false'
+      APP_KEY: 'base64:VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ='
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: mbstring, sqlite3, pdo_sqlite, dom
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: trilingua-code/package-lock.json
+      - name: Install dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress --no-scripts
+          npm ci --no-audit --no-fund
+      - name: Authentication, navigation and recovery regressions
+        run: vendor/bin/phpunit tests/Feature/ExperienceRecoveryTest.php tests/Unit/TranslationManagerDocumentJobsTest.php tests/Unit/ResumeDocumentResultTest.php
+      - name: Message behavior and frontend build
+        run: |
+          node --test tests/js/*.test.mjs
+          npm run build

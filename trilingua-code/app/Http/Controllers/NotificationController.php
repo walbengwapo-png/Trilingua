@@ -150,8 +150,7 @@ class NotificationController extends Controller
      *
      * Admin-facing notifications (awaiting review, priority requests) jump
      * straight to the matching record in the admin review queue. Everything
-     * else lands on the Saved Translations page, auto-opening the record's
-     * details when the notification carries a translation id.
+     * else opens the translation detail page when a translation id is present.
      */
     private function targetUrl(DatabaseNotification $notification): string
     {
@@ -164,6 +163,6 @@ class NotificationController extends Controller
             return $id ? route('admin.review.show', $id) : route('admin.review.index');
         }
 
-        return $id ? route('history', ['open' => $id]) : route('history');
+        return $id ? route('history.view', $id) : route('history');
     }
 }

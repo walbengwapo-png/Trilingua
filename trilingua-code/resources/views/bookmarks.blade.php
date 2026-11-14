@@ -52,7 +52,7 @@
 <div class="stack">
 
     @if ($error)
-        <p class="error-message">Unable to load bookmarks. Please try again later.</p>
+        <x-notice type="warning" title="Bookmarks could not load" message="Refresh this page to try again." />
     @else
 
     {{-- Page header --}}
@@ -275,16 +275,7 @@
     var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
     function fetchJson(url, options) {
-        return fetch(url, options).then(function (response) {
-            return response.text().then(function (raw) {
-                var data = null;
-                try { data = JSON.parse(raw); } catch (e) {}
-                if (!response.ok) {
-                    throw new Error((data && data.error) || 'Request failed.');
-                }
-                return data;
-            });
-        });
+        return fetch(url, options).then(function (response) { return window.readAppJson(response); });
     }
 
     function formatDate(dateStr) {
