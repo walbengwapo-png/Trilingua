@@ -69,6 +69,14 @@ class TranslationHistory extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function hasReusableArtifact(): bool
+    {
+        $expected = (string) config('translation.result_revision');
+        return $expected !== ''
+            && ($this->sidecar['engine_revision'] ?? null) === $expected
+            && ($this->sidecar['content_summary']['status'] ?? null) !== 'untranslated';
+    }
+
     public function displayName(): string
     {
         return $this->translated_filename ?: $this->original_filename

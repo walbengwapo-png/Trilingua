@@ -59,6 +59,11 @@ class TranslationJob extends Model
         return $this->belongsTo(TranslationHistory::class, 'parent_document_id');
     }
 
+    public function translationHistory()
+    {
+        return $this->belongsTo(TranslationHistory::class, 'translation_history_id');
+    }
+
     public function isActive(): bool
     {
         return in_array($this->status, self::ACTIVE_STATUSES, true);
