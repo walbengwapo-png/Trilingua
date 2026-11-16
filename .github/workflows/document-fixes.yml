@@ -1,0 +1,72 @@
+name: Document release checks
+
+on:
+  push:
+    branches: ['codex/document-fixes-2026-11-16']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: trilingua-code
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      ALLOW_PROVIDER_WARMUP: 'false'
+      APP_KEY: 'base64:VFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFRUVFQ='
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: mbstring, sqlite3, pdo_sqlite, dom, fileinfo, zip, intl
+          coverage: none
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: trilingua-code/package-lock.json
+      - name: Install locked application and test dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress --no-scripts
+          npm ci --no-audit --no-fund
+          python -m pip install -r Model/requirements.txt -r requirements-dev.txt 'PyMuPDF==1.28.2' 'starlette==1.3.0' 'httpx==0.28.1' 'pydantic==2.13.4' 'opencv-python-headless==4.13.0.92' 'numpy==2.4.6'
+      - name: Verify isolated test database
+        run: php tests/assert-safe-test-env.php
+      - name: Upload, deduplication, recovery and presentation regressions
+        run: >-
+          vendor/bin/phpunit tests/Feature/DocumentBugFixesTest.php
+          tests/Feature/TranslationJobDedupTest.php
+          tests/Feature/TranslationDeploymentReadinessTest.php
+          tests/Unit/TranslateDocumentJobRecoveryTest.php
+          tests/Feature/DashboardUiFixPreservationTest.php
+          tests/Feature/ExperienceRecoveryTest.php
+          tests/Feature/RetranslateAvailabilityTest.php
+          tests/Feature/TranslationStatusDownloadIntegrityTest.php
+          tests/Feature/TranslationStatusTerminalStatesTest.php
+          tests/Unit/TranslationManagerDocumentJobsTest.php
+          tests/Unit/ResumeDocumentResultTest.php
+      - name: Frontend regressions and production build
+        run: |
+          node --test tests/js/*.test.mjs
+          npm run build
+      - name: Offline document and service regressions
+        working-directory: trilingua-code/Model
+        run: >-
+          python -m pytest tests/test_docx_structure_preservation.py
+          tests/test_csv_context_preservation.py tests/test_pdf_completion_honesty.py
+          tests/test_cache_namespace.py tests/test_pdf_symbol_roundtrip.py
+          tests/test_pdf_content_layout.py tests/test_pdf_hybrid_regeneration.py
+          tests/test_document_jobs.py tests/test_service_token_policy.py
+          tests/test_render_plan_configuration.py tests/test_hybrid_fonts.py
+          -q --tb=short
