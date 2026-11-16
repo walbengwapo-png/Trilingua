@@ -65,7 +65,8 @@
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Status</th>
+                    <th>Job status</th>
+                    <th>Translation content</th>
                     <th>File</th>
                     <th>Language Pair</th>
                     <th>User</th>
@@ -82,6 +83,16 @@
                     <td>
                         <span class="status-badge status-badge--{{ $job->status }}">{{ ucfirst($job->status) }}</span>
                     </td>
+                    <td>
+                        @if ($job->status === 'completed')
+                            @php
+                                $contentStatus = $job->translationHistory?->sidecar['content_summary']['status'] ?? '';
+                            @endphp
+                            {{ ['complete' => 'Translated', 'partial' => 'Partly translated', 'untranslated' => 'Not translated'][$contentStatus] ?? 'Not recorded' }}
+                        @else
+                            &mdash;
+                        @endif
+                    </td>
                     <td>{{ $job->original_name }}</td>
                     <td>{{ $job->source_lang }} → {{ $job->target_lang }}</td>
                     <td>{{ $job->user->name ?? '#' . $job->user_id }}</td>
@@ -91,7 +102,7 @@
                     <td>{{ \Illuminate\Support\Str::limit($job->error, 60) }}</td>
                 </tr>
                 @empty
-                <tr><td colspan="9" class="empty-state">No translation jobs match.</td></tr>
+                <tr><td colspan="10" class="empty-state">No translation jobs match.</td></tr>
                 @endforelse
             </tbody>
         </table>
