@@ -222,6 +222,29 @@
     var downloadLink   = document.getElementById('download-link');
     var downloadLabel  = document.getElementById('download-label');
 
+    var resultGeneration = 0;
+
+    function resetResult() {
+        resultGeneration++;
+        // Detach this form from old work; this does not cancel a backend job.
+        stopPolling(true);
+        hideProgress();
+        setLoading(false);
+        outputText.textContent = '';
+        workbookWarning.textContent = '';
+        workbookWarning.hidden = true;
+        outputSaveWarning.hidden = true;
+        documentJobHint.hidden = true;
+        outputDownload.setAttribute('hidden', '');
+        downloadLink.removeAttribute('href');
+        downloadLink.removeAttribute('download');
+        downloadLabel.textContent = '';
+        copyBtn.setAttribute('aria-disabled', 'true');
+        saveBtn.setAttribute('aria-disabled', 'true');
+        clearError(sourceError);
+        clearError(outputError);
+    }
+
     function showError(el, msg) { if (el) el.textContent = window.readableAppMessage(msg); }
     function clearError(el)     { if (el) el.textContent = ''; }
 
@@ -239,7 +262,7 @@
         }
     }
 
-    sourceText.addEventListener('input', updateCounter);
+    sourceText.addEventListener('input', function () { updateCounter(); resetResult(); });
 
     sourceText.addEventListener('paste', function (e) {
         e.preventDefault();
@@ -248,6 +271,7 @@
         var after  = sourceText.value.substring(sourceText.selectionEnd);
         var combined = (before + pasted + after).substring(0, MAX_CHARS);
         sourceText.value = combined;
+        resetResult();
         sourceText.setSelectionRange(Math.min(before.length + pasted.length, MAX_CHARS), Math.min(before.length + pasted.length, MAX_CHARS));
         updateCounter();
     });
@@ -263,8 +287,8 @@
         syncExclusive(sourceLang, targetLang);
         syncExclusive(targetLang, sourceLang);
     }
-    sourceLang.addEventListener('change', syncLangOptions);
-    targetLang.addEventListener('change', syncLangOptions);
+    sourceLang.addEventListener('change', function () { syncLangOptions(); resetResult(); });
+    targetLang.addEventListener('change', function () { syncLangOptions(); resetResult(); });
     syncLangOptions();
 
     // ── Swap ─────────────────────────────────────────────────────────────────
@@ -273,7 +297,7 @@
         if (src === tgt) { showError(sourceError, 'Source and target languages must be different.'); return; }
         sourceLang.value = tgt; targetLang.value = src;
         syncLangOptions();
-        clearError(sourceError); outputText.textContent = ''; clearError(outputError);
+        resetResult();
     });
 
     // ── File attachment ───────────────────────────────────────────────────────
@@ -283,6 +307,7 @@
     attachBtn.addEventListener('click', function () { fileInput.click(); });
 
     fileInput.addEventListener('change', function () {
+        resetResult();
         var file = fileInput.files[0];
         if (!file) return;
         var ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
@@ -300,6 +325,7 @@
     });
 
     removeFile.addEventListener('click', function () {
+        resetResult();
         fileInput.value = '';
         fileInfo.style.display = 'none';
         sourceText.style.display = '';
@@ -364,7 +390,12 @@
         }
     }
 
+    pdfColumnMode.addEventListener('change', resetResult);
+    ocrPreview.addEventListener('change', resetResult);
+
     translateBtn.addEventListener('click', function () {
+        resetResult();
+        var requestGeneration = resultGeneration;
         clearError(sourceError); clearError(outputError);
         documentJobHint.hidden = true;
         var file = fileInput.files[0];
@@ -403,6 +434,10 @@
                 var data = null;
                 try { data = JSON.parse(raw); } catch (e) {}
 
+                if (requestGeneration !== resultGeneration) {
+                    if (data && data.job_id && window.showToast) showToast('info', 'Earlier upload is still tracked', 'Changing this form does not cancel your upload. Check Saved Translations for its result.');
+                    return;
+                }
                 workbookWarning.textContent = readableWarnings(data && data.warnings).join(' ');
                 workbookWarning.hidden = !workbookWarning.textContent;
                 if (data && data.job_id && ((res.ok && data.status === 'processing') || data.dispatch === 'unknown')) {
@@ -423,7 +458,7 @@
                     const summary = data.content_summary;
                     const incomplete = summary && summary.status !== 'complete';
                     const unverified = summary && summary.ocr_mode === 'preview';
-                    outputText.textContent = documentMessage(summary);
+                    outputText.textContent = (data.reused ? 'A saved result for this file and language pair was reused. ' : '') + documentMessage(summary);
                     outputDownload.removeAttribute('hidden');
                     downloadLink.href = data.download_data || data.download_url;
                     downloadLink.download = data.download_filename || 'translated_document';
@@ -456,8 +491,9 @@
                 }
             });
         })
-        .catch(function () { hideProgress(); showError(outputError, 'Connection interrupted. If you already submitted a document, do not upload it again. Check My Documents for its status.'); })
+        .catch(function () { if (requestGeneration !== resultGeneration) return; hideProgress(); showError(outputError, 'Connection interrupted. If you already submitted a document, do not upload it again. Check My Documents for its status.'); })
         .finally(function () {
+            if (requestGeneration !== resultGeneration) return;
             setLoading(false);
             if (!activePollJobId && previousJobId && sessionStorage.getItem(JOB_STORAGE_KEY) === previousJobId && !document.hidden) {
                 beginPolling(previousJobId, 'Checking translation status…');
@@ -649,6 +685,7 @@
 
     // ── Clear ─────────────────────────────────────────────────────────────────
     clearBtn.addEventListener('click', function () {
+        resetResult();
         sourceText.value = '';
         workbookWarning.textContent = '';
         workbookWarning.hidden = true;

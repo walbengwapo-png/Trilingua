@@ -99,7 +99,7 @@
                         </div>
                         <div class="detail-modal__meta-item">
                             <span class="detail-modal__meta-label">Bookmarked</span>
-                            <span class="detail-modal__meta-value">{{ !empty($record['is_bookmarked']) ? 'Yes' : 'No' }}</span>
+                            <span class="detail-modal__meta-value" id="detail-bookmark-value">{{ !empty($record['is_bookmarked']) ? 'Yes' : 'No' }}</span>
                         </div>
                     </div>
 
@@ -110,13 +110,13 @@
                     {{-- Action buttons --}}
                     <div class="detail-modal__actions" style="margin-top:0">
                         @if ($isDoc && $translatedUrl)
-                            <a class="detail-modal__action-btn detail-modal__action-btn--primary" href="{{ $translatedUrl }}" target="_blank" rel="noopener">
+                            <a class="detail-modal__action-btn detail-modal__action-btn--primary" href="{{ route('history.file', ['id' => $record['id'], 'download' => 1]) }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                                 Download Translated
                             </a>
                         @endif
                         @if ($isDoc && $originalUrl)
-                            <a class="detail-modal__action-btn" href="{{ $originalUrl }}" target="_blank" rel="noopener">
+                            <a class="detail-modal__action-btn" href="{{ route('history.original-file', ['id' => $record['id'], 'download' => 1]) }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                                 Download Original
                             </a>
@@ -283,6 +283,8 @@
     var bookmarkBtn = document.getElementById('detail-bookmark-btn');
     if (bookmarkBtn) {
         bookmarkBtn.addEventListener('click', function () {
+            if (bookmarkBtn.disabled) return;
+            bookmarkBtn.disabled = true;
             var id = bookmarkBtn.getAttribute('data-id');
             fetchJson('/history/' + encodeURIComponent(id) + '/bookmark', {
                 method: 'POST',
@@ -293,13 +295,16 @@
                     var svg = bookmarkBtn.querySelector('svg');
                     if (svg) svg.style.fill = data.value ? 'currentColor' : 'none';
                     bookmarkBtn.classList.toggle('bookmark-btn--active', !!data.value);
+                    document.getElementById('detail-bookmark-value').textContent = data.value ? 'Yes' : 'No';
+                    bookmarkBtn.setAttribute('aria-pressed', data.value ? 'true' : 'false');
                     bookmarkBtn.lastChild.textContent = data.value ? ' Remove Bookmark' : ' Bookmark';
                     if (window.showToast) showToast('success', data.value ? 'Bookmarked' : 'Removed', data.value ? 'Translation bookmarked.' : 'Bookmark removed.');
                 }
             })
             .catch(function (err) {
                 if (window.showToast) showToast('error', 'Error', err.message || 'Failed to update bookmark.');
-            });
+            })
+            .finally(function () { bookmarkBtn.disabled = false; });
         });
     }
 
