@@ -76,7 +76,7 @@ class TranslationStatusDownloadIntegrityTest extends TestCase
             ->assertOk()
             ->assertJson([
                 'status' => 'completed',
-                'download_url' => route('history.file', ['id' => $historyId]),
+                'download_url' => route('history.file', ['id' => $historyId, 'download' => 1]),
             ]);
     }
 
@@ -145,7 +145,7 @@ class TranslationStatusDownloadIntegrityTest extends TestCase
             ->assertOk()
             ->assertJson([
                 'status' => 'completed',
-                'download_url' => route('history.file', ['id' => $historyId]),
+                'download_url' => route('history.file', ['id' => $historyId, 'download' => 1]),
             ]);
     }
 }

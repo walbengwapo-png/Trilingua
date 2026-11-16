@@ -156,7 +156,8 @@ class RetranslateAvailabilityTest extends TestCase
         );
 
         $completedHistory = $this->record($user);
-        $completedHistory->update(['storage_path' => 'user/translations/missing.pdf']);
+        $completedHistory->update(['storage_path' => 'user/translations/missing.pdf',
+            'sidecar' => ['engine_revision' => config('translation.result_revision')]]);
         TranslationJob::create([
             'uuid' => 'reused-missing-output',
             'user_id' => $user->id,

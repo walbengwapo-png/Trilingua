@@ -123,7 +123,7 @@ class TranslationStatusTerminalStatesTest extends TestCase
         $this->get('/translate/status/'.$history->job_id)
             ->assertOk()
             ->assertJsonPath('status', 'completed')
-            ->assertJsonPath('download_url', route('history.file', ['id' => $history->id]));
+            ->assertJsonPath('download_url', route('history.file', ['id' => $history->id, 'download' => 1]));
     }
 
     public function test_local_backend_completed_uses_the_authenticated_route(): void
@@ -154,7 +154,7 @@ class TranslationStatusTerminalStatesTest extends TestCase
         $this->get('/translate/status/'.$history->job_id)
             ->assertOk()
             ->assertJsonPath('status', 'completed')
-            ->assertJsonPath('download_url', route('history.file', ['id' => $history->id]));
+            ->assertJsonPath('download_url', route('history.file', ['id' => $history->id, 'download' => 1]));
     }
 
     public function test_active_job_stops_polling_when_same_attempt_has_terminal_failure_cache(): void

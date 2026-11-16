@@ -161,6 +161,7 @@ class TranslationJobDedupTest extends TestCase
             'translation_type'    => 'document',
             'original_filename'   => 'duplicate.docx',
             'translated_filename' => 'duplicate_translated.docx',
+            'sidecar' => ['engine_revision' => config('translation.result_revision')],
             'source_language'     => 'English',
             'target_language'     => 'Cebuano',
             'storage_path'        => 'user/translations/out.docx',
@@ -208,7 +209,7 @@ class TranslationJobDedupTest extends TestCase
             'user_id' => $user->id, 'translation_type' => 'document', 'original_filename' => 'scan.pdf',
             'translated_filename' => 'scan_untranslated.pdf', 'source_language' => 'English', 'target_language' => 'Cebuano',
             'storage_path' => 'user/translations/untranslated.pdf', 'storage_backend' => 'supabase', 'status' => 'completed',
-            'sidecar' => ['content_summary' => ['status' => 'untranslated', 'translated' => 0, 'held' => 2]],
+            'sidecar' => ['engine_revision' => config('translation.result_revision'), 'content_summary' => ['status' => 'untranslated', 'translated' => 0, 'held' => 2]],
         ]);
         TranslationJob::create([
             'user_id' => $user->id, 'payload_hash' => $payloadHash, 'original_name' => 'scan.pdf',
@@ -218,9 +219,6 @@ class TranslationJobDedupTest extends TestCase
             'translation_history_id' => $history->id, 'progress' => 100,
         ]);
         $storage = Mockery::mock(StorageService::class);
-        $storage->shouldReceive('generateSignedUrl')->once()->andReturn([
-            'signed_url' => 'https://example.test/unchanged', 'signed_url_expires_at' => now()->toIso8601String(),
-        ]);
         $storage->shouldReceive('uploadWithFallback')->once()->andReturnUsing(function ($path) {
             $this->assertFileExists($path, 'The retry must keep its new upload until it has been stored.');
             return ['backend' => 'supabase', 'storage_path' => 'user/originals/retry.pdf',
