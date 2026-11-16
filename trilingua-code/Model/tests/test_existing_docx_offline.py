@@ -19,5 +19,12 @@ def test_existing_survey_docx_keeps_paragraph_and_table_structure(tmp_path, docu
     assert len(after.paragraphs) == len(before.paragraphs)
     assert [[len(row.cells) for row in table.rows] for table in after.tables] == [
         [len(row.cells) for row in table.rows] for table in before.tables]
+    # Counting paragraph nodes alone missed the live regression: the nodes
+    # survived, but every cell's text had been collapsed into its first one.
+    from docx.oxml.ns import qn
+    def populated_paragraphs(document):
+        return sum(bool(''.join(p.itertext(qn('w:t'))).strip())
+                   for p in document.element.body.iter(qn('w:p')))
+    assert populated_paragraphs(after) == populated_paragraphs(before)
     assert result.sidecar['blocks']
     assert any(b['source_text'] != b['current_text'] for b in result.sidecar['blocks'])

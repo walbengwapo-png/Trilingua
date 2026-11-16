@@ -19,3 +19,17 @@ def test_same_namespace_reuses_the_cached_translation(tmp_path):
 
     restarted = SQLiteTranslationCache(db_path=db_path, namespace="balanced-v1")
     assert restarted.get("Thank you.", "Cebuano", "gemini", "English") == "Salamat."
+
+
+def test_document_outer_cache_cannot_serve_a_legacy_unversioned_result(tmp_path, document_pipeline, monkeypatch):
+    import pipeline.document_pipeline as module
+    path = str(tmp_path/'document-cache.db')
+    old = SQLiteTranslationCache(db_path=path)
+    old.put('Close the form.', 'Cebuano', document_pipeline.translation_pipeline.provider.name,
+            'Old incorrect result', source_lang='English')
+    old.flush()
+    monkeypatch.setattr(module, '_TRANSLATION_CACHE_ENABLED', True)
+    monkeypatch.setattr(module, 'SQLiteTranslationCache', lambda **kwargs: SQLiteTranslationCache(db_path=path, **kwargs))
+    current = document_pipeline._get_cache()
+    assert current.get('Close the form.', 'Cebuano', document_pipeline.translation_pipeline.provider.name,
+                       source_lang='English') is None
