@@ -182,7 +182,7 @@ class DocumentsController extends Controller
 
             if ($completed !== null) {
                 $history = \App\Models\TranslationHistory::find($completed->translation_history_id);
-                if ($history !== null) {
+                if ($history !== null && (int) $history->user_id === (int) Auth::id() && $history->hasReusableArtifact()) {
                     FileCleanup::dir($persistDir);
 
                     return response()->json(array_merge([

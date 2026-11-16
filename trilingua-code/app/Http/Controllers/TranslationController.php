@@ -321,7 +321,10 @@ class TranslationController extends Controller
             ->orderByDesc('id')
             ->first();
 
-        if ($completed !== null) {
+        $completedHistory = $completed !== null
+            ? TranslationHistory::whereKey($completed->translation_history_id)->where('user_id', $userId)->first()
+            : null;
+        if ($completedHistory?->hasReusableArtifact()) {
             $payload = $this->buildCompletedPayload($completed);
 
             if ($payload !== null && ($payload['content_summary']['status'] ?? null) !== 'untranslated') {

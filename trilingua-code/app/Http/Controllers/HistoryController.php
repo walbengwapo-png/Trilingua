@@ -100,7 +100,7 @@ class HistoryController extends Controller
     /**
      * GET /history/{id}/file — stream the translated file inline (ownership-checked).
      */
-    public function showFile(int $id): StreamedResponse
+    public function showFile(Request $request, int $id): StreamedResponse
     {
         $record = $this->history->getRecord($id);
 
@@ -131,13 +131,13 @@ class HistoryController extends Controller
             abort(404, 'Translated file not found.');
         }
 
-        return $this->streamFile($bytes, $filename, $ext);
+        return $this->streamFile($bytes, $filename, $ext, $request->boolean('download'));
     }
 
     /**
      * GET /history/{id}/original-file — stream the original file inline (ownership-checked).
      */
-    public function showOriginalFile(int $id): StreamedResponse
+    public function showOriginalFile(Request $request, int $id): StreamedResponse
     {
         $record = $this->history->getRecord($id);
 
@@ -168,7 +168,7 @@ class HistoryController extends Controller
             abort(404, 'Original file not found.');
         }
 
-        return $this->streamFile($bytes, $filename, $ext);
+        return $this->streamFile($bytes, $filename, $ext, $request->boolean('download'));
     }
 
     /**
@@ -217,7 +217,7 @@ class HistoryController extends Controller
 
         return response()->json(['blocks' => $blocks]);
     }
-private function streamFile(string $bytes, string $filename, string $ext): StreamedResponse
+private function streamFile(string $bytes, string $filename, string $ext, bool $attachment = false): StreamedResponse
     {
         $mime = $this->mimeForExtension($ext);
         if ($mime === 'application/octet-stream' && function_exists('finfo_open')) {
@@ -231,8 +231,9 @@ private function streamFile(string $bytes, string $filename, string $ext): Strea
         return new StreamedResponse(function () use ($bytes) {
             echo $bytes;
         }, 200, [
-            'Content-Type'        => $mime,
-            'Content-Disposition' => SafeFileNames::contentDisposition($filename),
+            'Content-Type'        => $mime.(in_array($ext, ['txt', 'md', 'csv'], true) ? '; charset=UTF-8' : ''),
+            'Content-Disposition' => SafeFileNames::contentDisposition($filename, 'download', $attachment),
+            'X-Content-Type-Options' => 'nosniff',
             'Cache-Control'       => 'private, max-age=60',
         ]);
     }
@@ -323,7 +324,7 @@ private function streamFile(string $bytes, string $filename, string $ext): Strea
         $backend = $record['storage_backend'] ?? StorageService::BACKEND_SUPABASE;
         if ($backend === StorageService::BACKEND_LOCAL) {
             return response()->json([
-                'download_url'      => route('history.file', ['id' => $id]),
+                'download_url'      => route('history.file', ['id' => $id, 'download' => 1]),
                 'download_filename' => $record['translated_filename'],
             ], 200);
         }
@@ -375,7 +376,7 @@ private function streamFile(string $bytes, string $filename, string $ext): Strea
 
         // 7. Return the new download URL
         return response()->json([
-            'download_url' => $storageResult['signed_url'],
+            'download_url' => route('history.file', ['id' => $id, 'download' => 1]),
         ], 200);
     }
 
@@ -412,7 +413,7 @@ private function streamFile(string $bytes, string $filename, string $ext): Strea
         $backend = $record['original_storage_backend'] ?? StorageService::BACKEND_SUPABASE;
         if ($backend === StorageService::BACKEND_LOCAL) {
             return response()->json([
-                'download_url'      => route('history.original-file', ['id' => $id]),
+                'download_url'      => route('history.original-file', ['id' => $id, 'download' => 1]),
                 'download_filename' => $record['original_filename'],
             ], 200);
         }
@@ -446,7 +447,7 @@ private function streamFile(string $bytes, string $filename, string $ext): Strea
         }
 
         return response()->json([
-            'download_url' => $storageResult['signed_url'],
+            'download_url' => route('history.original-file', ['id' => $id, 'download' => 1]),
         ], 200);
     }
 
