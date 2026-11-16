@@ -24,10 +24,15 @@ class JobController extends Controller
      */
     public function index(Request $request): View
     {
-        $jobs = TranslationJob::with('user')
+        $filters = array_replace(['status' => '', 'q' => ''], $request->validate([
+            'status' => 'nullable|in:'.implode(',', array_merge(TranslationJob::ACTIVE_STATUSES, TranslationJob::TERMINAL_STATUSES)),
+            'q' => 'nullable|string|max:200',
+        ]));
+        $jobs = TranslationJob::with(['user', 'translationHistory:id,sidecar'])
             ->orderByDesc('id')
-            ->when($request->string('status'), fn ($q, $status) => $q->where('status', $status))
-            ->when($request->string('q'), function ($q, $search) {
+            ->when(filled($filters['status']), fn ($q) => $q->where('status', $filters['status']))
+            ->when(filled($filters['q']), function ($q) use ($filters) {
+                $search = $filters['q'];
                 $q->where(function ($inner) use ($search) {
                     $inner->where('original_name', 'like', "%{$search}%")
                         ->orWhere('uuid', 'like', "%{$search}%");
@@ -72,10 +77,7 @@ class JobController extends Controller
             'jobs'   => $jobs,
             'failed' => $failed,
             'counts' => $counts,
-            'filters' => [
-                'status' => (string) $request->string('status'),
-                'q'      => (string) $request->string('q'),
-            ],
+            'filters' => $filters,
             'error' => false,
         ]);
     }
