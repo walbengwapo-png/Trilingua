@@ -19,8 +19,8 @@ use Illuminate\Support\Facades\Log;
  *
  * The rule, in one place:
  *
- *   present  -> a signed URL when one can be produced, otherwise the
- *               owner-authorized streaming route.
+ *   present  -> the owner-authorized attachment route. Signing still verifies
+ *               availability when supported; the URL is never used as an inline download.
  *   missing  -> a terminal, non-recoverable failure. The output is gone, so no
  *               URL is offered and the caller must not present one.
  *   unknown  -> the record stays completed and no download link is asserted,
@@ -51,7 +51,7 @@ class CompletedDownloadResolver
             return [
                 'status'                => 'completed',
                 'content_summary' => $history->sidecar['content_summary'] ?? null,
-                'download_url'          => $signedResult['signed_url'],
+                'download_url'          => route('history.file', ['id' => $history->id, 'download' => 1]),
                 'download_filename'     => $history->translated_filename,
                 'signed_url_expires_at' => $signedResult['signed_url_expires_at'],
                 'warnings'              => $history->sidecar['extraction']['warnings'] ?? [],
@@ -126,7 +126,7 @@ class CompletedDownloadResolver
         return [
             'status'            => 'completed',
             'content_summary' => $history->sidecar['content_summary'] ?? null,
-            'download_url'      => route('history.file', ['id' => $history->id]),
+            'download_url'      => route('history.file', ['id' => $history->id, 'download' => 1]),
             'warnings'          => $history->sidecar['extraction']['warnings'] ?? [],
             'download_filename' => $history->translated_filename,
         ];
