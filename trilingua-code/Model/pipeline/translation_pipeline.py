@@ -80,8 +80,9 @@ _TRANSLATION_BATCH_ENABLED = os.environ.get("TRANSLATION_BATCH_ENABLED", "true")
 _TRANSLATION_CACHE_ENABLED = os.environ.get("TRANSLATION_CACHE_ENABLED", "true").lower() == "true"
 _TRANSLATION_CACHE_TTL_DAYS = int(os.environ.get("TRANSLATION_CACHE_TTL_DAYS", "30"))
 _TRANSLATION_PROMPT_VERSION = os.environ.get(
-    "TRANSLATION_PROMPT_VERSION", "2026-09-reference-gemini-v2"
+    "TRANSLATION_PROMPT_VERSION", "2026-11-16-document-fixes-v1"
 )
+from config.engine import DOCUMENT_ENGINE_REVISION
 
 # Phase D Tier 3a: Batched AI quality review (default on)
 # All translations complete first, then quality review runs
@@ -498,6 +499,7 @@ class TranslationPipeline:
         """Get or create the shared SQLite cache."""
         if self._shared_cache is None and _TRANSLATION_CACHE_ENABLED:
             namespace = "|".join((
+                DOCUMENT_ENGINE_REVISION,
                 _TRANSLATION_PROMPT_VERSION,
                 self.provider.name,
                 self.provider.model_name,
@@ -684,7 +686,7 @@ class TranslationPipeline:
         # OPTIMIZATION: Persistent cache lookup (mirrors the document/batch
         # paths). Repeated phrases / reviewed-and-fixed blocks are served
         # instantly instead of re-hitting the LLM.
-        cache = self._get_cache()
+        cache = None if request.document_metadata.get("skip_cache") else self._get_cache()
         if cache and request.text and request.text.strip():
             cached = cache.get(
                 request.text, request.target_lang, self.provider.name,
@@ -728,10 +730,11 @@ class TranslationPipeline:
         # 4. Push to context buffer on success (for fast mode) and persist
         if response.success and response.translated_text:
             context_buffer.push(response.translated_text)
-            self.store_translation(
-                request.text, request.source_lang, request.target_lang,
-                response.translated_text, request.block_type,
-            )
+            if not request.document_metadata.get("skip_cache"):
+                self.store_translation(
+                    request.text, request.source_lang, request.target_lang,
+                    response.translated_text, request.block_type,
+                )
 
         # 5. Update execution time
         response.execution_time_ms = (time.time() - start_time) * 1000

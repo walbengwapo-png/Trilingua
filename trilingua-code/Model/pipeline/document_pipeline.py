@@ -28,11 +28,12 @@ import os
 import time as _time
 
 from config.processing_modes import MODES, VALID_MODES, get_mode
+from config.engine import DOCUMENT_ENGINE_REVISION
 from dto.requests import DocumentTranslationRequest, LANGUAGES
 from dto.responses import DocumentTranslationResponse
 from document.extractor import analyze_document
 from document.ocr_extractor import IMAGE_EXTENSIONS
-from pipeline.translation_pipeline import _is_echo_output
+from pipeline.translation_pipeline import _is_echo_output, _TRANSLATION_PROMPT_VERSION
 from document.regenerator import (
     finalize_sidecar,
     rich_block_entry,
@@ -195,6 +196,9 @@ class DocumentPipeline:
             self._shared_cache = SQLiteTranslationCache(
                 ttl_days=_TRANSLATION_CACHE_TTL_DAYS,
                 enabled=_TRANSLATION_CACHE_ENABLED,
+                namespace='|'.join((DOCUMENT_ENGINE_REVISION, _TRANSLATION_PROMPT_VERSION,
+                                    self.translation_pipeline.provider.name,
+                                    self.translation_pipeline.provider.model_name)),
             )
         return self._shared_cache
 
@@ -664,6 +668,7 @@ class DocumentPipeline:
                                     completed_status(entry))
                 region['reason'] = held.get(region['region_id'])
                 if region['status'] == 'held':
+                    region['reason'] = region['reason'] or ('translation_missing' if not entry.get('text', '').strip() else 'source_text_unchanged')
                     extraction['warnings'].append(f"Page {region['page']+1}: original region retained ({region['reason']}).")
                     entry.update(text=entry.get('source_text', ''), current_text=entry.get('source_text', ''),
                                  passthrough=True,
@@ -880,7 +885,8 @@ class DocumentPipeline:
         if translation_cache:
             translation_cache.clear_document_cache()
 
-        sidecar = finalize_sidecar(_captured_blocks, request, ext, ctx)
+        sidecar = finalize_sidecar(_captured_blocks, request, ext, ctx,
+                                   extra={"docx_walk_version": 2} if ext == ".docx" else None)
 
         return DocumentTranslationResponse(
             output_path=output_file,
@@ -901,38 +907,95 @@ class DocumentPipeline:
         print(f"  Found {len(csv_data.get('data', []))} rows in CSV.")
         print("[TRANSLATE] Translating...")
 
-        translated_rows = []
-        cell_blocks = []
-        for row_idx, row in enumerate(csv_data["data"]):
-            translated_row = []
-            for col_idx, cell in enumerate(row):
-                if cell.strip() and len(cell.split()) >= 1:
-                    translated = self._translate_single(
-                        cell, request.source_lang, request.target_lang,
-                        ctx=ctx,
-                    )
-                    cell_blocks.append(inplace_block_entry(
-                        len(cell_blocks), "cell", cell, translated,
-                    ))
-                    translated_row.append(translated)
-                else:
-                    translated_row.append(cell)
-            translated_rows.append(translated_row)
+        import re
+        from document.protected_spans import detect_protected_spans
 
-        # Annotate cell blocks with row/col for CSV regeneration
-        _bi = 0
-        for row_idx, row in enumerate(csv_data["data"]):
+        rows = csv_data["data"]
+        translated_rows = [list(row) for row in rows]
+        cell_blocks = []
+        warnings = []
+        # Only declared identity fields are protected as names. Ordinary prose
+        # and unknown fields still go through translation.
+        identity_fields = {"id", "identifier", "name", "first_name", "last_name",
+                           "species", "island", "email", "url", "code", "sku"}
+        category_fields = {"day", "time", "sex", "gender", "smoker", "category"}
+        header = rows[0] if rows else []
+        fields = [re.sub(r"[\s-]+", "_", h.strip().casefold()) for h in header]
+        has_header = any(h in identity_fields | category_fields for h in fields)
+        column_peers = {}
+        for row in rows[1:] if has_header else rows:
             for col_idx, cell in enumerate(row):
-                if cell.strip() and len(cell.split()) >= 1:
-                    cell_blocks[_bi]["row"] = row_idx
-                    cell_blocks[_bi]["col"] = col_idx
-                    _bi += 1
+                peers = column_peers.setdefault(col_idx, {})
+                if cell.strip() and len(peers) < 32:
+                    peers.setdefault(cell[:120], None)
+        values = {}
+        for row_idx, row in enumerate(rows):
+            for col_idx, cell in enumerate(row):
+                stripped = cell.strip()
+                spans = detect_protected_spans(stripped)
+                field = fields[col_idx] if has_header and col_idx < len(fields) else ""
+                protected = (not stripped or not any(c.isalpha() for c in stripped)
+                             or re.fullmatch(r'[-+]?(?:\d+(?:[.,]\d*)?|[.,]\d+)(?:[eE][-+]?\d+)?', stripped)
+                             or (len(spans) == 1 and spans[0].start == 0 and spans[0].end == len(stripped))
+                             or (has_header and row_idx > 0 and field in identity_fields))
+                if protected:
+                    continue
+                # A column-scoped mapping prevents hundreds of identical calls
+                # and avoids contaminating the same label in another column.
+                key = (col_idx, row_idx == 0 and has_header, cell)
+                values.setdefault(key, []).append((row_idx, col_idx))
+
+        mappings = {}
+        for (col_idx, is_header, cell), positions in values.items():
+            field = header[col_idx][:120] if has_header and col_idx < len(header) else f"column {col_idx + 1}"
+            peers = list(column_peers.get(col_idx, {}))
+            hint = (f"CSV {'column heading' if is_header else 'value'} in column {field!r}. "
+                    f"Other values in this column: {json.dumps(peers, ensure_ascii=False)}. "
+                    "Preserve proper names and identifiers. Use the column meaning to disambiguate short labels. "
+                    "Distinct categories must keep their different meanings. Return only this value's translation.")
+            mappings[(col_idx, is_header, cell)] = self._translate_single(
+                cell, request.source_lang, request.target_lang, block_type="table_cell",
+                ctx=ctx, context_hint=hint)
+
+        # A collision can silently corrupt analysis (e.g. Lunch = Dinner).
+        # Retain ambiguous categories with an explicit warning rather than
+        # publish a many-to-one mapping as a successful translation.
+        held = set()
+        for col_idx, field in enumerate(fields if has_header else []):
+            if field not in category_fields:
+                continue
+            by_target = {}
+            for key, target in mappings.items():
+                if key[0] == col_idx and not key[1]:
+                    by_target.setdefault(target.strip().casefold(), []).append(key)
+            for keys in by_target.values():
+                if len({k[2].strip().casefold() for k in keys}) > 1:
+                    held.update(keys)
+            if any(k[0] == col_idx for k in held):
+                warnings.append(f"Column {col_idx + 1}: some category labels were left unchanged because their translations lost the distinction between them. Review these labels.")
+
+        for key, positions in values.items():
+            source = key[2]
+            target = source if key in held else mappings[key]
+            for row_idx, col_idx in positions:
+                translated_rows[row_idx][col_idx] = target
+                entry = inplace_block_entry(len(cell_blocks), "cell", source, target)
+                entry.update(row=row_idx, col=col_idx)
+                if key in held:
+                    entry["quality_issues"] = [{"severity": "major", "category": "category_collision"}]
+                cell_blocks.append(entry)
+        cell_blocks.sort(key=lambda b: (b["row"], b["col"]))
+        for index, block in enumerate(cell_blocks):
+            block["block_index"] = index
 
         sources = [{'text': b['source_text'], 'type': 'cell'} for b in cell_blocks]
         translated = [{'text': b['ai_translated_text']} for b in cell_blocks]
         self._review_final_blocks(sources, translated, ctx)
         for block, reviewed in zip(cell_blocks, translated):
-            block.update({key: reviewed[key] for key in ('quality_score', 'quality_issues') if key in reviewed})
+            if (block['col'], block['row'] == 0 and has_header, block['source_text']) in held:
+                block['quality_score'] = None
+            else:
+                block.update({key: reviewed[key] for key in ('quality_score', 'quality_issues') if key in reviewed})
 
         print("\n[OUTPUT] Rebuilding CSV ->", output_file)
         write_csv(translated_rows, output_file)
@@ -942,7 +1005,9 @@ class DocumentPipeline:
         total_chunks = sum(len(row) for row in translated_rows)
 
         sidecar = finalize_sidecar(cell_blocks, request, ".csv", ctx,
-                                   extra={"rows": translated_rows})
+                                   extra={"rows": translated_rows, "extraction": {"warnings": warnings},
+                                          "content_summary": {"status": "partial" if held else "complete",
+                                                              "held": sum(len(values[k]) for k in held)}})
 
         return DocumentTranslationResponse(
             output_path=output_file,
@@ -953,6 +1018,8 @@ class DocumentPipeline:
             mode=ctx.mode.name,
             sidecar=sidecar,
             blocks=cell_blocks,
+            content_summary=sidecar['content_summary'],
+            warnings=warnings,
             metrics=_engine_metrics(ctx, self.translation_pipeline.provider),
         )
 
@@ -1010,12 +1077,12 @@ class DocumentPipeline:
                 print(f"  [Prepass] Concurrent prepass warning: {e}")
     
     def _translate_single(self, text, source_lang, target_lang,
-                          block_type="paragraph", ctx=None):
+                          block_type="paragraph", ctx=None, context_hint=""):
         """Translate a single text block via the pipeline."""
         from dto.requests import TranslationRequest
 
         # OPTIMIZATION: Check cache (Task 2)
-        translation_cache = self._get_cache()
+        translation_cache = None if context_hint else self._get_cache()
         if translation_cache:
             cached = translation_cache.get(
                 text, target_lang, self.translation_pipeline.provider.name,
@@ -1046,12 +1113,14 @@ class DocumentPipeline:
             else:
                 context = prepass_preamble
 
+        context = "\n".join(filter(None, (context, context_hint)))
         request = TranslationRequest(
             text=text,
             source_lang=source_lang,
             target_lang=target_lang,
             block_type=block_type,
             context_hint=context,
+            document_metadata={"skip_cache": bool(context_hint)},
             document_type=ctx.document_profile.document_type if ctx and ctx.document_profile else "",
         )
         response = self.translation_pipeline.translate(request)
