@@ -15,6 +15,8 @@ class DocumentPresentation
     public const UNKNOWN_REASON_MESSAGE = 'This area could not be translated or placed reliably and was left unchanged.';
 
     public const REASON_MESSAGES = [
+        'source_text_unchanged' => 'The wording remained in the original language and needs review.',
+        'translation_missing' => 'No reliable translation was available for this area, so the original was kept.',
         'ocr_acceptance_hold' => 'The text in this image could not be read reliably enough to translate.',
         'hidden_or_occluded_native' => 'The text is hidden or covered by other content.',
         'low_confidence_or_neighbor_overlap' => 'The text could not be read reliably or separated from nearby content.',

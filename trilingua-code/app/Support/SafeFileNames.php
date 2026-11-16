@@ -33,7 +33,7 @@ class SafeFileNames
         return $clean !== '' ? $clean : 'file';
     }
 
-    public static function contentDisposition(string $filename, string $fallback = 'download'): string
+    public static function contentDisposition(string $filename, string $fallback = 'download', bool $attachment = false): string
     {
         $safeFallback = self::scrubDisplayName($filename);
         if ($safeFallback === 'file' || $safeFallback === '') {
@@ -43,6 +43,8 @@ class SafeFileNames
         // RFC 5987 encoded value preserves UTF-8 names (again, display-only).
         $encoded = rawurlencode($safeFallback);
 
-        return "inline; filename=\"{$safeFallback}\"; filename*=UTF-8''{$encoded}";
+        $quoted = addcslashes($safeFallback, "\\\"");
+        $disposition = $attachment ? 'attachment' : 'inline';
+        return "{$disposition}; filename=\"{$quoted}\"; filename*=UTF-8''{$encoded}";
     }
 }
