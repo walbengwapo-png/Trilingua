@@ -14,6 +14,7 @@ This module contains NO translation logic and NO provider calls.
 import json
 import os
 import math
+from config.engine import DOCUMENT_ENGINE_REVISION
 
 # Structural metadata keys the reconstructor may need.
 _STRUCT_KEYS = (
@@ -89,6 +90,7 @@ def finalize_sidecar(entries, request, ext, ctx=None, extra=None):
     """
     sidecar = {
         "version": 2,
+        "engine_revision": DOCUMENT_ENGINE_REVISION,
         "format": (ext or "").lower(),
         "source_lang": getattr(request, "source_lang", ""),
         "target_lang": getattr(request, "target_lang", ""),
@@ -288,8 +290,9 @@ def reconstruct_from_sidecar(sidecar, overrides, original_file, output_file,
             raise FileNotFoundError(
                 f"In-place regeneration ({fmt}) requires the original file."
             )
-        lookup = {b.get("block_index"): b.get("text", "") for b in blocks}
-        _reconstruct_inplace(fmt, original_file, output_file, lookup)
+        edited = apply_overrides(blocks, overrides)
+        lookup = {b.get("block_index"): b.get("text", b.get("current_text", b.get("ai_translated_text", b.get("source_text", "")))) for b in edited}
+        _reconstruct_inplace(fmt, original_file, output_file, lookup, sidecar.get("docx_walk_version", 1))
         return output_file
 
     # Blocks-based reconstruction (PDF, TXT, MD, RTF->DOCX, ODT->DOCX, CSV).
@@ -363,11 +366,14 @@ def reconstruct_from_sidecar(sidecar, overrides, original_file, output_file,
     return output_file
 
 
-def _reconstruct_inplace(fmt, original_file, output_file, lookup):
+def _reconstruct_inplace(fmt, original_file, output_file, lookup, docx_walk_version=2):
     translate_fn = _make_inplace_translate_fn(lookup)
     if fmt == ".docx":
-        from document.reconstructor import _translate_docx_inplace_with_translator
-        _translate_docx_inplace_with_translator(
+        from document.reconstructor import _translate_docx_inplace_with_translator, _translate_docx_inplace_legacy
+        if docx_walk_version not in (1, 2):
+            raise ValueError("Unsupported DOCX traversal version")
+        walker = _translate_docx_inplace_with_translator if docx_walk_version == 2 else _translate_docx_inplace_legacy
+        walker(
             original_file, output_file, translate_fn, glossary_store=None
         )
     elif fmt == ".pptx":

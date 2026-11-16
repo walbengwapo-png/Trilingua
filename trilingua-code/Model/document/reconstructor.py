@@ -31,16 +31,25 @@ def _request_workbook_recalculation(workbook):
 
 def _apply_translation_to_paragraph(para, translated_text, glossary_store):
     """
-    Apply a translated string to a paragraph's runs, preserving per-run formatting.
+    Apply translated text while preserving formatting and non-text content.
     
     Uses proportional text distribution: calculates each run's share of the
     original text (by character count), then distributes the translated text
     across runs proportionally. This preserves character-level formatting
     like bold words, colored text, and mixed font sizes within a paragraph.
     
-    If the paragraph has only one run, sets run.text directly (fast path).
-    If the paragraph has multiple runs, distributes proportionally.
+    Word text nodes are edited without replacing run children. PowerPoint
+    paragraphs keep their existing run-based distribution.
     """
+    # Word runs can also contain drawings, fields and text boxes. Replacing
+    # Run.text deletes those children. Edit only existing Word text nodes.
+    from docx.oxml.ns import qn
+    if para._p.tag == qn("w:p"):
+        nodes = [n for n in para._p.iter(qn("w:t"))
+                 if next(n.iterancestors(qn("w:p")), None) is para._p]
+        _replace_word_text(nodes, translated_text, glossary_store)
+        return
+
     if glossary_store is not None:
         translated_text = glossary_store.apply(translated_text)
 
@@ -99,7 +108,108 @@ def translate_docx_inplace(input_file, output_file, source_lang, target_lang,
     )
 
 
+def _replace_word_text(nodes, text, glossary_store=None):
+    """Replace text only; keep run properties, breaks, fields and artwork XML."""
+    if glossary_store is not None:
+        text = glossary_store.apply(text)
+    original_lengths = [len(n.text or "") for n in nodes]
+    total = sum(original_lengths)
+    offset = 0
+    consumed = 0
+    for i, (node, length) in enumerate(zip(nodes, original_lengths)):
+        consumed += length
+        end = len(text) if i == len(nodes) - 1 else round(len(text) * consumed / total) if total else 0
+        node.text = text[offset:end]
+        node.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+        offset = end
+
+
 def _translate_docx_inplace_with_translator(input_file, output_file, translate_fn,
+                                            glossary_store=None, progress_callback=None,
+                                            save=True):
+    """Walk paragraphs once, including nested tables, text boxes and note parts.
+
+    Hyperlink text is a separate segment so surrounding text is never inserted
+    into a clickable address. Shared headers/footers are visited once per part.
+    The collect and replay passes use this same deterministic traversal.
+    """
+    from docx import Document
+    from docx.oxml.ns import qn
+    from lxml import etree
+    from document.protected_spans import detect_protected_spans
+
+    doc = Document(input_file)
+    roots = []
+    seen = set()
+    for section in doc.sections:
+        for kind in ("header", "footer"):
+            for attr in (kind, "first_page_" + kind, "even_page_" + kind):
+                part = getattr(section, attr)
+                # Do not create absent header/footer parts as a side effect.
+                if part._has_definition:
+                    xml = part._element
+                    if xml not in seen:
+                        seen.add(xml)
+                        roots.append((xml, kind, None))
+    roots.append((doc.element.body, "paragraph", None))
+    for rel in doc.part.rels.values():
+        if not rel.is_external and rel.reltype.rsplit("/", 1)[-1] in {"footnotes", "endnotes"}:
+            part = rel.target_part
+            roots.append((etree.fromstring(part.blob, etree.XMLParser(resolve_entities=False, no_network=True)), "paragraph", part))
+
+    segments = []
+    for xml, kind, _ in roots:
+        for para in xml.iter(qn("w:p")):
+            ancestors = {a.tag for a in para.iterancestors()}
+            block_type = "text_box" if qn("w:txbxContent") in ancestors else "table_cell" if qn("w:tc") in ancestors else kind
+            group = []
+            previous_link = None
+            field_depth = 0
+            for node in para.iter():
+                if next(node.iterancestors(qn("w:p")), None) is not para:
+                    continue
+                if node.tag == qn("w:fldChar"):
+                    field_type = node.get(qn("w:fldCharType"))
+                    if field_type == 'begin': field_depth += 1
+                    if field_type == 'end': field_depth = max(0, field_depth - 1)
+                boundary = node.tag in {qn("w:fldChar"), qn("w:br"), qn("w:cr"), qn("w:tab")}
+                if boundary and group:
+                    segments.append((group, block_type))
+                    group = []
+                if node.tag != qn("w:t") or field_depth or any(a.tag == qn("w:fldSimple") for a in node.iterancestors()):
+                    continue
+                link = next(node.iterancestors(qn("w:hyperlink")), None)
+                if group and link is not previous_link:
+                    segments.append((group, block_type))
+                    group = []
+                group.append(node)
+                previous_link = link
+            if group:
+                segments.append((group, block_type))
+
+    translatable = []
+    for nodes, kind in segments:
+        text = "".join(n.text or "" for n in nodes)
+        stripped = text.strip()
+        spans = detect_protected_spans(stripped)
+        if stripped and not (len(spans) == 1 and spans[0].start == 0 and spans[0].end == len(stripped)):
+            translatable.append((nodes, kind, text))
+    for completed, (nodes, kind, text) in enumerate(translatable, 1):
+        translated = translate_fn(text.strip(), block_type=kind)
+        # Keep leading/trailing whitespace between links, tabs and prose.
+        leading = text[:len(text) - len(text.lstrip())]
+        trailing = text[len(text.rstrip()):]
+        _replace_word_text(nodes, leading + translated + trailing, glossary_store)
+        if progress_callback:
+            progress_callback(completed, len(translatable))
+    if save:
+        for xml, _, part in roots:
+            if part is not None:
+                part._blob = etree.tostring(xml, xml_declaration=True, encoding="UTF-8", standalone=True)
+        doc.save(output_file)
+
+
+def _translate_docx_inplace_legacy(input_file, output_file, translate_fn,
                                             glossary_store=None, progress_callback=None,
                                             save=True):
     """

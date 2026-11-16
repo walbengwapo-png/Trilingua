@@ -189,8 +189,16 @@ def inventory_pdf(path, native_blocks, language, column_mode='auto', source_iden
 
 
 def completed_status(block):
-    unchanged = bool(block.get('source_text')) and block.get('text') == block['source_text']
-    return 'passthrough' if block.get('passthrough') or unchanged else 'translated'
+    if block.get('passthrough'):
+        return 'passthrough'
+    source = block.get('source_text', '')
+    if not block.get('text', '').strip():
+        return 'held'
+    unchanged = source.strip().casefold() == block['text'].strip().casefold()
+    if unchanged:
+        from pipeline.translation_pipeline import _has_translatable_content
+        return 'held' if _has_translatable_content(source, block.get('block_type', block.get('type', ''))) else 'passthrough'
+    return 'translated'
 
 
 def content_summary(regions, ocr_mode='strict'):
