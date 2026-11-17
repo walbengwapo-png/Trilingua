@@ -41,3 +41,22 @@ def test_contextual_cells_bypass_plain_text_cache(translation_pipeline):
             context_hint='Weekday category', document_metadata={'skip_cache': True}))
     assert result.translated_text == 'Domingo'
     get_cache.assert_not_called()
+
+
+def test_supplied_csv_glossary_is_applied_before_provider_output(document_pipeline, tmp_path):
+    source = tmp_path / 'meals.csv'
+    source.write_text('time,amount\nLunch,12.50\nDinner,20.00\n', encoding='utf-8')
+    calls = []
+    def translate(text, *args, **kwargs):
+        calls.append(text)
+        return 'translated:' + text
+    with patch.object(document_pipeline, '_translate_single', side_effect=translate):
+        result = document_pipeline.translate(DocumentTranslationRequest(
+            str(source), 'English', 'Cebuano', mode='fast',
+            glossary_pairs=[('Lunch', 'APPROVED_MIDDAY'), ('Dinner', 'APPROVED_EVENING')]))
+    assert result.success, result.error_message
+    with open(result.output_path, encoding='utf-8', newline='') as handle:
+        rows = list(csv.reader(handle))
+    assert rows[1] == ['APPROVED_MIDDAY', '12.50']
+    assert rows[2] == ['APPROVED_EVENING', '20.00']
+    assert 'Lunch' not in calls and 'Dinner' not in calls
