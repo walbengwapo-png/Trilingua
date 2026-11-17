@@ -2,7 +2,7 @@
 
 return [
     // Match DOCUMENT_ENGINE_REVISION on the Python service during rollout.
-    'result_revision' => env('DOCUMENT_ENGINE_REVISION', '2026-11-16-document-fixes-v1'),
+    'result_revision' => env('DOCUMENT_ENGINE_REVISION', '2026-11-16-structure-v2'),
 
     /*
     |--------------------------------------------------------------------------
