@@ -34,8 +34,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: npm
-          cache-dependency-path: trilingua-code/package-lock.json
       - name: Install locked application and test dependencies
         run: |
           composer install --no-interaction --prefer-dist --no-progress --no-scripts
@@ -57,6 +55,13 @@ jobs:
           tests/Feature/TranslationStatusTerminalStatesTest.php
           tests/Unit/TranslationManagerDocumentJobsTest.php
           tests/Unit/ResumeDocumentResultTest.php
+          tests/Feature/Auth/GuestRouteProtectionTest.php
+          tests/Feature/TranslationStatusAuthorizationTest.php
+          tests/Feature/DocumentsPaginationTest.php
+          tests/Feature/HistoryFiltersTest.php tests/Feature/HistoryRenameTest.php
+          tests/Feature/NotificationsPageTest.php tests/Feature/SettingsControllerTest.php
+          tests/Feature/Admin/AdminWriteHttpTest.php
+          tests/Feature/Admin/ReviewConcurrencyGuardTest.php
       - name: Frontend regressions
         run: |
           node --test tests/js/*.test.mjs
@@ -69,4 +74,6 @@ jobs:
           tests/test_pdf_content_layout.py tests/test_pdf_hybrid_regeneration.py
           tests/test_document_jobs.py tests/test_service_token_policy.py
           tests/test_render_plan_configuration.py tests/test_hybrid_fonts.py
+          tests/test_markdown_preservation.py tests/test_pdf_footer_panel.py
+          tests/test_internal_evaluation.py tests/test_release_evaluation.py
           -q --tb=short
