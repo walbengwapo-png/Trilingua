@@ -817,50 +817,56 @@ def read_txt(file_path):
 # ── Markdown Reader ───────────────────────────────────────────────────────────
 
 def read_md(file_path):
-    """Read Markdown file, preserving structure markers for translation."""
-    with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+    """Keep Markdown syntax outside translated prose and retain original spacing."""
+    from document.protected_spans import detect_protected_spans
+    with open(file_path, "r", encoding="utf-8", errors="replace", newline="") as f:
         raw = f.read()
-
     blocks = []
-    in_code_block = False
-    code_block_lines = []
-
-    for line in raw.splitlines():
-        stripped = line.strip()
-
-        if stripped.startswith("```"):
-            if in_code_block:
-                in_code_block = False
-                blocks.append({"type": "code", "text": "\n".join(code_block_lines), "style": {}})
-                code_block_lines = []
-            else:
-                in_code_block = True
+    fence = None
+    if raw.startswith("\ufeff"):
+        blocks.append({"type": "code", "text": "\ufeff", "passthrough": True,
+                       "style": {"markdown": True, "prefix": "", "suffix": ""}})
+        raw = raw[1:]
+    for line in raw.splitlines(keepends=True):
+        body = line.rstrip("\r\n")
+        ending = line[len(body):]
+        marker = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", body)
+        literal = bool(fence) or bool(marker) or not body.strip() or body.startswith(("    ", "\t"))
+        if fence:
+            if re.fullmatch(r" {0,3}" + re.escape(fence[0]) + "{" + str(fence[1]) + r",}[ \t]*", body):
+                fence = None
+        elif marker:
+            fence = (marker[1][0], len(marker[1]))
+        if literal:
+            blocks.append({"type": "code", "text": body, "passthrough": True,
+                           "style": {"markdown": True, "prefix": "", "suffix": ending}})
             continue
-
-        if in_code_block:
-            code_block_lines.append(line)
-            continue
-
-        if not stripped:
-            continue
-
-        heading_match = re.match(r'^(#{1,6})\s+(.+)$', stripped)
-        if heading_match:
-            blocks.append({"type": "header", "text": stripped, "style": {}})
-            continue
-
-        if stripped.startswith(">"):
-            blocks.append({"type": "paragraph", "text": stripped, "style": {}})
-            continue
-
-        list_match = re.match(r'^(\s*[-*+]|\s*\d+\.)\s+(.+)$', stripped)
-        if list_match:
-            blocks.append({"type": "list_item", "text": stripped, "style": {}})
-            continue
-
-        blocks.append({"type": "paragraph", "text": stripped, "style": {}})
-
-    return blocks if blocks else [{"type": "paragraph", "text": "", "style": {}}]
+        # Translate list/heading/quote contents, never their delimiters. Inline
+        # code is a separate passthrough block so providers cannot rewrite it.
+        prefix = re.match(r"^[ \t]*(?:>[ \t]*)*(?:(?:#{1,6}|[-+*]|\d+[.)])[ \t]+)?(?:\[[ xX]\][ \t]+)?", body)[0]
+        text = body[len(prefix):]
+        spans = [(s.start, s.end) for s in detect_protected_spans(text) if s.kind != 'inline_code']
+        spans.extend((m.start(), m.end()) for m in re.finditer(r"(`+).*?\1(?!`)", text))
+        spans.extend((m.start(), m.end()) for m in re.finditer(r"[|\[\]()*_]", text))
+        parts = []
+        offset = 0
+        for start, end in sorted(spans, key=lambda span: (span[0], -span[1])):
+            if start < offset:
+                continue
+            parts.extend([(text[offset:start], False), (text[start:end], True)])
+            offset = end
+        parts.append((text[offset:], False))
+        for index, (part, protected) in enumerate(parts):
+            passthrough = protected or not part.strip()
+            leading = part[:len(part) - len(part.lstrip())] if not passthrough else ""
+            trailing = part[len(part.rstrip()):] if not passthrough else ""
+            blocks.append({"type": "code" if passthrough else "paragraph",
+                           "text": part if passthrough else part.strip(),
+                           "passthrough": passthrough,
+                           "style": {"markdown": True,
+                                     "prefix": (prefix if index == 0 else "") + leading,
+                                     "suffix": trailing + (ending if index == len(parts) - 1 else "")}})
+    return blocks
 
 
 # ── RTF Reader ────────────────────────────────────────────────────────────────

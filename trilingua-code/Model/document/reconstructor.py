@@ -1681,7 +1681,11 @@ def _write_pdf_preserved(blocks, original_pdf_path, output_file,
         role = block.get("type", "paragraph")
         floor = max(8.0, base_size * (.85 if role in {"heading", "title", "header"} else .8))
         obstacles = [rect for rect, tag in occupied if tag != block_index]
-        panels = [r for r in background_panels.get(block.get("page", 0), []) if r.contains(box)]
+        page_panels = background_panels.get(block.get("page", 0), [])
+        # A neighboring text-bearing panel (including a footer) is not free
+        # space. Its interior was previously omitted from collision checks.
+        obstacles.extend(r for r in page_panels if not r.intersects(box))
+        panels = [r for r in page_panels if r.contains(box)]
         panel = min(panels, key=lambda r: r.get_area()) if panels else page.rect
         widths = [(box.x0, box.x1)]
         if role != "table_cell":
@@ -2191,6 +2195,16 @@ def write_txt(blocks, output_file):
                 f.write(block.get("text", "") + "\n\n")
 
 
+def write_md(blocks, output_file):
+    """Replay Markdown delimiters and literal code from extraction/sidecars."""
+    if not all(block.get("style", {}).get("markdown") for block in blocks):
+        return write_txt(blocks, output_file)  # Legacy sidecars have no markers.
+    with open(output_file, "w", encoding="utf-8", newline="") as handle:
+        for block in blocks:
+            style = block["style"]
+            handle.write(style["prefix"] + block.get("text", "") + style["suffix"])
+
+
 def write_csv(blocks_data, output_file):
     """Write translated CSV data preserving row/column structure."""
     with open(output_file, "w", encoding="utf-8", newline="") as f:
@@ -2337,7 +2351,9 @@ def reconstruct_document(blocks, output_file, original_file=None, original_ext=N
         write_pptx(blocks, output_file, original_file)
     elif ext == ".xlsx":
         write_xlsx(blocks, output_file, original_file)
-    elif ext in {".txt", ".md"}:
+    elif ext == ".md":
+        write_md(blocks, output_file)
+    elif ext == ".txt":
         write_txt(blocks, output_file)
     elif ext == ".csv":
         if isinstance(blocks, list) and blocks and "data" in blocks[0]:
