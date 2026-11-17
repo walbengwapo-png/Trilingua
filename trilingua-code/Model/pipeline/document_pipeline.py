@@ -946,13 +946,25 @@ class DocumentPipeline:
                 values.setdefault(key, []).append((row_idx, col_idx))
 
         mappings = {}
+        approved_terms = {source.strip().casefold(): target
+                          for source, target in (request.glossary_pairs or [])}
         for (col_idx, is_header, cell), positions in values.items():
+            # An explicitly supplied whole-cell term is authoritative. A
+            # post-translation substitution cannot repair a mistranslated label.
+            if cell.strip().casefold() in approved_terms:
+                mappings[(col_idx, is_header, cell)] = approved_terms[cell.strip().casefold()]
+                continue
             field = header[col_idx][:120] if has_header and col_idx < len(header) else f"column {col_idx + 1}"
             peers = list(column_peers.get(col_idx, {}))
             hint = (f"CSV {'column heading' if is_header else 'value'} in column {field!r}. "
                     f"Other values in this column: {json.dumps(peers, ensure_ascii=False)}. "
                     "Preserve proper names and identifiers. Use the column meaning to disambiguate short labels. "
                     "Distinct categories must keep their different meanings. Return only this value's translation.")
+            if (request.source_lang == "English" and field.strip().casefold() == "time"
+                    and {p.strip().casefold() for p in peers} <= {"lunch", "dinner"}
+                    and peers):
+                hint += (" This column records a meal service: Lunch is the midday meal; "
+                         "Dinner is the evening meal. Preserve those meanings in the selected target language.")
             mappings[(col_idx, is_header, cell)] = self._translate_single(
                 cell, request.source_lang, request.target_lang, block_type="table_cell",
                 ctx=ctx, context_hint=hint)
