@@ -54,6 +54,7 @@ class DocumentTranslationRequest:
     glossary_pairs: Optional[list] = None  # List of (source, target) tuples
     reference_file: Optional[str] = None   # Optional BLEU reference
     ocr_mode: str = 'strict'              # strict or explicitly unverified preview
+    render_checkpoint_id: Optional[str] = None
 
     def to_dict(self) -> dict:
         return asdict(self)
