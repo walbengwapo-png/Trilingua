@@ -153,6 +153,7 @@ class TranslationManager
         string $ocrMode = 'strict',
         ?string $engineJobId = null,
         ?callable $heartbeat = null,
+        ?string $renderCheckpointId = null,
     ): array {
         $ext = strtolower('.' . $file->getClientOriginalExtension());
         $outExt = config('translation.extension_map.' . ltrim($ext, '.'), $ext);
@@ -175,6 +176,9 @@ class TranslationManager
                     'mode' => $mode,
                     'ocr_mode' => $ocrMode,
                     ...($async ? ['job_id' => $engineJobId] : []),
+                    ...($ext === '.pdf' && $renderCheckpointId !== null
+                        ? ['render_checkpoint_id' => $renderCheckpointId]
+                        : []),
                 ]);
 
             if ($response->failed()) {
