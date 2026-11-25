@@ -38,6 +38,8 @@ import shutil
 import tempfile
 import io
 import threading
+from typing import Annotated
+from uuid import UUID
 import uvicorn
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Header, Depends
@@ -84,6 +86,7 @@ from pipeline.document_pipeline import DocumentPipeline
 from config.processing_modes import VALID_MODES, get_mode
 from validators.ai_quality_reviewer import AIQualityReviewer
 from validators.translation_validator import PDFValidationError
+from cache.pdf_checkpoint import PDFRenderCheckpointError
 from document.ocr_extractor import OCRUnavailable, IMAGE_EXTENSIONS
 
 # ---------------------------------------------------------------------------
@@ -637,9 +640,9 @@ def translate_document(
     pdf_column_mode: str = Form("auto"),
     mode: str = Form("balanced"),
     ocr_mode: str = Form('strict'),
+    render_checkpoint_id: Annotated[UUID | None, Form()] = None,
 ):
-    if ocr_mode not in {'strict','preview'}:
-        raise HTTPException(400,'Invalid OCR mode')
+    validate_upload_ocr_mode(ocr_mode)
     if pdf_column_mode not in VALID_PDF_COLUMN_MODES:
         raise HTTPException(
             400,
@@ -654,7 +657,9 @@ def translate_document(
         raise HTTPException(400, "Source and target languages must differ.")
 
     ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in EXTENSION_MAP:
+    if ext in {'.png', '.jpg', '.jpeg'}:
+        raise HTTPException(422, 'Image translation is currently unavailable.')
+    if ext not in SUPPORTED_EXTENSIONS:
         raise HTTPException(400, f"Unsupported file type: {ext}. Supported: {sorted(SUPPORTED_EXTENSIONS)}")
 
     out_ext = EXTENSION_MAP[ext]
@@ -677,7 +682,8 @@ def translate_document(
             target_lang=target_lang,
             pdf_column_mode=pdf_column_mode,
             mode=mode,
-            ocr_mode=ocr_mode,
+            ocr_mode='disabled' if ext == '.pdf' else 'strict',
+            render_checkpoint_id=str(render_checkpoint_id) if render_checkpoint_id else None,
         )
         result = _run_pipeline_guarded(lambda: _document_pipeline.translate(request))
 
@@ -688,7 +694,6 @@ def translate_document(
             raise HTTPException(500, "Translation produced no output file.")
 
         original_stem = os.path.splitext(file.filename)[0]
-        if ocr_mode=='preview':original_stem += '_ocr_preview'
         content_summary = (result.sidecar or {}).get('content_summary', {})
         suffix = content_summary.get('status', 'translated')
         if suffix == 'complete': suffix = 'translated'
@@ -714,6 +719,10 @@ def translate_document(
     except OCRUnavailable as e:
         shutil.rmtree(tmp_dir, ignore_errors=True)
         raise HTTPException(422, str(e))
+    except PDFRenderCheckpointError as e:
+        print(f'[SERVER] PDF reconstruction failed after saving translation: {e.__cause__}')
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        raise HTTPException(422, {'code': 'pdf_render_checkpoint_saved', 'message': str(e)}) from e
     except PDFValidationError as e:
         print(chr(91)+chr(83)+chr(69)+chr(82)+chr(86)+chr(69)+chr(82)+chr(93)+chr(32)+chr(80)+chr(68)+chr(70)+chr(86)+chr(65)+chr(76)+chr(73)+chr(68)+chr(65)+chr(84)+chr(73)+chr(79)+chr(78)+chr(32)+chr(69)+chr(82)+chr(82)+chr(79)+chr(82)+chr(58), str(e))
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -733,6 +742,13 @@ def translate_document(
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
+def validate_upload_ocr_mode(ocr_mode):
+    if ocr_mode == 'preview':
+        raise HTTPException(422, 'Translation of text inside images and scanned PDFs is currently unavailable.')
+    if ocr_mode not in {'strict', 'disabled'}:
+        raise HTTPException(400, 'Invalid OCR mode')
+
+
 def validate_document_request(filename, source_lang, target_lang, pdf_column_mode):
     if pdf_column_mode not in VALID_PDF_COLUMN_MODES:
         raise HTTPException(
@@ -748,7 +764,9 @@ def validate_document_request(filename, source_lang, target_lang, pdf_column_mod
         raise HTTPException(400, "Source and target languages must differ.")
 
     ext = os.path.splitext(filename)[1].lower()
-    if ext not in EXTENSION_MAP:
+    if ext in {'.png', '.jpg', '.jpeg'}:
+        raise HTTPException(422, 'Image translation is currently unavailable.')
+    if ext not in SUPPORTED_EXTENSIONS:
         raise HTTPException(400, f"Unsupported file type: {ext}. Supported: {sorted(SUPPORTED_EXTENSIONS)}")
 
     return ext
@@ -767,20 +785,22 @@ def submit_document_job(
     source_lang: str = Form(...), target_lang: str = Form(...),
     pdf_column_mode: str = Form("auto"), mode: str = Form("balanced"),
     ocr_mode: str = Form("strict"),
+    render_checkpoint_id: Annotated[UUID | None, Form()] = None,
 ):
     from document_jobs import MAX_INPUT_BYTES, public_status
-    validate_document_request(file.filename, source_lang, target_lang, pdf_column_mode)
-    if ocr_mode not in {"strict", "preview"}:
-        raise HTTPException(400, "Invalid OCR mode")
+    ext = validate_document_request(file.filename, source_lang, target_lang, pdf_column_mode)
+    validate_upload_ocr_mode(ocr_mode)
     if mode not in VALID_MODES:
         raise HTTPException(400, "Invalid processing mode")
     contents = file.file.read(MAX_INPUT_BYTES + 1)
     if not contents or len(contents) > MAX_INPUT_BYTES:
         raise HTTPException(413, "Document must contain between 1 byte and 50 MiB")
     worker = document_job_worker()
-    row = worker.store.submit(job_id, os.path.basename(file.filename), contents,
-                              {"source_lang": source_lang, "target_lang": target_lang,
-                               "pdf_column_mode": pdf_column_mode, "mode": mode, "ocr_mode": ocr_mode})
+    options = {"source_lang": source_lang, "target_lang": target_lang,
+               "pdf_column_mode": pdf_column_mode, "mode": mode, "ocr_mode": ocr_mode}
+    if ext == ".pdf" and render_checkpoint_id is not None and ocr_mode == "disabled":
+        options["render_checkpoint_id"] = str(render_checkpoint_id)
+    row = worker.store.submit(job_id, os.path.basename(file.filename), contents, options)
     worker.wake.set()
     return public_status(row)
 
