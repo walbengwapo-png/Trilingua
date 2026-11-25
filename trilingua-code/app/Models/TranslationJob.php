@@ -15,6 +15,8 @@ class TranslationJob extends Model
     public const STATUS_FAILED = 'failed';
     public const STATUS_CANCELLED = 'cancelled';
 
+    public const PDF_UPLOAD_OCR_MODE = 'disabled';
+
     public const ACTIVE_STATUSES = [
         self::STATUS_CREATED,
         self::STATUS_QUEUED,
@@ -326,7 +328,11 @@ class TranslationJob extends Model
             $targetLang,
             $mode,
             $pdfColumnMode,
-            (string) ($parentDocumentId ?? '').($ocrMode === 'preview' ? '|ocr_preview' : ''),
+            (string) ($parentDocumentId ?? '').match ($ocrMode) {
+                'preview' => '|ocr_preview',
+                self::PDF_UPLOAD_OCR_MODE => '|ocr_disabled',
+                default => '',
+            },
         ]));
     }
 }
