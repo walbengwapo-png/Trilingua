@@ -62,7 +62,8 @@ def _visible(page, block, images, traces=None, bboxlog=None):
 def inventory_pdf(path, native_blocks, language, column_mode='auto', source_identity=None, ocr_mode='strict'):
     from document.ocr_extractor import OCRUnavailable, require_ready
     from document.pdf_source import _check_pdf_limits
-    if ocr_mode not in {'strict','preview'}:raise ValueError('Invalid OCR mode')
+    if ocr_mode not in {'strict', 'preview', 'disabled'}:
+        raise ValueError('Invalid OCR mode')
     _check_pdf_limits(path)
     identity = source_identity or sha256(path)
     regions, pages, blocks, warnings = [], [], [], []
@@ -101,6 +102,10 @@ def inventory_pdf(path, native_blocks, language, column_mode='auto', source_iden
                     entry['reason'] = 'hidden_or_occluded_native'
             for index, image in enumerate(images):
                 box = fitz.Rect(image['bbox'])
+                if ocr_mode == 'disabled':
+                    region('raster', box, reason='ocr_disabled', occurrence_id=f'{number}:{index}',
+                           xref=image['xref'], transform=list(image['transform']))
+                    continue
                 # Preview is evidence about pixels, never an OCR acceptance shortcut.
                 pix = None if image.get('budget_hold') else page.get_pixmap(clip=box & page.rect, matrix=fitz.Matrix(1, 1), alpha=False)
                 samples = pix.samples if pix else b''

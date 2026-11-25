@@ -13,6 +13,7 @@ import os
 import platform
 import re
 import csv
+from hashlib import sha256
 import shutil
 import subprocess
 import tempfile
@@ -1280,15 +1281,20 @@ def _write_pdf_preserved(blocks, original_pdf_path, output_file,
             return fontsize * 0.5 * len(text)
 
     def _image_snapshot(page):
-        snap = []
-        # Redaction can add aliases for the same unchanged image resource.
-        for xref in sorted({img[0] for img in page.get_images(full=True)}):
-            try:
-                pix = page.parent.extract_image(xref)
-                snap.append((xref, pix.get("ext"), pix.get("image")))
-            except Exception:
-                snap.append((xref, None, None))
-        return snap
+        # Use fresh, clip-aware occurrences. The PDF resource list also includes
+        # images outside the painted area that MuPDF may discard during redaction.
+        text_page = page.get_textpage(flags=fitz.TEXT_PRESERVE_IMAGES | fitz.TEXT_CLIP)
+        visible = []
+        for image in text_page.extractDICT()['blocks']:
+            if image['type'] != 1 or (fitz.Rect(image['bbox']) & page.rect).is_empty:
+                continue
+            visible.append((tuple(round(v, 3) for v in (*image['bbox'], *image['transform'])),
+                            sha256(image['image']).digest(), sha256(image.get('mask') or b'').digest()))
+        # A decoded image can stay in MuPDF's cache after its stream changes.
+        # Verify raw bytes for surviving image and mask objects as well.
+        resource_ids = {xref for image in page.get_images(full=True) for xref in image[:2] if xref}
+        streams = {xref: sha256(page.parent.xref_stream_raw(xref) or b'').digest() for xref in resource_ids}
+        return visible, streams
 
     def _spans_in_rects(page, rects):
         count = 0
@@ -1657,6 +1663,9 @@ def _write_pdf_preserved(blocks, original_pdf_path, output_file,
                         placed.y1 = y - font.descender * size
                 if placed is None:
                     raise ValueError(f"PDF insertion failed for block {index}")
+                if (action == 'fit' and index in backdrop_blocks
+                        and not (rect + (-.1, -.1, .1, .1)).contains(placed)):
+                    raise ValueError(f"PDF text extends outside the source area for block {index}")
                 placements.append({"block_index": index, "source_page": block.get("page", 0),
                                    "page_xref": page.xref, "rect": list(placed),
                                    "text": text, "font_size": size, "action": action})
@@ -1668,6 +1677,49 @@ def _write_pdf_preserved(blocks, original_pdf_path, output_file,
 
     strict_held = []
     background_panels = {}
+    raster_backdrop = object()
+    backdrop_blocks = set()
+
+    def _image_obstacles(page, translatable):
+        images = [fitz.Rect(image['bbox']) for image in page.get_image_info()]
+        if not strict:
+            return [(rect, None) for rect in images]
+        backdrops = [rect for rect in images if (rect + (-.5, -.5, .5, .5)).contains(page.rect)]
+        if not backdrops:
+            return [(rect, None) for rect in images]
+
+        paint_log = [(kind, fitz.Rect(bounds)) for kind, bounds in page.get_bboxlog()]
+        image_paints = [seq for seq, (kind, bounds) in enumerate(paint_log)
+                        if kind == 'fill-image' and bounds in backdrops]
+        # An unmatched occurrence has no reliable paint order, so keep it as an obstacle.
+        if len(image_paints) != len(backdrops):
+            return [(rect, None) for rect in images]
+        last_image = max(image_paints)
+        traces = [(fitz.Rect(trace['bbox']), trace['seqno'],
+                   trace['type'] in {0, 1} and trace.get('opacity', 1) >= .95,
+                   [((char[3][0] + char[3][2]) / 2, (char[3][1] + char[3][3]) / 2)
+                    for char in trace['chars'] if char[0] > 32])
+                  for trace in page.get_texttrace()]
+        source_spans = _text_span_rects(page)
+        for block in translatable:
+            box = fitz.Rect(block['position'])
+            line_boxes = [fitz.Rect(line['bbox']) for line in block['lines'] if line.get('text', '').strip()]
+            if any(span.intersects(box) and not any(line.contains(span) for line in line_boxes)
+                   for span in source_spans):
+                continue
+            # A PDF paint trace can span several lines. Match actual character
+            # positions so its broad rectangle cannot vouch for unrelated text.
+            line_paints = [[seq if visible else -1 for bounds, seq, visible, chars in traces
+                            if bounds.intersects(line) and any(point in line for point in chars)]
+                           for line in line_boxes]
+            if not line_paints or any(not paints or min(paints) <= last_image for paints in line_paints):
+                continue
+            first_text = min(min(paints) for paints in line_paints)
+            if any(kind in {'fill-path', 'stroke-path', 'fill-shade'} and bounds.intersects(box)
+                   for kind, bounds in paint_log[first_text + 1:]):
+                continue
+            backdrop_blocks.add(block['_render_index'])
+        return [(rect, raster_backdrop if rect in backdrops else None) for rect in images]
 
     def _insert_block(page, block, page_width, page_height, occupied, block_index, layout_plan, recreated=None, preflight=False):
         index = block["_render_index"]
@@ -1675,12 +1727,16 @@ def _write_pdf_preserved(blocks, original_pdf_path, output_file,
         if not text:
             return
         box = fitz.Rect(block["position"]) & page.rect
+        bounded_to_source = index in backdrop_blocks
+        if bounded_to_source:
+            box &= fitz.Rect(2, 2, page_width - 2, page_height - 2)
         style = block.get("style", {})
         name, font = _resolve_line_font(style, page, text)
         base_size = max(8.0, min(float(style.get("font_size", 11) or 11), 72.0))
         role = block.get("type", "paragraph")
         floor = max(8.0, base_size * (.85 if role in {"heading", "title", "header"} else .8))
-        obstacles = [rect for rect, tag in occupied if tag != block_index]
+        obstacles = [rect for rect, tag in occupied
+                     if tag != block_index and not (bounded_to_source and tag is raster_backdrop)]
         page_panels = background_panels.get(block.get("page", 0), [])
         # A neighboring text-bearing panel (including a footer) is not free
         # space. Its interior was previously omitted from collision checks.
@@ -1688,7 +1744,8 @@ def _write_pdf_preserved(blocks, original_pdf_path, output_file,
         panels = [r for r in page_panels if r.contains(box)]
         panel = min(panels, key=lambda r: r.get_area()) if panels else page.rect
         widths = [(box.x0, box.x1)]
-        if role != "table_cell":
+        can_expand = role != "table_cell" and not bounded_to_source
+        if can_expand:
             # Source glyph bounds are not the panel/column bounds. Use nearby
             # whitespace before rejecting a complete translation as unfit.
             beside = [r for r in obstacles if r.y0 < box.y1 and r.y1 > box.y0]
@@ -1703,15 +1760,18 @@ def _write_pdf_preserved(blocks, original_pdf_path, output_file,
             else:
                 widths.append((box.x0, max(right, box.x1)))
         attempts = [(box.x0, box.x1, False)]
-        if role != "table_cell":
+        if can_expand:
             attempts.extend((x0, x1, True) for x0, x1 in reversed(list(dict.fromkeys(widths))))
         for x0, x1, move_up in attempts:
             column = [r for r in obstacles if r.x0 < x1 and r.x1 > x0]
             top = box.y0 if not move_up else min(box.y0, max(
                 [2] + [r.y1 + 2 for r in column if r.y1 <= box.y0]))
             below = [r.y0 - 2 for r in column if r.y0 >= box.y1 - .5]
-            bottom = max(box.y1, min(below)) if below else (
-                box.y1 if role == "table_cell" else page_height - 2)
+            if bounded_to_source:
+                bottom = box.y1
+            else:
+                bottom = max(box.y1, min(below)) if below else (
+                    box.y1 if role == "table_cell" else page_height - 2)
             area = fitz.Rect(x0, max(top, panel.y0), x1, min(page_height - 2, bottom, panel.y1))
             sizes = [base_size, max(floor, base_size * .9), floor]
             for size in dict.fromkeys(sizes):
@@ -1761,7 +1821,7 @@ def _write_pdf_preserved(blocks, original_pdf_path, output_file,
         from collections import Counter as _Counter
         recreated = _Counter()
         try:
-            imgs_before = _image_snapshot(page)
+            imgs_before, streams_before = _image_snapshot(page)
             # Strict holds must not renumber the occupied-box ownership tags.
             obstacle_tags = {id(block): index for index, block in enumerate(translatable)}
             if strict:
@@ -1866,7 +1926,9 @@ def _write_pdf_preserved(blocks, original_pdf_path, output_file,
                 print(f"    [_process_page] page {page_num} redacted "
                       f"{len(redact_rects)} rects; spans-after={_count_spans(page)}")
 
-            if _image_snapshot(page) != imgs_before:
+            imgs_after, streams_after = _image_snapshot(page)
+            if imgs_before != imgs_after or any(streams_after[xref] != streams_before[xref]
+                                                for xref in streams_before.keys() & streams_after.keys()):
                 issues.append("I1:image-bytes-changed")
 
             leftover = _spans_in_rects(page, redact_rects)
@@ -2005,8 +2067,7 @@ def _write_pdf_preserved(blocks, original_pdf_path, output_file,
             for block in page_blocks:
                 if block.get("passthrough"):
                     occupied.append((fitz.Rect(block["position"]), None))
-            for image in src_page.get_image_info():
-                occupied.append((fitz.Rect(image["bbox"]), None))
+            occupied.extend(_image_obstacles(src_page, translatable))
             # Excluded legacy icons still occupy space inside merged prose boxes.
             for raw in src_page.get_text('dict')['blocks']:
                 for line in raw.get('lines', []):
