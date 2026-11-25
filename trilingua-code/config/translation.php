@@ -2,7 +2,7 @@
 
 return [
     // Match DOCUMENT_ENGINE_REVISION on the Python service during rollout.
-    'result_revision' => env('DOCUMENT_ENGINE_REVISION', '2026-11-16-structure-v2'),
+    'result_revision' => env('DOCUMENT_ENGINE_REVISION', '2026-11-25-structure-v3'),
 
     /*
     |--------------------------------------------------------------------------
@@ -71,11 +71,7 @@ return [
     | File extensions that can be uploaded for document translation.
     |
     */
-    // Enable images only after the Python OCR photo-category acceptance gate passes.
-    'supported_formats' => array_merge(
-        ['docx', 'pdf', 'txt', 'md', 'rtf', 'odt', 'csv', 'pptx', 'xlsx'],
-        env('TRANSLATION_IMAGE_UPLOADS', false) ? ['png', 'jpg', 'jpeg'] : []
-    ),
+    'supported_formats' => ['docx', 'pdf', 'txt', 'md', 'rtf', 'odt', 'csv', 'pptx', 'xlsx'],
 
     /*
     |--------------------------------------------------------------------------
