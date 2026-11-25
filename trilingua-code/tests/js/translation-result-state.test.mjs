@@ -31,7 +31,7 @@ function form() {
     const requests=[];
     const stored=new Map();
     const context={document:{getElementById:el,querySelector:()=>({content:'test-csrf'}),addEventListener(){},hidden:false},
-        window:{addEventListener(){},readableAppMessage:message=>message},sessionStorage:{getItem:k=>stored.get(k)??null,setItem:(k,v)=>stored.set(k,v),removeItem:k=>stored.delete(k)},
+        window:{addEventListener(){}},sessionStorage:{getItem:k=>stored.get(k)??null,setItem:(k,v)=>stored.set(k,v),removeItem:k=>stored.delete(k)},
         fetch:url=>new Promise(resolve=>requests.push({url,reply:data=>resolve({ok:true,status:200,text:()=>Promise.resolve(JSON.stringify(data))})})),
         FormData,Date,setInterval:()=>1,clearInterval(){},setTimeout:()=>1,clearTimeout(){}};
     vm.runInNewContext(script,context);
