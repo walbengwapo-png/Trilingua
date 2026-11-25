@@ -152,6 +152,12 @@ class TranslateDocumentJob implements ShouldQueue
             $job?->noteProgress(15);
             $this->storeProgress(15, 'Translating document...');
 
+            // The admin replay can resume jobs with a durable original and no experimental OCR.
+            $ocrMode = $this->ocrMode ?? 'strict';
+            $checkpointId = $job !== null && $this->isRecoverable() && $ocrMode !== 'preview'
+                ? $job->uuid
+                : null;
+
             // 1. Translate the document via TranslationManager
             $arguments = [$uploadedFile, $this->sourceLang, $this->targetLang, $this->pdfColumnMode, $this->mode, $this->ocrMode ?? 'strict'];
             if (config('translation.python_service.document_jobs')) {
@@ -162,6 +168,9 @@ class TranslateDocumentJob implements ShouldQueue
                 }
                 $arguments[] = $job?->engine_job_uuid ?? $this->uuid();
                 $arguments[] = fn () => $job?->noteProgress(15);
+            }
+            if ($job !== null && $this->isRecoverable() && ($this->ocrMode ?? 'strict') !== 'preview') {
+                $arguments['renderCheckpointId'] = $job->uuid;
             }
             $translationResult = ($this->resumeEngineOnly ?? false)
                 ? $translationManager->resumeDocumentJob($job?->engine_job_uuid ?? $this->uuid(), fn () => $job?->noteProgress(15))
