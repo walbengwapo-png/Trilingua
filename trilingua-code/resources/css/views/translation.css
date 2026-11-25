@@ -214,6 +214,7 @@
 }
 
 .translation-save-warning[hidden] { display: none; }
+.translation-save-warning a { text-decoration: underline; }
 
 /* Output placeholder */
 #output-text:empty::before {
