@@ -259,21 +259,16 @@ def test_liveness_probe_never_calls_providers(server_module, monkeypatch):
     assert server_module.live() == {'status': 'ok'}
 
 
-def test_unvalidated_image_api_failure_is_422_and_cleans_upload(server_module, tmp_path, monkeypatch):
+def test_image_api_rejects_upload_before_creating_scratch_space(server_module, monkeypatch):
     import io
     from fastapi import UploadFile
-    from document.ocr_extractor import OCRUnavailable
-    folder = tmp_path / 'private-upload'
-    folder.mkdir()
-    monkeypatch.setattr(server_module.tempfile, 'mkdtemp', lambda: str(folder))
-    def reject(request):
-        raise OCRUnavailable('English / photo is on hold')
-    monkeypatch.setattr(server_module._document_pipeline, 'translate', reject)
+    def unexpected_scratch(*args, **kwargs):
+        pytest.fail('Disabled image uploads should be rejected before creating a scratch directory')
+    monkeypatch.setattr(server_module.tempfile, 'mkdtemp', unexpected_scratch)
     with pytest.raises(HTTPException) as failure:
         server_module.translate_document(UploadFile(filename='worksheet.png', file=io.BytesIO(b'fixture')),
                                          'English', 'Cebuano', 'auto', 'fast', 'strict')
     assert failure.value.status_code == 422
-    assert not folder.exists()
 
 
 def test_image_regeneration_returns_pdf_without_recognition_or_translation(server_module, monkeypatch):

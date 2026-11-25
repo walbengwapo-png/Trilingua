@@ -12,6 +12,7 @@ from document.pdf_regions import inventory_pdf
 from document.extractor import analyze_document
 from document.image_reconstructor import plan_images,image_digest,source_image
 from document.reconstructor import write_pdf_preserved
+from dto.requests import DocumentTranslationRequest
 from tests.ocr_fixture_trust import fixture_report
 from .test_pdf_image_layout import geometry
 
@@ -35,7 +36,7 @@ def invoke(source,pipeline,monkeypatch):
 
 
 @pytest.mark.parametrize('caption',[False,True])
-def test_no_report_keeps_raster_original_through_service(tmp_path,document_pipeline,monkeypatch,caption):
+def test_service_keeps_raster_original_with_ocr_disabled(tmp_path,document_pipeline,monkeypatch,caption):
     source,image,words=synthetic_pdf(tmp_path,caption)
     monkeypatch.setenv('OCR_ACCEPTANCE_REPORT',str(tmp_path/'no-report.json'))
     poison=Mock(side_effect=AssertionError('Held recognition cannot run'))
@@ -45,6 +46,7 @@ def test_no_report_keeps_raster_original_through_service(tmp_path,document_pipel
     assert summary['held']>=1 and summary['status']==('partial' if caption else 'untranslated')
     if not caption:assert summary['translated']==0
     assert all(r['status']!='translated' for r in result['sidecar']['render_plan']['regions'] if r['source_kind'].startswith('raster'))
+    assert any(r['reason']=='ocr_disabled' for r in result['sidecar']['render_plan']['regions'])
     output=tmp_path/'returned.pdf';output.write_bytes(base64.b64decode(result['file_base64']))
     with fitz.open(output) as doc:
         assert image_digest(source_image(doc,doc[0].get_images()[0][0]))==image_digest(image)
@@ -70,7 +72,7 @@ def inline_fixture_worker(operation,*args,deadline=None):
     raise AssertionError(operation)
 
 
-def test_signed_fixture_exercises_service_replacement_and_tamper_holds(tmp_path,document_pipeline,monkeypatch):
+def test_signed_fixture_allows_offline_ocr_but_service_still_disables_it(tmp_path,document_pipeline,monkeypatch):
     report,report_path,key,manifest,state=fixture_report(tmp_path,monkeypatch,('scan','photo','screenshot'))
     source,image,words=synthetic_pdf(tmp_path)
     monkeypatch.setattr('document.pdf_worker.run_pdf',inline_fixture_worker)
@@ -79,11 +81,13 @@ def test_signed_fixture_exercises_service_replacement_and_tamper_holds(tmp_path,
         'position':words[0]['position'],'ocr':{'words':words,'confidence':99},'style':{}}])
     monkeypatch.setattr(document_pipeline.translation_pipeline,'batch_translate_blocks',
         lambda blocks,*a,**k:[dict(b,text='TARGET') for b in blocks])
-    result=invoke(source,document_pipeline,monkeypatch)
-    assert result['content_summary']['translated']==1 and result['content_summary']['held']==0
-    output=tmp_path/'translated.pdf';output.write_bytes(base64.b64decode(result['file_base64']))
-    with fitz.open(output) as doc:
+    service_result=invoke(source,document_pipeline,monkeypatch)
+    assert service_result['content_summary']['status']=='untranslated'
+    request=DocumentTranslationRequest(file_path=str(source),source_lang='English',target_lang='Cebuano',mode='fast')
+    result=document_pipeline.translate(request)
+    assert result.content_summary['translated']==1 and result.content_summary['held']==0, result.warnings
+    with fitz.open(result.output_path) as doc:
         assert 'TARGET' in doc[0].get_text()
         assert image_digest(source_image(doc,doc[0].get_images()[0][0]))!=image_digest(image)
     report['corpus_review']['attestation']+=' tampered';report_path.write_text(json.dumps(report))
-    assert invoke(source,document_pipeline,monkeypatch)['content_summary']['translated']==0
+    assert document_pipeline.translate(request).content_summary['translated']==0

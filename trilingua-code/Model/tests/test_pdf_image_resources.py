@@ -42,3 +42,32 @@ def test_shared_image_resource_is_not_mistaken_for_changed_bytes(tmp_path, monke
         with fitz.open(output) as doc:
             assert [(im["digest"], im["bbox"]) for im in doc[0].get_image_info(hashes=True)] == before
             assert "Hubad" in doc[0].get_text() and "Source heading" not in doc[0].get_text()
+
+
+def test_clipped_image_resource_can_be_discarded_when_replacing_native_text(tmp_path):
+    source, output = tmp_path / 'source.pdf', tmp_path / 'translated.pdf'
+    with fitz.open() as document:
+        page = document.new_page(width=300, height=200)
+        page.insert_text((32, 65), 'Source heading', fontsize=12)
+        pixels = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 20, 20), False)
+        pixels.clear_with(160)
+        page.insert_image(fitz.Rect(30, 90, 70, 130), pixmap=pixels)
+        pixels.clear_with(30)
+        page.insert_image(fitz.Rect(298, 20, 302, 180), pixmap=pixels, keep_proportion=False)
+        # The strip's image box touches the page, but its clip starts at the page edge.
+        stream = page.get_contents()[-1]
+        contents = document.xref_stream(stream)
+        document.update_stream(stream, b'q 0 0 300 200 re W n\nq 300 0 300 200 re W n\n' + contents + b'\nQ Q')
+        document.save(source)
+
+    blocks = read_pdf(str(source), 'single')
+    blocks[0].update(text='Hubad', _original_text=blocks[0]['text'])
+    result = write_pdf_preserved(blocks, str(source), str(output), strict=True)
+    assert result['status'] == 'passed' and result['held'] == []
+    with fitz.open(source) as original, fitz.open(output) as translated:
+        assert len(original[0].get_images()) == 2
+        assert len(translated[0].get_images()) == 1
+        assert 'Hubad' in translated[0].get_text()
+        assert 'Source heading' not in translated[0].get_text()
+        for clip in (fitz.Rect(30, 90, 70, 130), fitz.Rect(295, 0, 300, 200)):
+            assert original[0].get_pixmap(clip=clip).samples == translated[0].get_pixmap(clip=clip).samples

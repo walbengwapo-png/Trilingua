@@ -86,19 +86,27 @@ def test_submission_returns_202_without_running_pipeline_and_requires_token(monk
     store.submit.assert_called_once()
 
 
-def test_durable_submission_retains_preview_mode_and_rejects_invalid_mode(monkeypatch):
+def test_durable_submission_disables_ocr_and_persists_pdf_checkpoint(monkeypatch):
     import server
     from fastapi import UploadFile
     store = Mock()
     store.submit.return_value = {"id": str(uuid4()), "status": "queued"}
     monkeypatch.setattr(server.app.state, "document_jobs", SimpleNamespace(store=store, wake=Mock()), raising=False)
     options = dict(job_id=uuid4(), source_lang="English", target_lang="Filipino", pdf_column_mode="auto", mode="balanced")
-    response = server.submit_document_job(file=UploadFile(filename="source.txt", file=io.BytesIO(b"source")), ocr_mode="preview", **options)
+    checkpoint_id = uuid4()
+    response = server.submit_document_job(
+        file=UploadFile(filename="source.pdf", file=io.BytesIO(b"%PDF-1.4")),
+        ocr_mode="disabled", render_checkpoint_id=checkpoint_id, **options,
+    )
     assert response["status"] == "queued"
-    assert store.submit.call_args.args[3]["ocr_mode"] == "preview"
-    with pytest.raises(HTTPException) as error:
-        server.submit_document_job(file=UploadFile(filename="source.txt", file=io.BytesIO(b"source")), ocr_mode="invalid", **options)
-    assert error.value.status_code == 400
+    assert store.submit.call_args.args[3]["ocr_mode"] == "disabled"
+    assert store.submit.call_args.args[3]["render_checkpoint_id"] == str(checkpoint_id)
+    for name, ocr_mode, status in [("scan.pdf", "preview", 422), ("scan.png", "strict", 422),
+                                   ("source.txt", "invalid", 400)]:
+        with pytest.raises(HTTPException) as error:
+            server.submit_document_job(file=UploadFile(filename=name, file=io.BytesIO(b"source")),
+                                       ocr_mode=ocr_mode, **options)
+        assert error.value.status_code == status
     assert store.submit.call_count == 1
 
 

@@ -1,14 +1,14 @@
 """Explicit unverified preview; synthetic fixtures never qualify strict OCR."""
-import base64
 import io
 import pymupdf as fitz
 import pytest
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 from document import ocr_extractor as ocr
 from document.pdf_regions import inventory_pdf
 from document.image_reconstructor import image_digest,source_image
 from document.render_plan import validate_plan
 from document.regenerator import reconstruct_from_sidecar
+from dto.requests import DocumentTranslationRequest
 from .test_hybrid_finish_smoke import synthetic_pdf,inline_fixture_worker
 
 
@@ -38,39 +38,43 @@ def test_default_strict_holds_and_preview_extracts_without_acceptance(tmp_path,m
 
 
 @pytest.mark.parametrize('searchable',[False,True])
-def test_preview_service_replaces_pixels_labels_and_regenerates_without_ocr(tmp_path,document_pipeline,monkeypatch,searchable):
-    import server
+def test_offline_preview_replaces_pixels_and_regenerates_without_ocr(tmp_path,document_pipeline,monkeypatch,searchable):
     runtime(monkeypatch);source,image,words=synthetic_pdf(tmp_path)
     if searchable:
         with fitz.open(source) as doc:
             doc[0].insert_text((40,words[0]['position'][3]+150),'SOURCE',fontsize=24,render_mode=3)
             doc.saveIncr()
-    monkeypatch.setattr(server,'_document_pipeline',document_pipeline)
     monkeypatch.setattr('document.pdf_worker.run_pdf',inline_fixture_worker)
     monkeypatch.setattr('pipeline.document_pipeline.unit_pipeline_enabled',lambda:False)
     monkeypatch.setattr(ocr,'recognize_image',lambda *a,**k:[{'type':'paragraph','page':0,'text':'SOURCE',
         'position':words[0]['position'],'ocr':{'words':words,'confidence':99},'style':{}}])
     monkeypatch.setattr(document_pipeline.translation_pipeline,'batch_translate_blocks',
         lambda blocks,*a,**k:[dict(b,text='TARGET') for b in blocks])
-    result=server.translate_document(UploadFile(filename=source.name,file=io.BytesIO(source.read_bytes())),
-                                    'English','Cebuano','auto','fast','preview')
-    assert result['content_summary']['translated']==1
-    assert result['content_summary']['ocr_mode']=='preview' and result['content_summary']['ocr_verified'] is False
-    assert '_ocr_preview_' in result['download_filename']
-    plan=result['sidecar']['render_plan'];validate_plan(plan,str(source),result['sidecar']['blocks'])
+    result=document_pipeline.translate(DocumentTranslationRequest(
+        file_path=str(source),source_lang='English',target_lang='Cebuano',mode='fast',ocr_mode='preview'))
+    assert result.content_summary['translated']==1, result.warnings
+    assert result.content_summary['ocr_mode']=='preview' and result.content_summary['ocr_verified'] is False
+    plan=result.sidecar['render_plan'];validate_plan(plan,str(source),result.sidecar['blocks'])
     assert plan['ocr_mode']=='preview' and plan['ocr_verified'] is False
-    output=tmp_path/'output.pdf';output.write_bytes(base64.b64decode(result['file_base64']))
-    with fitz.open(output) as doc:
+    with fitz.open(result.output_path) as doc:
         assert 'TARGET' in doc[0].get_text()
         assert 'SOURCE' not in doc[0].get_text()
         assert image_digest(source_image(doc,doc[0].get_images()[0][0]))!=image_digest(image)
     def poison(*a,**k):raise AssertionError('Regeneration must not recognize text')
     monkeypatch.setattr(ocr,'recognize_image',poison)
-    reconstruct_from_sidecar(result['sidecar'],{0:'EDITED'},str(source),str(tmp_path/'regenerated.pdf'))
-    assert result['sidecar']['content_summary']['ocr_verified'] is False
-    assert result['sidecar']['render_plan']['ocr_mode']=='preview'
+    reconstruct_from_sidecar(result.sidecar,{0:'EDITED'},str(source),str(tmp_path/'regenerated.pdf'))
+    assert result.sidecar['content_summary']['ocr_verified'] is False
+    assert result.sidecar['render_plan']['ocr_mode']=='preview'
     with fitz.open(tmp_path/'regenerated.pdf') as doc:
         assert 'EDITED' in doc[0].get_text() and 'SOURCE' not in doc[0].get_text()
+
+
+def test_service_rejects_preview_requests():
+    import server
+    with pytest.raises(HTTPException) as failure:
+        server.translate_document(UploadFile(filename='scan.pdf',file=io.BytesIO(b'fixture')),
+                                  'English','Cebuano','auto','fast','preview')
+    assert failure.value.status_code == 422
 
 
 def test_invalid_preview_mode_rejected_before_extraction(tmp_path):
