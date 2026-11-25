@@ -24,32 +24,35 @@ function translationHtml(){
         {cwd:root,input:JSON.stringify({source:body,capabilities}),env:{...process.env,APP_ENV:'testing',DB_CONNECTION:'sqlite',DB_DATABASE:':memory:',DB_URL:''}}).toString();
 }
 
-for(const preview of [false,true]){
-    test(`PDF OCR preview is opt-in and forwarded (${preview})`,async()=>{
+for(const queued of [false,true]){
+    test(`PDF uploads hide OCR controls and summarize long warnings (${queued ? 'polled' : 'reused'})`,async()=>{
         const page=await browser.newPage();let posted='';
+        const completed = {status:'completed',download_url:'/download',history_url:'/history/42/view',
+            content_summary:{status:'partial',translated:1,held:12},
+            warnings:Array.from({length:12}, (_,page)=>`Page ${page+1}: original region retained (ocr_disabled).`)};
         await page.route('**/*',async route=>{
             const url=new URL(route.request().url());
             if(url.pathname==='/')return route.fulfill({contentType:'text/html',body:`<meta name="csrf-token" content="test">${translationHtml()}`});
             if(url.pathname==='/translate'){
                 posted=route.request().postDataBuffer().toString();
-                return route.fulfill({json:{status:'completed',download_url:'/download',
-                    content_summary:{status:'complete',translated:1,held:0,...(preview?{ocr_mode:'preview',ocr_verified:false}:{})}}});
+                return route.fulfill({json:queued ? {status:'processing',job_id:'warning-job'} : {...completed,reused:true}});
             }
+            if(url.pathname==='/translate/status/warning-job')return route.fulfill({json:completed});
             return route.abort();
         });
         try{
             await page.goto('https://hybrid.test/');
-            assert.match(await page.locator('label[for="ocr-preview"]').textContent(), /Translate text in images and scanned PDFs \(experimental\)/);
-            assert.equal(await page.locator('#ocr-preview').isChecked(),false);
             await page.locator('#file-input').setInputFiles(resolve(root,'tests/testPDFs/M1_Q1_ENGLISH 8.pdf'));
-            assert.equal(await page.locator('#ocr-preview-option').isVisible(),true);
-            if(preview)await page.locator('#ocr-preview').check();
+            assert.equal(await page.locator('#ocr-preview-option, #ocr-preview').count(),0);
             await page.locator('#translate-btn').click();
             await page.waitForFunction(()=>!document.querySelector('#output-download').hidden);
-            assert.match(posted,new RegExp(`name="ocr_mode"\\r\\n\\r\\n${preview?'preview':'strict'}`));
-            if(preview)assert.match(await page.locator('#output-text').innerText(),/Experimental image-text translation/);
+            assert.doesNotMatch(posted,/name="ocr_mode"/);
+            assert.match(await page.locator('#output-text').innerText(),/Partly translated/);
+            assert.equal(await page.locator('#workbook-warning').innerText(),
+                'Text in images and scanned pages was skipped. See saved translation details.');
+            assert.equal(await page.locator('#workbook-warning a').getAttribute('href'),'/history/42/view');
             await page.locator('#remove-file').click();
-            assert.equal(await page.locator('#ocr-preview').isChecked(),false);
+            assert.equal(await page.locator('#workbook-warning').isVisible(),false);
         }finally{await page.close();}
     });
 }
