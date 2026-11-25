@@ -110,6 +110,12 @@ class DocumentsController extends Controller
             ], 422);
         }
 
+        $originalName = $record->original_filename ?? 'document.'.pathinfo($record->original_storage_path, PATHINFO_EXTENSION);
+        $originalExt = '.'.strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        if (in_array($originalExt, ['.png', '.jpg', '.jpeg'], true)) {
+            return response()->json(['error' => 'Image translation is currently unavailable.'], 422);
+        }
+
         $originalBackend = (string) ($record->original_storage_backend ?: StorageService::BACKEND_SUPABASE);
 
         // A stored path is not evidence that the object still exists. Without
@@ -154,12 +160,11 @@ class DocumentsController extends Controller
             if (!is_dir($persistDir)) {
                 mkdir($persistDir, 0755, true);
             }
-            $originalName = $record->original_filename ?? 'document.' . pathinfo($record->original_storage_path, PATHINFO_EXTENSION);
-            $persistentPath = $persistDir . DIRECTORY_SEPARATOR . 'source.' . strtolower((string) pathinfo($originalName, PATHINFO_EXTENSION));
+            $persistentPath = $persistDir . DIRECTORY_SEPARATOR . 'source' . $originalExt;
             file_put_contents($persistentPath, $originalBytes);
 
-            $originalExt = strtolower('.' . pathinfo($originalName, PATHINFO_EXTENSION));
             $fileSize = (int) ((int) $record->file_size ?: strlen((string) $originalBytes));
+            $ocrMode = $originalExt === '.pdf' ? TranslationJob::PDF_UPLOAD_OCR_MODE : 'strict';
 
             // Durable dedup: identical re-translation attempts collapse to the
             // existing active or completed result.
@@ -172,6 +177,7 @@ class DocumentsController extends Controller
                 'balanced',
                 $record->sidecar['pdf_column_mode'] ?? 'auto',
                 (int) $record->id,
+                $ocrMode,
             );
 
             $completed = \App\Models\TranslationJob::where('user_id', Auth::id())
@@ -260,6 +266,7 @@ class DocumentsController extends Controller
                     (int) $record->id,
                     $record->original_storage_backend ?: 'supabase',
                     (int) $jobRow->id,
+                    ocrMode: $ocrMode,
                 );
                 $jobId = $job->uuid();
 

@@ -92,9 +92,10 @@ class TranslationController extends Controller
             'document' => ['nullable', 'file', 'extensions:'.implode(',', config('translation.supported_formats', [])), 'max:'.(int) config('translation.max_upload_kb', 51200)],
             'pdf_column_mode' => ['nullable', Rule::in(config('translation.pdf_column_modes', []))],
             'mode' => ['nullable', Rule::in(config('translation.modes', []))],
-            'ocr_mode' => ['nullable', Rule::in(['strict', 'preview'])],
+            'ocr_mode' => ['nullable', Rule::in(['strict'])],
         ], [
             'target_lang.not_in' => 'The source language and target language must be different.',
+            'ocr_mode.in' => 'Translation of text inside images and scanned PDFs is currently unavailable.',
         ]);
 
         $targetLang = $validated['target_lang'];
@@ -263,10 +264,7 @@ class TranslationController extends Controller
         $originalExt = '.'.strtolower((string) pathinfo($originalName, PATHINFO_EXTENSION));
         $fileSize = (int) $uploadedFile->getSize();
         $mode = $validated['mode'] ?? 'balanced';
-        $ocrMode = $validated['ocr_mode'] ?? 'strict';
-        if ($ocrMode === 'preview' && ! in_array($originalExt, ['.pdf', '.png', '.jpg', '.jpeg'], true)) {
-            return response()->json(['error' => 'OCR preview is available only for PDFs and images.'], 422);
-        }
+        $ocrMode = $originalExt === '.pdf' ? TranslationJob::PDF_UPLOAD_OCR_MODE : 'strict';
 
         // 1. Persist the uploaded file so the queue worker can read it later
         //    (PHP deletes the temp file when this request ends). The on-disk
@@ -812,7 +810,12 @@ class TranslationController extends Controller
 
     private function buildHistoryCompletedPayload(TranslationHistory $history): array
     {
-        return $this->downloadResolver->resolve($history);
+        $payload = $this->downloadResolver->resolve($history);
+        if ($payload['status'] === 'completed') {
+            $payload['history_url'] = route('history.view', $history->id);
+        }
+
+        return $payload;
     }
 
     /**
