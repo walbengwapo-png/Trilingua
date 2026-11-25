@@ -11,7 +11,7 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
-import fitz
+import pymupdf as fitz
 import requests
 from sacrebleu import corpus_bleu, corpus_chrf
 

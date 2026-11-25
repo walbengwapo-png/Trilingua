@@ -6,7 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 
-import fitz
+import pymupdf as fitz
 from sacrebleu import corpus_bleu, corpus_chrf
 
 

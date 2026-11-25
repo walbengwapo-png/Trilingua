@@ -36,7 +36,7 @@ import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 
-import fitz
+import pymupdf as fitz
 
 try:
     from sacrebleu import corpus_bleu, corpus_chrf
