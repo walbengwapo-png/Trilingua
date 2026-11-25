@@ -54,6 +54,7 @@ from document.layout_planner import LayoutPlanner
 from memory.glossary import GlossaryStore
 from memory.document_memory import DocumentMemory
 from cache.sqlite_cache import SQLiteTranslationCache
+from cache.pdf_checkpoint import PDFRenderCheckpointError, checkpoint_key, load_checkpoint, save_checkpoint
 from validators.translation_validator import LayoutValidator, BLEUReporter
 from validators.ai_quality_reviewer import AIQualityReviewer
 from pipeline.translation_pipeline import TranslationPipeline
@@ -273,7 +274,9 @@ class DocumentPipeline:
         ctx.start_timer()
         ctx.source_file = request.file_path
         ctx.pdf_deadline = None
-        if os.path.splitext(request.file_path)[1].lower() in {'.pdf', *IMAGE_EXTENSIONS}:
+        ext = os.path.splitext(request.file_path)[1].lower()
+        pdf_output = ext in {'.pdf', *IMAGE_EXTENSIONS}
+        if pdf_output:
             from document.pdf_worker import job_budget
             ctx.pdf_deadline = _time.monotonic() + job_budget()
         ctx.source_lang = request.source_lang
@@ -283,17 +286,27 @@ class DocumentPipeline:
         ctx.concurrency_level = self.translation_pipeline.concurrency_limit()
 
         # ── Determine processing mode ─────────────────────────────────────
-        ctx.mode = self._determine_mode(request, ctx.pdf_deadline)
-
-        ext = os.path.splitext(request.file_path)[1].lower()
-        if ext in {'.pdf', *IMAGE_EXTENSIONS}:
-            from document.plan_key import require_plan_key
-            require_plan_key()
-        if request.ocr_mode not in {'strict','preview'}:
+        if request.ocr_mode not in {'strict', 'preview', 'disabled'}:
             raise ValueError('Invalid OCR mode')
-        if request.ocr_mode=='preview' and ext not in {'.pdf', *IMAGE_EXTENSIONS}:
+        if request.ocr_mode=='preview' and not pdf_output:
             raise ValueError('OCR preview is available only for PDFs and images')
         ctx.source_format = ext
+        if pdf_output:
+            from document.plan_key import require_plan_key
+            require_plan_key()
+        # Every HTTP upload has its own scratch directory.
+        output_file = choose_output_path(request.file_path, os.path.dirname(os.path.abspath(request.file_path)))
+        render_key = checkpoint_key(request) if ext == '.pdf' else None
+        checkpoint = load_checkpoint(render_key)
+        if checkpoint is not None:
+            ctx.mode = get_mode(checkpoint['sidecar']['mode'])
+            ctx.provider_name = checkpoint['provider']
+            ctx.provider_model = checkpoint['model']
+            ctx.warnings = checkpoint['warnings']
+            print('[OUTPUT] Resuming PDF reconstruction from saved translation')
+            return self._finish_pdf_translation(request, ctx, output_file, checkpoint, saved=True, resumed=True)
+
+        ctx.mode = self._determine_mode(request, ctx.pdf_deadline)
         print(f"\n{'='*60}")
         print(f"  Document Translation — Mode: {ctx.mode.name}")
         print(f"{'='*60}")
@@ -303,15 +316,6 @@ class DocumentPipeline:
 
         # Build glossary
         glossary_store = GlossaryStore(request.glossary_pairs) if request.glossary_pairs else None
-
-        # Keep the output beside this request's input. The FastAPI endpoint
-        # gives every upload a private temp directory; using a relative output
-        # path here previously wrote every request to Model/translated_input.*,
-        # causing cross-request collisions and leaving generated files in the
-        # repository.
-        output_file = choose_output_path(
-            request.file_path, os.path.dirname(os.path.abspath(request.file_path))
-        )
 
         # OPTIMIZATION: Get shared cache (Task 2)
         translation_cache = self._get_cache()
@@ -333,7 +337,7 @@ class DocumentPipeline:
             if ext in {'.pdf', *IMAGE_EXTENSIONS}:
                 from document.pdf_worker import run_pdf
                 data, extraction = run_pdf('extract', request.file_path, request.source_lang,
-                                           request.pdf_column_mode, *(['preview'] if request.ocr_mode=='preview' else []),
+                                           request.pdf_column_mode, request.ocr_mode,
                                            deadline=ctx.pdf_deadline)
                 detected_ext = '.pdf'
             else:
@@ -566,7 +570,8 @@ class DocumentPipeline:
         translated_blocks = self._coherence_polish_blocks(
             blocks, translated_blocks, request, ctx
         )
-        self._review_final_blocks(blocks, translated_blocks, ctx)
+        with phase_profile('final_quality_review', ctx):
+            self._review_final_blocks(blocks, translated_blocks, ctx)
         from validators.hallucination_detector import validate_translated_blocks
         validate_translated_blocks(blocks, translated_blocks)
 
@@ -582,20 +587,29 @@ class DocumentPipeline:
                 )
 
         # ── Reconstruct document ─────────────────────────────────────────
+        if pdf_output:
+            provider = self.translation_pipeline.provider
+            checkpoint = {
+                'blocks': translated_blocks,
+                'sidecar': finalize_sidecar(self._review_entries(blocks, translated_blocks), request, ext, ctx),
+                'extraction': extraction,
+                'warnings': ctx.warnings,
+                'provider': provider.name,
+                'model': provider.model_name,
+            }
+            saved = save_checkpoint(render_key, checkpoint)
+            try:
+                return self._finish_pdf_translation(request, ctx, output_file, checkpoint, saved=saved)
+            finally:
+                if ctx.document_memory:
+                    ctx.document_memory.clear()
+                if translation_cache:
+                    translation_cache.clear_document_cache()
+
         print(f"[OUTPUT] Rebuilding document -> {output_file}")
         with phase_profile("reconstruction", ctx):
-            if ext in {'.pdf', *IMAGE_EXTENSIONS}:
-                from document.pdf_worker import run_pdf
-                output_validation, image_actions, native = run_pdf('render', request.file_path, translated_blocks,
-                    output_file, request.source_lang, request.target_lang, deadline=ctx.pdf_deadline)
-                layouts = {b.get('region_id'): b.get('rendered_layout') for b in native}
-                for block in translated_blocks:
-                    if block.get('region_id') in layouts:
-                        block['rendered_layout'] = layouts[block['region_id']]
-                extraction['image_actions'] = image_actions
-            else:
-                output_validation = reconstruct_document(translated_blocks, output_file, request.file_path, detected_ext,
-                    source_lang=request.source_lang, target_lang=request.target_lang, layout_plan=ctx.layout_plan)
+            output_validation = reconstruct_document(translated_blocks, output_file, request.file_path, detected_ext,
+                source_lang=request.source_lang, target_lang=request.target_lang, layout_plan=ctx.layout_plan)
         ctx.reconstruction_time_ms = ctx.phase_times.get("reconstruction", 0)
 
         # BLEU scoring
@@ -608,24 +622,11 @@ class DocumentPipeline:
         # ── Build regeneration sidecar (admin review support) ─────────────
         # Capture the block set + structural metadata so an admin edit can be
         # reconstructed later WITHOUT re-running extraction/analysis/translation.
-        sidecar_entries = []
-        for idx, tb in enumerate(translated_blocks):
-            src_text = tb.get("_original_text")
-            if src_text is None and idx < len(blocks):
-                src_text = blocks[idx].get("text", "")
-            sidecar_entries.append(rich_block_entry(idx, tb, src_text or ""))
+        sidecar_entries = self._review_entries(blocks, translated_blocks)
         sidecar = finalize_sidecar(sidecar_entries, request, ctx.source_format, ctx,
                                    extra={"output_validation": output_validation or {}, "extraction": extraction})
 
         # ── Finalize ─────────────────────────────────────────────────────
-        if ext in {'.pdf', *IMAGE_EXTENSIONS}:
-            output_file = self._pdf_sidecar(sidecar, extraction, output_validation, output_file)
-            for block, entry in zip(translated_blocks, sidecar_entries):
-                if entry.get('passthrough'):
-                    block.update(text=entry['text'], passthrough=True)
-            for warning in extraction['warnings']:
-                if warning not in ctx.warnings: ctx.add_warning(warning)
-
         ctx.stop_timer()
         check_deadline(ctx.pdf_deadline)
         ctx.log_summary()
@@ -655,6 +656,71 @@ class DocumentPipeline:
         )
 
     # ── In-place Translation ────────────────────────────────────────────────
+
+    @staticmethod
+    def _review_entries(blocks, translated_blocks):
+        entries = []
+        for idx, block in enumerate(translated_blocks):
+            source = block.get('_original_text')
+            if source is None and idx < len(blocks):
+                source = blocks[idx].get('text', '')
+            entries.append(rich_block_entry(idx, block, source or ''))
+        return entries
+
+    def _finish_pdf_translation(self, request, ctx, output_file, checkpoint, *, saved, resumed=False):
+        from document.pdf_worker import check_deadline, run_pdf
+
+        blocks = checkpoint['blocks']
+        extraction = checkpoint['extraction']
+        sidecar = checkpoint['sidecar']
+        entries = sidecar['blocks']
+        ctx.total_blocks = ctx.translated_chunks = len(blocks)
+        print(f'[OUTPUT] Rebuilding document -> {output_file}')
+        try:
+            with phase_profile('reconstruction', ctx):
+                validation, image_actions, native = run_pdf('render', request.file_path, blocks,
+                    output_file, request.source_lang, request.target_lang, deadline=ctx.pdf_deadline)
+                extraction['image_actions'] = image_actions
+                layouts = {block.get('region_id'): block.get('rendered_layout') for block in native}
+                for block, entry in zip(blocks, entries):
+                    if block.get('region_id') in layouts:
+                        layout = layouts[block['region_id']]
+                        block['rendered_layout'] = entry['rendered_layout'] = layout
+                sidecar.update(engine_revision=DOCUMENT_ENGINE_REVISION, output_validation=validation,
+                               extraction=extraction)
+                output_file = self._pdf_sidecar(sidecar, extraction, validation, output_file)
+            check_deadline(ctx.pdf_deadline)
+        except (ValueError, RuntimeError, OSError) as error:
+            print(f"[OUTPUT] PDF reconstruction failed after {ctx.phase_times.get('reconstruction', 0):.0f}ms")
+            if not saved:
+                raise
+            raise PDFRenderCheckpointError(
+                'Translation saved. The PDF layout could not be rebuilt. An administrator can retry this job.'
+            ) from error
+
+        ctx.reconstruction_time_ms = ctx.phase_times['reconstruction']
+        bleu_score = (self.bleu_reporter.compute(blocks, request.reference_file)
+                      if request.reference_file is not None else None)
+        for block, entry in zip(blocks, entries):
+            if entry.get('passthrough'):
+                block.update(text=entry['text'], passthrough=True)
+        for warning in extraction['warnings']:
+            if warning not in ctx.warnings:
+                ctx.add_warning(warning)
+        ctx.stop_timer()
+        check_deadline(ctx.pdf_deadline)
+        ctx.log_summary()
+        metrics = _engine_metrics(ctx, self.translation_pipeline.provider)
+        if resumed:
+            metrics['reused_translation_checkpoint'] = True
+            metrics['document_type'] = sidecar['document_type']
+        return DocumentTranslationResponse(
+            output_path=output_file, translated_blocks=blocks, provider=checkpoint['provider'],
+            model=checkpoint['model'], total_chunks=len(blocks), total_execution_time_ms=ctx.total_time_ms,
+            bleu_score=bleu_score, warnings=ctx.warnings, mode=ctx.mode.name,
+            document_type=sidecar['document_type'], sidecar=sidecar, blocks=entries,
+            output_validation=validation, metrics=metrics, content_summary=sidecar['content_summary'],
+        )
 
     def _pdf_sidecar(self, sidecar, extraction, validation, output_file):
         from document.pdf_regions import content_summary, completed_status
