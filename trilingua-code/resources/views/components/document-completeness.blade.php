@@ -5,7 +5,8 @@
     $incomplete = in_array($summary['status'] ?? null, ['partial', 'untranslated'], true);
 @endphp
 @if ($message)
-    <x-notice :type="$incomplete ? 'warning' : 'info'" :title="$incomplete ? 'Review this translation' : 'Translation ready'" :message="$message" class="document-completeness">
+    <div class="document-completeness" role="note">
+        <p>{{ $message }}</p>
         @if (($summary['ocr_mode'] ?? null) === 'preview')
             <p>{{ \App\Support\DocumentPresentation::PREVIEW_MESSAGE }}</p>
         @endif
@@ -25,5 +26,5 @@
                 <p>Page details were not saved for this translation. Compare the downloaded file with the original.</p>
             @endif
         @endif
-    </x-notice>
+    </div>
 @endif
