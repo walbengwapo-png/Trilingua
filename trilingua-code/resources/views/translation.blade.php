@@ -55,10 +55,6 @@
                 </div>
             </div>
 
-            <div id="ocr-preview-option" class="translation-job-hint" hidden>
-                <label for="ocr-preview"><input type="checkbox" id="ocr-preview" aria-describedby="ocr-preview-hint"> Translate text in images and scanned PDFs (experimental)</label>
-                <p id="ocr-preview-hint">Attempts to read text that cannot be selected or copied. Results have not been verified; check the wording and layout.</p>
-            </div>
             <div class="translation-panel__footer">
                 {{-- Speak --}}
                 <button id="speak-source-btn" type="button" class="speak-btn" aria-label="Read source text aloud" title="Read aloud">
@@ -183,16 +179,30 @@
         return message;
     }
 
-    function readableWarnings(warnings) {
+    function readableWarnings(warnings, summary) {
         return Array.from(new Set((Array.isArray(warnings) ? warnings : []).map(function (warning) {
             var text = String(warning);
             var area = text.match(/^Page (\d+): original region retained \((.+)\)\.$/);
             if (area) return 'Page ' + area[1] + ': ' + (REASON_MESSAGES[area[2]] || UNKNOWN_REASON_MESSAGE);
             if (/^Original region retained:/.test(text)) return UNKNOWN_REASON_MESSAGE;
-            if (/^(Partial|Untranslated): \d+ translated,/.test(text)) return CONTENT_MESSAGES[text.startsWith('Partial') ? 'partial' : 'untranslated'];
-            if (text.startsWith('Unverified OCR preview:')) return PREVIEW_MESSAGE;
-            return window.readableAppMessage(text);
-        })));
+            if (/^(Partial|Untranslated): \d+ translated,/.test(text)) return summary ? '' : CONTENT_MESSAGES[text.startsWith('Partial') ? 'partial' : 'untranslated'];
+            if (text.startsWith('Unverified OCR preview:')) return summary && summary.ocr_mode === 'preview' ? '' : PREVIEW_MESSAGE;
+            return text;
+        }).filter(Boolean)));
+    }
+
+    function showWarnings(data) {
+        var warningText = readableWarnings(data && data.warnings, data && data.content_summary).join(' ');
+        workbookWarning.textContent = warningText;
+        if (warningText.length > 220 && data.history_url) {
+            var link = document.createElement('a');
+            link.href = data.history_url;
+            link.textContent = 'saved translation details';
+            var skipped = REASON_MESSAGES.ocr_disabled;
+            var lead = warningText.includes(skipped) ? skipped + ' See ' : 'Review the full warnings in the ';
+            workbookWarning.replaceChildren(lead, link, '.');
+        }
+        workbookWarning.hidden = !warningText;
     }
 
     var sourceText    = document.getElementById('source-text');
@@ -210,8 +220,6 @@
     var removeFile    = document.getElementById('remove-file');
     var fileInfo      = document.getElementById('file-info');
     var pdfColumnMode = document.getElementById('pdf-column-mode');
-    var ocrPreviewOption = document.getElementById('ocr-preview-option');
-    var ocrPreview = document.getElementById('ocr-preview');
     var sourceError   = document.getElementById('source-error');
     var outputError   = document.getElementById('output-error');
     var translateBtn  = document.getElementById('translate-btn');
@@ -319,8 +327,6 @@
         charCounter.style.display = 'none';
         fileInfo.style.display = '';
         pdfColumnMode.style.display = ext === '.pdf' ? '' : 'none';
-        ocrPreviewOption.hidden = !['.pdf', '.png', '.jpg', '.jpeg'].includes(ext);
-        if (ocrPreviewOption.hidden) ocrPreview.checked = false;
         if (ext !== '.pdf') pdfColumnMode.value = 'auto';
     });
 
@@ -333,8 +339,6 @@
         clearError(sourceError);
         pdfColumnMode.style.display = 'none';
         pdfColumnMode.value = 'auto';
-        ocrPreview.checked = false;
-        ocrPreviewOption.hidden = true;
     });
 
     // ── Translate ─────────────────────────────────────────────────────────────
@@ -391,7 +395,6 @@
     }
 
     pdfColumnMode.addEventListener('change', resetResult);
-    ocrPreview.addEventListener('change', resetResult);
 
     translateBtn.addEventListener('click', function () {
         resetResult();
@@ -414,7 +417,6 @@
             formData.append('document', file);
             var ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
             if (ext === '.pdf') formData.append('pdf_column_mode', pdfColumnMode.value);
-            formData.append('ocr_mode', !ocrPreviewOption.hidden && ocrPreview.checked ? 'preview' : 'strict');
         } else {
             var text = sourceText.value.trim();
             if (!text) { showError(sourceError, 'Please enter text to translate.'); setLoading(false); hideProgress(); return; }
@@ -438,8 +440,7 @@
                     if (data && data.job_id && window.showToast) showToast('info', 'Earlier upload is still tracked', 'Changing this form does not cancel your upload. Check Saved Translations for its result.');
                     return;
                 }
-                workbookWarning.textContent = readableWarnings(data && data.warnings).join(' ');
-                workbookWarning.hidden = !workbookWarning.textContent;
+                showWarnings(data);
                 if (data && data.job_id && ((res.ok && data.status === 'processing') || data.dispatch === 'unknown')) {
                     // Document translation queued - poll for status
                     outputSaveWarning.hidden = true;
@@ -573,8 +574,7 @@
                 }
 
                 if (data && data.status === 'completed' && Array.isArray(data.warnings) && data.warnings.length) {
-                    workbookWarning.textContent = readableWarnings(data.warnings).join(' ');
-                    workbookWarning.hidden = false;
+                    showWarnings(data);
                 }
                 if (data && data.status === 'completed' && (data.download_url || data.download_data)) {
                     stopPolling(true);
