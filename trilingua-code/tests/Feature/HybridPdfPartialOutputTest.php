@@ -28,7 +28,10 @@ class HybridPdfPartialOutputTest extends TestCase
         ]);
         $sidecar = ['version' => 3, 'blocks' => [],
             'content_summary' => ['status' => 'untranslated', 'translated' => 0, 'held' => 1, 'passthrough' => 0],
-            'extraction' => ['warnings' => ['Original region retained: ocr_acceptance_hold.']],
+            'extraction' => ['warnings' => [
+                'Page 1: original region retained (ocr_acceptance_hold).',
+                'Compare the illustrations with the original.',
+            ]],
             'render_plan' => ['version' => 1, 'regions' => [
                 ['page' => 0, 'source_kind' => 'raster', 'bbox' => [0, 0, 100, 100],
                     'status' => 'held', 'reason' => 'ocr_acceptance_hold'],
@@ -47,8 +50,12 @@ class HybridPdfPartialOutputTest extends TestCase
         $this->assertSame('scan_untranslated.pdf', $payload['download_filename']);
         $this->assertNotEmpty($payload['warnings']);
         $this->actingAs($user)->get("/history/{$history->id}")->assertOk()->assertJsonPath('sidecar.content_summary.status', 'untranslated');
+        $history->update(['job_id' => '12345678-1234-1234-1234-123456789012']);
+        $this->getJson('/translate/status/'.$history->job_id)->assertOk()
+            ->assertJsonPath('history_url', route('history.view', $history->id));
         $this->get(route('history.view', $history->id))->assertOk()->assertSee('No translated content was produced.')
-            ->assertSee('Page 1:')->assertSee('has not passed the required checks');
+            ->assertSee('Page 1:')->assertSee('has not passed the required checks')
+            ->assertSee('Compare the illustrations with the original.');
         $this->get(route('admin.review.show', $history->id))->assertOk()->assertSee('ocr_acceptance_hold');
         $this->get('/documents')->assertOk()->assertSee('No translated content was produced.')->assertDontSee('100% Complete');
         $this->expectException(TranslationException::class);

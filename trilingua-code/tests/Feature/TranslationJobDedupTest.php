@@ -204,7 +204,7 @@ class TranslationJobDedupTest extends TestCase
         $user = User::factory()->create();
         $file = UploadedFile::fake()->createWithContent('scan.pdf', "%PDF-1.4\n".str_repeat('A', 512));
         $payloadHash = TranslationJob::payloadHash((int) $user->id, hash_file('sha256', $file->getRealPath()),
-            'English', 'Cebuano', 'balanced', 'auto', null, 'preview');
+            'English', 'Cebuano', 'balanced', 'auto', null, TranslationJob::PDF_UPLOAD_OCR_MODE);
         $history = TranslationHistory::create([
             'user_id' => $user->id, 'translation_type' => 'document', 'original_filename' => 'scan.pdf',
             'translated_filename' => 'scan_untranslated.pdf', 'source_language' => 'English', 'target_language' => 'Cebuano',
@@ -227,7 +227,7 @@ class TranslationJobDedupTest extends TestCase
         $this->app->instance(StorageService::class, $storage);
         $this->actingAs($user)->post('/translate', [
             'source_lang' => 'English', 'target_lang' => 'Cebuano', 'mode' => 'balanced',
-            'ocr_mode' => 'preview', 'document' => $file,
+            'document' => $file,
         ], ['Accept' => 'application/json'])->assertOk()->assertJsonPath('status', 'processing');
         $this->assertSame(2, DB::table('translation_jobs')->count());
         $this->assertSame(1, DB::table('jobs')->count());
